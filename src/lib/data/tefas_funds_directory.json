@@ -1,0 +1,6308 @@
+[
+  {
+    "code": "AAL",
+    "name": "ATA PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "AAS",
+    "name": "ATA PORTFÖY FON SEPETİ SERBEST FONU",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "AAV",
+    "name": "ATA PORTFÖY İKİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AC1",
+    "name": "PARDUS PORTFÖY KISA VADELİ KATILIM SERBEST FONU",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "AC4",
+    "name": "PARDUS  PORTFÖY PARA PİYASASI (TL) FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "AC5",
+    "name": "PARDUS PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AC6",
+    "name": "PARDUS PORTFÖY DÖRDÜNCÜ SERBEST (DÖVİZ) FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ACC",
+    "name": "İSTANBUL PORTFÖY DÖRDÜNCÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ACD",
+    "name": "İSTANBUL PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ACU",
+    "name": "İSTANBUL PORTFÖY URARTU SERBEST (DÖVİZ) FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ADE",
+    "name": "AK PORTFÖY MUTLAK GETİRİ HEDEFLİ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ADP",
+    "name": "AK PORTFÖY BIST BANKA ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AED",
+    "name": "ATA PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "AES",
+    "name": "AK PORTFÖY PETROL YABANCI BYF FON SEPETİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "AEV",
+    "name": "ALLBATROSS PORTFÖY SANAYİ ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AFA",
+    "name": "AK PORTFÖY  AMERİKA YABANCI HİSSE SENEDİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AFO",
+    "name": "AK PORTFÖY ALTIN FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "AFS",
+    "name": "AK PORTFÖY SAĞLIK SEKTÖRÜ YABANCI HİSSE SENEDİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AFT",
+    "name": "AK PORTFÖY YENİ TEKNOLOJİLER YABANCI HİSSE SENEDİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AFV",
+    "name": "AK PORTFÖY  AVRUPA YABANCI HİSSE SENEDİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AGC",
+    "name": "AK PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "AHI",
+    "name": "ATLAS PORTFÖY BİRİNCİ HİSSE SENEDİ FONU(HİSSE SENEDİ YOĞUN)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AHN",
+    "name": "ATLAS PORTFÖY SERBEST(DÖVİZ)FON",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "AHU",
+    "name": "ATLAS PORTFÖY BİRİNCİ ÖZEL SEKTÖR BORÇLANMA ARAÇLARI FONU",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "AHV",
+    "name": "AZİMUT PORTFÖY DENGELİ FON SEPETİ FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "AIS",
+    "name": "AK PORTFÖY PARA PİYASASI KATILIM FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "AJ1",
+    "name": "A1 CAPİTAL PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AJK",
+    "name": "AK PORTFÖY 0-5 YIL VADELİ SERBEST (DÖVİZ) FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "AK2",
+    "name": "AK PORTFÖY UZUN VADELİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "AK3",
+    "name": "AK PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AKE",
+    "name": "AK PORTFÖY EUROBOND (AMERİKAN DOLARI) BORÇLANMA ARAÇLARI FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "AKU",
+    "name": "AK PORTFÖY BIST 30 ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ALC",
+    "name": "AK PORTFÖY KAR PAYI ÖDEYEN ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AN1",
+    "name": "STRATEJİ PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "STRATEJİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ANZ",
+    "name": "ATA PORTFÖY DÖRDÜNCÜ SERBEST (DÖVİZ) FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "AOJ",
+    "name": "ALLBATROSS PORTFÖY İNŞAAT SEKTÖRÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AOY",
+    "name": "AK PORTFÖY ALTERNATİF ENERJİ YABANCI HİSSE SENEDİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AP5",
+    "name": "ATLAS PORTFÖY BEŞİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AP7",
+    "name": "PARDUS PORTFÖY ALGO ETNA İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "APJ",
+    "name": "AK PORTFÖY BIST ŞİRKETLERİ FON SEPETİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "APT",
+    "name": "AK PORTFÖY ORTA VADELI BORÇLANMA ARAÇLARI FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "ARE",
+    "name": "İSTANBUL PORTFÖY YABANCI HİSSE SENEDİ FONU",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ARL",
+    "name": "AK PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ARM",
+    "name": "AK PORTFÖY İKİNCİ FON SEPETİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "AS1",
+    "name": "ALLBATROSS PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ASJ",
+    "name": "AKTİF PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ATJ",
+    "name": "AZİMUT PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "AU1",
+    "name": "A1 CAPİTAL PORTFÖY ALTIN FONU",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "AUV",
+    "name": "AK PORTFÖY UZUN VADELİ SERBEST (DÖVİZ) FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "AYA",
+    "name": "ATA PORTFÖY KAR PAYI ÖDEYEN HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "AYR",
+    "name": "AK PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "BAG",
+    "name": "BULLS PORTFÖY ATAK DEĞIŞKEN FON",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BAI",
+    "name": "BV PORTFÖY ALTIN KATILIM FONU",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "BBF",
+    "name": "PARDUS PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "BBP",
+    "name": "ALLBATROSS PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "BBS",
+    "name": "BULLS PORTFÖY BİRİNCİ SERBEST (TL) FON",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BCK",
+    "name": "DENİZ PORTFÖY BLOCKCHAİN VE FINTECH TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "BCO",
+    "name": "BULLS PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BDA",
+    "name": "YAPI KREDİ PORTFÖY BİRİNCİ KATILIM SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BDS",
+    "name": "PARDUS PORTFÖY BIST 30 DIŞI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BDY",
+    "name": "AK PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BFE",
+    "name": "ALLBATROSS PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "BFS",
+    "name": "BULLS PORTFÖY EMTİA FON SEPETİ FONU",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "BFT",
+    "name": "AZİMUT PORTFÖY BANKA VE FİNANS SEKTÖRÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BGP",
+    "name": "AK PORTFÖY ÜÇÜNCÜ PARA PİYASASI (TL) FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "BGR",
+    "name": "AK PORTFÖY BIST GYO ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BHA",
+    "name": "BULLS PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BHE",
+    "name": "AK PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BHF",
+    "name": "PARDUS PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BHI",
+    "name": "BV PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BHL",
+    "name": "İŞ PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BID",
+    "name": "QNB PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BIG",
+    "name": "YAPI KREDİ PORTFÖY ÜÇÜNCÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BIH",
+    "name": "PARDUS PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BIO",
+    "name": "İŞ PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BIP",
+    "name": "İSTANBUL PORTFÖY BİRİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "BIS",
+    "name": "BV PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BIY",
+    "name": "AZİMUT PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BJD",
+    "name": "AZİMUT PORTFÖY 13.0 SERBEST (DÖVİZ) FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BKY",
+    "name": "YAPI KREDİ PORTFÖY BİRİNCİ KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BLD",
+    "name": "DENİZ PORTFÖY BALEV EĞİTİME DESTEK SERBEST FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BLT",
+    "name": "BULLS PORTFÖY ALTIN FONU",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "BMU",
+    "name": "BULLS PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BNC",
+    "name": "AK PORTFÖY BEŞİNCİ SERBEST FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BNH",
+    "name": "İSTANBUL PORTFÖY BANKACILIK SEKTÖRÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BOL",
+    "name": "AKTİF PORTFÖY BORÇLANMA ARAÇLARI FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "BON",
+    "name": "A1 CAPİTAL PORTFÖY BORÇLANMA ARAÇLARI FONU",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "BOS",
+    "name": "BULLS PORTFÖY ALTINCI HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BPZ",
+    "name": "BULLS PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "BRC",
+    "name": "RE-PIE PORTFÖY BİRİNCİ İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BRF",
+    "name": "DENİZ PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "BRR",
+    "name": "AK PORTFÖY İKİNCİ KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "BRT",
+    "name": "PARDUS PORTFÖY BEREKET HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BS1",
+    "name": "AHLATCI PORTFÖY BİRİNCİ SERBEST (TL) FON",
+    "founder": "AHLATCI PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BSD",
+    "name": "BV PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BSH",
+    "name": "ATLAS PORTFÖY BANKACILIK SEKTÖRÜ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BSM",
+    "name": "GLOBAL MD PORTFÖY BERRAK SERBEST FON",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BST",
+    "name": "PARDUS PORTFÖY BANKACILIK SEKTÖRÜ DIŞI ŞİRKETLER HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BTE",
+    "name": "BV PORTFÖY OYUN VE TEKNOLOJİ DEĞİŞKEN FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "BTJ",
+    "name": "ATLAS PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BTK",
+    "name": "BV PORTFÖY TEKNOLOJİ KATILIM FONU",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "BTZ",
+    "name": "ATLAS PORTFÖY BIST 30 DIŞI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BUB",
+    "name": "BULLS PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "BUV",
+    "name": "BULLS PORTFÖY VOLTRAN SERBEST (TL) FON",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BUY",
+    "name": "AK PORTFÖY BÜYÜYEN ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BV1",
+    "name": "BV PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BVD",
+    "name": "BV PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BVF",
+    "name": "BV PORTFÖY PARA PİYASASI (TL) FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "BVK",
+    "name": "BULLS PORTFÖY VOLTRAN KATILIM SERBEST (TL) FON",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "BVM",
+    "name": "ALLBATROSS PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "BVV",
+    "name": "BV PORTFÖY TEKNOLOJİ DEĞİŞKEN FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "BVZ",
+    "name": "BV PORTFÖY İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "CAH",
+    "name": "A1 CAPİTAL PORTFÖY HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "CFO",
+    "name": "ROTA PORTFÖY İKİNCİ PARA PİYASASI FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "CIN",
+    "name": "AKTİF PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "CKF",
+    "name": "ALBARAKA PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "CKL",
+    "name": "YAPI KREDİ PORTFÖY ÇOKLU VARLIK DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "CKS",
+    "name": "İŞ PORTFÖY BİRİNCİ KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "CPT",
+    "name": "ROTA PORTFÖY ÇİP TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "CPU",
+    "name": "AKTİF PORTFÖY TEKNOLOJİ KATILIM FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "CVK",
+    "name": "INVEO PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "CVL",
+    "name": "A1 CAPİTAL PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DA1",
+    "name": "A1 CAPİTAL PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DAH",
+    "name": "DENİZ PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DAP",
+    "name": "DESTEK PORTFÖY PARA PİYASASI FONU",
+    "founder": "DESTEK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DAS",
+    "name": "DENİZ PORTFÖY ONİKİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DBA",
+    "name": "DENİZ PORTFÖY ALTIN FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "DBB",
+    "name": "DENİZ PORTFÖY BORÇLANMA ARAÇLARI FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "DBH",
+    "name": "DENİZ PORTFÖY EUROBOND (DÖVİZ) BORÇLANMA ARAÇLARI FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "DBK",
+    "name": "DENİZ PORTFÖY KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "DBP",
+    "name": "DENİZ PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DBZ",
+    "name": "DENİZ PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "DCB",
+    "name": "DENİZ PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DDA",
+    "name": "DENİZ PORTFÖY BANKACILIK SEKTÖRÜ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DDF",
+    "name": "DENİZ PORTFÖY DİNAMO HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DEF",
+    "name": "ALLBATROSS PORTFÖY DEFNE SERBEST FON",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DEH",
+    "name": "DESTEK PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DESTEK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DFC",
+    "name": "DENİZ PORTFÖY TARIM VE GIDA DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DFD",
+    "name": "DENİZ PORTFÖY EMTİA SERBEST FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "DFI",
+    "name": "ATLAS PORTFÖY SERBEST FON",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DGF",
+    "name": "A1 CAPİTAL PORTFÖY DEĞİŞKEN FON",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DGH",
+    "name": "ATA PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DHJ",
+    "name": "DENİZ PORTFÖY TEKNOLOJİ ŞİRKETLERİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DHM",
+    "name": "DENİZ PORTFÖY ESG-SÜRDÜRÜLEBİLİRLİK FON SEPETİ FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DHT",
+    "name": "DENİZ PORTFÖY  HAVACILIK VE SAVUNMA TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DHV",
+    "name": "DENİZ PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DID",
+    "name": "DENİZ PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DIP",
+    "name": "DENİZ PORTFÖY İKİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DKC",
+    "name": "DENİZ PORTFÖY İKİNCİ SERBEST FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DKH",
+    "name": "DENİZ PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DKL",
+    "name": "DENİZ PORTFÖY BİRİNCİ KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DKR",
+    "name": "DENİZ PORTFÖY ONDÖRDÜNCÜ SERBEST FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DL2",
+    "name": "DENİZ PORTFÖY İKİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DLD",
+    "name": "DENİZ PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DLY",
+    "name": "DENİZ PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DLZ",
+    "name": "DENİZ PORTFÖY ALİZE HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DMG",
+    "name": "DENİZ PORTFÖY GÜMÜŞ FON SEPETİ FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "DNF",
+    "name": "A1 CAPİTAL PORTFÖY DİNAMİK FON SEPETİ FONU",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DNH",
+    "name": "DENİZ PORTFÖY İNŞAAT SEKTÖRÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DNK",
+    "name": "TACİRLER PORTFÖY DENGE KATILIM SERBEST FON",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DNM",
+    "name": "QNB PORTFÖY DİNAMİK DAĞILIMLI SERBEST (DÖVİZ) FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DNP",
+    "name": "DENİZ PORTFÖY PARA PİYASASI KATILIM SERBEST (TL) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DOH",
+    "name": "TERA PORTFÖY DÖRDÜNCÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DOL",
+    "name": "AKTİF PORTFÖY ÜÇÜNCÜ AKTİF SERBEST (DÖVİZ) FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DOV",
+    "name": "DENİZ PORTFÖY ONÜÇÜNCÜ SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DPB",
+    "name": "DENİZ PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DPI",
+    "name": "DENİZ PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DPK",
+    "name": "DENİZ PORTFÖY KİRA SERTİFİKALARI KATILIM (TL) FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "DPT",
+    "name": "DENİZ PORTFÖY BİST TEMETTÜ 25 ENDEKSİ HİSSE SENEDİ FONU ( HİSSE SENEDİ YOĞUN FON )",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DRA",
+    "name": "NEO PORTFÖY DORA SERBEST FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DRT",
+    "name": "DENİZ PORTFÖY ROBOTİK TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DSD",
+    "name": "DENİZ PORTFÖY İKİNCİ SERBEST (DÖVİZ_AVRO) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DSP",
+    "name": "DENİZ PORTFÖY DENGELİ FON SEPETİ FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DTH",
+    "name": "EMAA BLUE PORTFÖY DÖNÜŞÜM TEKNOLOJİLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DTL",
+    "name": "DENİZ PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DTM",
+    "name": "DENİZ PORTFÖY TEMETTÜ ÖDEYEN ŞİRKETLER DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DTZ",
+    "name": "AK PORTFÖY ROBOTİK TEKNOLOJİLER DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DUD",
+    "name": "DENİZ PORTFÖY UZUN VADELİ SERBEST (DÖVİZ) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "DUH",
+    "name": "HEDEF PORTFÖY UFUK HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DUV",
+    "name": "DENİZ PORTFÖY UZUN VADELİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "DVS",
+    "name": "DENİZ PORTFÖY KISA VADELİ SERBEST (TL) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "DVT",
+    "name": "DENİZ PORTFÖY METAVERSE VE DİJİTAL YAŞAM TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DXP",
+    "name": "DENİZ PORTFÖY İHRACATÇI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DYN",
+    "name": "DENİZ PORTFÖY ELEKTRİKLİ VE OTONOM ARAÇ TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "DZE",
+    "name": "DENİZ PORTFÖY BIST 100 ENDEKSİ HİSSE SENEDİ FONU(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "DZM",
+    "name": "DENİZ PORTFÖY BEŞİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EBD",
+    "name": "GLOBAL MD PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EBI",
+    "name": "EMAA BLUE PORTFÖY İKİNCİ SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EBS",
+    "name": "EMAA BLUE PORTFÖY BİRİNCİ SERBEST (DÖVİZ-ABD DOLARI) FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EC2",
+    "name": "GLOBAL MD PORTFÖY BİRİNCİ HİSSE SENEDİ FONU(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ECA",
+    "name": "GLOBAL MD PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EDN",
+    "name": "EMAA BLUE PORTFÖY DENGELİ DEĞİŞKEN FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EDP",
+    "name": "NEO PORTFÖY KORUNCUK EĞİTİME DESTEK PARA PİYASASI SERBEST FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "EDT",
+    "name": "DENİZ PORTFÖY TED EĞİTİME DESTEK SERBEST FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EDU",
+    "name": "İŞ PORTFÖY TEV EĞİTİME DESTEK DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EGR",
+    "name": "EMAA BLUE PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EIB",
+    "name": "ASTRA PORTFÖY DEĞİŞKEN FON",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EID",
+    "name": "ASTRA PORTFÖY HİSSE SENEDİ FONU (HİSSE YOĞUN FON)",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "EIL",
+    "name": "ASTRA PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "EKF",
+    "name": "ASTRA PORTFÖY KİRA SERTİFİKASI KATILIM (TL) FONU",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "ELZ",
+    "name": "ASTRA PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "EML",
+    "name": "AK PORTFÖY EMLAK SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ENJ",
+    "name": "AKTİF PORTFÖY ENERJİ ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "EP1",
+    "name": "EMLAK KATILIM PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "EMLAK KATILIM PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "EPA",
+    "name": "EMAA BLUE PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "EPI",
+    "name": "EMAA BLUE PORTFÖY İNŞAAT SEKTÖRÜ KATILIM FONU",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EPK",
+    "name": "EMAA BLUE PORTFÖY KIYMETLİ MADENLER KATILIM FON SEPETİ FONU",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "EPP",
+    "name": "EMAA BLUE PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "EPT",
+    "name": "EMAA BLUE PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "ESG",
+    "name": "AKTİF PORTFÖY ESG SÜRDÜRÜLEBİLİRLİK SERBEST FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ESP",
+    "name": "AURA PORTFÖY EMTİA SERBEST FON",
+    "founder": "AURA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "ETN",
+    "name": "EMAA BLUE PORTFÖY TEMKİNLİ DEĞİŞKEN FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EUN",
+    "name": "GARANTİ PORTFÖY İKİNCİ SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EUZ",
+    "name": "GARANTİ PORTFÖY SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EVL",
+    "name": "EMAA BLUE PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "EVM",
+    "name": "DENİZ PORTFÖY ENERJİ VE MADENCİLİK SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "EYT",
+    "name": "AKTİF PORTFÖY İKİNCİ FON SEPETİ FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FAK",
+    "name": "FONMAP PORTFÖY ALTIN KATILIM FONU",
+    "founder": "FONMAP PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "FAL",
+    "name": "ONE PORTFÖY ALTIN FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "FBC",
+    "name": "ONE PORTFÖY KAR PAYI ÖDEYEN KATILIM FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FBI",
+    "name": "FİBA PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FBV",
+    "name": "İŞ PORTFÖY MODEL SERBEST FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FBZ",
+    "name": "FİBA PORTFÖY TEKNOLOJİ SERBEST FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FCK",
+    "name": "ONE PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FD1",
+    "name": "ONE PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FDG",
+    "name": "FONMAP PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "FONMAP PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FDV",
+    "name": "AZİMUT PORTFÖY DMR SERBEST FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FFH",
+    "name": "QNB PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FFP",
+    "name": "QNB PORTFÖY FON SEPETİ FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FI3",
+    "name": "QNB PORTFÖY BORÇLANMA ARAÇLARI FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "FIB",
+    "name": "FİBA PORTFÖY ALTIN FONU",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "FID",
+    "name": "FİBA PORTFÖY ÇOKLU VARLIK İKİNCİ DEĞİŞKEN FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FIL",
+    "name": "FİBA PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "FIT",
+    "name": "FİBA PORTFÖY BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "FJB",
+    "name": "FİBA PORTFÖY BLOK ZİNCİRİ TEKNOLOJİLERİ SERBEST FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FJZ",
+    "name": "FİBA PORTFÖY FIRTINA SERBEST (DÖVİZ) FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FKE",
+    "name": "QNB PORTFÖY KRİSTAL SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FLS",
+    "name": "YAPI KREDİ PORTFÖY FLORYA SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FLY",
+    "name": "AKTİF PORTFÖY HAVACILIK VE SAVUNMA TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FMG",
+    "name": "QNB PORTFÖY GÜMÜŞ SERBEST FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "FMV",
+    "name": "DENİZ PORTFÖY FMV IŞIK ÜNİVERSİTESİ EĞİTİME DESTEK SERBEST FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FNO",
+    "name": "QNB PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FNT",
+    "name": "HEDEF PORTFÖY MODEL HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FP4",
+    "name": "ONE PORTFÖY DÖRDÜNCÜ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FPE",
+    "name": "FİBA PORTFÖY EUROBOND BORÇLANMA ARAÇLARI (DÖVİZ)FONU",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "FPG",
+    "name": "FİBA PORTFÖY GÜMÜŞ SERBEST FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "FPH",
+    "name": "FİBA PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FPI",
+    "name": "FONMAP PORTFÖY BİRİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "FONMAP PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "FPK",
+    "name": "FİBA PORTFÖY KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "FPR",
+    "name": "STRATEJİ PORTFÖY FOREST HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "STRATEJİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FPZ",
+    "name": "QNB PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FRA",
+    "name": "AZİMUT PORTFÖY MAB SERBEST FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FRC",
+    "name": "FONMAP PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "FONMAP PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FS5",
+    "name": "ONE PORTFÖY BİRİNCİ İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FS6",
+    "name": "ONE PORTFÖY İKİNCİ İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FSF",
+    "name": "FİBA PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "FSG",
+    "name": "FİBA PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FSH",
+    "name": "FİBA PORTFÖY FON SEPETİ SERBEST FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FSK",
+    "name": "QNB PORTFÖY İKİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "FSP",
+    "name": "FONMAP PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "FONMAP PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FSR",
+    "name": "FİBA PORTFÖY İKİNCİ SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FSU",
+    "name": "TERA PORTFÖY FON SEPETİ FONU",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FTL",
+    "name": "ONE PORTFÖY PARA PİYASASI KATILIM FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "FUA",
+    "name": "AK PORTFÖY İHRACATÇI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FUB",
+    "name": "QNB PORTFÖY EUROBOND (DÖVİZ) BORÇLANMA ARAÇLARI FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "FYD",
+    "name": "QNB PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "FYI",
+    "name": "AZİMUT PORTFÖY 4.0 SERBEST FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "FYO",
+    "name": "QNB PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "FZJ",
+    "name": "FİBA PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "FZP",
+    "name": "FİBA PORTFÖY SERBEST FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GA1",
+    "name": "GARANTİ PORTFÖY  BORÇLANMA ARAÇLARI FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "GAE",
+    "name": "GARANTİ PORTFÖY BİST30 ENDEKSİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GAF",
+    "name": "INVEO PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GAG",
+    "name": "INVEO PORTFÖY BİRİNCİ SERBEST (DÖVIZ)  FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GAH",
+    "name": "GARANTİ PORTFÖY MUTLAK GETİRİ HEDEFLİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GAS",
+    "name": "GARANTİ PORTFÖY ÜÇÜNCÜ SERBEST(DÖVİZ) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GBC",
+    "name": "AZİMUT PORTFÖY YABANCI HİSSE SENEDİ FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GBG",
+    "name": "INVEO PORTFÖY G-20 ÜLKELERİ YABANCI HİSSE SENEDİ FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GBH",
+    "name": "GARANTİ PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GBJ",
+    "name": "GARANTİ PORTFÖY BANKACILIK SEKTÖRÜ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GBL",
+    "name": "AZİMUT PYŞ KISA VADELİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "GBN",
+    "name": "GARANTİ PORTFÖY BEŞİNCİ SERBEST (TL) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GBV",
+    "name": "GARANTİ PORTFÖY BLOCKCHAİN TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GBZ",
+    "name": "AZİMUT PORTFÖY EMTİA FON SEPETİ FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GGK",
+    "name": "INVEO PORTFÖY  ALTIN FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GHS",
+    "name": "GARANTİ PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GID",
+    "name": "GARANTİ PORTFÖY İNŞAAT SEKTÖRÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GIE",
+    "name": "GARANTİ PORTFÖY GARANTİ BBVA İKLİM ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GIH",
+    "name": "ALLBATROSS PORTFÖY GIDA VE İÇECEK SEKTÖRÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GJB",
+    "name": "INVEO PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GKF",
+    "name": "GLOBAL MD PORTFÖY KATILIM FONU",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GKG",
+    "name": "GARANTİ PORTFÖY KAR PAYI ÖDEYEN HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GKH",
+    "name": "GARANTİ PORTFÖY PARA PİYASASI KATILIM SERBEST (TL) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "GKV",
+    "name": "GARANTİ PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GL1",
+    "name": "AZİMUT PYŞ BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GLC",
+    "name": "AKTİF PORTFÖY ÜÇÜNCÜ FON SEPETİ FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GLG",
+    "name": "AKTİF PORTFÖY CAPİTAL HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GLS",
+    "name": "AZİMUT PORTFÖY  KİRA SERTİFİKALARI (SUKUK) KATILIM FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GMA",
+    "name": "AZİMUT PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GMC",
+    "name": "TEB PORTFÖY GÜMÜŞ FON SEPETİ FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GMD",
+    "name": "GLOBAL MD PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GMI",
+    "name": "AK PORTFÖY GÜMÜŞ SERBEST FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GMN",
+    "name": "GLOBAL MD PORTFÖY BİRİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "GMR",
+    "name": "INVEO PORTFÖY BIST 30 DIŞI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GNH",
+    "name": "GLOBAL MD PORTFÖY ALGORİTMİK MODEL HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GNS",
+    "name": "GARANTİ PORTFÖY ENERJİ ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GO1",
+    "name": "ONE PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GO3",
+    "name": "ONE PORTFÖY ÜÇÜNCÜ FON SEPETİ FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GO4",
+    "name": "ONE PORTFÖY DÖRDÜNCÜ FON SEPETİ FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GO6",
+    "name": "ONE PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "GO9",
+    "name": "ONE PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GOH",
+    "name": "GARANTİ PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GOL",
+    "name": "GARANTİ PORTFÖY ALTIN KATILIM FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GPA",
+    "name": "GARANTİ PORTFÖY EUROBOND BORÇLANMA ARAÇLARI (DÖVİZ) FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "GPB",
+    "name": "GARANTİ PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GPC",
+    "name": "GARANTİ PORTFÖY İKİNCİ SERBEST ( DÖVİZ ) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GPF",
+    "name": "GARANTİ PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GPG",
+    "name": "INVEO PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GPI",
+    "name": "GARANTİ PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GPL",
+    "name": "GARANTİ PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GPN",
+    "name": "GARANTİ PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "GPT",
+    "name": "AKTİF PORTFÖY ROBOTİK TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GPU",
+    "name": "GARANTİ PORTFÖY ÜÇÜNCÜ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GPZ",
+    "name": "GARANTİ PORTFÖY ÜÇÜNCÜ PARA PİYASASI FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "GRL",
+    "name": "QNB PORTFÖY AGRESİF SERBEST FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GRO",
+    "name": "GARANTİ PORTFÖY OTUZUNCU SERBEST (DÖVİZ) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GRT",
+    "name": "GARANTİ PORTFÖY TEKNOLOJİ ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GSP",
+    "name": "AZİMUT PYŞ KAR PAYI ÖDEYEN HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GTA",
+    "name": "GARANTİ PORTFÖY ALTIN FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GTF",
+    "name": "AZİMUT PYŞ BİRİNCİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "GTH",
+    "name": "GARANTİ PORTFÖY İHRACATÇI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GTM",
+    "name": "GARANTİ PORTFÖY TEMETTÜ ÖDEYEN ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GTY",
+    "name": "GARANTİ PORTFÖY TREND SERBEST FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GTZ",
+    "name": "GARANTİ PORTFÖY GÜMÜŞ FON SEPETİ FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GUB",
+    "name": "GARANTİ PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "GUF",
+    "name": "İŞ PORTFÖY GÜMÜŞ FON SEPETİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GUH",
+    "name": "GARANTİ PORTFÖY YABANCI TEKNOLOJİ HİSSE SENEDİ FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GUK",
+    "name": "GARANTİ PORTFÖY GÜMÜŞ KATILIM SERBEST FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GUM",
+    "name": "AK PORTFÖY GÜMÜŞ FON SEPETI FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GUV",
+    "name": "GARANTİ PORTFÖY UZUN VADELİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "GVA",
+    "name": "GARANTİ PORTFÖY ELEKTRİKLİ VE OTONOM ARAÇLAR DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GVI",
+    "name": "GARANTİ PORTFÖY ÜÇÜNCÜ FON SEPETİ FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GYK",
+    "name": "INVEO PORTFÖY BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "GZE",
+    "name": "GARANTİ PORTFÖY EMTİA SERBEST FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "GZG",
+    "name": "GARANTİ PORTFÖY SAĞLIK VE GENETİK TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GZH",
+    "name": "GARANTİ PORTFÖY TEMİZ ENERJİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GZJ",
+    "name": "GARANTİ PORTFÖY İKİNCİ FON SEPETİ FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GZL",
+    "name": "GARANTİ PORTFÖY TARIM VE GIDA SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GZM",
+    "name": "GLOBAL MD PORTFÖY DURU SERBEST FON",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GZN",
+    "name": "GLOBAL MD PORTFÖY BOĞAZİÇİ SERBEST FON",
+    "founder": "GLOBAL MD PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GZP",
+    "name": "GARANTİ PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GZR",
+    "name": "GARANTİ PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "GZV",
+    "name": "GARANTİ PORTFÖY ESG SÜRDÜRÜLEBİLİRLİK FON SEPETİ FONU",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "GZY",
+    "name": "GARANTİ PORTFÖY TURİZM VE SEYAHAT SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "GZZ",
+    "name": "GARANTİ PORTFÖY FİNANSAL TEKNOLOJİLER DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "HAI",
+    "name": "AHLATCI PORTFÖY ALTIN FONU",
+    "founder": "AHLATCI PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "HAM",
+    "name": "HEDEF PORTFÖY ALTIN KATILIM FONU",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "HAR",
+    "name": "BV PORTFÖY HARMONY SERBEST FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HAT",
+    "name": "HEDEF PORTFÖY ATLAS İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HBF",
+    "name": "HSBC PORTFÖY ALTIN FONU",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "HBN",
+    "name": "HSBC PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "HBU",
+    "name": "HSBC PORTFÖY BİST 30 ENDEKSİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HCV",
+    "name": "HEDEF PORTFÖY ATAK ÇOKLU VARLIK KATILIM FONU",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HDA",
+    "name": "HEDEF PORTFÖY DÖRDÜNCÜ İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HDD",
+    "name": "AHLATCI PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "AHLATCI PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HDK",
+    "name": "HEDEF PORTFÖY VEGA İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HEH",
+    "name": "HEDEF PORTFÖY ALGO EVEREST İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HFI",
+    "name": "HEDEF PORTFÖY İKİNCİ KATILIM HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HFO",
+    "name": "AHLATCI PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AHLATCI PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HFR",
+    "name": "A1 CAPİTAL PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HGM",
+    "name": "HEDEF PORTFÖY İKİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HGR",
+    "name": "HEDEF PORTFÖY ALGORİTMİK STRATEJİLER SERBEST FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HGV",
+    "name": "HEDEF PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HIA",
+    "name": "HEDEF PORTFÖY İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HIF",
+    "name": "HEDEF PORTFÖY İKİNCİ SERBEST FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HIH",
+    "name": "GARANTİ  PORTFÖY HOLDİNGLER VE İŞTİRAKLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HIM",
+    "name": "HEDEF PORTFÖY BİRİNCİ İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HIZ",
+    "name": "AZİMUT PORTFÖY DİNAMİK DEĞİŞKEN FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HJB",
+    "name": "HEDEF PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HKG",
+    "name": "ZİRAAT PORTFÖY HALK'IN ÜRETEN KADINLARI DEĞİŞKEN FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HKH",
+    "name": "HEDEF PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HKJ",
+    "name": "HEDEF PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "HKM",
+    "name": "HEDEF PORTFÖY BAŞAK HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HKR",
+    "name": "HSBC PORTFÖY KIRMIZI HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HMC",
+    "name": "HEDEF PORTFÖY EKİNOKS SERBEST (TL) FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HMG",
+    "name": "HSBC PYŞ MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST (TL) FON(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HML",
+    "name": "HEDEF PORTFÖY KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HMS",
+    "name": "HSBC PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HOA",
+    "name": "HSBC PORTFÖY TEKNOLOJİ DEĞİŞKEN FON",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "HOY",
+    "name": "HSBC PORTFÖY YABANCI BYF FON SEPETI",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "HP3",
+    "name": "HEDEF PORTFÖY LİDYA SERBEST (DÖVİZ) FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HPD",
+    "name": "HSBC PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HPH",
+    "name": "HEDEF PORTFÖY PARA PIYASASI KATILIM FONU",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HPO",
+    "name": "HSBC PORTFÖY ÇOKLU VARLIK BİRİNCİ DEĞİŞKEN FON",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HPT",
+    "name": "HSBC PORTFÖY KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "HRZ",
+    "name": "AKTİF PORTFÖY BIST HALKA ARZ ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HSA",
+    "name": "HSBC PORTFÖY DEĞİŞKEN (TL) FON",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HSL",
+    "name": "HSBC PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "HST",
+    "name": "HSBC PORTFÖY  BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "HTF",
+    "name": "HSBC PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "HTJ",
+    "name": "HEDEF PORTFÖY TEKNOLOJİ DEĞİŞKEN FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "HTK",
+    "name": "QNB PORTFÖY HAVACILIK VE SAVUNMA TEKNOLOJİLERİ FON SEPETİ FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "HTS",
+    "name": "HSBC PORTFÖY ALTINCI SERBEST (DÖVİZ) FON",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "HVI",
+    "name": "DENİZ PORTFÖY HOLDİNGLER VE İŞTİRAKLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HVK",
+    "name": "HEDEF PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "HVS",
+    "name": "HSBC PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HVT",
+    "name": "ALLBATROSS PORTFÖY BİRİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "HVU",
+    "name": "ALLBATROSS PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HVZ",
+    "name": "ALLBATROSS PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "HYP",
+    "name": "AZİMUT PORTFÖY İVME SERBEST FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "HYU",
+    "name": "HSBC PORTFÖY KISA VADELİ SERBEST (TL) FON",
+    "founder": "HSBC PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "HYV",
+    "name": "HEDEF PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "IAE",
+    "name": "İSTANBUL PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IAM",
+    "name": "İŞ PORTFÖY AGRESİF FON SEPETİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IAR",
+    "name": "İSTANBUL PORTFÖY DÖRDÜNCÜ SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IAT",
+    "name": "İŞ PORTFÖY KİRA SERTİFİKALARI KATILIM (TL) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "IAU",
+    "name": "PARDUS PORTFÖY İKİNCİ İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IAY",
+    "name": "INVEO PORTFÖY ALTIN KATILIM FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "IBB",
+    "name": "İŞ PORTFÖY ATAK DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ICC",
+    "name": "TEB PORTFÖY BEŞİNCİ DEĞİŞKEN FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ICD",
+    "name": "TEB PORTFÖY DÖRDÜNCÜ DEĞİŞKEN FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ICF",
+    "name": "TEB PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ICH",
+    "name": "PARDUS PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ICM",
+    "name": "İNCİR PORTFÖY BİRİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "İNCİR PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "ICS",
+    "name": "TEB PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ICV",
+    "name": "TEB PORTFÖY ONDOKUZUNCU SERBEST FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ICZ",
+    "name": "AK PORTFÖY TEKNOLOJİ ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IDD",
+    "name": "LOGOS PORTFÖY DİNAMİK DAĞIMLI SERBEST FON",
+    "founder": "LOGOS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IDF",
+    "name": "İŞ PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IDH",
+    "name": "İŞ PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IDI",
+    "name": "AZİMUT PORTFÖY İNŞAAT SEKTÖRÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IDL",
+    "name": "AKTİF PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "IDO",
+    "name": "İŞ PORTFÖY ONDOKUZUNCU SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IDY",
+    "name": "TEB PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IED",
+    "name": "İŞ PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IEN",
+    "name": "İSTANBUL PORTFÖY İNŞAAT SEKTÖRÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IEV",
+    "name": "İŞ PORTFÖY HAVACILIK VE SAVUNMA TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IFN",
+    "name": "TEB PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IFV",
+    "name": "TEB PORTFÖY BİRİNCİ KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "IGZ",
+    "name": "İŞ PORTFÖY İKİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IH1",
+    "name": "İNCİR PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İNCİR PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IHA",
+    "name": "ALLBATROSS PORTFÖY İKİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IHC",
+    "name": "INVEO PORTFÖY INTER SERBEST FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IHK",
+    "name": "İŞ PORTFÖY İŞ'TE KADIN HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IHP",
+    "name": "İSTANBUL PORTFÖY İKİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IHT",
+    "name": "İŞ PORTFÖY İHRACATÇI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IHV",
+    "name": "INVEO PORTFÖY BEŞİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IHZ",
+    "name": "ALLBATROSS PORTFÖY İKİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IIE",
+    "name": "BULLS PORTFÖY İKİNCİ SERBEST FON",
+    "founder": "BULLS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IIH",
+    "name": "İSTANBUL PORTFÖY ÜÇÜNCÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IIN",
+    "name": "INVEO PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "IJA",
+    "name": "INVEO PORTFÖY ATAK DEĞİŞKEN FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IJB",
+    "name": "İŞ PORTFÖY DİJİTAL OYUN SEKTÖRÜ KARMA FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IJC",
+    "name": "İŞ PORTFÖY YARI İLETKEN TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IJI",
+    "name": "İSTANBUL PORTFÖY HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON )",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IJP",
+    "name": "İŞ PORTFÖY BLOCKCHAİN TEKNOLOJİLERİ KARMA FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IJT",
+    "name": "İŞ PORTFÖY TARIM SERBEST FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IJV",
+    "name": "İSTANBUL PORTFÖY BİRİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "IJZ",
+    "name": "İŞ PORTFÖY SİBER GÜVENLİK TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IKL",
+    "name": "İŞ PORTFÖY SAĞLIK ŞİRKETLERİ KARMA FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IKP",
+    "name": "İŞ PORTFÖY YENİLENEBİLİR ENERJİ KARMA FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IKV",
+    "name": "İŞ PORTFÖY İKİNCİ KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "ILU",
+    "name": "İSTANBUL PORTFÖY ONALTINCI SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "ILZ",
+    "name": "İŞ PORTFÖY TEMKİNLİ FON SEPETİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IMB",
+    "name": "İSTANBUL PORTFÖY ALGORİTMİK MODEL HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IMF",
+    "name": "İSTANBUL PORTFÖY MAESTRO SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IML",
+    "name": "İŞ PORTFÖY MODEL PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IOG",
+    "name": "İŞ PORTFÖY GÜMÜŞ SERBEST FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "IOO",
+    "name": "İŞ PORTFÖY İKİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "IPB",
+    "name": "İSTANBUL PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IPG",
+    "name": "İŞ PORTFÖY ATAK FON SEPETİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IPJ",
+    "name": "İŞ PORTFÖY ELEKTRİKLİ ARAÇLAR KARMA FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IPV",
+    "name": "İŞ PORTFÖY EUROBOND BORÇLANMA ARAÇLARI (DÖVİZ) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "IRB",
+    "name": "İSTANBUL PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IRF",
+    "name": "İSTANBUL PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IRO",
+    "name": "İSTANBUL PORTFÖY ROBOTİK TEKNOLOJİLERİ SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IRT",
+    "name": "INVEO PORTFÖY TEKNOLOJİ DEĞİŞKEN FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IRV",
+    "name": "İSTANBUL PORTFÖY İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IRY",
+    "name": "INVEO PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "IST",
+    "name": "İSTANBUL PORTFÖY KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "ITC",
+    "name": "INVEO PORTFÖY TEMETTÜ ÖDEYEN ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ITP",
+    "name": "İŞ PORTFÖY TEKNOLOJİ KARMA FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IUF",
+    "name": "İŞ PORTFÖY YEDİNCİ SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IUH",
+    "name": "INVEO PORTFÖY DÖNÜŞTÜRÜCÜ TEKNOLOJİLER FON SEPETİ FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IUV",
+    "name": "İŞ PORTFÖY BEŞİNCİ SERBEST (DÖVİZ)  FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IV8",
+    "name": "INVEO PORTFÖY KİRA SERTİFİKALARI KATILIM FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "IVF",
+    "name": "İSTANBUL PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "IVY",
+    "name": "İSTANBUL PORTFÖY BLOCKCHAIN TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IYB",
+    "name": "AURA PORTFÖY DEĞİŞKEN FONU",
+    "founder": "AURA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IYV",
+    "name": "İSTANBUL PORTFÖY AŞİYAN SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "IZB",
+    "name": "İSTANBUL PORTFÖY BİRİNCİ FON SEPETİ SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "IZS",
+    "name": "İSTANBUL PORTFÖY ALTINCI SERBEST FON",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "JET",
+    "name": "ATA PORTFÖY HAVACILIK VE SAVUNMA TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "JUP",
+    "name": "AURA PORTFÖY JÜPİTER SERBEST (DÖVİZ) FON",
+    "founder": "AURA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KAV",
+    "name": "KUVEYT TÜRK PORTFÖY ALTINCI KATILIM SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KCL",
+    "name": "KARE PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KCR",
+    "name": "AK PORTFÖY KÜLÇE ALTIN KATILIM FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KCV",
+    "name": "KUVEYT TÜRK PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KDE",
+    "name": "KUVEYT TÜRK PORTFÖY DENGELİ KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KDL",
+    "name": "KUVEYT TÜRK PORTFÖY BEŞİNCİ KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KDO",
+    "name": "İŞ PORTFÖY KATILIM SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KDT",
+    "name": "GARANTİ PORTFÖY KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KGM",
+    "name": "KUVEYT TÜRK PORTFÖY GÜMÜŞ KATILIM FON SEPETİ FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KH1",
+    "name": "AK PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KHA",
+    "name": "PARDUS PORTFÖY İKİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KHB",
+    "name": "KARE PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KHC",
+    "name": "PARDUS PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KHJ",
+    "name": "ATLAS PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KHT",
+    "name": "ALLBATROSS PORTFÖY KARTAL HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KIA",
+    "name": "TRIVE PORTFÖY MUTLAK GETİRİ HEDEFLİ DEĞİŞKEN FON",
+    "founder": "TRIVE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KIB",
+    "name": "TRIVE PORTFÖY ROBOTİK TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "TRIVE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "KIE",
+    "name": "TRIVE PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "TRIVE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KIH",
+    "name": "KARE PORTFÖY İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KIK",
+    "name": "KUVEYT TÜRK PORTFÖY İKİNCİ KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KIS",
+    "name": "ASTRA PORTFÖY KİRA SERTİFİKASI KATILIM (DÖVİZ) FONU",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KKC",
+    "name": "KARE PORTFÖY KATILIM SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KKH",
+    "name": "İŞ PORTFÖY DENGELİ FON SEPETİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "KKL",
+    "name": "ALLBATROSS PORTFÖY KISA VADELİ KATILIM SERBEST (TL) FON",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KLH",
+    "name": "ATLAS PORTFÖY KATILIM HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KLI",
+    "name": "AK PORTFÖY PARA PİYASASI KATILIM SERBEST FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KLS",
+    "name": "ALLBATROSS PORTFÖY KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KLU",
+    "name": "KUVEYT TÜRK PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KME",
+    "name": "KUVEYT TÜRK PORTFÖY TEMKİNLİ KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KMF",
+    "name": "AZİMUT PORTFÖY ALTIN KATILIM FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KMN",
+    "name": "YAPI KREDİ PORTFÖY KIYMETLİ MADENLER KATILIM FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KNI",
+    "name": "AZİMUT PORTFÖY İKİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KNJ",
+    "name": "KUVEYT TÜRK PORTFÖY ENERJİ KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KOD",
+    "name": "YAPI KREDİ PORTFÖY KÜÇÜK ÖLÇEKLİ ŞİRKETLER DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KOT",
+    "name": "AZİMUT PORTFÖY KOÇ TOPLULUĞU ŞİRKETLERİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KP3",
+    "name": "KARE PORTFÖY ÜÇÜNCÜ SERBEST (DÖVİZ) FON",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KPA",
+    "name": "KUVEYT TÜRK PORTFÖY KAR PAYI ÖDEYEN KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KPC",
+    "name": "KUVEYT TÜRK PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KPD",
+    "name": "KUVEYT TÜRK PORTFÖY KAR PAYI ÖDEYEN KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KPF",
+    "name": "NEO PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KPH",
+    "name": "İŞ PORTFÖY KAR PAYI ÖDEYEN HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KPI",
+    "name": "İŞ PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KPP",
+    "name": "KARE PORTFÖY PARA PİYASASI FONU",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KPU",
+    "name": "KUVEYT TÜRK PORTFÖY İKİNCİ KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KRC",
+    "name": "KARE PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "KRF",
+    "name": "KARE PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KRR",
+    "name": "İŞ PORTFÖY KARMA FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KRS",
+    "name": "KARE PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KRT",
+    "name": "KARE PORTFÖY TÜRKİYE ODAKLI SERBEST (DÖVİZ ) FON",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KSA",
+    "name": "HEDEF PORTFÖY KISA VADELİ SERBEST (TL) FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KSK",
+    "name": "AZİMUT PORTFÖY İKİNCİ PARA PİYASASI KATILIM FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KSR",
+    "name": "KUVEYT TÜRK PORTFÖY SÜRDÜRÜLEBİLİRLİK KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KST",
+    "name": "ALLBATROSS PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KSV",
+    "name": "KUVEYT TÜRK PORTFÖY KISA VADELİ KATILIM SERBEST (TL) FON",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KTI",
+    "name": "AZİMUT PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KTJ",
+    "name": "KUVEYT TÜRK PORTFÖY TEKNOLOJİ KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "KTM",
+    "name": "KUVEYT TÜRK PORTFÖY BİRİNCİ KATILIM (TL) FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KTN",
+    "name": "KUVEYT TÜRK PORTFÖY KİRA SERTİFİKALARI KATILIM (TL) FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KTR",
+    "name": "KUVEYT TÜRK PORTFÖY BİRİNCİ KATILIM SERBEST (TL) FON",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KTS",
+    "name": "KUVEYT TÜRK PORTFÖY KATILIM HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KTT",
+    "name": "KUVEYT TÜRK PORTFÖY DÖRDÜNCÜ KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KTV",
+    "name": "KUVEYT TÜRK PORTFÖY KISA VADELİ KİRA SERTİFİKALARI KATILIM (TL) FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KU3",
+    "name": "KUVEYT TÜRK PORTFÖY ÜÇÜNCÜ KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KUA",
+    "name": "KUVEYT TÜRK PORTFÖY AGRESİF KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KUB",
+    "name": "KARE PORTFÖY DEĞİŞKEN  (DÖVİZ) FONU",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KUD",
+    "name": "KUVEYT TÜRK PORTFÖY DİNAMİK KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KUT",
+    "name": "KUVEYT TÜRK PORTFÖY KIYMETLİ MADENLER KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KVK",
+    "name": "HEDEF PORTFÖY KATILIM İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KVR",
+    "name": "ATLAS PORTFÖY KISA VADELİ KATILIM SERBEST FON",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KVS",
+    "name": "AZİMUT PORTFÖY KISA VADELİ SERBEST (TL) FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "KVT",
+    "name": "AK PORTFÖY ENERJİ ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KYA",
+    "name": "KARE PORTFÖY HİSSE SENEDİ FONU(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "KYS",
+    "name": "KARE PORTFÖY YEDİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "KARE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "KZL",
+    "name": "KUVEYT TÜRK PORTFÖY ALTIN KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "KZU",
+    "name": "KUVEYT TÜRK PORTFÖY İKİNCİ ALTIN KATILIM FONU",
+    "founder": "KUVEYT TÜRK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "LKF",
+    "name": "İŞ PORTFÖY ALTIN KATILIM FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "LLA",
+    "name": "ALLBATROSS PORTFÖY AYDIN HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "LPH",
+    "name": "STATECH PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "STATECH PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "LTL",
+    "name": "AHLATCI PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AHLATCI PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MAC",
+    "name": "MARMARA CAPITAL PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "MARMARA CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MAD",
+    "name": "MEKSA PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "MEKSA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MAS",
+    "name": "MARMARA CAPİTAL PORTFÖY HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "MARMARA CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MBL",
+    "name": "MEKSA PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "MEKSA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MBR",
+    "name": "MT PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "MCU",
+    "name": "AZİMUT PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MD1",
+    "name": "MT PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MD2",
+    "name": "MT PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MDF",
+    "name": "FİBA PORTFÖY MODEL EMTİA FON SEPETİ SERBEST FON",
+    "founder": "FİBA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "MET",
+    "name": "GARANTİ PORTFÖY METAVERSE VE YENİ TEKNOLOJİLER DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "MGB",
+    "name": "İŞ PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MGH",
+    "name": "TEB PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MHF",
+    "name": "MT PORTFÖY BIST HALKA ARZ ŞİRKETLERİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MJB",
+    "name": "AKTİF PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "MJG",
+    "name": "AKTİF PORTFÖY GÜMÜŞ FON SEPETİ FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "MJH",
+    "name": "AKTİF PORTFÖY FORTUNA SERBEST FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MJL",
+    "name": "AKTİF PORTFÖY AKTİF SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MKA",
+    "name": "MARMARA CAPİTAL PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "MARMARA CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MKG",
+    "name": "AKTİF PORTFÖY ALTIN KATILIM FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "MLT",
+    "name": "DENİZ PORTFÖY MELTEM HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MMH",
+    "name": "AKTİF PORTFÖY BIST 30 ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MOZ",
+    "name": "EMAA BLUE PORTFÖY MOZAİK SERBEST FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MPE",
+    "name": "MT PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "MPF",
+    "name": "AKTİF PORTFÖY KISA VADELİ KİRA SERTİFİKASI KATILIM (TL) FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "MPI",
+    "name": "MEKSA PORTFÖY İSTATİSTİKSEL ARBİTRAJ SERBEST (TL) FON",
+    "founder": "MEKSA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MPK",
+    "name": "AKTİF PORTFÖY KİRA SERTİFİKASI KATILIM (TL) FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "MPL",
+    "name": "MT PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "MPN",
+    "name": "AKTİF PORTFÖY İKİNCİ AKTİF SERBEST (DÖVİZ) FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MPP",
+    "name": "MEKSA PORTFÖY PRİME SERBEST FON",
+    "founder": "MEKSA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MPS",
+    "name": "AKTİF PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MRI",
+    "name": "TEB PORTFÖY MERİDYEN SERBEST FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MT1",
+    "name": "MT PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MT2",
+    "name": "MT PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "MTD",
+    "name": "BV PORTFÖY MALZEME TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "MTF",
+    "name": "MT PORTFÖY BİRİNCİ İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MTG",
+    "name": "DENİZ PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOGUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MTH",
+    "name": "MT PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MTK",
+    "name": "MT PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "MT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "MTS",
+    "name": "AKTİF PORTFÖY TARIM VE SÜRDÜRÜLEBİLİRLİK FON SEPETİ FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "MTV",
+    "name": "AK PORTFÖY METAVERSE VE DİJİTAL YAŞAM TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "MTX",
+    "name": "TEB PORTFÖY ÜÇÜNCÜ DEĞİŞKEN FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "MUT",
+    "name": "GARANTİ PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NAK",
+    "name": "NEO PORTFÖY ALTIN KATILIM FONU",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "NAU",
+    "name": "NEO PORTFÖY ALTIN FONU",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "NBO",
+    "name": "NEO PORTFÖY BORÇLANMA ARACI FONLARI FON SEPETİ FONU",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "NBZ",
+    "name": "NEO PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NCS",
+    "name": "NUROL PORTFÖY ÜÇÜNCÜ SERBEST (DÖVİZ) FON",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NHP",
+    "name": "NEO PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "NHY",
+    "name": "NEO PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NJF",
+    "name": "NUROL PORTFÖY ALTIN KATILIM FONU",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "NJR",
+    "name": "NUROL PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "NJY",
+    "name": "NUROL PORTFÖY BİRİNCİ KATILIM FONU",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NKA",
+    "name": "NEO PORTFÖY KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NKC",
+    "name": "NEO PORTFÖY İKİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NKM",
+    "name": "NEO PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NKP",
+    "name": "NEO PORTFÖY KAR PAYI ÖDEYEN DEĞİŞKEN FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NKT",
+    "name": "NUROL PORTFÖY BİRİNCİ KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NLE",
+    "name": "NUROL PORTFÖY EMLAK SEKTÖRÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NLK",
+    "name": "NUROL PORTFÖY KISA VADELİ SERBEST FON",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "NME",
+    "name": "NUROL PORTFÖY MERCAN KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NMU",
+    "name": "NUROL PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NNF",
+    "name": "HEDEF PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NOI",
+    "name": "TACİRLER PORTFÖY NOVA İSTATİSTİKSEL ARBİTRAJ SERBEST FON",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NPH",
+    "name": "NUROL PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NRC",
+    "name": "NEO PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NRG",
+    "name": "NEO PORTFÖY BİRİNCİ PARA PİYASASI FONU",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "NSA",
+    "name": "NEO PORTFÖY PARA PİYASASI KATILIM SERBEST FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "NSD",
+    "name": "NUROL PORTFÖY DÖRDÜNCÜ SERBEST (DÖVİZ) FON",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NSH",
+    "name": "NUROL PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NSK",
+    "name": "NEO PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NSP",
+    "name": "NUROL PORTFÖY PARA PİYASASI KATILIM FONU",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "NST",
+    "name": "İŞ PORTFÖY EMLAK SEKTÖRÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NSY",
+    "name": "NEO PORTFÖY YEDİNCİ SERBEST FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NTB",
+    "name": "AZİMUT PORTFÖY AVŞAR HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NTI",
+    "name": "NEO PORTFÖY TEKNOLOJİ VE İNOVASYON DEĞİŞKEN FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "NUB",
+    "name": "NUROL PORTFÖY BEŞİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NUH",
+    "name": "NEO PORTFÖY ÜÇÜNCÜ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "NVB",
+    "name": "NEO PORTFÖY İKİNCİ PARA PİYASASI (TL) FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "NVK",
+    "name": "INVEO PORTFÖY KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NVT",
+    "name": "NEO PORTFÖY ÜÇÜNCÜ SERBEST (TL) FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NVZ",
+    "name": "NEO PORTFÖY ORSA SERBEST (DÖVİZ) FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NZH",
+    "name": "NEO PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "NZT",
+    "name": "NEO PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "NZU",
+    "name": "NUROL PORTFÖY ZÜMRÜT KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OBI",
+    "name": "OYAK PORTFÖY İKİNCİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "OBP",
+    "name": "OYAK PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ODD",
+    "name": "OYAK PORTFÖY DÖRDÜNCÜ SERBEST FON",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ODG",
+    "name": "ONE PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "ONE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ODP",
+    "name": "OSMANLI PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ODS",
+    "name": "OYAK PORTFÖY İKİNCİ SERBEST(DÖVİZ) FON",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ODV",
+    "name": "AK PORTFÖY ÜÇÜNCÜ FON SEPETİ FONU",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "OFI",
+    "name": "OYAK PORTFÖY İKİNCİ FON SEPETİ FONU",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "OFS",
+    "name": "OYAK PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "OGD",
+    "name": "OYAK PORTFÖY ALTIN KATILIM FONU",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "OHB",
+    "name": "OYAK PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "OHK",
+    "name": "OYAK PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "OIL",
+    "name": "OSMANLI PORTFÖY ALTIN FON SEPETİ FONU",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "OIR",
+    "name": "OSMANLI PORTFÖY DENGELİ FON SEPETİ FONU",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "OJB",
+    "name": "QNB PORTFÖY BEŞİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OJK",
+    "name": "QNB PORTFÖY ALTIN FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "OJT",
+    "name": "QNB PORTFÖY TEKNOLOJİ FON SEPETİ FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "OKD",
+    "name": "OYAK PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OKP",
+    "name": "OYAK PORTFÖY BİRİNCİ KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "OKT",
+    "name": "OYAK PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "OLA",
+    "name": "OSMANLI PORTFÖY İKİNCİ SERBEST (DÖVİZ- AVRO) FON",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OLD",
+    "name": "QNB PORTFÖY TEMİZ ENERJİ VE SU FON SEPETİ FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "OLE",
+    "name": "OSMANLI PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "OMG",
+    "name": "AZİMUT PORTFÖY İKİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "OMT",
+    "name": "OSMANLI PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "ONE",
+    "name": "AKTİF PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ONK",
+    "name": "AK PORTFÖY ONİKİNCİ SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ONN",
+    "name": "AKTİF PORTFÖY AKTİF ONİKS SERBEST (TL) FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ONS",
+    "name": "İŞ PORTFÖY ONİKİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OPB",
+    "name": "OSMANLI PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OPD",
+    "name": "OSMANLI PORTFÖY ANKA SERBEST FON",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OPF",
+    "name": "OSMANLI PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OPH",
+    "name": "OSMANLI PORTFÖY BİRİNCİ HİSSE SENEDİ FONU(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "OPI",
+    "name": "OSMANLI PORTFÖY KAR PAYI ÖDEYEN HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "OPL",
+    "name": "OSMANLI PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ORC",
+    "name": "ASTRA PORTFÖY ALFA SERBEST FON",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OSD",
+    "name": "OSMANLI PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI FONU",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "OSL",
+    "name": "OSMANLI PORTFÖY KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "OTJ",
+    "name": "OYAK PORTFÖY KIYMETLİ MADENLER KATILIM FON SEPETİ FONU",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "OTK",
+    "name": "OYAK PORTFÖY BİRİNCİ KATILIM SERBEST FON",
+    "founder": "OYAK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OTM",
+    "name": "AZİMUT PORTFÖY OTOMOTİV SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OUD",
+    "name": "OSMANLI PORTFÖY ATLANTİK SERBEST (DÖVİZ) FON",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "OVD",
+    "name": "QNB PORTFÖY EMTİA FON SEPETİ FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "P1A",
+    "name": "A1 CAPİTAL PORTFÖY PARA PİYASASI (TL) SERBEST FON",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PA2",
+    "name": "PUSULA PORTFÖY ALTIN KATILIM FONU",
+    "founder": "PUSULA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "PAB",
+    "name": "A1 CAPİTAL PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "A1 CAPİTAL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PAF",
+    "name": "PARDUS PORTFÖY ALTIN FONU",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "PAL",
+    "name": "AK PORTFÖY ALTINCI SERBEST(DÖVİZ) FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "PAO",
+    "name": "PARDUS PORTFÖY ANADOLU HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PBI",
+    "name": "PARDUS PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "PBK",
+    "name": "ASTRA PORTFÖY BİRİNCİ KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PBN",
+    "name": "PİRAMİT PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PİRAMİT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PBR",
+    "name": "PUSULA PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "PUSULA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PCE",
+    "name": "PARDUS PORTFÖY İNCİ SERBEST FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PDD",
+    "name": "ASTRA PORTFÖY KATILIM FONU",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PDF",
+    "name": "ASTRA PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PEA",
+    "name": "PERFORM PORTFÖY ALTIN FONU",
+    "founder": "PERFORM PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "PFO",
+    "name": "PHİLLİP PORTFÖY FON SEPETİ FONU",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "PFS",
+    "name": "ATLAS PORTFÖY FON SEPETİ FONU",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "PGD",
+    "name": "ASTRA PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PGS",
+    "name": "AZİMUT PORTFÖY PAY GERİ ALIMI YAPAN ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PHE",
+    "name": "PUSULA PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PUSULA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PHF",
+    "name": "PİRAMİT PORTFÖY BİST 50 DIŞI ŞİRKETLER HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PİRAMİT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PHI",
+    "name": "PİRAMİT PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PİRAMİT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PHK",
+    "name": "PHİLLİP PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PID",
+    "name": "PİRAMİT PORTFÖY DEĞİŞKEN FON",
+    "founder": "PİRAMİT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PIL",
+    "name": "ROTA PORTFÖY PİL TEKNOLOJİLERİ VE ENERJİ FON SEPETİ FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "PIP",
+    "name": "GARANTİ PORTFÖY İKİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PIR",
+    "name": "PİRAMİT PORTFÖY ALTIN FONU",
+    "founder": "PİRAMİT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "PIS",
+    "name": "PARDUS PORTFÖY İKİNCİ KISA VADELİ SERBEST (TL) FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PJL",
+    "name": "PHİLLİP PORTFÖY PARA PİYASASI FONU",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PJP",
+    "name": "PERFORM PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "PERFORM PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PK1",
+    "name": "AHLATCI PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "AHLATCI PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PKD",
+    "name": "PUSULA PORTFÖY İKİNCİ KATILIM HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PUSULA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PKF",
+    "name": "ATA PORTFÖY ALTIN KATILIM FONU",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "PKP",
+    "name": "ATA PORTFÖY PARA PİYASASI KATILIM SERBEST FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PKR",
+    "name": "ROTA PORTFÖY PARA PİYASASI KATILIM FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PKT",
+    "name": "YAPI KREDİ PORTFÖY PARA PİYASASI KATILIM SERBEST (TL) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PKV",
+    "name": "PARDUS PORTFÖY KISA VADELİ SERBEST (TL) FON",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PLR",
+    "name": "OSMANLI PORTFÖY PARA PİYASASI FONU",
+    "founder": "OSMANLI PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PMP",
+    "name": "PARDUS PORTFÖY MODEL PORTFÖY HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PO9",
+    "name": "PARDUS PORTFÖY ONDOKUZUNCU HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "POS",
+    "name": "PARDUS PORTFÖY ONBEŞİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PP1",
+    "name": "PARDUS PORTFÖY BİRİNCİ KATILIM FONU",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PPB",
+    "name": "PHİLLİP PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PPD",
+    "name": "PERFORM PORTFÖY HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PERFORM PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PPE",
+    "name": "PHİLLİP PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PPG",
+    "name": "ALBARAKA PORTFÖY PARA PİYASASI KATILIM FONU",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPH",
+    "name": "PARDUS PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PPI",
+    "name": "YAPI KREDİ PORTFÖY ÜÇÜNCÜ PARA PİYASASI (TL) FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPJ",
+    "name": "AK PORTFÖY İKİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPK",
+    "name": "QNB PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPM",
+    "name": "PİRAMİT PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PİRAMİT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PPN",
+    "name": "NUROL PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "NUROL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPP",
+    "name": "PERFORM PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "PERFORM PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPS",
+    "name": "PHİLLİP PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PPT",
+    "name": "ATLAS PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPV",
+    "name": "AKTİF PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PPZ",
+    "name": "AZİMUT PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PRD",
+    "name": "PİRAMİT PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "PİRAMİT PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PRH",
+    "name": "AURA PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "AURA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PRR",
+    "name": "INVEO PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "INVEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PRU",
+    "name": "ALLBATROSS PORTFÖY KISA VADELİ SERBEST (TL) FON",
+    "founder": "ALLBATROSS PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PRV",
+    "name": "ASTRA PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "ASTRA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PSE",
+    "name": "ATLAS PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PSH",
+    "name": "DENİZ PORTFÖY PERAKENDE SEKTÖRÜ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PSL",
+    "name": "AZİMUT PORTFÖY 8.0 SERBEST FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PTE",
+    "name": "TEB PORTFÖY BİRİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PTF",
+    "name": "QNB PORTFÖY TREND SERBEST FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "PTN",
+    "name": "PHİLLİP PORTFÖY ALTIN FONU",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "PTO",
+    "name": "PARDUS PORTFÖY TEMETTÜ ÖDEYEN ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PTP",
+    "name": "AHLATCI PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "AHLATCI PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PTS",
+    "name": "QNB PORTFÖY PARA PİYASASI SERBEST (TL) FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PUC",
+    "name": "AK PORTFÖY BİRİNCİ KISA VADELİ SERBEST (TL)  FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PUH",
+    "name": "PERFORM PORTFÖY ÜÇÜNCÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PERFORM PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PUK",
+    "name": "PUSULA PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PUSULA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "PVK",
+    "name": "ALBARAKA PORTFÖY KISA VADELİ KATILIM SERBEST (TL) FON",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "PYR",
+    "name": "PARDUS PORTFÖY YİRMİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RAF",
+    "name": "ROTA PORTFÖY ALTINCI SERBEST FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "RBA",
+    "name": "ALBARAKA PORTFÖY BEREKET VAKFI NA DESTEK ALTIN KATILIM FONU",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "RBB",
+    "name": "RE-PIE PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "RBF",
+    "name": "ROTA PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "RBH",
+    "name": "ALBARAKA PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RBI",
+    "name": "RE-PIE PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RBK",
+    "name": "ALBARAKA PORTFÖY KATILIM FONU",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RBL",
+    "name": "QNB PORTFÖY ROBOTİK VE BLOCKCHAİN TEKNOLOJİLERİ SERBEST FON",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "RBN",
+    "name": "RE-PIE PORTFÖY BEŞİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RBP",
+    "name": "RE-PIE PORTFÖY BİRİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "RBR",
+    "name": "RE-PIE  PORTFÖY BİRİNCİ KATILIM SERBEST FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RBT",
+    "name": "ALBARAKA PORTFÖY KİRA SERTİFİKALARI  KATILIM FONU",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "RBV",
+    "name": "ALBARAKA PORTFÖY KISA VADELİ KİRA SERTİFİKALARI KATILIM (TL) FONU",
+    "founder": "ALBARAKA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "RCV",
+    "name": "AZİMUT PORTFÖY BİRİNCİ ÇOKLU VARLIK KATILIM FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RD1",
+    "name": "ROTA PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RDF",
+    "name": "ROTA PORTFÖY DOKUZUNCU HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RDT",
+    "name": "PHİLLİP PORTFÖY RODOSTO SERBEST FON",
+    "founder": "PHİLLİP PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RFM",
+    "name": "ROTA PORTFÖY ENERJİ VE METAL FON SEPETİ FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "RGD",
+    "name": "RE-PIE PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RGH",
+    "name": "RE-PIE PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RHI",
+    "name": "RE-PIE PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RHS",
+    "name": "ROTA PORTFÖY HİSSE SENEDİ (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RIA",
+    "name": "ROTA PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RIH",
+    "name": "RE-PIE PORTFÖY İKİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RIK",
+    "name": "RE-PIE PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RJG",
+    "name": "RE-PIE PORTFÖY ALTIN KATILIM FONU",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "RKC",
+    "name": "ROTA PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RKH",
+    "name": "RE-PIE PORTFÖY KATILIM HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RKS",
+    "name": "ROTA PORTFÖY KİRA SERTİFİKALARI KATILIM FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "RKV",
+    "name": "RE-PIE PORTFÖY KISA VADELİ KATILIM SERBEST (TL) FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "RLH",
+    "name": "ROTA PORTFÖY YİRMİNCİ SERBEST FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ROF",
+    "name": "ROTA PORTFÖY ONUNCU HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RPC",
+    "name": "ROTA PORTFÖY İKLİM DEĞİŞİKLİĞİ ÇÖZÜMLERİ DEĞİŞKEN FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RPD",
+    "name": "RE-PIE PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RPG",
+    "name": "ROTA PORTFÖY ALTIN FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "RPI",
+    "name": "ROTA PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RPL",
+    "name": "RE-PIE PORTFÖY ALGORİTMİK STRATEJİLER SERBEST FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RPM",
+    "name": "ROTA PORTFÖY İLAÇ VE MEDİKAL TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "RPN",
+    "name": "ROTA PORTFÖY NEV SERBEST FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RPP",
+    "name": "ROTA PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "RPS",
+    "name": "ROTA PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RPT",
+    "name": "ROTA PORTFÖY İKİNCİ SERBEST (TL) FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RPX",
+    "name": "ROTA PORTFÖY ÜÇÜNCÜ SERBEST (DÖVİZ) FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RRA",
+    "name": "ROTA PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "RRP",
+    "name": "RE-PIE PORTFÖY PARA PİYASASI KATILIM (TL) FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "RS1",
+    "name": "ROTA PORTFÖY BİRİNCİ KISA VADELİ SERBEST FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "RSK",
+    "name": "ROTA PORTFÖY ONSEKİZİNCİ SERBEST FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RTD",
+    "name": "RE-PIE PORTFÖY TEKNOLOJİ DEĞİŞKEN FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "RTG",
+    "name": "ATA PORTFÖY ROBOTİK TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "RTH",
+    "name": "RE-PIE PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "RTP",
+    "name": "RE-PIE PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "RE-PIE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "RUT",
+    "name": "BV PORTFÖY ROBOTİK VE UZAY TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "RYF",
+    "name": "ROTA PORTFÖY YEDİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON",
+    "founder": "ROTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SAS",
+    "name": "AK PORTFÖY SABANCI TOPLULUĞU ŞİRKETLERİ ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SBH",
+    "name": "SPARTA PORTFÖY BİRİNCİ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "SPARTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SD1",
+    "name": "SPARTA PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "SPARTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SFS",
+    "name": "AZİMUT PORTFÖY AGRESİF FON SEPETİ FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "SGK",
+    "name": "EMAA BLUE PORTFÖY BİYOTEKNOLOJİ VE SAĞLIK SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "SGT",
+    "name": "GARANTİ PORTFÖY SİBER GÜVENLİK TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "SHC",
+    "name": "STRATEJİ PORTFÖY İKİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "STRATEJİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SHE",
+    "name": "TEB PORTFÖY ÖNCE KADIN DEĞİŞKEN FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SHU",
+    "name": "SPARTA PORTFÖY ÜÇÜNCÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "SPARTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SKO",
+    "name": "STRATEJİ PORTFÖY KAR PAYI ÖDEYEN HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "STRATEJİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SKZ",
+    "name": "NEO PORTFÖY SEKİZİNCİ SERBEST FON",
+    "founder": "NEO PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SLG",
+    "name": "QNB PORTFÖY ALGORİTMİK STRATEJİLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "QNB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SNY",
+    "name": "ATLAS PORTFÖY SANAYİ SEKTÖRÜ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SOS",
+    "name": "HEDEF PORTFÖY SAĞLIK SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "HEDEF PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SPE",
+    "name": "AZIMUT PORTFÖY 5.0 SERBEST (DÖVIZ) FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SPN",
+    "name": "AZİMUT PORTFÖY İSTATİSTİKSEL ARBİTRAJ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SPP",
+    "name": "SPARTA PORTFÖY BİRİNCİ PARA PİYASASI (TL) FONU",
+    "founder": "SPARTA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "SPR",
+    "name": "BV PORTFÖY SPOR ENDÜSTRİSİ DEĞİŞKEN FON",
+    "founder": "BV PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SPT",
+    "name": "AKTİF PORTFÖY KATILIM FON SEPETİ FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "SRL",
+    "name": "PARDUS PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "PARDUS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SSK",
+    "name": "DENİZ PORTFÖY SAĞLIK SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SSS",
+    "name": "YAPI KREDİ PORTFÖY SAVUNMA SANAYİİ ŞİRKETLERİ ENDEKSİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ST1",
+    "name": "STRATEJİ PORTFÖY BİRİNCİ HİSSE SENEDİ FONU(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "STRATEJİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "STI",
+    "name": "ATLAS PORTFÖY SENTİMENT SERBEST FON",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SUA",
+    "name": "ÜNLÜ PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SUB",
+    "name": "ÜNLÜ PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SUC",
+    "name": "ÜNLÜ PORTFÖY ÜÇÜNCÜ DEĞIŞKEN FON",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "SUR",
+    "name": "EMAA BLUE PORTFÖY SÜRDÜRÜLEBİLİRLİK HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "SVB",
+    "name": "STRATEJİ PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "STRATEJİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TAL",
+    "name": "ATLAS PORTFÖY ALTIN KATILIM FONU",
+    "founder": "ATLAS PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TAR",
+    "name": "AK PORTFÖY TARIM VE GIDA TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TAU",
+    "name": "İŞ PORTFÖY BIST BANKA ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TBT",
+    "name": "TEB PORTFÖY BORÇLANMA ARAÇLARI FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TBV",
+    "name": "İŞ PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TCA",
+    "name": "ZİRAAT PORTFÖY ALTIN KATILIM FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TCB",
+    "name": "TACİRLER PORTFÖY PARA PİYASASI FONU",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "TCC",
+    "name": "TACİRLER PORTFÖY SERBEST ( DÖVİZ ) FON",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TCD",
+    "name": "TACİRLER PORTFÖY DEĞIŞKEN FON",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TCF",
+    "name": "TEB PORTFÖY ÜÇÜNCÜ FON SEPETİ FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TDG",
+    "name": "İŞ PORTFÖY YABANCI BORÇLANMA ARAÇLARI FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TE3",
+    "name": "TEB PORTFÖY MUTLAK GETİRİ HEDEFLİ DEĞİŞKEN FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TE4",
+    "name": "TEB PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TEJ",
+    "name": "AZİMUT PORTFÖY TEKNOLOJİ FON SEPETİ FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TFF",
+    "name": "TEB PORTFÖY AMERİKA TEKNOLOJİ YABANCI BYF FON SEPETİ FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TFU",
+    "name": "İŞ PORTFÖY TÜFEYE ENDEKSLİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TGA",
+    "name": "GARANTİ PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TGE",
+    "name": "İŞ PORTFÖY EMTİA YABANCI BYF FON SEPETİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TGR",
+    "name": "AK PORTFÖY TURİZM VE SEYAHAT SEKTÖRÜ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "THD",
+    "name": "TRIVE PORTFÖY BİRİNCİ HİSSE SENEDİ (TL) FON",
+    "founder": "TRIVE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "THF",
+    "name": "TERA PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "THT",
+    "name": "TRİVE PORTFÖY HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TRIVE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TI2",
+    "name": "İŞ PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TI3",
+    "name": "İŞ PORTFÖY İŞ BANKASI İŞTİRAKLERİ ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TI4",
+    "name": "İŞ PORTFÖY TEMKİNLİ DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TI6",
+    "name": "İŞ PORTFÖY BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TI7",
+    "name": "İŞ PORTFÖY DENGELİ DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TIE",
+    "name": "İŞ PORTFÖY BIST 30 ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TIL",
+    "name": "İŞ PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TJF",
+    "name": "TEB PORTFÖY SÜRDÜRÜLEBİLİRLİK FON SEPETİ FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TJI",
+    "name": "TEB PORTFÖY İKİNCİ FON SEPETİ FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TJT",
+    "name": "TEB PORTFÖY ALTINCI SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TKF",
+    "name": "TACİRLER PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TLE",
+    "name": "AURA PORTFÖY YABANCI BORÇLANMA ARAÇLARI FONU",
+    "founder": "AURA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TLH",
+    "name": "AURA PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AURA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TLK",
+    "name": "AKTİF PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "AKTİF PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "TLV",
+    "name": "TERA PORTFÖY PARA PİYASASI KATILIM (TL) FONU",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "TLY",
+    "name": "TERA PORTFÖY BİRİNCİ SERBEST FON",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TLZ",
+    "name": "ATA PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TMC",
+    "name": "İŞ PORTFÖY TEMA DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TMG",
+    "name": "İŞ PORTFÖY YABANCI HİSSE SENEDİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TMM",
+    "name": "TERA PORTFÖY İKİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TMU",
+    "name": "AZİMUT PORTFÖY TEMKİNLİ FON SEPETİ FONU",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TMZ",
+    "name": "İŞ PORTFÖY SÜRDÜRÜLEBİLİRLİK VE TARIM FON SEPETİ FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TND",
+    "name": "İŞ PORTFÖY TTF TENİSE DESTEK DEĞİŞKEN FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TOT",
+    "name": "TEB PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TP2",
+    "name": "TERA PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "TPC",
+    "name": "TEB PORTFÖY KIYMETLİ MADENLER FON SEPETİ FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TPF",
+    "name": "TACİRLER PORTFÖY BORÇLANMA ARAÇLARI FONU",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TPJ",
+    "name": "TEB PORTFÖY BİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TPL",
+    "name": "TEB PORTFÖY EUROBOND (DÖVİZ) BORÇLANMA ARAÇLARI FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TPP",
+    "name": "TEB PORTFÖY PUSULA SERBEST FON",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TPV",
+    "name": "AURA PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "AURA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TPZ",
+    "name": "TEB PORTFÖY KİRA SERTİFİKALARI (DÖVİZ) KATILIM FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TRJ",
+    "name": "TERA PORTFÖY BİRİNCİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "TRO",
+    "name": "TRIVE PORTFÖY ALTIN FONU",
+    "founder": "TRIVE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TRU",
+    "name": "TERA PORTFÖY KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "TERA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TTA",
+    "name": "İŞ PORTFÖY ALTIN FONU",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TTE",
+    "name": "İŞ PORTFÖY BIST TEKNOLOJİ AĞIRLIK SINIRLAMALI ENDEKSİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TTL",
+    "name": "TACİRLER PORTFÖY KARTOPU SERBEST FON",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TTV",
+    "name": "TACİRLER PORTFÖY VEGA SERBEST (TL)  FON",
+    "founder": "TACİRLER PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TUA",
+    "name": "TEB PORTFÖY ALTIN FONU",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "TVE",
+    "name": "EMAA BLUE PORTFÖY TARIM VE GIDA SEKTÖRÜ KATILIM FONU",
+    "founder": "EMAA BLUE PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "TVN",
+    "name": "TRIVE PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "TRIVE PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "TYH",
+    "name": "TEB PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TZD",
+    "name": "ZİRAAT PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "TZT",
+    "name": "ZİRAAT PORTFÖY BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "ULH",
+    "name": "ÜNLÜ PORTFÖY ONUNCU SERBEST FON",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "UNT",
+    "name": "İŞ PORTFÖY ÜÇÜNCÜ SERBEST (TL) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "UP1",
+    "name": "ÜNLÜ PORTFÖY ALTIN FONU",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "UP2",
+    "name": "ÜNLÜ PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "UPD",
+    "name": "ÜNLÜ PORTFÖY DÖRDÜNCÜ SERBEST (DÖVIZ) FON",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "UPH",
+    "name": "ÜNLÜ PORTFÖY HİSSE SENEDİ (TL) FONU(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "UPP",
+    "name": "ÜNLÜ PORTFÖY PARA PİYASASI (TL) FONU",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "URA",
+    "name": "ATA PORTFÖY ENERJİ DEĞİŞKEN FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "USY",
+    "name": "ÜNLÜ PORTFÖY DEĞER YATIRIMLARI SERBEST FON",
+    "founder": "ÜNLÜ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "VAY",
+    "name": "AK PORTFÖY DEĞER ODAKLI 100 ŞİRKETLERİ HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "VCY",
+    "name": "AK PORTFÖY ELEKTRİKLİ VE OTONOM ARAÇ TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "VFK",
+    "name": "ZİRAAT PORTFÖY İKİNCİ KISA VADELİ KİRA SERTİFİKALARI KATILIM (TL) FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "VFO",
+    "name": "V PORTFÖY ALTIN KATILIM FONU",
+    "founder": "V PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "VHK",
+    "name": "V PORTFÖY KATILIM HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "V PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "VHS",
+    "name": "VAKIF KATILIM PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "VAKIF KATILIM PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "VKK",
+    "name": "VAKIF KATILIM PORTFÖY KİRA SERTİFİKALARI KATILIM FONU",
+    "founder": "VAKIF KATILIM PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "VKV",
+    "name": "VAKIF KATILIM PORTFÖY KISA VADELİ KİRA SERTİFİKALARI KATILIM FONU",
+    "founder": "VAKIF KATILIM PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "VLT",
+    "name": "VAKIF KATILIM PORTFÖY ALTIN KATILIM FONU",
+    "founder": "VAKIF KATILIM PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "VMV",
+    "name": "VEGA PORTFÖY MAVİ SERBEST FON",
+    "founder": "VEGA PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "VNK",
+    "name": "VEGA PORTFÖY ANKA SERBEST FON",
+    "founder": "VEGA PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "VPA",
+    "name": "VAKIF KATILIM PORTFÖY PARA PİYASASI KATILIM FONU",
+    "founder": "VAKIF KATILIM PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "VPD",
+    "name": "V PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "V PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "VPE",
+    "name": "V PORTFÖY İKİNCİ DEĞİŞKEN FON",
+    "founder": "V PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "VPH",
+    "name": "V PORTFÖY HİSSE SENEDİ (TL) FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "V PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "VPP",
+    "name": "VEGA PORTFÖY PARLA SERBEST (DÖVİZ) FON",
+    "founder": "VEGA PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "VPS",
+    "name": "VEGA PORTFÖY SALUR HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "VEGA PORTFÖY YÖNETİMİ ANONİM ŞİRKETİ",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "VRK",
+    "name": "DENİZ PORTFÖY ÇOKLU VARLIK KATILIM FONU",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YAC",
+    "name": "YAPI KREDİ PORTFÖY İKİNCİ FON SEPETİ FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YAE",
+    "name": "YAPI KREDİ PORTFÖY TLREF'E ENDEKSLİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YAK",
+    "name": "YAPI KREDİ PORTFÖY KARMA FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YAN",
+    "name": "YAPI KREDİ PORTFÖY BİRİNCİ FON SEPETİ FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YAS",
+    "name": "YAPI KREDİ PORTFÖY KOÇ HOLDİNG İŞTİRAK VE HİSSE SENEDİ FONU(HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YAY",
+    "name": "YAPI KREDİ PORTFÖY YABANCI TEKNOLOJİ SEKTÖRÜ HİSSE SENEDİ FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YBE",
+    "name": "YAPI KREDİ PORTFÖY EUROBOND (DOLAR) BORÇLANMA ARAÇLARI FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "YBH",
+    "name": "YAPI KREDİ PORTFÖY 5-15 YIL VADELİ SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YBR",
+    "name": "İŞ PORTFÖY YİRMİBİRİNCİ SERBEST (DÖVİZ) FON",
+    "founder": "İŞ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YBS",
+    "name": "YAPI KREDİ PORTFÖY ÖZEL SEKTÖR BORÇLANMA ARAÇLARI FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "YCK",
+    "name": "YAPI KREDİ PORTFÖY CİHANGİR SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YCP",
+    "name": "YAPI KREDİ PORTFÖY BANKACILIK SEKTÖRÜ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YCY",
+    "name": "İSTANBUL PORTFÖY KATILIM FON SEPETİ FONU",
+    "founder": "İSTANBUL PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YDI",
+    "name": "YAPI KREDİ PORTFÖY MODEL PORTFÖY HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YDP",
+    "name": "YAPI KREDİ PORTFÖY BİRİNCİ DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YEF",
+    "name": "YAPI KREDİ PORTFÖY BIST 30 ENDEKSİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YFV",
+    "name": "YAPI KREDİ PORTFÖY KİRA SERTİFİKALARI KATILIM FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "YGM",
+    "name": "YAPI KREDİ PORTFÖY EMTİA SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "YHB",
+    "name": "YAPI KREDİ PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YHI",
+    "name": "YAPI KREDİ PORTFÖY İNŞAAT SEKTÖRÜ HİSSE SENEDİ SERBEST (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YHK",
+    "name": "YAPI KREDİ PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YHP",
+    "name": "YAPI KREDİ PORTFÖY KADIKÖY SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YHS",
+    "name": "YAPI KREDİ PORTFÖY BİRİNCİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YHT",
+    "name": "YAPI KREDİ PORTFÖY KISA VADELİ BORÇLANMA ARAÇLARI (TL) FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "YHZ",
+    "name": "YAPI KREDİ PORTFÖY BIST TEKNOLOJİ AĞIRLIK SINIRLAMALI ENDEKSİ HİSSE SENEDİ FONU ( HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YIK",
+    "name": "YAPI KREDİ PORTFÖY İKİNCİ PARA PİYASASI SERBEST (TL) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "YIT",
+    "name": "GARANTİ PORTFÖY YARI İLETKEN TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "GARANTİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YJH",
+    "name": "YAPI KREDİ PORTFÖY TEMİZ ENERJİ DEĞİŞKEN FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YJK",
+    "name": "YAPI KREDİ PORTFÖY ROBOTİK VE YARI İLETKEN TEKNOLOJİLERİ FON SEPETİ FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YJY",
+    "name": "YAPI KREDİ PORTFÖY YENİKÖY SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YKS",
+    "name": "YAPI KREDİ PORTFÖY İSTANBUL SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YKT",
+    "name": "YAPI KREDİ PORTFÖY ALTIN FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "YLC",
+    "name": "ATA PORTFÖY TARIM VE GIDA DEĞİŞKEN FON",
+    "founder": "ATA PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YLE",
+    "name": "YAPI KREDİ PORTFÖY BIST SÜRDÜRÜLEBİLİRLİK ENDEKSİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YLO",
+    "name": "YAPI KREDİ PORTFÖY ELEKTRİKLİ ARAÇLAR DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YLY",
+    "name": "YAPI KREDİ PORTFÖY KAR PAYI ÖDEYEN HİSSE SENEDİ (TL) FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YMD",
+    "name": "YAPI KREDİ PORTFÖY MASLAK SERBEST (DÖVİZ- ABD DOLARI) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YMH",
+    "name": "YAPI KREDİ PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YNK",
+    "name": "YAPI KREDİ PORTFÖY NİŞANTAŞI KAR PAYI ÖDEYEN SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YOT",
+    "name": "YAPI KREDİ PORTFÖY BORÇLANMA ARAÇLARI FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "YOZ",
+    "name": "DENİZ PORTFÖY YAKAMOZ SERBEST (DÖVİZ) FON",
+    "founder": "DENİZ PORTFÖY YÖNETİMİ A.Ş",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YP4",
+    "name": "YAPI KREDİ PORTFÖY FERİKÖY SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YPC",
+    "name": "YAPI KREDİ PORTFÖY SÜRDÜRÜLEBİLİRLİK DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YPF",
+    "name": "YAPI KREDİ PORTFÖY ALFA SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YPK",
+    "name": "YAPI KREDİ PORTFÖY GALATA SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YPL",
+    "name": "YAPI KREDİ PORTFÖY BALAT SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YPR",
+    "name": "AZİMUT PORTFÖY YILDIZ PAZAR ŞİRKETLERİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YPV",
+    "name": "YAPI KREDİ PORTFÖY ÜÇÜNCÜ FON SEPETİ FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YSA",
+    "name": "YAPI KREDİ PORTFÖY SUADİYE SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YSH",
+    "name": "YAPI KREDİ PORTFÖY BÜYÜK ÖLÇEKLİ ŞİRKETLER DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YSL",
+    "name": "YAPI KREDİ PORTFÖY KAR PAYI ÖDEYEN KİRA SERTİFİKALARI KATILIM SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "YSO",
+    "name": "YAPI KREDİ PORTFÖY SAĞLIK SEKTÖRÜ SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YSU",
+    "name": "YAPI KREDİ PORTFÖY ÜÇÜNCÜ DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YTD",
+    "name": "YAPI KREDİ PORTFÖY YABANCI FON SEPETİ FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YTV",
+    "name": "YAPI KREDİ PORTFÖY TARIM DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YTY",
+    "name": "YAPI KREDİ PORTFÖY TARABYA SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YUB",
+    "name": "YAPI KREDİ PORTFÖY KARAKÖY HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YUI",
+    "name": "YAPI KREDİ PORTFÖY BEYKOZ SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YUN",
+    "name": "YAPI KREDİ PORTFÖY İSTİNYE SERBEST (DÖVİZ) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YVB",
+    "name": "YAPI KREDİ PORTFÖY UZUN VADELİ BORÇLANMA ARAÇLARI FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Borçlanma Araçları Fonu"
+  },
+  {
+    "code": "YVG",
+    "name": "YAPI KREDİ PORTFÖY SARIYER SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YZC",
+    "name": "YAPI KREDİ PORTFÖY FİNTECH VE BLOCKCHAİN TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "YZG",
+    "name": "YAPI KREDİ PORTFÖY GÜMÜŞ FON SEPETİ FONU",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "YZH",
+    "name": "TEB PORTFÖY BIST BANKA ENDEKSİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN)",
+    "founder": "TEB PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "YZK",
+    "name": "YAPI KREDİ PORTFÖY KALAMIŞ SERBEST FON",
+    "founder": "YAPI KREDİ PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "YZT",
+    "name": "AK PORTFÖY YAPAY ZEKA TEKNOLOJİLERİ ŞİRKETLERİ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZBD",
+    "name": "ZİRAAT PORTFÖY DENGELİ DEĞİŞKEN FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZBI",
+    "name": "ZİRAAT PORTFÖY TEMKİNLİ KATILIM FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZBJ",
+    "name": "ZİRAAT PORTFÖY BAŞAK PARA PİYASASI (TL) FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "ZBO",
+    "name": "ZİRAAT PORTFÖY MUTLAK GETİRİ HEDEFLİ HİSSE SENEDİ SERBEST FON (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZCD",
+    "name": "ZİRAAT PORTFÖY ALTINCI SERBEST (TL) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "ZCK",
+    "name": "ZİRAAT PORTFÖY AGRESİF KATILIM FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZCN",
+    "name": "ZİRAAT PORTFÖY EMTİA FON SEPETİ FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "ZDD",
+    "name": "ZİRAAT PORTFÖY TEMKİNLİ DEĞİŞKEN FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZDZ",
+    "name": "ZİRAAT PORTFÖY AGRESİF DEĞİŞKEN FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZFB",
+    "name": "AK PORTFÖY FİNTEK VE BLOKZİNCİRİ TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "AK PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZHH",
+    "name": "ZİRAAT PORTFÖY HALKBANK SÜRDÜRÜLEBİLİRLİK 30 ŞİRKETLERİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZIH",
+    "name": "ZİRAAT PORTFÖY HAVACILIK VE SAVUNMA TEKNOLOJİLERİ DEĞİŞKEN FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZJB",
+    "name": "ZİRAAT PORTFÖY BİRİNCİ SERBEST (TL) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZJI",
+    "name": "ZİRAAT PORTFÖY İKİNCİ SERBEST (TL) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZJL",
+    "name": "ZİRAAT PORTFÖY BIST 100 DIŞI ŞİRKETLER HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZJV",
+    "name": "ZİRAAT PORTFÖY BIST 30 DIŞI YILDIZ PAZAR ŞİRKETLERİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZLH",
+    "name": "ZİRAAT PORTFÖY BIST 100-30 ŞİRKETLERİ HİSSE SENEDİ FONU ( HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZMT",
+    "name": "AZİMUT PORTFÖY 22.0 SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "AZİMUT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZMY",
+    "name": "ZİRAAT PORTFÖY METAVERSE VE YENİ TEKNOLOJİLER DEĞİŞKEN FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZP6",
+    "name": "ZİRAAT PORTFÖY SEDEF KATILIM SERBEST (DÖVİZ - AMERİKAN DOLARI) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZP8",
+    "name": "ZİRAAT PORTFÖY KEHRİBAR PARA PİYASASI KATILIM SERBEST (TL) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "ZP9",
+    "name": "ZİRAAT PORTFÖY AKİK KATILIM SERBEST (DÖVİZ-AVRO) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZPA",
+    "name": "ZİRAAT PORTFÖY SERBEST (DÖVİZ) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZPC",
+    "name": "ZİRAAT PORTFÖY FON SEPETİ FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZPE",
+    "name": "ZİRAAT PORTFÖY KATILIM HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZPF",
+    "name": "ZİRAAT PORTFÖY KATILIM FONU (DÖVİZ)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  },
+  {
+    "code": "ZPG",
+    "name": "ZİRAAT PORTFÖY KİRA SERTİFİKALARI (SUKUK) KATILIM FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Kıymetli Madenler Fonu"
+  },
+  {
+    "code": "ZPO",
+    "name": "ZİRAAT PORTFÖY PARA PİYASASI KATILIM FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "ZPR",
+    "name": "ZİRAAT PORTFÖY PARA PİYASASI SERBEST FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Para Piyasası Fonu"
+  },
+  {
+    "code": "ZSF",
+    "name": "ZİRAAT PORTFÖY S&P/OIC COMCEC (İSEDAK) 50 SHARİAH ŞİRKETLERİ YABANCI HİSSE SENEDİ FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZSG",
+    "name": "ZİRAAT PORTFÖY ESG SÜRDÜRÜLEBİLİRLİK FON SEPETİ FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZTG",
+    "name": "ZİRAAT PORTFÖY TARIM VE GIDA FON SEPETİ FONU",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Fon Sepeti Fonu"
+  },
+  {
+    "code": "ZTV",
+    "name": "ZİRAAT PORTFÖY TÜRKİYE VARLIK FONU İŞTİRAKLERİ HİSSE SENEDİ FONU (HİSSE SENEDİ YOĞUN FON)",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Hisse Senedi Fonu"
+  },
+  {
+    "code": "ZVO",
+    "name": "ZİRAAT PORTFÖY ÜÇÜNCÜ SERBEST (TL) FON",
+    "founder": "ZİRAAT PORTFÖY YÖNETİMİ A.Ş.",
+    "category": "Değişken Fon"
+  }
+]
