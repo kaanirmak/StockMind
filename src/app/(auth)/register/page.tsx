@@ -94,17 +94,12 @@ export default function RegisterPage() {
   return (
     <>
       {/* Mobile Logo */}
-      <Link href="/" className="flex items-center gap-2.5 mb-8 lg:hidden group">
-        <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center p-1 shadow-md">
-          <img
-            src="/logo.png"
-            alt="StockMind Logo"
-            className="w-full h-full object-contain"
-          />
-        </div>
-        <span className="text-2xl font-bold text-text-primary">
-          Stock<span className="gradient-text">Mind</span>
-        </span>
+      <Link href="/" className="flex items-center justify-center mb-8 lg:hidden group">
+        <img
+          src="/logo.png"
+          alt="StockMind"
+          className="h-12 w-auto object-contain drop-shadow-[0_0_15px_rgba(99,102,241,0.35)]"
+        />
       </Link>
 
       <h2 className="text-2xl font-bold text-text-primary mb-2">Hesap Oluşturun</h2>

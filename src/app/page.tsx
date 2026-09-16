@@ -16,17 +16,12 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 h-20">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-11 h-11 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center p-1.5 shadow-lg shadow-accent/10 group-hover:scale-105 transition-transform">
-            <img
-              src="/logo.png"
-              alt="StockMind Logo"
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <span className="text-2xl font-bold text-text-primary">
-            Stock<span className="gradient-text">Mind</span>
-          </span>
+        <Link href="/" className="flex items-center group">
+          <img
+            src="/logo.png"
+            alt="StockMind"
+            className="h-12 sm:h-14 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_18px_rgba(99,102,241,0.35)]"
+          />
         </Link>
         <div className="flex items-center gap-4">
           <Link

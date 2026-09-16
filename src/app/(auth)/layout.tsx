@@ -23,17 +23,12 @@ export default function AuthLayout({
 
         {/* Content */}
         <div className="relative z-10 px-12 max-w-lg">
-          <Link href="/" className="flex items-center gap-3.5 mb-8 group">
-            <div className="w-14 h-14 rounded-2xl bg-accent/15 border border-accent/30 flex items-center justify-center p-2 shadow-xl shadow-accent/15 group-hover:scale-105 transition-transform">
-              <img
-                src="/logo.png"
-                alt="StockMind Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <span className="text-3xl font-bold text-text-primary">
-              Stock<span className="gradient-text">Mind</span>
-            </span>
+          <Link href="/" className="inline-block mb-8 group">
+            <img
+              src="/logo.png"
+              alt="StockMind"
+              className="h-16 lg:h-20 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_24px_rgba(99,102,241,0.35)]"
+            />
           </Link>
           
           <h1 className="text-4xl font-bold text-text-primary leading-tight mb-4">

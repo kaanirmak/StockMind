@@ -27,19 +27,14 @@ export default function Sidebar() {
       }`}
     >
       {/* Logo */}
-      <Link href="/dashboard" className="flex items-center gap-3 px-4 h-16 border-b border-border group hover:bg-bg-hover/50 transition-colors">
-        <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-sm group-hover:scale-105 transition-transform">
+      <Link href="/dashboard" className="flex items-center justify-center px-3 h-16 border-b border-border group hover:bg-bg-hover/50 transition-colors overflow-hidden">
+        <div className="flex items-center justify-center w-full">
           <img
             src="/logo.png"
             alt="StockMind"
-            className="w-full h-full object-contain"
+            className={`${collapsed ? 'h-9 w-9' : 'h-11 w-auto max-w-[190px]'} object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_14px_rgba(99,102,241,0.25)]`}
           />
         </div>
-        {!collapsed && (
-          <span className="text-lg font-bold text-text-primary whitespace-nowrap">
-            Stock<span className="gradient-text">Mind</span>
-          </span>
-        )}
       </Link>
 
       {/* Navigation */}
