@@ -1,17 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Button, Badge, useToast } from '@/components/ui';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
-  const { portfolios, activePortfolioId, getSummary } = usePortfolioStore();
+  const { portfolios, activePortfolioId, getSummary, fetchPortfoliosAndTransactions } = usePortfolioStore();
+  const [isMounted, setIsMounted] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    fetchPortfoliosAndTransactions();
+  }, [fetchPortfoliosAndTransactions]);
+
   const summary = getSummary();
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
-
-  const [sendingEmail, setSendingEmail] = useState(false);
 
   const handlePrint = () => {
     window.print();
@@ -80,6 +86,29 @@ export default function ReportsPage() {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (!isMounted) {
+    return (
+      <div className="space-y-6 animate-pulse pb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-8 w-64 bg-bg-card rounded-lg border border-border" />
+            <div className="h-4 w-80 bg-bg-card rounded border border-border" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 w-32 bg-bg-card rounded-xl border border-border" />
+            <div className="h-10 w-24 bg-bg-card rounded-xl border border-border" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 rounded-2xl bg-bg-card border border-border" />
+          ))}
+        </div>
+        <div className="h-96 rounded-2xl bg-bg-card border border-border" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">

@@ -220,7 +220,7 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
           ? Number(priceHistory[priceHistory.length - 1].fiyat)
           : 1.0;
 
-      let dailyReturn = Number(bilgi.gunlukGetiri) || 0;
+      let dailyReturn = bilgi.gunlukGetiri != null ? Number(bilgi.gunlukGetiri) : 0;
 
       // Compute multi-period returns with 100% precision from official price history
       let monthlyReturn = dailyReturn * 20;
@@ -240,7 +240,7 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
           return past > 0 ? Number((((last - past) / past) * 100).toFixed(2)) : 0;
         };
 
-        if (priceHistory.length > 1) {
+        if (bilgi.gunlukGetiri == null && priceHistory.length > 1) {
           const prev = Number(priceHistory[priceHistory.length - 2].fiyat);
           if (prev > 0) {
             dailyReturn = Number((((last - prev) / prev) * 100).toFixed(2));
@@ -287,7 +287,7 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
         name,
         category,
         founder,
-        price: Number(lastPrice.toFixed(4)),
+        price: Number(lastPrice.toFixed(6)),
         dailyReturn: Number(dailyReturn.toFixed(2)),
         monthlyReturn: Number(monthlyReturn.toFixed(2)),
         return3m: Number(return3m.toFixed(1)),

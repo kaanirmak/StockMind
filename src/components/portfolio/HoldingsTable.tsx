@@ -28,6 +28,12 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
     );
   }
 
+  const totalCost = holdings.reduce((sum, h) => sum + h.totalCost, 0);
+  const totalValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
+  const totalPnL = totalValue - totalCost;
+  const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
+  const isTotalProfit = totalPnL >= 0;
+
   return (
     <div className="glass-card overflow-hidden">
       <div className="overflow-x-auto">
@@ -37,9 +43,10 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
               <th className="py-3.5 px-4 font-semibold">Varlık / Sembol</th>
               <th className="py-3.5 px-4 font-semibold">Tür</th>
               <th className="py-3.5 px-4 font-semibold text-right">Adet / Pay</th>
-              <th className="py-3.5 px-4 font-semibold text-right">Ort. Maliyet</th>
-              <th className="py-3.5 px-4 font-semibold text-right">Son Fiyat</th>
-              <th className="py-3.5 px-4 font-semibold text-right">Toplam Değer</th>
+              <th className="py-3.5 px-4 font-semibold text-right">Ort. Maliyet (TL)</th>
+              <th className="py-3.5 px-4 font-semibold text-right">Son Fiyat (TL)</th>
+              <th className="py-3.5 px-4 font-semibold text-right">Maliyet Tutarı</th>
+              <th className="py-3.5 px-4 font-semibold text-right">Piyasa Değeri</th>
               <th className="py-3.5 px-4 font-semibold text-right">Kar / Zarar</th>
               <th className="py-3.5 px-4 font-semibold text-right">Ağırlık</th>
             </tr>
@@ -48,6 +55,8 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
             {holdings.map((h) => {
               const isProfit = h.pnl >= 0;
               const link = h.assetType === 'stock' ? `/stocks/${h.symbol}` : `/funds/${h.symbol}`;
+              const dailyChange = h.dailyChangePercent || 0;
+              const isUsd = h.originalCurrency === 'USD';
 
               return (
                 <tr key={`${h.assetType}-${h.symbol}`} className="hover:bg-bg-hover/60 transition-colors group">
@@ -57,28 +66,63 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                         {h.symbol.substring(0, 2)}
                       </div>
                       <div>
-                        <span className="font-bold text-text-primary block group-hover:text-accent transition-colors">
-                          {h.symbol}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-text-primary block group-hover:text-accent transition-colors">
+                            {h.symbol}
+                          </span>
+                          {isUsd && (
+                            <span className="text-[10px] font-semibold px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              USD
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[11px] text-text-muted">
-                          {h.exchange || 'BIST'}
+                          {h.exchange || (h.assetType === 'fund' ? 'TEFAS' : 'BIST')}
                         </span>
                       </div>
                     </Link>
                   </td>
                   <td className="py-3.5 px-4">
                     <Badge variant={h.assetType === 'stock' ? 'purple' : 'info'} size="sm">
-                      {h.assetType === 'stock' ? 'Hisse' : 'TEFAS Fon'}
+                      {h.assetType === 'stock' ? (isUsd ? 'ABD Hisse' : 'BIST Hisse') : 'TEFAS Fon'}
                     </Badge>
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono text-text-primary font-medium">
-                    {h.totalQuantity.toLocaleString('tr-TR')}
+                    {h.totalQuantity.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
-                    ₺{h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  <td className="py-3.5 px-4 text-right font-mono">
+                    <div className="flex flex-col items-end">
+                      <span className="text-text-secondary font-medium">
+                        ₺{h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 6 : 4 })}
+                      </span>
+                      {isUsd && h.originalAverageCost != null && (
+                        <span className="text-[10px] text-text-muted">
+                          ${h.originalAverageCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono text-text-primary font-semibold">
-                    ₺{h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  <td className="py-3.5 px-4 text-right font-mono">
+                    <div className="flex flex-col items-end">
+                      <span className="font-semibold text-text-primary">
+                        ₺{h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 6 : 4 })}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {isUsd && h.originalPrice != null && (
+                          <span className="text-[10px] text-text-muted">
+                            ${h.originalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        )}
+                        {dailyChange !== 0 && (
+                          <span className={`text-[10px] font-medium ${dailyChange >= 0 ? 'text-success' : 'text-danger'}`}>
+                            {dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 text-right font-mono text-text-secondary font-medium">
+                    ₺{h.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="py-3.5 px-4 text-right font-mono font-bold text-text-primary">
                     ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
@@ -88,7 +132,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                       <span className={`font-bold text-xs ${isProfit ? 'text-success' : 'text-danger'}`}>
                         {isProfit ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                       </span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded ${isProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${isProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
                         {isProfit ? '+' : ''}{h.pnlPercent.toFixed(2)}%
                       </span>
                     </div>
@@ -100,6 +144,35 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
               );
             })}
           </tbody>
+          <tfoot className="bg-bg-secondary/90 border-t-2 border-border text-xs font-semibold text-text-primary">
+            <tr>
+              <td className="py-3.5 px-4 uppercase tracking-wider text-text-muted" colSpan={2}>
+                Toplam ({holdings.length} Varlık)
+              </td>
+              <td className="py-3.5 px-4 text-right font-mono text-text-muted">-</td>
+              <td className="py-3.5 px-4 text-right font-mono text-text-muted">-</td>
+              <td className="py-3.5 px-4 text-right font-mono text-text-muted">-</td>
+              <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
+                ₺{totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </td>
+              <td className="py-3.5 px-4 text-right font-mono font-bold text-text-primary">
+                ₺{totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </td>
+              <td className="py-3.5 px-4 text-right font-mono">
+                <div className="flex flex-col items-end">
+                  <span className={`font-bold text-xs ${isTotalProfit ? 'text-success' : 'text-danger'}`}>
+                    {isTotalProfit ? '+' : ''}₺{totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  </span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${isTotalProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
+                    {isTotalProfit ? '+' : ''}{totalPnLPercent.toFixed(2)}%
+                  </span>
+                </div>
+              </td>
+              <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
+                %100.0
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

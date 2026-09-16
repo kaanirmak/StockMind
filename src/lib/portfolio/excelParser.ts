@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { TransactionFormData, AssetType, TransactionType } from '@/types/portfolio';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
+import { cleanSymbol } from '@/lib/utils/symbol';
 
 export interface ParsedRowResult {
   rowNumber: number;
@@ -38,9 +39,9 @@ function normalizeHeader(header: string): string {
 
 /**
  * Parses numeric price or quantity handling Turkish comma vs dot decimals
- * (e.g. 5.429,22 -> 5429.22, 49.785,95 -> 49785.95, 9,17 -> 9.17, 285.50 -> 285.5)
+ * (e.g. 85,00 -> 85, 5.429,22 -> 5429.22, 49.785,95 -> 49785.95, 9,17 -> 9.17, 2.923361 -> 2.923361)
  */
-function parseCleanNumber(val: any): number {
+export function parseCleanNumber(val: any): number {
   if (val == null || val === '') return 0;
   if (typeof val === 'number') return isNaN(val) ? 0 : val;
 
@@ -59,8 +60,19 @@ function parseCleanNumber(val: any): number {
       str = str.replace(/,/g, '');
     }
   } else if (str.includes(',')) {
-    // Single comma: 9,17 -> 9.17
-    str = str.replace(',', '.');
+    // Check if comma is decimal (e.g. 85,00 or 9,17 or 2,923361) vs multiple thousands
+    const commas = (str.match(/,/g) || []).length;
+    if (commas === 1) {
+      str = str.replace(',', '.');
+    } else {
+      str = str.replace(/,/g, '');
+    }
+  } else if (str.includes('.')) {
+    // Check if multiple dots exist (thousands separators: 1.000.000 -> 1000000)
+    const dots = (str.match(/\./g) || []).length;
+    if (dots > 1) {
+      str = str.replace(/\./g, '');
+    }
   }
 
   const num = parseFloat(str);
@@ -131,20 +143,103 @@ function parseTransactionType(val: any): TransactionType {
 }
 
 /**
+ * Smart CSV parser supporting auto-delimiter detection (;, \t, ,) and quote handling
+ */
+function parseCsvSmart(text: string): Record<string, any>[] {
+  if (text.charCodeAt(0) === 0xFEFF) {
+    text = text.slice(1);
+  }
+
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return [];
+
+  const firstLine = lines[0];
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const semiCount = (firstLine.match(/;/g) || []).length;
+  const commaCount = (firstLine.match(/,/g) || []).length;
+
+  let delimiter = ',';
+  if (tabCount >= 3) delimiter = '\t';
+  else if (semiCount >= 3) delimiter = ';';
+  else if (commaCount >= 3) delimiter = ',';
+
+  const parseLine = (line: string, delim: string): string[] => {
+    const res: string[] = [];
+    let cur = '';
+    let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQuote && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuote = !inQuote;
+        }
+      } else if (c === delim && !inQuote) {
+        res.push(cur.trim());
+        cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    res.push(cur.trim());
+    return res;
+  };
+
+  const headers = parseLine(firstLine, delimiter);
+  const rows: Record<string, any>[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseLine(lines[i], delimiter);
+    if (cols.length === 0 || cols.every((c) => c === '')) continue;
+
+    const rowObj: Record<string, any> = {};
+    headers.forEach((h, idx) => {
+      rowObj[h] = cols[idx] || '';
+    });
+    rows.push(rowObj);
+  }
+
+  return rows;
+}
+
+/**
  * Parses Excel or CSV file buffer and converts to validated Transaction items
  */
 export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<ExcelParseResponse> {
-  const buffer = file instanceof File ? await file.arrayBuffer() : file;
-  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  let rawRows: Record<string, any>[] = [];
 
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
+  // Check if it's a CSV or text file
+  const isCsv = file instanceof File && (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt'));
 
-  if (!worksheet) {
-    return { totalRows: 0, validRows: [], invalidRows: [] };
+  if (isCsv) {
+    try {
+      const text = await (file as File).text();
+      rawRows = parseCsvSmart(text);
+    } catch (e) {
+      console.warn('Smart CSV parser failed, falling back to XLSX reader:', e);
+    }
   }
 
-  const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+  if (rawRows.length === 0) {
+    const buffer = file instanceof File ? await file.arrayBuffer() : file;
+    const workbook = XLSX.read(buffer, {
+      type: 'array',
+      raw: true,
+      cellDates: true,
+      codepage: 65001,
+    });
+
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+
+    if (!worksheet) {
+      return { totalRows: 0, validRows: [], invalidRows: [] };
+    }
+
+    rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: true });
+  }
 
   const validRows: ParsedRowResult[] = [];
   const invalidRows: ParsedRowResult[] = [];
@@ -181,37 +276,52 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
 
     // 3. Currency / Döviz Türü
     const rawCurrency = findVal(['dovizturu', 'doviz', 'parabirimi', 'currency']);
-    const currency = String(rawCurrency || 'TRY').toUpperCase().trim();
+    let currency = String(rawCurrency || 'TRY').toUpperCase().trim();
 
-    // 4. Quantity / Miktar (Adet)
+    // 4. Exchange Rate / Döviz Kuru (USD/TRY)
+    const rawFxRate = findVal([
+      'dovizkuruusdtry',
+      'dovizkuru',
+      'usdtrykuru',
+      'usdkuru',
+      'islemkuru',
+      'kur',
+      'exchangerate',
+      'fxrate',
+      'rate',
+    ]);
+    const parsedFxRate = parseCleanNumber(rawFxRate);
+    const exchangeRate = parsedFxRate > 0 ? parsedFxRate : undefined;
+
+    // 5. Quantity / Miktar (Adet)
     const rawQty = findVal(['miktaradet', 'miktar', 'adet', 'lot', 'pay', 'quantity', 'qty', 'shares']);
     const quantity = Math.abs(parseCleanNumber(rawQty));
     if (quantity <= 0) {
       errors.push('Geçerli bir miktar/adet bulunamadı');
     }
 
-    // 5. Unit Price / Birim Fiyat
+    // 6. Unit Price / Birim Fiyat
     const rawPrice = findVal(['birimfiyat', 'fiyat', 'maliyet', 'unitprice', 'price', 'cost']);
     let price = Math.abs(parseCleanNumber(rawPrice));
 
-    // 6. Total Amount / Toplam Tutar
+    // 7. Total Amount / Toplam Tutar
     const rawTotal = findVal(['toplamtutar', 'toplam', 'tutar', 'total', 'amount']);
     const totalAmount = Math.abs(parseCleanNumber(rawTotal));
 
     // If unit price was missing but total amount and quantity exist, auto-calculate unit price
     if (price <= 0 && totalAmount > 0 && quantity > 0) {
-      price = Number((totalAmount / quantity).toFixed(4));
+      price = Number((totalAmount / quantity).toFixed(6));
     }
 
     if (price <= 0) {
       errors.push('Geçerli bir birim fiyat veya toplam tutar bulunamadı');
     }
 
-    // 7. Date / Tarih
+    // 8. Date / Tarih
     const rawDate = findVal(['tarih', 'islemtarihi', 'date', 'transactiondate', 'zaman', 'valor']);
     const transactionDate = parseCleanDate(rawDate);
 
-    // 8. Notes & Broker / Notlar & Aracı Kurum / Kanal
+    // 9. Notes & Broker / Notlar & Aracı Kurum / Kanal
     const rawNotes = findVal(['notlar', 'not', 'aciklama', 'notes', 'description']);
     const rawBroker = findVal(['aracikurumkanal', 'aracikurum', 'kanal', 'kurum', 'broker', 'banka', 'platform']);
 
@@ -224,41 +334,25 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     }
     const notes = notesParts.join(' ');
 
-    // 9. Auto-detect Asset Type and Exchange
-    let assetType: AssetType = 'stock';
-    let exchange: any = 'BIST';
-
-    if (
-      symbol === 'GRAM_ALTIN' ||
-      symbol === 'GRAM ALTIN' ||
-      symbol === 'ALTIN' ||
-      symbol === 'XAUTRYG' ||
-      symbol === 'XAUTRY' ||
-      symbol === 'GRAM_GUMUS' ||
-      symbol === 'XAGTRYG'
-    ) {
-      assetType = 'stock';
-      exchange = 'BIST';
-      if (symbol === 'GRAM_ALTIN' || symbol === 'GRAM ALTIN' || symbol === 'ALTIN') {
-        symbol = 'GRAM_ALTIN';
-      }
-    } else if (TEFAS_CODES.has(symbol)) {
-      assetType = 'fund';
-      exchange = 'TEFAS';
-    } else if (currency === 'USD' || ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOGL', 'META'].includes(symbol)) {
-      assetType = 'stock';
-      exchange = 'NASDAQ';
-    } else {
-      assetType = 'stock';
-      exchange = 'BIST';
+    // 10. Auto-detect Asset Type and Exchange
+    const cleaned = cleanSymbol(symbol);
+    const finalSymbol = cleaned.symbol;
+    const isUsdExchange = cleaned.exchange === 'NASDAQ' || cleaned.exchange === 'NYSE';
+    if (isUsdExchange && currency !== 'USD') {
+      currency = 'USD';
     }
 
+    const assetType: AssetType = cleaned.assetType || (TEFAS_CODES.has(finalSymbol) ? 'fund' : 'stock');
+    const exchange: any = cleaned.exchange || (assetType === 'fund' ? 'TEFAS' : currency === 'USD' ? 'NASDAQ' : 'BIST');
+
     const txData: TransactionFormData = {
-      symbol,
+      symbol: finalSymbol,
       assetType,
       transactionType,
       quantity,
       price,
+      currency: currency as any,
+      exchangeRate,
       commission: 0,
       transactionDate,
       exchange,
@@ -288,25 +382,7 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
 }
 
 /**
- * Helper to download Blob safely in cross-browser Next.js / React client
- */
-function downloadBlob(blob: Blob, filename: string) {
-  if (typeof window === 'undefined') return;
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.style.display = 'none';
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  }, 100);
-}
-
-/**
- * Generates and downloads a sample Excel template (.xlsx) with the exact user requested columns
+ * Downloads a pre-formatted Excel template file (.xlsx) with USD/TRY FX rate column
  */
 export function downloadExcelTemplate() {
   if (typeof window === 'undefined') return;
@@ -317,6 +393,7 @@ export function downloadExcelTemplate() {
       'Hisse Kodu (Sembol)': 'GRAM_ALTIN',
       'İşlem Türü': 'Alış',
       'Döviz Türü': 'TRY',
+      'Döviz Kuru (USD/TRY)': 1.00,
       'Miktar (Adet)': 9.17,
       'Birim Fiyat': 5429.22,
       'Toplam Tutar': 49785.95,
@@ -328,6 +405,7 @@ export function downloadExcelTemplate() {
       'Hisse Kodu (Sembol)': 'THYAO',
       'İşlem Türü': 'Alış',
       'Döviz Türü': 'TRY',
+      'Döviz Kuru (USD/TRY)': 1.00,
       'Miktar (Adet)': 100,
       'Birim Fiyat': 285.50,
       'Toplam Tutar': 28550.00,
@@ -336,13 +414,14 @@ export function downloadExcelTemplate() {
     },
     {
       'Tarih': '2026-02-20',
-      'Hisse Kodu (Sembol)': 'TI2',
+      'Hisse Kodu (Sembol)': 'THF',
       'İşlem Türü': 'Alış',
       'Döviz Türü': 'TRY',
-      'Miktar (Adet)': 25000,
-      'Birim Fiyat': 0.1287,
-      'Toplam Tutar': 3217.50,
-      'Notlar': 'İş Portföy Hisse Fonu',
+      'Döviz Kuru (USD/TRY)': 1.00,
+      'Miktar (Adet)': 13328,
+      'Birim Fiyat': 2.923361,
+      'Toplam Tutar': 38962.56,
+      'Notlar': 'TEFAS Para Piyasası Fonu',
       'Aracı Kurum / Kanal': 'İŞ BANKASI',
     },
     {
@@ -350,22 +429,24 @@ export function downloadExcelTemplate() {
       'Hisse Kodu (Sembol)': 'AAPL',
       'İşlem Türü': 'Alış',
       'Döviz Türü': 'USD',
+      'Döviz Kuru (USD/TRY)': 34.50,
       'Miktar (Adet)': 10,
       'Birim Fiyat': 225.40,
       'Toplam Tutar': 2254.00,
-      'Notlar': 'Apple Teknoloji',
+      'Notlar': 'Apple Teknoloji (USD)',
       'Aracı Kurum / Kanal': 'MİDAS',
     },
     {
       'Tarih': '2026-04-05',
-      'Hisse Kodu (Sembol)': 'EREGL',
-      'İşlem Türü': 'Satış',
-      'Döviz Türü': 'TRY',
-      'Miktar (Adet)': 50,
-      'Birim Fiyat': 52.80,
-      'Toplam Tutar': 2640.00,
-      'Notlar': 'Kar realizasyonu',
-      'Aracı Kurum / Kanal': 'GARANTİ BANKASI',
+      'Hisse Kodu (Sembol)': 'NVDA',
+      'İşlem Türü': 'Alış',
+      'Döviz Türü': 'USD',
+      'Döviz Kuru (USD/TRY)': 36.80,
+      'Miktar (Adet)': 5,
+      'Birim Fiyat': 128.50,
+      'Toplam Tutar': 642.50,
+      'Notlar': 'NVIDIA AI (USD)',
+      'Aracı Kurum / Kanal': 'MİDAS',
     },
   ];
 
@@ -377,6 +458,7 @@ export function downloadExcelTemplate() {
     { wch: 22 }, // Hisse Kodu (Sembol)
     { wch: 14 }, // İşlem Türü
     { wch: 12 }, // Döviz Türü
+    { wch: 22 }, // Döviz Kuru (USD/TRY)
     { wch: 15 }, // Miktar (Adet)
     { wch: 15 }, // Birim Fiyat
     { wch: 16 }, // Toplam Tutar
@@ -396,18 +478,19 @@ export function downloadExcelTemplate() {
 }
 
 /**
- * Generates and downloads a sample CSV template (.csv) with UTF-8 BOM
+ * Generates and downloads a sample CSV template (.csv) with UTF-8 BOM and USD/TRY FX column
  */
 export function downloadCsvTemplate() {
   if (typeof window === 'undefined') return;
 
   const csvContent =
-    'Tarih,Hisse Kodu (Sembol),İşlem Türü,Döviz Türü,Miktar (Adet),Birim Fiyat,Toplam Tutar,Notlar,Aracı Kurum / Kanal\n' +
-    '2025-10-10,GRAM_ALTIN,Alış,TRY,9.17,5429.22,49785.95,ALTIN SPOT,GARANTİ BANKASI\n' +
-    '2026-03-15,THYAO,Alış,TRY,100,285.50,28550.00,BIST 100 Havacılık,MİDAS\n' +
-    '2026-02-20,TI2,Alış,TRY,25000,0.1287,3217.50,İş Portföy Hisse Fonu,İŞ BANKASI\n' +
-    '2026-01-10,AAPL,Alış,USD,10,225.40,2254.00,Apple Teknoloji,MİDAS\n' +
-    '2026-04-05,EREGL,Satış,TRY,50,52.80,2640.00,Kar realizasyonu,GARANTİ BANKASI\n';
+    'Tarih;Hisse Kodu (Sembol);İşlem Türü;Döviz Türü;Döviz Kuru (USD/TRY);Miktar (Adet);Birim Fiyat;Toplam Tutar;Notlar;Aracı Kurum / Kanal\n' +
+    '2025-10-10;GRAM_ALTIN;Alış;TRY;1,00;9,17;5.429,22;49.785,95;ALTIN SPOT;GARANTİ BANKASI\n' +
+    '2026-03-15;THYAO;Alış;TRY;1,00;100;285,50;28.550,00;BIST 100 Havacılık;MİDAS\n' +
+    '2026-02-20;THF;Alış;TRY;1,00;13328;2,923361;38.962,56;TEFAS Para Piyasası Fonu;İŞ BANKASI\n' +
+    '2026-01-10;AAPL;Alış;USD;34,50;10;225,40;2.254,00;Apple Teknoloji (USD);MİDAS\n' +
+    '2026-04-05;NVDA;Alış;USD;36,80;5;128,50;642,50;NVIDIA Yapay Zeka;MİDAS\n' +
+    '2026-04-05;EREGL;Satış;TRY;1,00;50;52,80;2.640,00;Kar realizasyonu;GARANTİ BANKASI\n';
 
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   downloadBlob(blob, 'StockMind_Portfoy_Sablonu.csv');
@@ -423,7 +506,8 @@ export function exportTransactionsToExcel(transactions: any[], portfolioName: st
     'Tarih': t.transactionDate,
     'Hisse Kodu (Sembol)': t.symbol,
     'İşlem Türü': t.transactionType === 'buy' ? 'Alış' : 'Satış',
-    'Döviz Türü': t.exchange === 'NASDAQ' || t.exchange === 'NYSE' ? 'USD' : 'TRY',
+    'Döviz Türü': t.currency || (t.exchange === 'NASDAQ' || t.exchange === 'NYSE' ? 'USD' : 'TRY'),
+    'Döviz Kuru (USD/TRY)': t.exchangeRate || (t.currency === 'USD' || t.exchange === 'NASDAQ' ? 34.50 : 1.00),
     'Miktar (Adet)': t.quantity,
     'Birim Fiyat': t.price,
     'Toplam Tutar': Number((t.quantity * t.price).toFixed(2)),
@@ -437,6 +521,7 @@ export function exportTransactionsToExcel(transactions: any[], portfolioName: st
     { wch: 22 },
     { wch: 14 },
     { wch: 12 },
+    { wch: 22 },
     { wch: 15 },
     { wch: 15 },
     { wch: 16 },
@@ -453,4 +538,15 @@ export function exportTransactionsToExcel(transactions: any[], portfolioName: st
   });
 
   downloadBlob(blob, `${portfolioName}_Islem_Gecmisi_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', fileName);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

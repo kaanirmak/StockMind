@@ -2,16 +2,19 @@
 
 import { create } from 'zustand';
 import { Portfolio, Transaction, PortfolioSummary } from '@/types/portfolio';
-import { calculatePortfolioSummary } from '@/lib/portfolio/calculations';
+import { calculatePortfolioSummary, normalizeSymbolKey, cleanSymbol, PriceQuote } from '@/lib/portfolio/calculations';
 import { createClient } from '@/lib/supabase/client';
 
 interface PortfolioState {
   portfolios: Portfolio[];
   activePortfolioId: string;
   transactions: Transaction[];
+  livePrices: Record<string, PriceQuote>;
+  isRefreshingPrices: boolean;
   loading: boolean;
   error: string | null;
   fetchPortfoliosAndTransactions: () => Promise<void>;
+  fetchLivePrices: () => Promise<void>;
   setActivePortfolioId: (id: string) => void;
   addPortfolio: (name: string, description?: string) => Promise<Portfolio | null>;
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'userId'>) => Promise<Transaction | null>;
@@ -30,7 +33,7 @@ const INITIAL_PORTFOLIOS: Portfolio[] = [
     description: 'Borsa ve fon yatırımlarım',
     currency: 'TRY',
     isDefault: true,
-    createdAt: new Date().toISOString(),
+    createdAt: '2025-01-01T00:00:00.000Z',
   },
 ];
 
@@ -42,10 +45,36 @@ function loadLocalState(): { portfolios: Portfolio[]; activePortfolioId: string;
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
+      const rawTxs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+      const normalizedTxs: Transaction[] = rawTxs.map((t: any) => {
+        const { symbol, assetType, exchange } = cleanSymbol(t.symbol);
+        const effectiveEx = exchange || t.exchange || (assetType === 'fund' ? 'TEFAS' : 'BIST');
+        const isUsd = (t.currency || '').toUpperCase() === 'USD' || effectiveEx === 'NASDAQ' || effectiveEx === 'NYSE';
+        return {
+          ...t,
+          symbol,
+          assetType: t.assetType === 'fund' || assetType === 'fund' ? 'fund' : 'stock',
+          currency: isUsd ? 'USD' : t.currency || 'TRY',
+          exchangeRate: t.exchangeRate != null ? Number(t.exchangeRate) : undefined,
+          exchange: effectiveEx,
+        };
+      });
+
+      const rawPortfolios = Array.isArray(parsed.portfolios) && parsed.portfolios.length > 0 ? parsed.portfolios : INITIAL_PORTFOLIOS;
+      let activeId = parsed.activePortfolioId || rawPortfolios[0]?.id || 'p-default';
+
+      // If activeId has 0 transactions but another portfolio has transactions, switch to the active one
+      if (normalizedTxs.length > 0 && !normalizedTxs.some((t) => t.portfolioId === activeId)) {
+        const portWithTxs = rawPortfolios.find((p: any) => normalizedTxs.some((t) => t.portfolioId === p.id));
+        if (portWithTxs) {
+          activeId = portWithTxs.id;
+        }
+      }
+
       return {
-        portfolios: Array.isArray(parsed.portfolios) && parsed.portfolios.length > 0 ? parsed.portfolios : INITIAL_PORTFOLIOS,
-        activePortfolioId: parsed.activePortfolioId || parsed.portfolios?.[0]?.id || 'p-default',
-        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+        portfolios: rawPortfolios,
+        activePortfolioId: activeId,
+        transactions: normalizedTxs,
       };
     }
   } catch (e) {
@@ -64,12 +93,12 @@ function saveLocalState(state: { portfolios: Portfolio[]; activePortfolioId: str
 }
 
 export const usePortfolioStore = create<PortfolioState>((set, get) => {
-  const initial = loadLocalState();
-
   return {
-    portfolios: initial.portfolios,
-    activePortfolioId: initial.activePortfolioId,
-    transactions: initial.transactions,
+    portfolios: INITIAL_PORTFOLIOS,
+    activePortfolioId: 'p-default',
+    transactions: [],
+    livePrices: {},
+    isRefreshingPrices: false,
     loading: false,
     error: null,
 
@@ -80,6 +109,132 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         activePortfolioId: id,
         transactions: get().transactions,
       });
+    },
+
+    fetchLivePrices: async () => {
+      const { transactions } = get();
+      if (!transactions || transactions.length === 0) return;
+
+      const assetMap = new Map<string, { symbol: string; rawSymbol: string; assetType: 'stock' | 'fund' }>();
+      for (const t of transactions) {
+        const { symbol: cleanSym, assetType: cleanType } = cleanSymbol(t.symbol);
+        const effectiveType = t.assetType === 'fund' || cleanType === 'fund' ? 'fund' : 'stock';
+        if (cleanSym) {
+          assetMap.set(`${effectiveType}_${cleanSym}`, {
+            symbol: cleanSym,
+            rawSymbol: t.symbol,
+            assetType: effectiveType,
+          });
+        }
+      }
+
+      const assets = Array.from(assetMap.values());
+      if (assets.length === 0) return;
+
+      set({ isRefreshingPrices: true });
+
+      const newQuotes: Record<string, PriceQuote> = { ...get().livePrices };
+
+      // 1. Fetch live USD/TRY exchange rate
+      try {
+        const fxRes = await fetch('/api/stocks/USDTRY');
+        if (fxRes.ok) {
+          const fxJson = await fxRes.json();
+          if (fxJson.success && fxJson.data && fxJson.data.price > 0) {
+            const fxQuote: PriceQuote = {
+              price: Number(fxJson.data.price),
+              changePercent: Number(fxJson.data.changePercent || 0),
+            };
+            newQuotes['USDTRY'] = fxQuote;
+            newQuotes['USD'] = fxQuote;
+            newQuotes['USDTRY=X'] = fxQuote;
+          }
+        }
+      } catch (e) {
+        console.warn('[PortfolioStore] Failed to fetch live USDTRY rate:', e);
+      }
+
+      await Promise.all(
+        assets.map(async ({ symbol, rawSymbol, assetType }) => {
+          try {
+            const normKey = normalizeSymbolKey(symbol);
+            const querySymbol = normKey || symbol;
+
+            if (assetType === 'fund') {
+              try {
+                const res = await fetch(`/api/funds/${encodeURIComponent(symbol)}`);
+                if (res.ok) {
+                  const json = await res.json();
+                  if (json.success && json.data && json.data.price > 0) {
+                    const quote: PriceQuote = {
+                      price: Number(json.data.price),
+                      changePercent: Number(json.data.dailyReturn || 0),
+                    };
+                    newQuotes[symbol] = quote;
+                    newQuotes[rawSymbol] = quote;
+                    newQuotes[normKey] = quote;
+                    newQuotes[`FON:${symbol}`] = quote;
+                    newQuotes[`IST:${symbol}`] = quote;
+                  }
+                }
+              } catch (err) {
+                console.warn(`[PortfolioStore] Failed to fetch live fund price for ${symbol}:`, err);
+              }
+              return;
+            }
+
+            // Asset is a stock or commodity
+            try {
+              const res = await fetch(`/api/stocks/${encodeURIComponent(querySymbol)}`);
+              if (res.ok) {
+                const json = await res.json();
+                if (json.success && json.data && (json.data.price > 0 || json.data.basePrice > 0)) {
+                  const p = Number(json.data.price || json.data.basePrice);
+                  const quote: PriceQuote = {
+                    price: p,
+                    changePercent: Number(json.data.changePercent || 0),
+                  };
+                  newQuotes[symbol] = quote;
+                  newQuotes[rawSymbol] = quote;
+                  newQuotes[normKey] = quote;
+                  newQuotes[`FON:${symbol}`] = quote;
+                  newQuotes[`IST:${symbol}`] = quote;
+                  return;
+                }
+              }
+            } catch (err) {
+              console.warn(`[PortfolioStore] Failed to fetch live stock price for ${querySymbol}:`, err);
+            }
+
+            // Fallback for 3-letter codes that might be TEFAS funds
+            if (symbol.length === 3) {
+              try {
+                const fundRes = await fetch(`/api/funds/${encodeURIComponent(symbol)}`);
+                if (fundRes.ok) {
+                  const fundJson = await fundRes.json();
+                  if (fundJson.success && fundJson.data && fundJson.data.price > 0) {
+                    const quote: PriceQuote = {
+                      price: Number(fundJson.data.price),
+                      changePercent: Number(fundJson.data.dailyReturn || 0),
+                    };
+                    newQuotes[symbol] = quote;
+                    newQuotes[rawSymbol] = quote;
+                    newQuotes[normKey] = quote;
+                    newQuotes[`FON:${symbol}`] = quote;
+                    newQuotes[`IST:${symbol}`] = quote;
+                  }
+                }
+              } catch (err) {
+                // ignore
+              }
+            }
+          } catch (e) {
+            console.warn(`[PortfolioStore] Failed to fetch live price for ${symbol}:`, e);
+          }
+        })
+      );
+
+      set({ livePrices: newQuotes, isRefreshingPrices: false });
     },
 
     fetchPortfoliosAndTransactions: async () => {
@@ -98,6 +253,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             transactions: local.transactions,
             loading: false,
           });
+          get().fetchLivePrices();
           return;
         }
 
@@ -140,7 +296,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         }));
 
         const currentActiveId = get().activePortfolioId;
-        const validActiveId = mappedPortfolios.some((p) => p.id === currentActiveId)
+        let validActiveId = mappedPortfolios.some((p) => p.id === currentActiveId)
           ? currentActiveId
           : mappedPortfolios[0]?.id || 'p-default';
 
@@ -153,21 +309,35 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
         if (txError) throw txError;
 
-        const mappedTransactions: Transaction[] = (dbTransactions || []).map((t: any) => ({
-          id: t.id,
-          portfolioId: t.portfolio_id,
-          userId: t.user_id,
-          symbol: t.symbol,
-          assetType: t.asset_type,
-          transactionType: t.transaction_type,
-          quantity: Number(t.quantity),
-          price: Number(t.price),
-          commission: Number(t.commission || 0),
-          transactionDate: t.transaction_date,
-          exchange: t.exchange,
-          notes: t.notes,
-          createdAt: t.created_at,
-        }));
+        const mappedTransactions: Transaction[] = (dbTransactions || []).map((t: any) => {
+          const { symbol, assetType, exchange } = cleanSymbol(t.symbol);
+          const effectiveEx = exchange || t.exchange || (assetType === 'fund' ? 'TEFAS' : 'BIST');
+          const isUsd = (t.currency || '').toUpperCase() === 'USD' || effectiveEx === 'NASDAQ' || effectiveEx === 'NYSE';
+          return {
+            id: t.id,
+            portfolioId: t.portfolio_id,
+            userId: t.user_id,
+            symbol,
+            assetType: t.asset_type === 'fund' || assetType === 'fund' ? 'fund' : 'stock',
+            currency: isUsd ? 'USD' : t.currency || 'TRY',
+            exchangeRate: t.exchange_rate != null ? Number(t.exchange_rate) : undefined,
+            transactionType: t.transaction_type,
+            quantity: Number(t.quantity),
+            price: Number(t.price),
+            commission: Number(t.commission || 0),
+            transactionDate: t.transaction_date,
+            exchange: effectiveEx,
+            notes: t.notes,
+            createdAt: t.created_at,
+          };
+        });
+
+        if (mappedTransactions.length > 0 && !mappedTransactions.some((t) => t.portfolioId === validActiveId)) {
+          const portWithTxs = mappedPortfolios.find((p) => mappedTransactions.some((t) => t.portfolioId === p.id));
+          if (portWithTxs) {
+            validActiveId = portWithTxs.id;
+          }
+        }
 
         set({
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
@@ -175,6 +345,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           transactions: mappedTransactions,
           loading: false,
         });
+
+        get().fetchLivePrices();
 
         saveLocalState({
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
@@ -321,6 +493,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
               quantity: tx.quantity,
               price: tx.price,
               commission: tx.commission || 0,
+              currency: tx.currency || 'TRY',
+              exchange_rate: tx.exchangeRate || null,
               transaction_date: tx.transactionDate,
               exchange: tx.exchange || null,
               notes: tx.notes || null,
@@ -340,6 +514,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
               transactionType: data.transaction_type,
               quantity: Number(data.quantity),
               price: Number(data.price),
+              currency: data.currency || tx.currency || 'TRY',
+              exchangeRate: data.exchange_rate != null ? Number(data.exchange_rate) : tx.exchangeRate,
               commission: Number(data.commission || 0),
               transactionDate: data.transaction_date,
               exchange: data.exchange,
@@ -357,6 +533,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
               return { transactions: updated };
             });
 
+            get().fetchLivePrices();
             return newTx;
           }
         }
@@ -366,6 +543,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           ...tx,
           id: `tx-${Date.now()}`,
           userId: user?.id || 'guest',
+          currency: tx.currency || 'TRY',
+          exchangeRate: tx.exchangeRate,
           createdAt: new Date().toISOString(),
         };
 
@@ -379,6 +558,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           return { transactions: updated };
         });
 
+        get().fetchLivePrices();
         return fallbackTx;
       } catch (e: any) {
         console.error('addTransaction error:', e);
@@ -434,6 +614,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             transaction_type: tx.transactionType,
             quantity: tx.quantity,
             price: tx.price,
+            currency: tx.currency || 'TRY',
+            exchange_rate: tx.exchangeRate || null,
             commission: tx.commission || 0,
             transaction_date: tx.transactionDate,
             exchange: tx.exchange || null,
@@ -448,7 +630,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           if (error) {
             console.error('Failed to insert batch transactions into Supabase:', error);
           } else if (data && data.length > 0) {
-            const newTxs: Transaction[] = data.map((d: any) => ({
+            const newTxs: Transaction[] = data.map((d: any, idx: number) => ({
               id: d.id,
               portfolioId: d.portfolio_id,
               userId: d.user_id,
@@ -457,6 +639,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
               transactionType: d.transaction_type,
               quantity: Number(d.quantity),
               price: Number(d.price),
+              currency: d.currency || txList[idx]?.currency || 'TRY',
+              exchangeRate: d.exchange_rate != null ? Number(d.exchange_rate) : txList[idx]?.exchangeRate,
               commission: Number(d.commission || 0),
               transactionDate: d.transaction_date,
               exchange: d.exchange,
@@ -474,6 +658,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
               return { transactions: updated };
             });
 
+            get().fetchLivePrices();
             return newTxs;
           }
         }
@@ -483,6 +668,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           ...tx,
           id: `tx-${Date.now()}-${idx}`,
           userId: user?.id || 'guest',
+          currency: tx.currency || 'TRY',
+          exchangeRate: tx.exchangeRate,
           createdAt: new Date().toISOString(),
         }));
 
@@ -496,6 +683,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           return { transactions: updated };
         });
 
+        get().fetchLivePrices();
         return fallbackTxs;
       } catch (e: any) {
         console.error('addBatchTransactions error:', e);
@@ -526,6 +714,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           return { transactions: updated };
         });
 
+        get().fetchLivePrices();
         return true;
       } catch (e: any) {
         console.error('deleteTransaction error:', e);
@@ -534,9 +723,9 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     },
 
     getSummary: () => {
-      const { transactions, activePortfolioId } = get();
+      const { transactions, activePortfolioId, livePrices } = get();
       const filtered = transactions.filter((t) => t.portfolioId === activePortfolioId);
-      return calculatePortfolioSummary(filtered);
+      return calculatePortfolioSummary(filtered, livePrices);
     },
   };
 });

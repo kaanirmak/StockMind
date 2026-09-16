@@ -1,6 +1,7 @@
-Tarih,Hisse Kodu (Sembol),İşlem Türü,Döviz Türü,Miktar (Adet),Birim Fiyat,Toplam Tutar,Notlar,Aracı Kurum / Kanal
-2025-10-10,GRAM_ALTIN,Alış,TRY,9.17,5429.22,49785.95,ALTIN SPOT,GARANTİ BANKASI
-2026-03-15,THYAO,Alış,TRY,100,285.50,28550.00,BIST 100 Havacılık,MİDAS
-2026-02-20,TI2,Alış,TRY,25000,0.1287,3217.50,İş Portföy Hisse Fonu,İŞ BANKASI
-2026-01-10,AAPL,Alış,USD,10,225.40,2254.00,Apple Teknoloji,MİDAS
-2026-04-05,EREGL,Satış,TRY,50,52.80,2640.00,Kar realizasyonu,GARANTİ BANKASI
+Tarih;Hisse Kodu (Sembol);İşlem Türü;Döviz Türü;Döviz Kuru (USD/TRY);Miktar (Adet);Birim Fiyat;Toplam Tutar;Notlar;Aracı Kurum / Kanal
+2025-10-10;GRAM_ALTIN;Alış;TRY;1,00;9,17;5.429,22;49.785,95;ALTIN SPOT;GARANTİ BANKASI
+2026-03-15;THYAO;Alış;TRY;1,00;100;285,50;28.550,00;BIST 100 Havacılık;MİDAS
+2026-02-20;THF;Alış;TRY;1,00;13328;2,923361;38.962,56;TEFAS Para Piyasası Fonu;İŞ BANKASI
+2026-01-10;AAPL;Alış;USD;34,50;10;225,40;2.254,00;Apple Teknoloji (USD);MİDAS
+2026-04-05;NVDA;Alış;USD;36,80;5;128,50;642,50;NVIDIA Yapay Zeka;MİDAS
+2026-04-05;EREGL;Satış;TRY;1,00;50;52,80;2.640,00;Kar realizasyonu;GARANTİ BANKASI

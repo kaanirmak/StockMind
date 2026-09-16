@@ -134,6 +134,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
         transactionType: r.data.transactionType,
         quantity: r.data.quantity,
         price: r.data.price,
+        currency: r.data.currency || 'TRY',
+        exchangeRate: r.data.exchangeRate,
         commission: r.data.commission,
         transactionDate: r.data.transactionDate,
         exchange: r.data.exchange,
@@ -168,10 +170,11 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
     }
   };
 
-  const totalValidCost = validRows.reduce(
-    (acc, r) => acc + (r.data.quantity * r.data.price) + (r.data.commission || 0),
-    0
-  );
+  const totalValidCost = validRows.reduce((acc, r) => {
+    const isUsd = (r.data.currency || '').toUpperCase() === 'USD' || r.data.exchange === 'NASDAQ' || r.data.exchange === 'NYSE';
+    const rate = isUsd ? (r.data.exchangeRate && r.data.exchangeRate > 0 ? r.data.exchangeRate : 38.5) : 1.0;
+    return acc + (r.data.quantity * r.data.price * rate) + ((r.data.commission || 0) * (isUsd ? rate : 1.0));
+  }, 0);
 
   return (
     <Modal
@@ -365,16 +368,20 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                           <th className="py-2.5 px-3 font-semibold">Tarih</th>
                           <th className="py-2.5 px-3 font-semibold">Sembol</th>
                           <th className="py-2.5 px-3 font-semibold">Tür</th>
-                          <th className="py-2.5 px-3 font-semibold">Varlık</th>
+                          <th className="py-2.5 px-3 font-semibold">Döviz / Kur</th>
                           <th className="py-2.5 px-3 font-semibold text-right">Adet</th>
-                          <th className="py-2.5 px-3 font-semibold text-right">Fiyat</th>
-                          <th className="py-2.5 px-3 font-semibold text-right">Tutar</th>
+                          <th className="py-2.5 px-3 font-semibold text-right">Birim Fiyat</th>
+                          <th className="py-2.5 px-3 font-semibold text-right">Toplam Tutar</th>
                           <th className="py-2.5 px-3 font-semibold text-center">İşlem</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {validRows.map((row, idx) => {
-                          const total = row.data.quantity * row.data.price;
+                          const isUsd = (row.data.currency || '').toUpperCase() === 'USD' || row.data.exchange === 'NASDAQ' || row.data.exchange === 'NYSE';
+                          const fxRate = isUsd ? (row.data.exchangeRate && row.data.exchangeRate > 0 ? row.data.exchangeRate : 38.5) : 1.0;
+                          const rawTotal = row.data.quantity * row.data.price;
+                          const totalInTry = isUsd ? rawTotal * fxRate : rawTotal;
+
                           return (
                             <tr key={idx} className="hover:bg-bg-secondary/40 transition-colors">
                               <td className="py-2 px-3 text-text-secondary whitespace-nowrap">
@@ -395,18 +402,27 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                                 </span>
                               </td>
                               <td className="py-2 px-3">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-bg-card border border-border text-text-muted font-medium">
-                                  {row.data.assetType === 'fund' ? 'TEFAS FON' : row.data.exchange || 'BIST'}
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${isUsd ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-bg-card border border-border text-text-muted'}`}>
+                                  {isUsd ? `USD (@ ${fxRate.toFixed(2)})` : 'TRY (₺)'}
                                 </span>
                               </td>
                               <td className="py-2 px-3 text-right text-text-primary font-medium">
-                                {row.data.quantity.toLocaleString('tr-TR')}
+                                {row.data.quantity.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
                               </td>
                               <td className="py-2 px-3 text-right text-text-primary font-medium">
-                                {row.data.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                {isUsd ? `$${row.data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}` : `₺${row.data.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}`}
                               </td>
-                              <td className="py-2 px-3 text-right text-text-primary font-bold">
-                                {total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                              <td className="py-2 px-3 text-right">
+                                <div className="flex flex-col items-end">
+                                  <span className="font-bold text-text-primary">
+                                    ₺{totalInTry.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                  </span>
+                                  {isUsd && (
+                                    <span className="text-[10px] text-text-muted">
+                                      ${rawTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="py-2 px-3 text-center">
                                 <button
@@ -435,7 +451,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                   <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary text-xs text-text-secondary">
                     <span>Toplam {validRows.length} İşlem</span>
                     <span className="font-bold text-text-primary">
-                      Toplam Hacim: {totalValidCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                      Toplam Portföy Maliyet Karşılığı: ₺{totalValidCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 )}

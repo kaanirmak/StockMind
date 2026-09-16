@@ -19,6 +19,8 @@ export default function PortfolioPage() {
     deleteTransaction,
     getSummary,
     fetchPortfoliosAndTransactions,
+    fetchLivePrices,
+    isRefreshingPrices,
   } = usePortfolioStore();
 
   const { showToast } = useToast();
@@ -28,8 +30,10 @@ export default function PortfolioPage() {
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
   const [activeTab, setActiveTab] = useState<'holdings' | 'transactions'>('holdings');
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     fetchPortfoliosAndTransactions();
   }, [fetchPortfoliosAndTransactions]);
 
@@ -38,6 +42,42 @@ export default function PortfolioPage() {
   const activeTransactions = transactions.filter((t) => t.portfolioId === activePortfolioId);
 
   const isProfit = summary.totalPnL >= 0;
+
+  if (!isMounted) {
+    return (
+      <div className="space-y-6 animate-pulse pb-12">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-bg-card rounded-lg border border-border" />
+            <div className="h-4 w-72 bg-bg-card rounded border border-border" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-10 w-28 bg-bg-card rounded-xl border border-border" />
+            <div className="h-10 w-28 bg-bg-card rounded-xl border border-border" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 rounded-2xl bg-bg-card border border-border" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="h-64 rounded-2xl bg-bg-card border border-border" />
+          <div className="lg:col-span-2 h-64 rounded-2xl bg-bg-card border border-border" />
+        </div>
+        <div className="h-96 rounded-2xl bg-bg-card border border-border" />
+      </div>
+    );
+  }
+
+  const handleRefreshPrices = async () => {
+    await fetchLivePrices();
+    showToast({
+      type: 'info',
+      title: 'Fiyatlar Güncellendi',
+      message: 'Tüm varlıkların anlık piyasa fiyatları güncellendi.',
+    });
+  };
 
   const handleCreatePortfolio = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,11 +99,11 @@ export default function PortfolioPage() {
       return;
     }
 
-    const headers = 'Sembol,Varlık Türü,Adet,Ortalama Maliyet,Son Fiyat,Toplam Değer,Kar Zarar,Kar Zarar Yüzdesi,Ağırlık\n';
+    const headers = 'Sembol,Varlık Türü,Adet,Ortalama Maliyet,Son Fiyat,Toplam Maliyet,Piyasa Değeri,Kar Zarar,Kar Zarar Yüzdesi,Ağırlık\n';
     const rows = summary.holdings
       .map(
         (h) =>
-          `${h.symbol},${h.assetType},${h.totalQuantity},${h.averageCost},${h.currentPrice},${h.currentValue},${h.pnl},${h.pnlPercent}%,%${h.weight}`
+          `${h.symbol},${h.assetType},${h.totalQuantity},${h.averageCost},${h.currentPrice},${h.totalCost},${h.currentValue},${h.pnl},${h.pnlPercent}%,%${h.weight}`
       )
       .join('\n');
 
@@ -95,7 +135,7 @@ export default function PortfolioPage() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Portföy Yönetimi</h1>
           <p className="text-text-secondary text-sm mt-1">
-            Varlıklarınızı, maliyetlerinizi, anlık kar/zararınızı ve dağılımınızı yönetin.
+            Varlıklarınızı, maliyetlerinizi, anlık kar/zararınızı ve toplam işlem hacminizi yönetin.
           </p>
         </div>
 
@@ -125,6 +165,27 @@ export default function PortfolioPage() {
               </svg>
             </button>
           </div>
+
+          {/* Live Price Refresh Button */}
+          <Button
+            variant="outline"
+            size="md"
+            onClick={handleRefreshPrices}
+            disabled={isRefreshingPrices}
+            title="Anlık Canlı Fiyatları Yenile"
+            leftIcon={
+              <svg
+                className={`w-4 h-4 text-accent ${isRefreshingPrices ? 'animate-spin' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            }
+          >
+            {isRefreshingPrices ? 'Fiyatlar Güncelleniyor...' : 'Fiyatları Yenile'}
+          </Button>
 
           {/* Excel Upload Button */}
           <Button
@@ -198,9 +259,29 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        {/* Daily PnL */}
+        {/* Total Turnover / Volume */}
         <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Günlük Değişim</p>
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Toplam İşlem Hacmi</p>
+          <h3 className="text-2xl font-black text-text-primary mt-1 font-mono">
+            ₺{summary.totalVolume.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+          </h3>
+          <div className="flex items-center gap-2 mt-2 text-xs text-text-muted">
+            <span className="text-emerald-400 font-medium">
+              Alış: ₺{summary.buyVolume.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+            </span>
+            <span>•</span>
+            <span className="text-rose-400 font-medium">
+              Satış: ₺{summary.sellVolume.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+            </span>
+          </div>
+        </div>
+
+        {/* Daily PnL & Position Count */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Günlük Değişim</p>
+            <span className="text-[11px] font-semibold text-text-muted">{summary.holdings.length} Pozisyon</span>
+          </div>
           <h3 className={`text-2xl font-black mt-1 font-mono ${summary.dailyPnL >= 0 ? 'text-success' : 'text-danger'}`}>
             {summary.dailyPnL >= 0 ? '+' : ''}₺{summary.dailyPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
           </h3>
@@ -208,18 +289,7 @@ export default function PortfolioPage() {
             <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
               {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
             </Badge>
-            <span className="text-text-muted">bugün</span>
-          </div>
-        </div>
-
-        {/* Active Holdings Count */}
-        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Varlık Sayısı</p>
-          <h3 className="text-2xl font-black text-text-primary mt-1 font-mono">
-            {summary.holdings.length} <span className="text-sm font-normal text-text-muted">Pozisyon</span>
-          </h3>
-          <div className="flex items-center gap-2 mt-2 text-xs text-text-muted">
-            <span>{activeTransactions.length} Toplam İşlem</span>
+            <span className="text-text-muted">bugün • {activeTransactions.length} işlem</span>
           </div>
         </div>
       </div>

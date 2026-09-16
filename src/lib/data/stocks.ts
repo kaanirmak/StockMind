@@ -1,5 +1,8 @@
 import { StockQuote } from '@/types/stock';
 import { calculateFuzzyScore, normalizeText, POPULAR_ALIASES } from '@/lib/utils/search';
+import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
+import { fetchTefasLiveDetail } from '@/lib/api/tefas';
+import { cleanSymbol } from '@/lib/utils/symbol';
 import {
   Candle,
   calculateBollingerBands,
@@ -225,39 +228,78 @@ export async function fetchAllTradingViewStocks(): Promise<{ bist: StockMarketIn
  * Fetch a specific symbol directly from TradingView Multi-Asset Scanner APIs (CFD, Forex, Crypto, BIST, US)
  */
 export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: boolean = false): Promise<StockMarketInfo | null> {
-  const sym = symbol.toUpperCase().trim();
-  if (!sym) return null;
+  const { symbol: cleanSym, assetType: cleanType } = cleanSymbol(symbol);
+  const originalSym = cleanSym.toUpperCase().trim();
+  if (!originalSym) return null;
+
+  let sym = originalSym;
+  if (sym === 'GRAM_ALTIN' || sym === 'GRAM ALTIN' || sym === 'ALTIN' || sym === 'GA') {
+    sym = 'XAUTRYG';
+  } else if (sym === 'GRAM_GUMUS' || sym === 'GRAM GUMUS' || sym === 'GUMUS') {
+    sym = 'XAGTRYG';
+  }
 
   // 1. Check local cache first
   const { bist, us } = await fetchAllTradingViewStocks();
-  const cached = [...bist, ...us].find((s) => s.symbol.toUpperCase() === sym);
-  if (cached) return cached;
+  const cached = [...bist, ...us].find((s) => s.symbol.toUpperCase() === sym || s.symbol.toUpperCase() === originalSym);
+  if (cached) return { ...cached, symbol: originalSym };
+
+  // 1.5 Check if symbol is a TEFAS fund (e.g. THF, MAC, TI2, TLY, etc.)
+  const isFundCode =
+    cleanType === 'fund' ||
+    (TEFAS_DIRECTORY as { code: string }[]).some(
+      (f) => f.code.toUpperCase() === sym || f.code.toUpperCase() === originalSym
+    ) ||
+    sym.length === 3;
+
+  if (isFundCode) {
+    try {
+      const fundDetail = await fetchTefasLiveDetail(originalSym);
+      if (fundDetail && fundDetail.price > 0) {
+        return {
+          symbol: originalSym,
+          name: fundDetail.name,
+          exchange: 'TEFAS' as any,
+          currency: 'TRY',
+          sector: fundDetail.category,
+          basePrice: fundDetail.price,
+          price: fundDetail.price,
+          change: Number(((fundDetail.price * fundDetail.dailyReturn) / 100).toFixed(4)),
+          changePercent: fundDetail.dailyReturn,
+          high: Number((fundDetail.price * 1.01).toFixed(4)),
+          low: Number((fundDetail.price * 0.99).toFixed(4)),
+          open: fundDetail.price,
+          close: fundDetail.price,
+          previousClose: fundDetail.price,
+          volume: (fundDetail.investorCount || 1000) * 100,
+          marketCap: fundDetail.totalValue || 100000000,
+          timestamp: new Date().toISOString(),
+        } as any;
+      }
+    } catch (e) {
+      console.warn(`Error resolving TEFAS fund ${originalSym} in stock lookup:`, e);
+    }
+  }
 
   try {
     // 2. Gram Altın (TL) live calculation (XAUUSD * USDTRY / 31.1034768)
-    if (sym === 'XAUTRYG' || sym === 'XAUTRY') {
+    if (sym === 'XAUTRYG' || sym === 'XAUTRY' || sym === 'GRAM_ALTIN' || sym === 'ALTIN' || sym === 'GA') {
       const [goldRes, fxRes] = await Promise.all([
-        fetch('https://scanner.tradingview.com/cfd/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filter: [{ left: 'name', operation: 'equal', right: 'XAUUSD' }],
-            columns: ['name', 'close', 'change', 'description'],
-          }),
+        fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d', {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          next: { revalidate: 30 },
         }).then((r) => r.json()).catch(() => null),
-        fetch('https://scanner.tradingview.com/forex/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filter: [{ left: 'name', operation: 'equal', right: 'USDTRY' }],
-            columns: ['name', 'close', 'change', 'description'],
-          }),
+        fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          next: { revalidate: 30 },
         }).then((r) => r.json()).catch(() => null),
       ]);
 
-      const goldPrice = goldRes?.data?.[0]?.d?.[1];
-      const fxPrice = fxRes?.data?.[0]?.d?.[1];
-      const goldChange = goldRes?.data?.[0]?.d?.[2] || 0;
+      const goldMeta = goldRes?.chart?.result?.[0]?.meta;
+      const fxMeta = fxRes?.chart?.result?.[0]?.meta;
+      const goldPrice = goldMeta?.regularMarketPrice || goldRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+      const fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+      const goldChange = goldMeta?.regularMarketChangePercent || 0;
 
       if (goldPrice && fxPrice) {
         const currentPrice = Number(((goldPrice * fxPrice) / 31.1034768).toFixed(2));
@@ -265,7 +307,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
 
         return {
-          symbol: sym,
+          symbol: originalSym,
           name: 'Gram Altın (TL)',
           exchange: 'BIST',
           currency: 'TRY',
@@ -287,29 +329,23 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
     }
 
     // 3. Gram Gümüş (TL) live calculation (SILVER * USDTRY / 31.1034768)
-    if (sym === 'XAGTRYG' || sym === 'XAGTRY') {
+    if (sym === 'XAGTRYG' || sym === 'XAGTRY' || sym === 'GRAM_GUMUS' || sym === 'GUMUS') {
       const [silverRes, fxRes] = await Promise.all([
-        fetch('https://scanner.tradingview.com/cfd/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filter: [{ left: 'name', operation: 'equal', right: 'SILVER' }],
-            columns: ['name', 'close', 'change', 'description'],
-          }),
+        fetch('https://query1.finance.yahoo.com/v8/finance/chart/SI=F?interval=1d&range=1d', {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          next: { revalidate: 30 },
         }).then((r) => r.json()).catch(() => null),
-        fetch('https://scanner.tradingview.com/forex/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filter: [{ left: 'name', operation: 'equal', right: 'USDTRY' }],
-            columns: ['name', 'close', 'change', 'description'],
-          }),
+        fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          next: { revalidate: 30 },
         }).then((r) => r.json()).catch(() => null),
       ]);
 
-      const silverPrice = silverRes?.data?.[0]?.d?.[1];
-      const fxPrice = fxRes?.data?.[0]?.d?.[1];
-      const silverChange = silverRes?.data?.[0]?.d?.[2] || 0;
+      const silverMeta = silverRes?.chart?.result?.[0]?.meta;
+      const fxMeta = fxRes?.chart?.result?.[0]?.meta;
+      const silverPrice = silverMeta?.regularMarketPrice || silverRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+      const fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+      const silverChange = silverMeta?.regularMarketChangePercent || 0;
 
       if (silverPrice && fxPrice) {
         const currentPrice = Number(((silverPrice * fxPrice) / 31.1034768).toFixed(2));
@@ -317,7 +353,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
 
         return {
-          symbol: sym,
+          symbol: originalSym,
           name: 'Gram Gümüş (TL)',
           exchange: 'BIST',
           currency: 'TRY',
@@ -736,7 +772,7 @@ export function getAllStocks(filter?: {
 }
 
 export async function getStockBySymbolLive(symbol: string): Promise<(StockMarketInfo & StockQuote) | null> {
-  const stock = await fetchSpecificSymbolLive(symbol, true);
+  const stock = await fetchSpecificSymbolLive(symbol, false);
   return stock as any;
 }
 
@@ -790,7 +826,7 @@ export async function fetchRealHistoricalCandles(
   else if (sym === 'UKOIL') querySymbol = 'BZ=F';
   else if (sym === 'USOIL') querySymbol = 'CL=F';
   else if (sym === 'XU100' || sym === 'BIST100') querySymbol = 'XU100.IS';
-  else if (sym === 'XAUTRYG' || sym === 'XAUTRY') querySymbol = 'ALTIN.IS';
+  else if (sym === 'XAUTRYG' || sym === 'XAUTRY' || sym === 'GRAM_ALTIN' || sym === 'ALTIN' || sym === 'GA') querySymbol = 'ALTIN.IS';
   else if (
     sym.length >= 4 &&
     !['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOG', 'GOOGL', 'META', 'NFLX', 'PLTR', 'UBER', 'COIN', 'SOFI', 'MSTR', 'SMCI', 'RKLB', 'HOOD', 'AMD', 'INTC', 'CRM'].includes(sym)

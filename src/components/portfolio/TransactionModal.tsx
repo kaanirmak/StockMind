@@ -5,6 +5,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Modal, Input, Button, Select, useToast } from '@/components/ui';
 import { POPULAR_STOCKS } from '@/lib/data/stocks';
 import { TEFAS_FUNDS } from '@/lib/data/funds';
+import { cleanSymbol } from '@/lib/utils/symbol';
 
 export interface TransactionModalProps {
   isOpen: boolean;
@@ -12,11 +13,13 @@ export interface TransactionModalProps {
 }
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose }) => {
-  const { addTransaction, activePortfolioId } = usePortfolioStore();
+  const { addTransaction, activePortfolioId, livePrices } = usePortfolioStore();
   const { showToast } = useToast();
 
   const [assetType, setAssetType] = useState<'stock' | 'fund'>('stock');
   const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy');
+  const [currency, setCurrency] = useState<'TRY' | 'USD'>('TRY');
+  const [exchangeRate, setExchangeRate] = useState<string>('38.50');
   const [symbol, setSymbol] = useState('');
   const [quantity, setQuantity] = useState<number>(100);
   const [price, setPrice] = useState<string>('');
@@ -24,17 +27,53 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
 
-  const handleSymbolChange = (sym: string) => {
+  const liveUsdRate =
+    (typeof livePrices?.['USDTRY'] === 'object' ? livePrices['USDTRY']?.price : typeof livePrices?.['USDTRY'] === 'number' ? livePrices['USDTRY'] : 0) ||
+    (typeof livePrices?.['USD'] === 'object' ? livePrices['USD']?.price : typeof livePrices?.['USD'] === 'number' ? livePrices['USD'] : 0) ||
+    38.5;
+
+  const handleSymbolChange = async (sym: string) => {
     setSymbol(sym);
-    if (assetType === 'stock') {
-      const stock = POPULAR_STOCKS.find((s) => s.symbol.toUpperCase() === sym.toUpperCase());
-      if (stock) {
-        setPrice(stock.basePrice.toString());
-      }
-    } else {
-      const fund = TEFAS_FUNDS.find((f) => f.code.toUpperCase() === sym.toUpperCase());
-      if (fund) {
-        setPrice(fund.price.toString());
+    const { symbol: cleanSym, assetType: detectedType, exchange } = cleanSymbol(sym);
+    if (detectedType === 'fund') {
+      setAssetType('fund');
+      setCurrency('TRY');
+    } else if (exchange === 'NASDAQ' || exchange === 'NYSE') {
+      setCurrency('USD');
+      setExchangeRate(liveUsdRate.toFixed(2));
+    }
+
+    if (cleanSym.length >= 3) {
+      if (assetType === 'fund' || detectedType === 'fund') {
+        try {
+          const res = await fetch(`/api/funds/${encodeURIComponent(cleanSym)}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.data && json.data.price > 0) {
+              setPrice(json.data.price.toString());
+              return;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      } else {
+        try {
+          const res = await fetch(`/api/stocks/${encodeURIComponent(cleanSym)}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.data && (json.data.price > 0 || json.data.basePrice > 0)) {
+              setPrice((json.data.price || json.data.basePrice).toString());
+              if (json.data.currency === 'USD') {
+                setCurrency('USD');
+                setExchangeRate(liveUsdRate.toFixed(2));
+              }
+              return;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
       }
     }
   };
@@ -46,32 +85,43 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
       return;
     }
 
-    const exchange =
-      assetType === 'fund'
+    const { symbol: cleanSym, assetType: detectedType, exchange: detectedEx } = cleanSymbol(symbol);
+    const finalType = assetType || detectedType;
+    const finalEx =
+      finalType === 'fund'
         ? 'TEFAS'
-        : POPULAR_STOCKS.find((s) => s.symbol.toUpperCase() === symbol.toUpperCase())?.exchange || 'BIST';
+        : POPULAR_STOCKS.find((s) => s.symbol.toUpperCase() === cleanSym.toUpperCase())?.exchange || detectedEx || (currency === 'USD' ? 'NASDAQ' : 'BIST');
+
+    const fxRateNum = currency === 'USD' ? Number(exchangeRate) || liveUsdRate : 1.0;
 
     addTransaction({
       portfolioId: activePortfolioId,
-      symbol: symbol.toUpperCase(),
-      assetType,
+      symbol: cleanSym,
+      assetType: finalType,
       transactionType,
       quantity: Number(quantity),
       price: Number(price),
+      currency,
+      exchangeRate: currency === 'USD' ? fxRateNum : undefined,
       commission: Number(commission),
       transactionDate: date,
-      exchange: exchange as any,
+      exchange: finalEx as any,
       notes: notes || null,
     });
 
     showToast({
       type: 'success',
       title: 'İşlem Başarıyla Eklendi',
-      message: `${quantity} adet ${symbol.toUpperCase()} işlemi portföyünüze kaydedildi.`,
+      message: `${quantity} adet ${cleanSym} işlemi portföyünüze kaydedildi.`,
     });
 
     onClose();
   };
+
+  const isUsd = currency === 'USD';
+  const fx = Number(exchangeRate) || liveUsdRate;
+  const rawTotal = Number(price || 0) * (quantity || 0) + (commission || 0);
+  const totalInTry = isUsd ? rawTotal * fx : rawTotal;
 
   return (
     <Modal
@@ -105,6 +155,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
               setAssetType('fund');
               setSymbol('');
               setPrice('');
+              setCurrency('TRY');
             }}
             className={`py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
               assetType === 'fund'
@@ -116,30 +167,60 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
           </button>
         </div>
 
-        {/* Transaction Type */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setTransactionType('buy')}
-            className={`py-2 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
-              transactionType === 'buy'
-                ? 'bg-success/20 border-success text-success'
-                : 'bg-bg-tertiary border-border text-text-muted'
-            }`}
-          >
-            + Alış (BUY)
-          </button>
-          <button
-            type="button"
-            onClick={() => setTransactionType('sell')}
-            className={`py-2 rounded-xl font-bold text-xs border transition-all cursor-pointer ${
-              transactionType === 'sell'
-                ? 'bg-danger/20 border-danger text-danger'
-                : 'bg-bg-tertiary border-border text-text-muted'
-            }`}
-          >
-            - Satış (SELL)
-          </button>
+        {/* Transaction Type & Currency */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => setTransactionType('buy')}
+              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                transactionType === 'buy'
+                  ? 'bg-success/20 border border-success text-success'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              + Alış
+            </button>
+            <button
+              type="button"
+              onClick={() => setTransactionType('sell')}
+              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                transactionType === 'sell'
+                  ? 'bg-danger/20 border border-danger text-danger'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              - Satış
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => setCurrency('TRY')}
+              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                currency === 'TRY'
+                  ? 'bg-accent text-white shadow'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              ₺ TRY
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCurrency('USD');
+                setExchangeRate(liveUsdRate.toFixed(2));
+              }}
+              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                currency === 'USD'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              $ USD
+            </button>
+          </div>
         </div>
 
         {/* Quick Symbol Select or Input */}
@@ -157,7 +238,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             {assetType === 'stock'
               ? POPULAR_STOCKS.map((s) => (
                   <option key={s.symbol} value={s.symbol}>
-                    {s.symbol} — {s.name} ({s.exchange})
+                    {s.symbol} — {s.name} ({s.currency === 'USD' ? '$' : '₺'} {s.exchange})
                   </option>
                 ))
               : TEFAS_FUNDS.map((f) => (
@@ -168,12 +249,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
           </select>
         </div>
 
-        {/* Price & Quantity in 2 columns */}
+        {/* Price, FX Rate & Quantity */}
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Birim Fiyat (₺)"
+            label={`Birim Fiyat (${currency === 'USD' ? '$' : '₺'})`}
             type="number"
-            step="0.0001"
+            step="0.000001"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             required
@@ -181,12 +262,28 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
           <Input
             label="Adet / Lot"
             type="number"
-            min="1"
+            min="0.0001"
+            step="any"
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
             required
           />
         </div>
+
+        {/* If USD is selected, show FX rate */}
+        {isUsd && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <Input
+              label="İşlem Kuru (USD/TRY)"
+              type="number"
+              step="0.01"
+              value={exchangeRate}
+              onChange={(e) => setExchangeRate(e.target.value)}
+              helperText={`Anlık kur: 1 USD = ₺${liveUsdRate.toFixed(2)} (Geçmiş işlem kurunuzu girebilirsiniz)`}
+              required
+            />
+          </div>
+        )}
 
         {/* Date & Commission */}
         <div className="grid grid-cols-2 gap-4">
@@ -198,7 +295,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             required
           />
           <Input
-            label="Komisyon Tutarı (₺)"
+            label={`Komisyon Tutarı (${currency === 'USD' ? '$' : '₺'})`}
             type="number"
             step="0.01"
             value={commission}
@@ -214,14 +311,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
         />
 
         {/* Total Summary */}
-        <div className="bg-bg-tertiary p-3 rounded-xl border border-border flex justify-between items-center text-sm">
-          <span className="text-text-secondary">Toplam Tutar:</span>
-          <span className="font-bold font-mono text-text-primary">
-            ₺
-            {(Number(price || 0) * (quantity || 0) + (commission || 0)).toLocaleString('tr-TR', {
-              minimumFractionDigits: 2,
-            })}
-          </span>
+        <div className="bg-bg-tertiary p-3.5 rounded-xl border border-border space-y-1">
+          <div className="flex justify-between items-center text-xs text-text-secondary">
+            <span>İşlem Tutarı:</span>
+            <span className="font-mono font-semibold text-text-primary">
+              {isUsd ? '$' : '₺'}
+              {rawTotal.toLocaleString(isUsd ? 'en-US' : 'tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          {isUsd && (
+            <div className="flex justify-between items-center text-xs font-bold pt-1 border-t border-border/40 text-emerald-400">
+              <span>TL Portföy Karşılığı (@ {fx.toFixed(2)}):</span>
+              <span className="font-mono">
+                ₺{totalInTry.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}

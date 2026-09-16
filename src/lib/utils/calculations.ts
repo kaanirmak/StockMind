@@ -115,6 +115,9 @@ export function calculatePortfolioSummary(
     totalCost,
     totalPnL,
     totalPnLPercent,
+    totalVolume: totalCost,
+    buyVolume: totalCost,
+    sellVolume: 0,
     holdings,
   };
 }

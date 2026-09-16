@@ -15,12 +15,18 @@ export async function GET(
 
     const supabase = createAdminClient();
 
-    // 1. Check if fund exists in Supabase DB
-    const dbFund = await getFundByCodeFromDatabase(upperCode);
+    // 1. Fetch live detail and price history from official TEFAS API
+    const [liveDetail, realHistory, dbFund] = await Promise.all([
+      fetchTefasLiveDetail(upperCode),
+      fetchTefasPriceHistory(upperCode, days),
+      getFundByCodeFromDatabase(upperCode),
+    ]);
 
-    // 2. Fetch price history from DB
-    let history: { date: string; price: number }[] = [];
-    if (dbFund) {
+    let fund = liveDetail || dbFund || getFundByCode(upperCode);
+    let history: { date: string; price: number }[] = realHistory;
+
+    // If live history empty, try fetching from DB history table
+    if (history.length === 0 && dbFund) {
       const { data: dbHistory } = await supabase
         .from('fund_daily_history')
         .select('price_date, price')
@@ -36,28 +42,18 @@ export async function GET(
       }
     }
 
-    // 3. If fund is not in DB or history is empty or live detail requested, query official TEFAS API
-    let fund = dbFund;
-    if (!fund || history.length === 0) {
-      const [liveDetail, realHistory] = await Promise.all([
-        fetchTefasLiveDetail(upperCode),
-        fetchTefasPriceHistory(upperCode, days),
-      ]);
-
-      if (liveDetail) {
-        fund = liveDetail;
-
-        // Asynchronously persist to DB in background
-        (async () => {
-          try {
-            await supabase.from('funds').upsert(
-              {
-                code: liveDetail.code,
-                name: liveDetail.name,
-                category: liveDetail.category,
-                founder: liveDetail.founder,
-                price: liveDetail.price,
-                daily_return: liveDetail.dailyReturn,
+    // If live detail fetched, persist to DB in background
+    if (liveDetail) {
+      (async () => {
+        try {
+          await supabase.from('funds').upsert(
+            {
+              code: liveDetail.code,
+              name: liveDetail.name,
+              category: liveDetail.category,
+              founder: liveDetail.founder,
+              price: liveDetail.price,
+              daily_return: liveDetail.dailyReturn,
                 monthly_return: liveDetail.monthlyReturn,
                 return_3m: liveDetail.return3m,
                 return_6m: liveDetail.return6m,
@@ -90,13 +86,6 @@ export async function GET(
             console.warn('[Fund API] Background DB cache error:', e);
           }
         })();
-      } else if (!fund) {
-        fund = getFundByCode(upperCode);
-      }
-
-      if (realHistory && realHistory.length > 0) {
-        history = realHistory;
-      }
     }
 
     if (!fund) {
