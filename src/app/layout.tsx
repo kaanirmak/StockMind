@@ -19,6 +19,11 @@ export const metadata: Metadata = {
     'StockMind',
   ],
   authors: [{ name: 'StockMind' }],
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/apple-icon.png',
+  },
   openGraph: {
     title: 'StockMind — Akıllı Borsa & Fon Takip Platformu',
     description:

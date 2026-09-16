@@ -27,18 +27,20 @@ export default function Sidebar() {
       }`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-border">
-        <div className="w-9 h-9 rounded-lg gradient-accent flex items-center justify-center shrink-0">
-          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
+      <Link href="/dashboard" className="flex items-center gap-3 px-4 h-16 border-b border-border group hover:bg-bg-hover/50 transition-colors">
+        <div className="w-9 h-9 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-sm group-hover:scale-105 transition-transform">
+          <img
+            src="/logo.png"
+            alt="StockMind"
+            className="w-full h-full object-contain"
+          />
         </div>
         {!collapsed && (
           <span className="text-lg font-bold text-text-primary whitespace-nowrap">
             Stock<span className="gradient-text">Mind</span>
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">

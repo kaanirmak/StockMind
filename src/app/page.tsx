@@ -16,16 +16,18 @@ export default function LandingPage() {
 
       {/* Navbar */}
       <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 h-20">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center">
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-            </svg>
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-11 h-11 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center p-1.5 shadow-lg shadow-accent/10 group-hover:scale-105 transition-transform">
+            <img
+              src="/logo.png"
+              alt="StockMind Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <span className="text-2xl font-bold text-text-primary">
             Stock<span className="gradient-text">Mind</span>
           </span>
-        </div>
+        </Link>
         <div className="flex items-center gap-4">
           <Link
             href="/login"
