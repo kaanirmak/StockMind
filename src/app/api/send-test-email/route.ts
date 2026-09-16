@@ -4,7 +4,7 @@ import { sendTestEmail } from '@/lib/email/service';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { to, userName, subject, portfolioSummary } = body;
+    const { to, userName, subject, portfolioSummary, customSmtp } = body;
 
     if (!to) {
       return NextResponse.json(
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
       userName: userName || 'Kaan Irmak',
       subject,
       portfolioSummary,
+      customSmtp,
     });
 
     return NextResponse.json(result);

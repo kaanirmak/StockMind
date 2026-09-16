@@ -21,6 +21,14 @@ export interface EmailPayload {
     totalPnL?: number;
     totalPnLPercent?: number;
   };
+  customSmtp?: {
+    service?: string;
+    host?: string;
+    port?: number;
+    user?: string;
+    pass?: string;
+    from?: string;
+  };
 }
 
 export function generateStockMindEmailHtml(userName: string = 'Kaan Irmak', payload?: Partial<EmailPayload>): string {
@@ -158,36 +166,44 @@ export async function sendTestEmail(payload: EmailPayload): Promise<{
   const html = generateStockMindEmailHtml(userName, payload);
   const subject = payload.subject || `StockMind Test Bildirimi • ${userName} (${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})`;
 
-  // 1. If SMTP environment variables exist, send via standard SMTP or Google/Gmail SMTP
-  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  // Determine SMTP Configuration (custom user settings priority, fallback to environment)
+  const smtpUser = payload.customSmtp?.user || process.env.SMTP_USER;
+  const smtpPass = payload.customSmtp?.pass || process.env.SMTP_PASS;
+  const smtpHost = payload.customSmtp?.host || process.env.SMTP_HOST;
+  const smtpPort = payload.customSmtp?.port || Number(process.env.SMTP_PORT) || 587;
+  const smtpFrom = payload.customSmtp?.from || process.env.SMTP_FROM || `StockMind <${smtpUser}>`;
+  const smtpService = payload.customSmtp?.service || process.env.SMTP_SERVICE;
+
+  // 1. If SMTP credentials exist, send via standard SMTP or Google/Gmail SMTP
+  if (smtpUser && smtpPass) {
     try {
       const isGmail =
-        process.env.SMTP_SERVICE === 'gmail' ||
-        process.env.SMTP_HOST?.includes('gmail') ||
-        (!process.env.SMTP_HOST && process.env.SMTP_USER?.includes('@gmail.com'));
+        smtpService === 'gmail' ||
+        smtpHost?.includes('gmail') ||
+        (!smtpHost && smtpUser?.includes('@gmail.com'));
 
-      const cleanPass = process.env.SMTP_PASS.replace(/\s+/g, '');
+      const cleanPass = smtpPass.replace(/\s+/g, '');
 
       const transporter = isGmail
         ? nodemailer.createTransport({
             service: 'gmail',
             auth: {
-              user: process.env.SMTP_USER,
+              user: smtpUser,
               pass: cleanPass,
             },
           })
         : nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: Number(process.env.SMTP_PORT) || 587,
-            secure: process.env.SMTP_SECURE === 'true' || Number(process.env.SMTP_PORT) === 465,
+            host: smtpHost || 'smtp.gmail.com',
+            port: smtpPort,
+            secure: smtpPort === 465,
             auth: {
-              user: process.env.SMTP_USER,
+              user: smtpUser,
               pass: cleanPass,
             },
           });
 
       const info = await transporter.sendMail({
-        from: `StockMind Bildirimleri <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+        from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
         to,
         subject,
         html,
@@ -196,7 +212,7 @@ export async function sendTestEmail(payload: EmailPayload): Promise<{
       return {
         success: true,
         message: `E-posta başarıyla ${to} adresine gönderildi (MessageId: ${info.messageId})`,
-        method: isGmail ? 'google_smtp' : 'smtp',
+        method: isGmail ? 'google_smtp' : 'custom_smtp',
       };
     } catch (err: any) {
       console.warn('Custom SMTP delivery failed, trying Supabase / Ethereal fallback:', err.message);
