@@ -280,6 +280,16 @@ export default function Header() {
 
       {/* Right Side */}
       <div className="flex items-center gap-3 ml-4">
+        {/* Guest Login Direct CTA */}
+        {!profile && (
+          <Link
+            href="/login"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent/15 border border-accent/30 text-accent hover:bg-accent/25 text-xs font-semibold transition-all cursor-pointer"
+          >
+            <span>Giriş Yap</span>
+          </Link>
+        )}
+
         {/* Notifications */}
         <button className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -295,14 +305,19 @@ export default function Header() {
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-bg-hover transition-all duration-200 cursor-pointer"
           >
-            <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center text-white text-sm font-semibold">
-              {profile?.fullName?.charAt(0)?.toUpperCase() || profile?.username?.charAt(0)?.toUpperCase() || '?'}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold shadow-sm ${
+              profile ? 'gradient-accent' : 'bg-amber-500/80'
+            }`}>
+              {profile?.fullName?.charAt(0)?.toUpperCase() || profile?.username?.charAt(0)?.toUpperCase() || 'M'}
             </div>
-            {profile && (
-              <span className="hidden lg:block text-sm font-medium text-text-primary max-w-[120px] truncate">
-                {profile.fullName || profile.username || 'Kullanıcı'}
+            <div className="hidden lg:flex flex-col text-left">
+              <span className="text-xs font-bold text-text-primary max-w-[120px] truncate leading-tight">
+                {profile?.fullName || profile?.username || 'Misafir Kullanıcı'}
               </span>
-            )}
+              <span className="text-[10px] text-text-muted">
+                {profile ? 'Hesabım' : 'Misafir Modu'}
+              </span>
+            </div>
             <svg className={`w-4 h-4 text-text-muted transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
             </svg>
@@ -310,17 +325,41 @@ export default function Header() {
 
           {/* Dropdown */}
           {showUserMenu && (
-            <div className="absolute right-0 top-full mt-2 w-56 glass-card rounded-xl border border-border shadow-elevated py-1 animate-scale-in origin-top-right z-50">
-              {profile && (
-                <div className="px-4 py-3 border-b border-border">
-                  <p className="text-sm font-medium text-text-primary truncate">
-                    {profile.fullName || 'Kullanıcı'}
-                  </p>
-                  <p className="text-xs text-text-muted truncate mt-0.5">
-                    {profile.username || ''}
-                  </p>
-                </div>
+            <div className="absolute right-0 top-full mt-2 w-60 glass-card rounded-xl border border-border shadow-elevated py-1 animate-scale-in origin-top-right z-50">
+              <div className="px-4 py-3 border-b border-border">
+                <p className="text-sm font-bold text-text-primary truncate">
+                  {profile?.fullName || 'Misafir Kullanıcı'}
+                </p>
+                <p className="text-xs text-text-muted truncate mt-0.5">
+                  {profile?.username || 'Giriş Yapılmadı'}
+                </p>
+              </div>
+
+              {!profile && (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-accent font-semibold hover:bg-accent/10 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                    </svg>
+                    Giriş Yap
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setShowUserMenu(false)}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-text-primary hover:bg-bg-hover transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 75v6m3-3h-6m-1.5-4.5a3 3 0 11-6 0 3 3 0 016 0zM4 19a6 6 0 0112 0v1H4v-1z" />
+                    </svg>
+                    Yeni Hesap Oluştur
+                  </Link>
+                </>
               )}
+
               <Link
                 href="/settings"
                 onClick={() => setShowUserMenu(false)}
@@ -332,18 +371,21 @@ export default function Header() {
                 </svg>
                 Ayarlar
               </Link>
-              <button
-                onClick={() => {
-                  setShowUserMenu(false);
-                  signOut();
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 text-sm text-danger hover:bg-danger-light transition-colors w-full cursor-pointer"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-                </svg>
-                Çıkış Yap
-              </button>
+
+              {profile && (
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    signOut();
+                  }}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-danger hover:bg-danger-light transition-colors w-full cursor-pointer border-t border-border/40 mt-1"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                  </svg>
+                  Çıkış Yap
+                </button>
+              )}
             </div>
           )}
         </div>

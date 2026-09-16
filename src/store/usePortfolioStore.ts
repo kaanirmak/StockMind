@@ -13,17 +13,19 @@ interface PortfolioState {
   isRefreshingPrices: boolean;
   loading: boolean;
   error: string | null;
+  currentUserId: string | null;
   fetchPortfoliosAndTransactions: () => Promise<void>;
   fetchLivePrices: () => Promise<void>;
   setActivePortfolioId: (id: string) => void;
   addPortfolio: (name: string, description?: string) => Promise<Portfolio | null>;
+  deletePortfolio: (id: string) => Promise<boolean>;
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'userId'>) => Promise<Transaction | null>;
   addBatchTransactions: (txList: Omit<Transaction, 'id' | 'createdAt' | 'userId'>[]) => Promise<Transaction[]>;
   deleteTransaction: (id: string) => Promise<boolean>;
+  clearPortfolioTransactions: (portfolioId: string) => Promise<boolean>;
+  resetStore: () => void;
   getSummary: () => PortfolioSummary;
 }
-
-const LOCAL_STORAGE_KEY = 'stockmind_portfolio_state_v1';
 
 const INITIAL_PORTFOLIOS: Portfolio[] = [
   {
@@ -37,12 +39,71 @@ const INITIAL_PORTFOLIOS: Portfolio[] = [
   },
 ];
 
-function loadLocalState(): { portfolios: Portfolio[]; activePortfolioId: string; transactions: Transaction[] } {
+function getLocalStorageKey(userId?: string | null): string {
+  if (userId && userId !== 'guest') {
+    return `stockmind_portfolio_state_user_${userId}`;
+  }
+  return 'stockmind_portfolio_state_guest';
+}
+
+function isUuid(str?: string | null): boolean {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+function parseTransactionFromDb(t: any): Transaction {
+  const { symbol, assetType, exchange } = cleanSymbol(t.symbol);
+  const effectiveEx = exchange || t.exchange || (assetType === 'fund' ? 'TEFAS' : 'BIST');
+
+  let currency = t.currency;
+  let exchangeRate = t.exchange_rate != null ? Number(t.exchange_rate) : undefined;
+  let cleanNotes = t.notes || undefined;
+
+  // Extract from notes if encoded via fallback
+  if (t.notes && typeof t.notes === 'string' && t.notes.includes('[CCY:')) {
+    const match = t.notes.match(/\[CCY:([A-Z]+)(?:\|FX:([0-9.]+))?\]/);
+    if (match) {
+      if (!currency || currency === 'TRY') {
+        currency = match[1];
+      }
+      if (!exchangeRate && match[2]) {
+        exchangeRate = Number(match[2]);
+      }
+      cleanNotes = t.notes.replace(/\[CCY:[^\]]+\]/, '').trim() || undefined;
+    }
+  }
+
+  const isUsd = (currency || '').toUpperCase() === 'USD' || effectiveEx === 'NASDAQ' || effectiveEx === 'NYSE';
+  if (isUsd && !currency) {
+    currency = 'USD';
+  }
+
+  return {
+    id: t.id,
+    portfolioId: t.portfolio_id,
+    userId: t.user_id,
+    symbol,
+    assetType: t.asset_type === 'fund' || assetType === 'fund' ? 'fund' : 'stock',
+    currency: isUsd ? 'USD' : currency || 'TRY',
+    exchangeRate,
+    transactionType: t.transaction_type,
+    quantity: Number(t.quantity),
+    price: Number(t.price),
+    commission: Number(t.commission || 0),
+    transactionDate: t.transaction_date,
+    exchange: effectiveEx,
+    notes: cleanNotes,
+    createdAt: t.created_at,
+  };
+}
+
+function loadLocalState(userId?: string | null): { portfolios: Portfolio[]; activePortfolioId: string; transactions: Transaction[] } {
   if (typeof window === 'undefined') {
     return { portfolios: INITIAL_PORTFOLIOS, activePortfolioId: 'p-default', transactions: [] };
   }
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const key = getLocalStorageKey(userId);
+    const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
       const rawTxs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
@@ -60,16 +121,10 @@ function loadLocalState(): { portfolios: Portfolio[]; activePortfolioId: string;
         };
       });
 
-      const rawPortfolios = Array.isArray(parsed.portfolios) && parsed.portfolios.length > 0 ? parsed.portfolios : INITIAL_PORTFOLIOS;
-      let activeId = parsed.activePortfolioId || rawPortfolios[0]?.id || 'p-default';
-
-      // If activeId has 0 transactions but another portfolio has transactions, switch to the active one
-      if (normalizedTxs.length > 0 && !normalizedTxs.some((t) => t.portfolioId === activeId)) {
-        const portWithTxs = rawPortfolios.find((p: any) => normalizedTxs.some((t) => t.portfolioId === p.id));
-        if (portWithTxs) {
-          activeId = portWithTxs.id;
-        }
-      }
+      const rawPortfolios = Array.isArray(parsed.portfolios) && parsed.portfolios.length > 0 ? parsed.portfolios : (userId ? [] : INITIAL_PORTFOLIOS);
+      const activeId = parsed.activePortfolioId && rawPortfolios.some((p: any) => p.id === parsed.activePortfolioId)
+        ? parsed.activePortfolioId
+        : rawPortfolios[0]?.id || (userId ? '' : 'p-default');
 
       return {
         portfolios: rawPortfolios,
@@ -80,15 +135,200 @@ function loadLocalState(): { portfolios: Portfolio[]; activePortfolioId: string;
   } catch (e) {
     console.warn('Failed to load local portfolio state:', e);
   }
-  return { portfolios: INITIAL_PORTFOLIOS, activePortfolioId: 'p-default', transactions: [] };
+  return {
+    portfolios: userId ? [] : INITIAL_PORTFOLIOS,
+    activePortfolioId: userId ? '' : 'p-default',
+    transactions: [],
+  };
 }
 
-function saveLocalState(state: { portfolios: Portfolio[]; activePortfolioId: string; transactions: Transaction[] }) {
+function saveLocalState(userId: string | null | undefined, state: { portfolios: Portfolio[]; activePortfolioId: string; transactions: Transaction[] }) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+    const key = getLocalStorageKey(userId);
+    localStorage.setItem(key, JSON.stringify(state));
   } catch (e) {
     console.warn('Failed to save local portfolio state:', e);
+  }
+}
+
+async function ensurePortfolioInSupabase(supabase: any, user: any, portfolio: Portfolio): Promise<string> {
+  try {
+    if (isUuid(portfolio.id)) {
+      const { data } = await supabase.from('portfolios').select('id').eq('id', portfolio.id).eq('user_id', user.id).maybeSingle();
+      if (data?.id) return data.id;
+    }
+
+    // Try finding by name for this specific user
+    const { data: byName } = await supabase
+      .from('portfolios')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('name', portfolio.name)
+      .maybeSingle();
+
+    if (byName?.id) return byName.id;
+
+    // Create new portfolio in DB for this user
+    const { data: created, error } = await supabase
+      .from('portfolios')
+      .insert({
+        user_id: user.id,
+        name: portfolio.name,
+        description: portfolio.description || null,
+        currency: portfolio.currency || 'TRY',
+        is_default: portfolio.isDefault || false,
+      })
+      .select()
+      .single();
+
+    if (!error && created?.id) {
+      return created.id;
+    }
+  } catch (err) {
+    console.warn('ensurePortfolioInSupabase error:', err);
+  }
+  return portfolio.id;
+}
+
+async function insertSingleTransactionSupabase(
+  supabase: any,
+  user: any,
+  portfolioId: string,
+  tx: Omit<Transaction, 'id' | 'createdAt' | 'userId'>
+): Promise<Transaction | null> {
+  try {
+    // Attempt 1: Full insert with all columns
+    const fullPayload = {
+      portfolio_id: portfolioId,
+      user_id: user.id,
+      symbol: tx.symbol.toUpperCase(),
+      asset_type: tx.assetType,
+      transaction_type: tx.transactionType,
+      quantity: tx.quantity,
+      price: tx.price,
+      commission: tx.commission || 0,
+      currency: tx.currency || 'TRY',
+      exchange_rate: tx.exchangeRate || null,
+      transaction_date: tx.transactionDate,
+      exchange: tx.exchange || null,
+      notes: tx.notes || null,
+    };
+
+    const { data, error } = await supabase.from('transactions').insert(fullPayload).select().single();
+    if (!error && data) {
+      return parseTransactionFromDb(data);
+    }
+
+    // Attempt 2: Fallback with base columns from 001_initial_schema
+    const notesMeta =
+      tx.currency === 'USD'
+        ? tx.notes
+          ? `${tx.notes} [CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
+          : `[CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
+        : tx.notes || null;
+
+    const basePayload = {
+      portfolio_id: portfolioId,
+      user_id: user.id,
+      symbol: tx.symbol.toUpperCase(),
+      asset_type: tx.assetType,
+      transaction_type: tx.transactionType,
+      quantity: tx.quantity,
+      price: tx.price,
+      commission: tx.commission || 0,
+      transaction_date: tx.transactionDate,
+      exchange: tx.exchange || null,
+      notes: notesMeta,
+    };
+
+    const { data: baseData, error: baseError } = await supabase.from('transactions').insert(basePayload).select().single();
+    if (!baseError && baseData) {
+      const res = parseTransactionFromDb(baseData);
+      res.currency = tx.currency || 'TRY';
+      res.exchangeRate = tx.exchangeRate;
+      return res;
+    }
+
+    return null;
+  } catch (e) {
+    console.error('insertSingleTransactionSupabase error:', e);
+    return null;
+  }
+}
+
+async function insertBatchTransactionsSupabase(
+  supabase: any,
+  user: any,
+  portfolioId: string,
+  txList: Omit<Transaction, 'id' | 'createdAt' | 'userId'>[]
+): Promise<Transaction[] | null> {
+  try {
+    // Attempt 1: Full insert
+    const fullRows = txList.map((tx) => ({
+      portfolio_id: portfolioId,
+      user_id: user.id,
+      symbol: tx.symbol.toUpperCase(),
+      asset_type: tx.assetType,
+      transaction_type: tx.transactionType,
+      quantity: tx.quantity,
+      price: tx.price,
+      currency: tx.currency || 'TRY',
+      exchange_rate: tx.exchangeRate || null,
+      commission: tx.commission || 0,
+      transaction_date: tx.transactionDate,
+      exchange: tx.exchange || null,
+      notes: tx.notes || null,
+    }));
+
+    const { data, error } = await supabase.from('transactions').insert(fullRows).select();
+    if (!error && data && data.length > 0) {
+      return data.map((d: any, idx: number) => {
+        const parsed = parseTransactionFromDb(d);
+        if (!parsed.currency && txList[idx]?.currency) parsed.currency = txList[idx].currency;
+        if (!parsed.exchangeRate && txList[idx]?.exchangeRate) parsed.exchangeRate = txList[idx].exchangeRate;
+        return parsed;
+      });
+    }
+
+    // Attempt 2: Fallback with base schema
+    const baseRows = txList.map((tx) => {
+      const notesMeta =
+        tx.currency === 'USD'
+          ? tx.notes
+            ? `${tx.notes} [CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
+            : `[CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
+          : tx.notes || null;
+
+      return {
+        portfolio_id: portfolioId,
+        user_id: user.id,
+        symbol: tx.symbol.toUpperCase(),
+        asset_type: tx.assetType,
+        transaction_type: tx.transactionType,
+        quantity: tx.quantity,
+        price: tx.price,
+        commission: tx.commission || 0,
+        transaction_date: tx.transactionDate,
+        exchange: tx.exchange || null,
+        notes: notesMeta,
+      };
+    });
+
+    const { data: baseData, error: baseError } = await supabase.from('transactions').insert(baseRows).select();
+    if (!baseError && baseData && baseData.length > 0) {
+      return baseData.map((d: any, idx: number) => {
+        const parsed = parseTransactionFromDb(d);
+        parsed.currency = txList[idx]?.currency || 'TRY';
+        parsed.exchangeRate = txList[idx]?.exchangeRate;
+        return parsed;
+      });
+    }
+
+    return null;
+  } catch (e) {
+    console.error('insertBatchTransactionsSupabase error:', e);
+    return null;
   }
 }
 
@@ -101,10 +341,23 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     isRefreshingPrices: false,
     loading: false,
     error: null,
+    currentUserId: null,
+
+    resetStore: () => {
+      const local = loadLocalState(null);
+      set({
+        portfolios: local.portfolios,
+        activePortfolioId: local.activePortfolioId,
+        transactions: local.transactions,
+        currentUserId: null,
+        error: null,
+      });
+    },
 
     setActivePortfolioId: (id) => {
+      const { currentUserId } = get();
       set({ activePortfolioId: id });
-      saveLocalState({
+      saveLocalState(currentUserId, {
         portfolios: get().portfolios,
         activePortfolioId: id,
         transactions: get().transactions,
@@ -245,17 +498,21 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const user = authData?.user;
 
         if (!user) {
-          // Guest mode: load from localStorage
-          const local = loadLocalState();
+          // Guest mode: load strictly from guest storage
+          const local = loadLocalState(null);
           set({
-            portfolios: local.portfolios,
-            activePortfolioId: local.activePortfolioId,
+            portfolios: local.portfolios.length > 0 ? local.portfolios : INITIAL_PORTFOLIOS,
+            activePortfolioId: local.activePortfolioId || 'p-default',
             transactions: local.transactions,
+            currentUserId: null,
             loading: false,
           });
           get().fetchLivePrices();
           return;
         }
+
+        // Authenticated user mode
+        const local = loadLocalState(user.id);
 
         // 1. Fetch user's portfolios from Supabase DB
         let { data: dbPortfolios, error: portError } = await supabase
@@ -264,11 +521,22 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
-        if (portError) throw portError;
+        if (portError) {
+          console.warn('Failed to fetch DB portfolios, falling back to user local state:', portError);
+          set({
+            portfolios: local.portfolios.length > 0 ? local.portfolios : INITIAL_PORTFOLIOS,
+            activePortfolioId: local.activePortfolioId || 'p-default',
+            transactions: local.transactions,
+            currentUserId: user.id,
+            loading: false,
+          });
+          get().fetchLivePrices();
+          return;
+        }
 
         // If no portfolio exists in Supabase for user, create initial 'Ana Portföy' in DB
         if (!dbPortfolios || dbPortfolios.length === 0) {
-          const { data: newPort, error: createError } = await supabase
+          const { data: newPort } = await supabase
             .from('portfolios')
             .insert({
               user_id: user.id,
@@ -280,7 +548,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             .select()
             .single();
 
-          if (!createError && newPort) {
+          if (newPort) {
             dbPortfolios = [newPort];
           }
         }
@@ -295,10 +563,21 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           createdAt: p.created_at,
         }));
 
-        const currentActiveId = get().activePortfolioId;
-        let validActiveId = mappedPortfolios.some((p) => p.id === currentActiveId)
-          ? currentActiveId
-          : mappedPortfolios[0]?.id || 'p-default';
+        // Sync any local portfolios for THIS user that were created offline
+        const idMap = new Map<string, string>(); // oldLocalId -> newDbId
+        for (const lp of local.portfolios) {
+          if (!isUuid(lp.id) || !mappedPortfolios.some((mp) => mp.id === lp.id)) {
+            const dbId = await ensurePortfolioInSupabase(supabase, user, lp);
+            idMap.set(lp.id, dbId);
+            if (!mappedPortfolios.some((mp) => mp.id === dbId)) {
+              mappedPortfolios.push({
+                ...lp,
+                id: dbId,
+                userId: user.id,
+              });
+            }
+          }
+        }
 
         // 2. Fetch user's transactions from Supabase DB
         const { data: dbTransactions, error: txError } = await supabase
@@ -307,55 +586,72 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           .eq('user_id', user.id)
           .order('transaction_date', { ascending: false });
 
-        if (txError) throw txError;
+        if (txError) {
+          console.warn('Failed to fetch DB transactions, preserving user local transactions:', txError);
+        }
 
-        const mappedTransactions: Transaction[] = (dbTransactions || []).map((t: any) => {
-          const { symbol, assetType, exchange } = cleanSymbol(t.symbol);
-          const effectiveEx = exchange || t.exchange || (assetType === 'fund' ? 'TEFAS' : 'BIST');
-          const isUsd = (t.currency || '').toUpperCase() === 'USD' || effectiveEx === 'NASDAQ' || effectiveEx === 'NYSE';
-          return {
-            id: t.id,
-            portfolioId: t.portfolio_id,
-            userId: t.user_id,
-            symbol,
-            assetType: t.asset_type === 'fund' || assetType === 'fund' ? 'fund' : 'stock',
-            currency: isUsd ? 'USD' : t.currency || 'TRY',
-            exchangeRate: t.exchange_rate != null ? Number(t.exchange_rate) : undefined,
-            transactionType: t.transaction_type,
-            quantity: Number(t.quantity),
-            price: Number(t.price),
-            commission: Number(t.commission || 0),
-            transactionDate: t.transaction_date,
-            exchange: effectiveEx,
-            notes: t.notes,
-            createdAt: t.created_at,
-          };
-        });
+        const mappedTransactions: Transaction[] = (dbTransactions || []).map(parseTransactionFromDb);
 
-        if (mappedTransactions.length > 0 && !mappedTransactions.some((t) => t.portfolioId === validActiveId)) {
-          const portWithTxs = mappedPortfolios.find((p) => mappedTransactions.some((t) => t.portfolioId === p.id));
-          if (portWithTxs) {
-            validActiveId = portWithTxs.id;
+        // Check for unsynced local transactions for THIS user
+        const dbTxIds = new Set(mappedTransactions.map((t) => t.id));
+        const unsyncedLocalTxs = local.transactions.filter((lt) => !dbTxIds.has(lt.id));
+        const allTransactions: Transaction[] = [...mappedTransactions];
+
+        if (unsyncedLocalTxs.length > 0) {
+          for (const lt of unsyncedLocalTxs) {
+            let targetPid = idMap.get(lt.portfolioId) || lt.portfolioId;
+            if (!mappedPortfolios.some((p) => p.id === targetPid)) {
+              targetPid = mappedPortfolios[0]?.id || targetPid;
+            }
+
+            try {
+              const inserted = await insertSingleTransactionSupabase(supabase, user, targetPid, {
+                ...lt,
+                portfolioId: targetPid,
+              });
+              if (inserted) {
+                allTransactions.unshift(inserted);
+              } else {
+                allTransactions.unshift({ ...lt, portfolioId: targetPid });
+              }
+            } catch (err) {
+              allTransactions.unshift({ ...lt, portfolioId: targetPid });
+            }
+          }
+        }
+
+        // Determine valid activePortfolioId for this user
+        const currentActive = get().activePortfolioId;
+        let validActiveId = currentActive;
+
+        if (!mappedPortfolios.some((p) => p.id === validActiveId)) {
+          validActiveId = idMap.get(local.activePortfolioId) || local.activePortfolioId;
+          if (!mappedPortfolios.some((p) => p.id === validActiveId)) {
+            validActiveId = mappedPortfolios[0]?.id || 'p-default';
           }
         }
 
         set({
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
           activePortfolioId: validActiveId,
-          transactions: mappedTransactions,
+          transactions: allTransactions,
+          currentUserId: user.id,
           loading: false,
         });
 
         get().fetchLivePrices();
 
-        saveLocalState({
+        saveLocalState(user.id, {
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
           activePortfolioId: validActiveId,
-          transactions: mappedTransactions,
+          transactions: allTransactions,
         });
       } catch (err: any) {
-        console.error('Error fetching Supabase portfolio data:', err);
-        set({ error: err.message, loading: false });
+        console.error('Error in fetchPortfoliosAndTransactions:', err);
+        set({
+          error: err.message,
+          loading: false,
+        });
       }
     },
 
@@ -365,77 +661,127 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
 
+        let newPort: Portfolio;
+
         if (user) {
-          // Insert into Supabase DB
           const { data, error } = await supabase
             .from('portfolios')
             .insert({
               user_id: user.id,
-              name,
-              description: description || null,
+              name: name.trim(),
+              description: description?.trim() || null,
               currency: 'TRY',
               is_default: false,
             })
             .select()
             .single();
 
-          if (error) {
-            console.error('Failed to create portfolio in Supabase:', error);
-          } else if (data) {
-            const newPort: Portfolio = {
+          if (!error && data) {
+            newPort = {
               id: data.id,
               userId: data.user_id,
               name: data.name,
               description: data.description,
-              currency: data.currency,
-              isDefault: data.is_default,
+              currency: data.currency || 'TRY',
+              isDefault: data.is_default || false,
               createdAt: data.created_at,
             };
-
-            set((state) => {
-              const updated = [...state.portfolios, newPort];
-              saveLocalState({
-                portfolios: updated,
-                activePortfolioId: newPort.id,
-                transactions: state.transactions,
-              });
-              return {
-                portfolios: updated,
-                activePortfolioId: newPort.id,
-              };
-            });
-            return newPort;
+          } else {
+            console.warn('Supabase portfolio insert fallback:', error);
+            newPort = {
+              id: `p-${Date.now()}`,
+              userId: user.id,
+              name: name.trim(),
+              description: description?.trim() || null,
+              currency: 'TRY',
+              isDefault: false,
+              createdAt: new Date().toISOString(),
+            };
           }
+        } else {
+          newPort = {
+            id: `p-${Date.now()}`,
+            userId: 'guest',
+            name: name.trim(),
+            description: description?.trim() || null,
+            currency: 'TRY',
+            isDefault: false,
+            createdAt: new Date().toISOString(),
+          };
         }
 
-        // Fallback / Guest mode
-        const fallbackPort: Portfolio = {
-          id: `p-${Date.now()}`,
-          userId: user?.id || 'guest',
-          name,
-          description: description || null,
-          currency: 'TRY',
-          isDefault: false,
-          createdAt: new Date().toISOString(),
-        };
-
         set((state) => {
-          const updated = [...state.portfolios, fallbackPort];
-          saveLocalState({
-            portfolios: updated,
-            activePortfolioId: fallbackPort.id,
+          const updatedPortfolios = [...state.portfolios, newPort];
+          saveLocalState(user?.id, {
+            portfolios: updatedPortfolios,
+            activePortfolioId: newPort.id,
             transactions: state.transactions,
           });
           return {
-            portfolios: updated,
-            activePortfolioId: fallbackPort.id,
+            portfolios: updatedPortfolios,
+            activePortfolioId: newPort.id,
           };
         });
 
-        return fallbackPort;
+        return newPort;
       } catch (e: any) {
         console.error('addPortfolio error:', e);
         return null;
+      }
+    },
+
+    deletePortfolio: async (id) => {
+      try {
+        const supabase = createClient();
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+
+        if (user && isUuid(id)) {
+          await supabase.from('transactions').delete().eq('portfolio_id', id).eq('user_id', user.id);
+          await supabase.from('portfolios').delete().eq('id', id).eq('user_id', user.id);
+        }
+
+        set((state) => {
+          let updatedPortfolios = state.portfolios.filter((p) => p.id !== id);
+          if (updatedPortfolios.length === 0) {
+            updatedPortfolios = [
+              {
+                id: 'p-default',
+                userId: user?.id || 'guest',
+                name: 'Ana Portföy',
+                description: 'Borsa ve fon yatırımlarım',
+                currency: 'TRY',
+                isDefault: true,
+                createdAt: '2025-01-01T00:00:00.000Z',
+              },
+            ];
+          }
+
+          const updatedTransactions = state.transactions.filter((t) => t.portfolioId !== id);
+
+          let newActiveId = state.activePortfolioId;
+          if (newActiveId === id || !updatedPortfolios.some((p) => p.id === newActiveId)) {
+            newActiveId = updatedPortfolios[0].id;
+          }
+
+          saveLocalState(user?.id, {
+            portfolios: updatedPortfolios,
+            activePortfolioId: newActiveId,
+            transactions: updatedTransactions,
+          });
+
+          return {
+            portfolios: updatedPortfolios,
+            activePortfolioId: newActiveId,
+            transactions: updatedTransactions,
+          };
+        });
+
+        get().fetchLivePrices();
+        return true;
+      } catch (e: any) {
+        console.error('deletePortfolio error:', e);
+        return false;
       }
     },
 
@@ -445,96 +791,44 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
 
-        let targetPortfolioId = tx.portfolioId || get().activePortfolioId;
+        const currentPortfolios = get().portfolios;
+        const targetPortfolioId = tx.portfolioId || get().activePortfolioId;
+        let targetPort = currentPortfolios.find((p) => p.id === targetPortfolioId) || currentPortfolios[0];
 
-        // If user is authenticated, ensure valid portfolio in Supabase
-        if (user) {
-          let currentPort = get().portfolios.find((p) => p.id === targetPortfolioId);
+        if (user && targetPort) {
+          const realPortfolioId = await ensurePortfolioInSupabase(supabase, user, targetPort);
 
-          // If current portfolio is not a real UUID or not in DB, resolve/create DB portfolio
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetPortfolioId);
-          if (!isUuid || !currentPort) {
-            const { data: existingPorts } = await supabase
-              .from('portfolios')
-              .select('*')
-              .eq('user_id', user.id)
-              .limit(1);
-
-            if (existingPorts && existingPorts.length > 0) {
-              targetPortfolioId = existingPorts[0].id;
-            } else {
-              const { data: createdPort } = await supabase
-                .from('portfolios')
-                .insert({
-                  user_id: user.id,
-                  name: 'Ana Portföy',
-                  description: 'Borsa ve fon yatırımlarım',
-                  currency: 'TRY',
-                  is_default: true,
-                })
-                .select()
-                .single();
-
-              if (createdPort) {
-                targetPortfolioId = createdPort.id;
-              }
-            }
+          if (realPortfolioId !== targetPort.id) {
+            set((state) => {
+              const updatedPorts = state.portfolios.map((p) => (p.id === targetPort.id ? { ...p, id: realPortfolioId } : p));
+              const updatedTxs = state.transactions.map((t) => (t.portfolioId === targetPort.id ? { ...t, portfolioId: realPortfolioId } : t));
+              const newActiveId = state.activePortfolioId === targetPort.id ? realPortfolioId : state.activePortfolioId;
+              return {
+                portfolios: updatedPorts,
+                transactions: updatedTxs,
+                activePortfolioId: newActiveId,
+              };
+            });
+            targetPort = { ...targetPort, id: realPortfolioId };
           }
 
-          // Insert into Supabase DB
-          const { data, error } = await supabase
-            .from('transactions')
-            .insert({
-              portfolio_id: targetPortfolioId,
-              user_id: user.id,
-              symbol: tx.symbol.toUpperCase(),
-              asset_type: tx.assetType,
-              transaction_type: tx.transactionType,
-              quantity: tx.quantity,
-              price: tx.price,
-              commission: tx.commission || 0,
-              currency: tx.currency || 'TRY',
-              exchange_rate: tx.exchangeRate || null,
-              transaction_date: tx.transactionDate,
-              exchange: tx.exchange || null,
-              notes: tx.notes || null,
-            })
-            .select()
-            .single();
+          const insertedDbTx = await insertSingleTransactionSupabase(supabase, user, targetPort.id, {
+            ...tx,
+            portfolioId: targetPort.id,
+          });
 
-          if (error) {
-            console.error('Failed to insert transaction into Supabase:', error);
-          } else if (data) {
-            const newTx: Transaction = {
-              id: data.id,
-              portfolioId: data.portfolio_id,
-              userId: data.user_id,
-              symbol: data.symbol,
-              assetType: data.asset_type,
-              transactionType: data.transaction_type,
-              quantity: Number(data.quantity),
-              price: Number(data.price),
-              currency: data.currency || tx.currency || 'TRY',
-              exchangeRate: data.exchange_rate != null ? Number(data.exchange_rate) : tx.exchangeRate,
-              commission: Number(data.commission || 0),
-              transactionDate: data.transaction_date,
-              exchange: data.exchange,
-              notes: data.notes,
-              createdAt: data.created_at,
-            };
-
+          if (insertedDbTx) {
             set((state) => {
-              const updated = [newTx, ...state.transactions];
-              saveLocalState({
+              const updated = [insertedDbTx, ...state.transactions];
+              saveLocalState(user.id, {
                 portfolios: state.portfolios,
                 activePortfolioId: state.activePortfolioId,
                 transactions: updated,
               });
               return { transactions: updated };
             });
-
             get().fetchLivePrices();
-            return newTx;
+            return insertedDbTx;
           }
         }
 
@@ -542,6 +836,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const fallbackTx: Transaction = {
           ...tx,
           id: `tx-${Date.now()}`,
+          portfolioId: targetPort?.id || targetPortfolioId || 'p-default',
           userId: user?.id || 'guest',
           currency: tx.currency || 'TRY',
           exchangeRate: tx.exchangeRate,
@@ -550,7 +845,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
         set((state) => {
           const updated = [fallbackTx, ...state.transactions];
-          saveLocalState({
+          saveLocalState(user?.id, {
             portfolios: state.portfolios,
             activePortfolioId: state.activePortfolioId,
             transactions: updated,
@@ -573,93 +868,46 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
 
-        let targetPortfolioId = txList[0]?.portfolioId || get().activePortfolioId;
+        const currentPortfolios = get().portfolios;
+        const targetPortfolioId = txList[0]?.portfolioId || get().activePortfolioId;
+        let targetPort = currentPortfolios.find((p) => p.id === targetPortfolioId) || currentPortfolios[0];
 
-        if (user) {
-          let currentPort = get().portfolios.find((p) => p.id === targetPortfolioId);
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetPortfolioId);
-          if (!isUuid || !currentPort) {
-            const { data: existingPorts } = await supabase
-              .from('portfolios')
-              .select('*')
-              .eq('user_id', user.id)
-              .limit(1);
+        if (user && targetPort) {
+          const realPortfolioId = await ensurePortfolioInSupabase(supabase, user, targetPort);
 
-            if (existingPorts && existingPorts.length > 0) {
-              targetPortfolioId = existingPorts[0].id;
-            } else {
-              const { data: createdPort } = await supabase
-                .from('portfolios')
-                .insert({
-                  user_id: user.id,
-                  name: 'Ana Portföy',
-                  description: 'Borsa ve fon yatırımlarım',
-                  currency: 'TRY',
-                  is_default: true,
-                })
-                .select()
-                .single();
-
-              if (createdPort) {
-                targetPortfolioId = createdPort.id;
-              }
-            }
+          if (realPortfolioId !== targetPort.id) {
+            set((state) => {
+              const updatedPorts = state.portfolios.map((p) => (p.id === targetPort.id ? { ...p, id: realPortfolioId } : p));
+              const updatedTxs = state.transactions.map((t) => (t.portfolioId === targetPort.id ? { ...t, portfolioId: realPortfolioId } : t));
+              const newActiveId = state.activePortfolioId === targetPort.id ? realPortfolioId : state.activePortfolioId;
+              return {
+                portfolios: updatedPorts,
+                transactions: updatedTxs,
+                activePortfolioId: newActiveId,
+              };
+            });
+            targetPort = { ...targetPort, id: realPortfolioId };
           }
 
-          const rowsToInsert = txList.map((tx) => ({
-            portfolio_id: targetPortfolioId,
-            user_id: user.id,
-            symbol: tx.symbol.toUpperCase(),
-            asset_type: tx.assetType,
-            transaction_type: tx.transactionType,
-            quantity: tx.quantity,
-            price: tx.price,
-            currency: tx.currency || 'TRY',
-            exchange_rate: tx.exchangeRate || null,
-            commission: tx.commission || 0,
-            transaction_date: tx.transactionDate,
-            exchange: tx.exchange || null,
-            notes: tx.notes || null,
-          }));
+          const insertedList = await insertBatchTransactionsSupabase(
+            supabase,
+            user,
+            targetPort.id,
+            txList.map((t) => ({ ...t, portfolioId: targetPort.id }))
+          );
 
-          const { data, error } = await supabase
-            .from('transactions')
-            .insert(rowsToInsert)
-            .select();
-
-          if (error) {
-            console.error('Failed to insert batch transactions into Supabase:', error);
-          } else if (data && data.length > 0) {
-            const newTxs: Transaction[] = data.map((d: any, idx: number) => ({
-              id: d.id,
-              portfolioId: d.portfolio_id,
-              userId: d.user_id,
-              symbol: d.symbol,
-              assetType: d.asset_type,
-              transactionType: d.transaction_type,
-              quantity: Number(d.quantity),
-              price: Number(d.price),
-              currency: d.currency || txList[idx]?.currency || 'TRY',
-              exchangeRate: d.exchange_rate != null ? Number(d.exchange_rate) : txList[idx]?.exchangeRate,
-              commission: Number(d.commission || 0),
-              transactionDate: d.transaction_date,
-              exchange: d.exchange,
-              notes: d.notes,
-              createdAt: d.created_at,
-            }));
-
+          if (insertedList && insertedList.length > 0) {
             set((state) => {
-              const updated = [...newTxs, ...state.transactions];
-              saveLocalState({
+              const updated = [...insertedList, ...state.transactions];
+              saveLocalState(user.id, {
                 portfolios: state.portfolios,
                 activePortfolioId: state.activePortfolioId,
                 transactions: updated,
               });
               return { transactions: updated };
             });
-
             get().fetchLivePrices();
-            return newTxs;
+            return insertedList;
           }
         }
 
@@ -667,6 +915,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const fallbackTxs: Transaction[] = txList.map((tx, idx) => ({
           ...tx,
           id: `tx-${Date.now()}-${idx}`,
+          portfolioId: targetPort?.id || targetPortfolioId || 'p-default',
           userId: user?.id || 'guest',
           currency: tx.currency || 'TRY',
           exchangeRate: tx.exchangeRate,
@@ -675,7 +924,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
         set((state) => {
           const updated = [...fallbackTxs, ...state.transactions];
-          saveLocalState({
+          saveLocalState(user?.id, {
             portfolios: state.portfolios,
             activePortfolioId: state.activePortfolioId,
             transactions: updated,
@@ -697,16 +946,13 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
 
-        if (user) {
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-          if (isUuid) {
-            await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
-          }
+        if (user && isUuid(id)) {
+          await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
         }
 
         set((state) => {
           const updated = state.transactions.filter((t) => t.id !== id);
-          saveLocalState({
+          saveLocalState(user?.id, {
             portfolios: state.portfolios,
             activePortfolioId: state.activePortfolioId,
             transactions: updated,
@@ -722,11 +968,39 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
       }
     },
 
+    clearPortfolioTransactions: async (portfolioId) => {
+      try {
+        const supabase = createClient();
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+
+        if (user && isUuid(portfolioId)) {
+          await supabase.from('transactions').delete().eq('portfolio_id', portfolioId).eq('user_id', user.id);
+        }
+
+        set((state) => {
+          const updated = state.transactions.filter((t) => t.portfolioId !== portfolioId);
+          saveLocalState(user?.id, {
+            portfolios: state.portfolios,
+            activePortfolioId: state.activePortfolioId,
+            transactions: updated,
+          });
+          return { transactions: updated };
+        });
+
+        get().fetchLivePrices();
+        return true;
+      } catch (e: any) {
+        console.error('clearPortfolioTransactions error:', e);
+        return false;
+      }
+    },
+
     getSummary: () => {
-      const { transactions, activePortfolioId, livePrices } = get();
-      const filtered = transactions.filter((t) => t.portfolioId === activePortfolioId);
+      const { transactions, activePortfolioId, livePrices, portfolios } = get();
+      const effectiveActiveId = activePortfolioId || portfolios[0]?.id || 'p-default';
+      const filtered = transactions.filter((t) => t.portfolioId === effectiveActiveId);
       return calculatePortfolioSummary(filtered, livePrices);
     },
   };
 });
-

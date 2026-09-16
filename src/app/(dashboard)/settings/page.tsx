@@ -1,35 +1,173 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Button, Input, Select, Badge, useToast } from '@/components/ui';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Button, Input, Badge, useToast } from '@/components/ui';
 import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function SettingsPage() {
   const { showToast } = useToast();
+  const { user, profile, loading: authLoading, updateProfile } = useAuth();
 
-  const [fullName, setFullName] = useState('Kaan Irmak');
-  const [email, setEmail] = useState('support@stockmind.app');
-  const [language, setLanguage] = useState('tr');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [language, setLanguage] = useState<'tr' | 'en'>('tr');
   const [currency, setCurrency] = useState('TRY');
   const [openRouterKey, setOpenRouterKey] = useState('');
   const [defaultModel, setDefaultModel] = useState('google/gemma-4-31b-it:free');
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
+
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingDailyReport, setSendingDailyReport] = useState(false);
   const [emailPreviewUrl, setEmailPreviewUrl] = useState<string | null>(null);
 
+  const userKey = user?.id ? `user_${user.id}` : 'guest';
+
+  // Load user settings
+  useEffect(() => {
+    if (user) {
+      setEmail(user.email || '');
+      setFullName(profile?.fullName || user.user_metadata?.full_name || user.email?.split('@')[0] || '');
+      if (profile?.preferredLanguage) setLanguage(profile.preferredLanguage);
+      if (profile?.preferredCurrency) setCurrency(profile.preferredCurrency);
+    } else {
+      setEmail('misafir@stockmind.app');
+      setFullName('Misafir Kullanıcı');
+    }
+
+    // Load AI & notification preferences per user
+    try {
+      const rawSettings = localStorage.getItem(`stockmind_settings_${userKey}`);
+      if (rawSettings) {
+        const parsed = JSON.parse(rawSettings);
+        if (parsed.openRouterKey !== undefined) setOpenRouterKey(parsed.openRouterKey);
+        if (parsed.defaultModel) setDefaultModel(parsed.defaultModel);
+        if (parsed.emailAlerts !== undefined) setEmailAlerts(parsed.emailAlerts);
+        if (parsed.priceAlerts !== undefined) setPriceAlerts(parsed.priceAlerts);
+        if (parsed.dailyReportEnabled !== undefined) setDailyReportEnabled(parsed.dailyReportEnabled);
+      }
+    } catch (e) {
+      console.warn('Failed to load local user settings:', e);
+    }
+  }, [user, profile, userKey]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingProfile(true);
+    try {
+      if (user) {
+        const success = await updateProfile({
+          fullName: fullName.trim(),
+          preferredLanguage: language,
+          preferredCurrency: currency,
+        });
+
+        if (success) {
+          showToast({
+            type: 'success',
+            title: 'Profil Güncellendi',
+            message: 'Profil ve para birimi tercihleriniz hesabınıza kaydedildi.',
+          });
+        } else {
+          showToast({
+            type: 'warning',
+            title: 'Kayıt Yapıldı',
+            message: 'Bilgiler yerel olarak güncellendi.',
+          });
+        }
+      } else {
+        // Guest mode
+        showToast({
+          type: 'info',
+          title: 'Misafir Ayarları Kaydedildi',
+          message: 'Tercihleriniz bu tarayıcı için kaydedildi. Kalıcı hesap için giriş yapabilirsiniz.',
+        });
+      }
+    } catch (err: any) {
+      showToast({
+        type: 'danger',
+        title: 'Hata',
+        message: err.message || 'Profil güncellenirken bir hata oluştu.',
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleSaveAIConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
+      const parsed = existing ? JSON.parse(existing) : {};
+      const updated = {
+        ...parsed,
+        openRouterKey: openRouterKey.trim(),
+        defaultModel,
+      };
+      localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
+
+      showToast({
+        type: 'success',
+        title: 'AI Ayarları Kaydedildi',
+        message: 'OpenRouter API anahtarınız ve tercih ettiğiniz model hesabınıza kaydedildi.',
+      });
+    } catch (e) {
+      showToast({
+        type: 'danger',
+        title: 'Hata',
+        message: 'Ayarlar kaydedilemedi.',
+      });
+    }
+  };
+
+  const handleSaveNotificationPreferences = (newPrice: boolean, newEmail: boolean, newDaily: boolean) => {
+    setPriceAlerts(newPrice);
+    setEmailAlerts(newEmail);
+    setDailyReportEnabled(newDaily);
+
+    try {
+      const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
+      const parsed = existing ? JSON.parse(existing) : {};
+      const updated = {
+        ...parsed,
+        priceAlerts: newPrice,
+        emailAlerts: newEmail,
+        dailyReportEnabled: newDaily,
+      };
+      localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
+    } catch (e) {
+      // ignore
+    }
+  };
+
   const handleTriggerDailyReport = async () => {
+    const targetEmail = email || user?.email;
+    if (!targetEmail || !targetEmail.includes('@')) {
+      showToast({
+        type: 'danger',
+        title: 'Geçersiz E-posta',
+        message: 'Lütfen geçerli bir e-posta adresi girin.',
+      });
+      return;
+    }
+
     setSendingDailyReport(true);
     try {
-      const res = await fetch(`/api/cron/daily-report?email=${encodeURIComponent(email)}&name=${encodeURIComponent(fullName)}`);
+      const res = await fetch(
+        `/api/cron/daily-report?email=${encodeURIComponent(targetEmail)}&name=${encodeURIComponent(
+          fullName || 'Yatırımcı'
+        )}`
+      );
       const data = await res.json();
       if (data.success) {
         showToast({
           type: 'success',
           title: '18:30 Bülteni Gönderildi! 📬',
-          message: `Günlük piyasa kapanış ve portföy bülteni ${email} (${fullName}) adresine gönderildi.`,
+          message: `Günlük piyasa kapanış ve portföy bülteni ${targetEmail} (${fullName}) adresine gönderildi.`,
         });
         if (data.emailResult?.previewUrl) {
           setEmailPreviewUrl(data.emailResult.previewUrl);
@@ -53,7 +191,8 @@ export default function SettingsPage() {
   };
 
   const handleSendTestEmail = async () => {
-    if (!email || !email.includes('@')) {
+    const targetEmail = email || user?.email;
+    if (!targetEmail || !targetEmail.includes('@')) {
       showToast({
         type: 'danger',
         title: 'Geçersiz E-posta',
@@ -70,8 +209,8 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: email,
-          userName: fullName,
+          to: targetEmail,
+          userName: fullName || 'StockMind Yatırımcısı',
         }),
       });
 
@@ -80,7 +219,7 @@ export default function SettingsPage() {
         showToast({
           type: 'success',
           title: 'E-posta Gönderildi! 📨',
-          message: data.message || `Test e-postası ${email} adresine iletildi.`,
+          message: data.message || `Test e-postası ${targetEmail} adresine iletildi.`,
         });
         if (data.previewUrl) {
           setEmailPreviewUrl(data.previewUrl);
@@ -103,23 +242,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    showToast({
-      type: 'success',
-      title: 'Profil Güncellendi',
-      message: 'Kullanıcı bilgileri başarıyla kaydedildi.',
-    });
-  };
-
-  const handleSaveAIConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    showToast({
-      type: 'success',
-      title: 'AI Ayarları Kaydedildi',
-      message: 'OpenRouter API yapılandırmanız güncellendi.',
-    });
-  };
+  const userInitial = (fullName || user?.email || 'M').charAt(0).toUpperCase();
 
   return (
     <div className="space-y-6 animate-fade-in pb-12 max-w-4xl">
@@ -127,32 +250,69 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Kullanıcı & Sistem Ayarları</h1>
         <p className="text-text-secondary text-sm mt-1">
-          Hesap bilgilerinizi, para birimi tercihlerinizi ve OpenRouter AI API ayarlarınızı yapılandırın.
+          Hesabınıza özel profil bilgilerini, para birimi tercihlerinizi ve OpenRouter AI API ayarlarınızı yapılandırın.
         </p>
       </div>
+
+      {/* Guest vs Logged in Account Banner */}
+      {!user ? (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">👤</span>
+            <div>
+              <p className="text-sm font-bold text-amber-400">Misafir Modundasınız</p>
+              <p className="text-xs text-text-muted">
+                Portföy ve ayarlarınız sadece bu tarayıcıda saklanır. Tüm cihazlarınızdan erişmek ve verilerinizi yedeklemek için hesap açın.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/login">
+              <Button variant="primary" size="sm">
+                Giriş Yap / Kayıt Ol
+              </Button>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🔒</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-emerald-400">Kişisel Hesabınızdasınız</p>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  Özel Portföy & Ayarlar Aktif
+                </span>
+              </div>
+              <p className="text-xs text-text-muted mt-0.5">
+                Giriş Yapılan E-posta: <strong className="text-text-primary">{user.email}</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Profile Card */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">Profil Bilgileri</h3>
-            <p className="text-xs text-text-muted">Kişisel bilgilerinizi ve iletişim adresinizi güncelleyin.</p>
+            <p className="text-xs text-text-muted">Kişisel bilgilerinizi ve tercih ettiğiniz para birimini güncelleyin.</p>
           </div>
           <Badge variant="purple" size="sm">
-            Pro Plan
+            {user ? 'Kişisel Hesap' : 'Misafir Profil'}
           </Badge>
         </div>
 
         <form onSubmit={handleSaveProfile} className="space-y-4">
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accent to-accent-secondary flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-accent/20">
-              KI
+              {userInitial}
             </div>
             <div>
-              <Button type="button" variant="secondary" size="sm">
-                Avatarı Değiştir
-              </Button>
-              <p className="text-[11px] text-text-muted mt-1">PNG, JPG maksimum 2MB</p>
+              <h4 className="text-sm font-bold text-text-primary">{fullName || 'Kullanıcı'}</h4>
+              <p className="text-xs text-text-muted">{email}</p>
             </div>
           </div>
 
@@ -161,6 +321,7 @@ export default function SettingsPage() {
               label="Ad Soyad"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
+              placeholder="Örn: Ahmet Yılmaz"
               required
             />
             <Input
@@ -168,6 +329,8 @@ export default function SettingsPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={!!user}
+              helperText={user ? 'Kayıtlı e-posta adresi güvenlik nedeniyle sabittir.' : undefined}
               required
             />
           </div>
@@ -177,7 +340,7 @@ export default function SettingsPage() {
               <label className="block text-xs font-medium text-text-secondary mb-1.5">Tercih Edilen Dil</label>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={(e) => setLanguage(e.target.value as any)}
                 className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
               >
                 <option value="tr">🇹🇷 Türkçe (Turkish)</option>
@@ -200,8 +363,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex justify-end pt-2">
-            <Button type="submit" variant="primary">
-              Profili Kaydet
+            <Button type="submit" variant="primary" disabled={isSavingProfile}>
+              {isSavingProfile ? 'Kaydediliyor...' : 'Profili Kaydet'}
             </Button>
           </div>
         </form>
@@ -212,7 +375,7 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">OpenRouter AI Entegrasyonu</h3>
-            <p className="text-xs text-text-muted">Kendi OpenRouter API anahtarınızı tanımlayın veya varsayılan modeli seçin.</p>
+            <p className="text-xs text-text-muted">Hesabınıza özel OpenRouter API anahtarınızı tanımlayın veya varsayılan modeli seçin.</p>
           </div>
           <Badge variant="success" size="sm">
             AI Hazır
@@ -275,7 +438,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               <p className="text-xs text-text-muted">
-                Borsa İstanbul, Altın, Döviz ve Kripto kapanış fiyatları ile portföy getiri analizi <strong className="text-text-primary">{fullName} ({email})</strong> adresine otomatik gönderilir.
+                Borsa İstanbul, Altın, Döviz ve Kripto kapanış fiyatları ile portföy getiri analizi <strong className="text-text-primary">{fullName || 'Kullanıcı'} ({email})</strong> adresine otomatik gönderilir.
               </p>
             </div>
             <div className="flex items-center gap-3 self-end sm:self-center">
@@ -303,7 +466,9 @@ export default function SettingsPage() {
               <input
                 type="checkbox"
                 checked={dailyReportEnabled}
-                onChange={(e) => setDailyReportEnabled(e.target.checked)}
+                onChange={(e) =>
+                  handleSaveNotificationPreferences(priceAlerts, emailAlerts, e.target.checked)
+                }
                 className="w-4 h-4 accent-accent rounded cursor-pointer"
               />
             </div>
@@ -317,7 +482,9 @@ export default function SettingsPage() {
             <input
               type="checkbox"
               checked={priceAlerts}
-              onChange={(e) => setPriceAlerts(e.target.checked)}
+              onChange={(e) =>
+                handleSaveNotificationPreferences(e.target.checked, emailAlerts, dailyReportEnabled)
+              }
               className="w-4 h-4 accent-accent rounded"
             />
           </label>
@@ -330,7 +497,9 @@ export default function SettingsPage() {
             <input
               type="checkbox"
               checked={emailAlerts}
-              onChange={(e) => setEmailAlerts(e.target.checked)}
+              onChange={(e) =>
+                handleSaveNotificationPreferences(priceAlerts, e.target.checked, dailyReportEnabled)
+              }
               className="w-4 h-4 accent-accent rounded"
             />
           </label>
