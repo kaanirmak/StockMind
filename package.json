@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "sync:funds": "node scripts/sync-tefas-funds.mjs",
     "lint": "eslint"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "nodemailer": "^10.0.10",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

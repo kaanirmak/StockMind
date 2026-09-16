@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllFunds } from '@/lib/data/funds';
+import { getFundsFromDatabase, getAllFunds } from '@/lib/data/funds';
 import { fetchTefasLiveDetail } from '@/lib/api/tefas';
 
 export async function GET(request: Request) {
@@ -9,32 +9,49 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || undefined;
     const minRisk = searchParams.get('minRisk') ? Number(searchParams.get('minRisk')) : undefined;
     const maxRisk = searchParams.get('maxRisk') ? Number(searchParams.get('maxRisk')) : undefined;
+    const sortBy = searchParams.get('sortBy') || undefined;
+    const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
+    const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
 
-    let funds = getAllFunds({ category, search, minRisk, maxRisk });
+    // 1. Try fetching from Supabase Database (100% Real Synchronized Data)
+    let funds = await getFundsFromDatabase({
+      category,
+      search,
+      minRisk,
+      maxRisk,
+      sortBy,
+      order,
+      limit,
+    });
 
-    // If search is a specific symbol search, enrich top matches with live official TEFAS data
-    if (search && search.trim().length > 0 && funds.length > 0 && funds.length <= 15) {
-      const topCandidates = funds.slice(0, 6);
-      const liveUpdates = await Promise.all(
-        topCandidates.map(async (f) => {
-          try {
-            const live = await fetchTefasLiveDetail(f.code);
-            return live ? { code: f.code, live } : null;
-          } catch {
-            return null;
+    // 2. If DB has not been populated yet or returns empty, fallback to directory + live enrichment
+    if (!funds || funds.length === 0) {
+      funds = getAllFunds({ category, search, minRisk, maxRisk });
+
+      // If searching, enrich top candidates with live TEFAS API
+      if (search && search.trim().length > 0 && funds.length > 0) {
+        const topCandidates = funds.slice(0, 8);
+        const liveUpdates = await Promise.all(
+          topCandidates.map(async (f) => {
+            try {
+              const live = await fetchTefasLiveDetail(f.code);
+              return live ? { code: f.code, live } : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        const liveMap = new Map();
+        for (const update of liveUpdates) {
+          if (update?.live) {
+            liveMap.set(update.code, update.live);
           }
-        })
-      );
-
-      const liveMap = new Map();
-      for (const update of liveUpdates) {
-        if (update?.live) {
-          liveMap.set(update.code, update.live);
         }
-      }
 
-      if (liveMap.size > 0) {
-        funds = funds.map((f) => liveMap.get(f.code) || f);
+        if (liveMap.size > 0) {
+          funds = funds.map((f) => liveMap.get(f.code) || f);
+        }
       }
     }
 

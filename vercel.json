@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-funds",
+      "schedule": "30 15 * * 1-5"
+    },
+    {
+      "path": "/api/cron/daily-report",
+      "schedule": "30 15 * * 1-5"
+    }
+  ]
+}

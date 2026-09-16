@@ -51,6 +51,12 @@ export default function LoginPage() {
     }
   }
 
+  function handleGuestLogin() {
+    document.cookie = 'stockmind_guest=true; path=/; max-age=31536000';
+    router.push('/dashboard');
+    router.refresh();
+  }
+
   return (
     <>
       {/* Mobile Logo */}
@@ -66,7 +72,19 @@ export default function LoginPage() {
       </div>
 
       <h2 className="text-2xl font-bold text-text-primary mb-2">Hoş Geldiniz</h2>
-      <p className="text-text-secondary mb-8">Hesabınıza giriş yapın</p>
+      <p className="text-text-secondary mb-8">Hesabınıza giriş yapın veya demo olarak keşfedin</p>
+
+      {/* Guest / Demo Direct Button */}
+      <button
+        onClick={handleGuestLogin}
+        type="button"
+        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-accent/15 border border-accent/30 hover:bg-accent/25 transition-all duration-200 text-accent font-semibold mb-3 cursor-pointer shadow-sm"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        Giriş Yapmadan Demo / Misafir Olarak Devam Et
+      </button>
 
       {/* Google Login */}
       <button
@@ -85,7 +103,7 @@ export default function LoginPage() {
       {/* Divider */}
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 h-px bg-border" />
-        <span className="text-text-muted text-sm">veya</span>
+        <span className="text-text-muted text-sm">veya E-posta ile</span>
         <div className="flex-1 h-px bg-border" />
       </div>
 

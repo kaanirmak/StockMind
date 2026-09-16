@@ -37,7 +37,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes: redirect to login if no user
+  // Protected routes: check for authenticated user or guest demo session
+  const isGuest = request.cookies.get('stockmind_guest')?.value === 'true';
+
   const protectedPaths = [
     '/dashboard',
     '/portfolio',
@@ -54,7 +56,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path)
   );
 
-  if (!user && isProtectedRoute) {
+  if (!user && !isGuest && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

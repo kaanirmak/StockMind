@@ -5,7 +5,9 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
+import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import { Badge, Button, Modal, Input, useToast } from '@/components/ui';
+import { exportTransactionsToExcel, downloadExcelTemplate } from '@/lib/portfolio/excelParser';
 
 export default function PortfolioPage() {
   const {
@@ -21,6 +23,7 @@ export default function PortfolioPage() {
 
   const { showToast } = useToast();
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isNewPortModalOpen, setIsNewPortModalOpen] = useState(false);
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
@@ -68,12 +71,21 @@ export default function PortfolioPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${activePortfolio.name}_varliklar.csv`);
+    link.setAttribute('download', `${activePortfolio?.name || 'Portfoy'}_varliklar.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
     showToast({ type: 'success', title: 'CSV İndirildi', message: 'Portföy varlıkları CSV olarak kaydedildi.' });
+  };
+
+  const handleExportExcel = () => {
+    if (activeTransactions.length === 0) {
+      showToast({ type: 'warning', title: 'Veri Yok', message: 'Dışa aktarılacak işlem bulunmuyor.' });
+      return;
+    }
+    exportTransactionsToExcel(activeTransactions, activePortfolio?.name || 'Portfoy');
+    showToast({ type: 'success', title: 'Excel İndirildi', message: 'İşlemler Excel (.xlsx) olarak kaydedildi.' });
   };
 
   return (
@@ -114,104 +126,203 @@ export default function PortfolioPage() {
             </button>
           </div>
 
-          <Button variant="secondary" size="md" onClick={handleExportCSV} leftIcon={
-            <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          }>
-            CSV İndir
+          {/* Excel Upload Button */}
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => setIsExcelModalOpen(true)}
+            className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500"
+            leftIcon={
+              <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            }
+          >
+            Excel Yükle
           </Button>
 
-          <Button variant="primary" size="md" onClick={() => setIsTradeModalOpen(true)} leftIcon={
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          }>
+          {/* Export Options */}
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={activeTab === 'transactions' ? handleExportExcel : handleExportCSV}
+            leftIcon={
+              <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            }
+          >
+            {activeTab === 'transactions' ? 'Excel İndir' : 'CSV İndir'}
+          </Button>
+
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setIsTradeModalOpen(true)}
+            leftIcon={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            }
+          >
             İşlem Ekle
           </Button>
         </div>
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Value */}
-        <div className="glass-card p-5 space-y-1">
-          <span className="text-xs text-text-muted font-medium block">Toplam Portföy Değeri</span>
-          <div className="text-2xl font-black font-mono text-text-primary">
+        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Toplam Portföy Değeri</p>
+          <h3 className="text-2xl font-black text-text-primary mt-1 font-mono">
             ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-2 text-xs text-text-muted">
+            <span>Toplam Maliyet:</span>
+            <span className="font-semibold text-text-secondary">₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
           </div>
-          <span className="text-[11px] text-text-muted block">
-            {summary.holdings.length} farklı varlık
-          </span>
-        </div>
-
-        {/* Total Cost */}
-        <div className="glass-card p-5 space-y-1">
-          <span className="text-xs text-text-muted font-medium block">Toplam Yatırım Tutarı (Maliyet)</span>
-          <div className="text-2xl font-black font-mono text-text-secondary">
-            ₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-          </div>
-          <span className="text-[11px] text-text-muted block">
-            Komisyonlar dahil net maliyet
-          </span>
         </div>
 
         {/* Total PnL */}
-        <div className="glass-card p-5 space-y-1">
-          <span className="text-xs text-text-muted font-medium block">Toplam Kar / Zarar</span>
-          <div className={`text-2xl font-black font-mono ${isProfit ? 'text-success' : 'text-danger'}`}>
-            {isProfit ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Toplam Kar / Zarar</p>
+          <h3 className={`text-2xl font-black mt-1 font-mono flex items-center gap-1 ${isProfit ? 'text-success' : 'text-danger'}`}>
+            <span>{isProfit ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+          </h3>
+          <div className="flex items-center gap-1.5 mt-2 text-xs">
+            <Badge variant={isProfit ? 'success' : 'danger'} size="sm">
+              {isProfit ? '+' : ''}{summary.totalPnLPercent.toFixed(2)}%
+            </Badge>
+            <span className="text-text-muted">tüm zamanlar</span>
           </div>
-          <span className={`text-xs font-bold inline-block px-2 py-0.5 rounded ${isProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
-            {isProfit ? '+' : ''}{summary.totalPnLPercent.toFixed(2)}%
-          </span>
         </div>
 
         {/* Daily PnL */}
-        <div className="glass-card p-5 space-y-1">
-          <span className="text-xs text-text-muted font-medium block">Günlük Değişim</span>
-          <div className="text-2xl font-black font-mono text-success">
-            +₺{summary.dailyPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Günlük Değişim</p>
+          <h3 className={`text-2xl font-black mt-1 font-mono ${summary.dailyPnL >= 0 ? 'text-success' : 'text-danger'}`}>
+            {summary.dailyPnL >= 0 ? '+' : ''}₺{summary.dailyPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-2 text-xs">
+            <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
+              {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
+            </Badge>
+            <span className="text-text-muted">bugün</span>
           </div>
-          <span className="text-xs font-bold inline-block px-2 py-0.5 rounded bg-success/15 text-success">
-            +{summary.dailyPnLPercent.toFixed(2)}% (Bugün)
-          </span>
+        </div>
+
+        {/* Active Holdings Count */}
+        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Varlık Sayısı</p>
+          <h3 className="text-2xl font-black text-text-primary mt-1 font-mono">
+            {summary.holdings.length} <span className="text-sm font-normal text-text-muted">Pozisyon</span>
+          </h3>
+          <div className="flex items-center gap-2 mt-2 text-xs text-text-muted">
+            <span>{activeTransactions.length} Toplam İşlem</span>
+          </div>
         </div>
       </div>
 
-      {/* Allocation Chart */}
-      {summary.holdings.length > 0 && (
-        <PortfolioAllocationChart
-          allocation={summary.allocation}
-          totalValue={summary.totalValue}
-        />
-      )}
+      {/* Main Grid: Allocation Chart & Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <PortfolioAllocationChart allocation={summary.allocation} totalValue={summary.totalValue} />
+        </div>
 
-      {/* Section Tabs: Holdings vs Transactions */}
+        <div className="lg:col-span-2 flex flex-col justify-between p-6 rounded-2xl bg-bg-card border border-border shadow-sm">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-text-primary">Portföy Varlık Özeti</h3>
+              <span className="text-xs text-text-muted">{summary.holdings.length} Aktif Varlık</span>
+            </div>
+            <p className="text-sm text-text-secondary leading-relaxed mb-6">
+              Portföyünüzdeki hisse senetleri ve TEFAS yatırım fonları otomatik olarak güncel piyasa fiyatları üzerinden değerlenmektedir.
+              Excel yükleme özelliği sayesinde geçmiş ekstrelerinizi tek tıkla aktarabilirsiniz.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-bg-secondary/60 border border-border/50">
+                <span className="text-xs text-text-muted">Hisse Senetleri</span>
+                <p className="text-lg font-bold text-text-primary mt-1">
+                  {summary.holdings.filter((h) => h.assetType === 'stock').length} Adet
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-bg-secondary/60 border border-border/50">
+                <span className="text-xs text-text-muted">Yatırım Fonları</span>
+                <p className="text-lg font-bold text-text-primary mt-1">
+                  {summary.holdings.filter((h) => h.assetType === 'fund').length} Adet
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-bg-secondary/60 border border-border/50 col-span-2 sm:col-span-1">
+                <span className="text-xs text-text-muted">En Büyük Pozisyon</span>
+                <p className="text-lg font-bold text-accent mt-1 truncate">
+                  {summary.holdings.length > 0 ? summary.holdings[0].symbol : '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-border mt-6 flex items-center justify-between flex-wrap gap-3">
+            <span className="text-xs text-text-muted">Midas, İşCep, Garanti vb. ekstrelerinizi yükleyin</span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadExcelTemplate}
+                className="text-xs"
+              >
+                Şablon İndir
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsExcelModalOpen(true)}
+                className="text-xs bg-emerald-600 hover:bg-emerald-500 border-none"
+              >
+                Excel Yükle
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs: Holdings vs Transaction History */}
       <div className="space-y-4">
-        <div className="flex items-center gap-4 border-b border-border/80 pb-2">
-          <button
-            onClick={() => setActiveTab('holdings')}
-            className={`pb-2 text-sm font-semibold transition-colors cursor-pointer relative ${
-              activeTab === 'holdings' ? 'text-accent' : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            Varlıklarım ({summary.holdings.length})
-            {activeTab === 'holdings' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-full" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('transactions')}
-            className={`pb-2 text-sm font-semibold transition-colors cursor-pointer relative ${
-              activeTab === 'transactions' ? 'text-accent' : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            İşlem Geçmişi ({activeTransactions.length})
-            {activeTab === 'transactions' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-full" />
-            )}
-          </button>
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('holdings')}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                activeTab === 'holdings'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+              }`}
+            >
+              Varlıklarım ({summary.holdings.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                activeTab === 'transactions'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+              }`}
+            >
+              İşlem Geçmişi ({activeTransactions.length})
+            </button>
+          </div>
+
+          {activeTab === 'transactions' && activeTransactions.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              className="text-xs"
+            >
+              Excel İndir (.xlsx)
+            </Button>
+          )}
         </div>
 
         {activeTab === 'holdings' ? (
@@ -221,32 +332,45 @@ export default function PortfolioPage() {
           />
         ) : (
           /* Transaction History Table */
-          <div className="glass-card overflow-hidden">
+          <div className="rounded-2xl bg-bg-card border border-border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-bg-secondary/80 text-text-muted text-xs uppercase tracking-wider border-b border-border/80">
+                <thead className="bg-bg-secondary text-text-secondary text-xs uppercase font-semibold border-b border-border">
                   <tr>
-                    <th className="py-3.5 px-4 font-semibold">Tarih</th>
-                    <th className="py-3.5 px-4 font-semibold">Varlık / Sembol</th>
-                    <th className="py-3.5 px-4 font-semibold">İşlem Türü</th>
-                    <th className="py-3.5 px-4 font-semibold text-right">Adet</th>
-                    <th className="py-3.5 px-4 font-semibold text-right">Birim Fiyat</th>
-                    <th className="py-3.5 px-4 font-semibold text-right">Toplam Tutar</th>
-                    <th className="py-3.5 px-4 font-semibold">Not</th>
+                    <th className="py-3.5 px-4">Tarih</th>
+                    <th className="py-3.5 px-4">Sembol</th>
+                    <th className="py-3.5 px-4">Tür</th>
+                    <th className="py-3.5 px-4 text-right">Adet</th>
+                    <th className="py-3.5 px-4 text-right">Birim Fiyat</th>
+                    <th className="py-3.5 px-4 text-right">Toplam Tutar</th>
+                    <th className="py-3.5 px-4">Notlar</th>
                     <th className="py-3.5 px-4 text-center">İşlem</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/40">
+                <tbody className="divide-y divide-border text-xs">
                   {activeTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center py-8 text-text-muted text-xs">
-                        Bu portföyde henüz işlem kaydı bulunmuyor.
+                      <td colSpan={8} className="py-12 text-center text-text-muted">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <svg className="w-8 h-8 text-text-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <p>Bu portföyde henüz işlem kaydı bulunmuyor.</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Button size="sm" variant="outline" onClick={() => setIsExcelModalOpen(true)}>
+                              Excel / CSV İle Yükle
+                            </Button>
+                            <Button size="sm" variant="primary" onClick={() => setIsTradeModalOpen(true)}>
+                              Manuel İşlem Ekle
+                            </Button>
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ) : (
                     activeTransactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-bg-hover/60 transition-colors">
-                        <td className="py-3.5 px-4 font-mono text-xs text-text-secondary">
+                      <tr key={tx.id} className="hover:bg-bg-hover transition-colors">
+                        <td className="py-3.5 px-4 font-mono text-text-secondary">
                           {tx.transactionDate}
                         </td>
                         <td className="py-3.5 px-4 font-bold text-text-primary">
@@ -295,10 +419,16 @@ export default function PortfolioPage() {
         )}
       </div>
 
-      {/* Transaction Modal */}
+      {/* Manual Transaction Modal */}
       <TransactionModal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
+      />
+
+      {/* Excel / CSV Import Modal */}
+      <ExcelImportModal
+        isOpen={isExcelModalOpen}
+        onClose={() => setIsExcelModalOpen(false)}
       />
 
       {/* New Portfolio Modal */}

@@ -15,6 +15,7 @@ interface PortfolioState {
   setActivePortfolioId: (id: string) => void;
   addPortfolio: (name: string, description?: string) => Promise<Portfolio | null>;
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'userId'>) => Promise<Transaction | null>;
+  addBatchTransactions: (txList: Omit<Transaction, 'id' | 'createdAt' | 'userId'>[]) => Promise<Transaction[]>;
   deleteTransaction: (id: string) => Promise<boolean>;
   getSummary: () => PortfolioSummary;
 }
@@ -382,6 +383,123 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
       } catch (e: any) {
         console.error('addTransaction error:', e);
         return null;
+      }
+    },
+
+    addBatchTransactions: async (txList) => {
+      if (!txList || txList.length === 0) return [];
+      try {
+        const supabase = createClient();
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+
+        let targetPortfolioId = txList[0]?.portfolioId || get().activePortfolioId;
+
+        if (user) {
+          let currentPort = get().portfolios.find((p) => p.id === targetPortfolioId);
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetPortfolioId);
+          if (!isUuid || !currentPort) {
+            const { data: existingPorts } = await supabase
+              .from('portfolios')
+              .select('*')
+              .eq('user_id', user.id)
+              .limit(1);
+
+            if (existingPorts && existingPorts.length > 0) {
+              targetPortfolioId = existingPorts[0].id;
+            } else {
+              const { data: createdPort } = await supabase
+                .from('portfolios')
+                .insert({
+                  user_id: user.id,
+                  name: 'Ana Portföy',
+                  description: 'Borsa ve fon yatırımlarım',
+                  currency: 'TRY',
+                  is_default: true,
+                })
+                .select()
+                .single();
+
+              if (createdPort) {
+                targetPortfolioId = createdPort.id;
+              }
+            }
+          }
+
+          const rowsToInsert = txList.map((tx) => ({
+            portfolio_id: targetPortfolioId,
+            user_id: user.id,
+            symbol: tx.symbol.toUpperCase(),
+            asset_type: tx.assetType,
+            transaction_type: tx.transactionType,
+            quantity: tx.quantity,
+            price: tx.price,
+            commission: tx.commission || 0,
+            transaction_date: tx.transactionDate,
+            exchange: tx.exchange || null,
+            notes: tx.notes || null,
+          }));
+
+          const { data, error } = await supabase
+            .from('transactions')
+            .insert(rowsToInsert)
+            .select();
+
+          if (error) {
+            console.error('Failed to insert batch transactions into Supabase:', error);
+          } else if (data && data.length > 0) {
+            const newTxs: Transaction[] = data.map((d: any) => ({
+              id: d.id,
+              portfolioId: d.portfolio_id,
+              userId: d.user_id,
+              symbol: d.symbol,
+              assetType: d.asset_type,
+              transactionType: d.transaction_type,
+              quantity: Number(d.quantity),
+              price: Number(d.price),
+              commission: Number(d.commission || 0),
+              transactionDate: d.transaction_date,
+              exchange: d.exchange,
+              notes: d.notes,
+              createdAt: d.created_at,
+            }));
+
+            set((state) => {
+              const updated = [...newTxs, ...state.transactions];
+              saveLocalState({
+                portfolios: state.portfolios,
+                activePortfolioId: state.activePortfolioId,
+                transactions: updated,
+              });
+              return { transactions: updated };
+            });
+
+            return newTxs;
+          }
+        }
+
+        // Fallback / Guest mode batch insert
+        const fallbackTxs: Transaction[] = txList.map((tx, idx) => ({
+          ...tx,
+          id: `tx-${Date.now()}-${idx}`,
+          userId: user?.id || 'guest',
+          createdAt: new Date().toISOString(),
+        }));
+
+        set((state) => {
+          const updated = [...fallbackTxs, ...state.transactions];
+          saveLocalState({
+            portfolios: state.portfolios,
+            activePortfolioId: state.activePortfolioId,
+            transactions: updated,
+          });
+          return { transactions: updated };
+        });
+
+        return fallbackTxs;
+      } catch (e: any) {
+        console.error('addBatchTransactions error:', e);
+        return [];
       }
     },
 

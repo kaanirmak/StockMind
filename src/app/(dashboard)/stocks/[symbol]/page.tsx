@@ -22,7 +22,7 @@ export default function StockDetailPage({
   const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
 
   const [chartEngine, setChartEngine] = useState<'tradingview' | 'stockmind'>('tradingview');
-  const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL'>('1M');
+  const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL'>('1Y');
   const [showSMA20, setShowSMA20] = useState(true);
   const [showSMA50, setShowSMA50] = useState(false);
   const [showBB, setShowBB] = useState(false);
@@ -182,7 +182,10 @@ export default function StockDetailPage({
               <span>TradingView Canlı</span>
             </button>
             <button
-              onClick={() => setChartEngine('stockmind')}
+              onClick={() => {
+                setChartEngine('stockmind');
+                setTimeframe('1Y');
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 chartEngine === 'stockmind'
                   ? 'bg-gradient-to-r from-accent to-accent-secondary text-white shadow-lg shadow-accent/20'
