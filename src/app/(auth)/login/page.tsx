@@ -34,8 +34,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/dashboard');
-    router.refresh();
+    // Full navigation to ensure session cookies are flushed in mobile WebViews
+    window.location.href = '/dashboard';
   }
 
   async function handleGoogleLogin() {
@@ -66,8 +66,7 @@ export default function LoginPage() {
 
   function handleGuestLogin() {
     document.cookie = 'stockmind_guest=true; path=/; max-age=31536000';
-    router.push('/dashboard');
-    router.refresh();
+    window.location.href = '/dashboard';
   }
 
   return (
