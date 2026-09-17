@@ -124,15 +124,15 @@ export default function PortfolioSummary() {
           }}
         />
 
-        <div className="relative z-10 p-5 sm:p-7">
+        <div className="relative z-10 p-4 sm:p-7">
           {/* Top row: Brand Logo + Single Period Switcher + Portföy Arrow */}
-          <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center justify-between gap-2.5 mb-4 sm:mb-6">
             {/* StockMind Logo on dark background */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <img
                 src="/logo-white.png"
                 alt="StockMind"
-                className="h-8 sm:h-9 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
+                className="h-7 sm:h-9 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
               />
               {/* Online/Canlı Göstergesi: Daima Yeşil */}
               <span className="relative flex h-2 w-2 ml-0.5">
@@ -147,7 +147,7 @@ export default function PortfolioSummary() {
               <button
                 type="button"
                 onClick={handleCyclePeriod}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-sm active:scale-95 border ${
+                className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-sm active:scale-95 border ${
                   isPositive
                     ? 'bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30'
                     : 'bg-rose-500/10 hover:bg-rose-500/25 border-rose-500/30'
@@ -169,9 +169,9 @@ export default function PortfolioSummary() {
 
           {/* Middle Row: Main Portfolio Value & Clean P&L Text */}
           <div className="space-y-2">
-            <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1.5">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               {/* Big Portfolio Value */}
-              <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight tabular-nums leading-none">
+              <h2 className="text-2xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight tabular-nums leading-none">
                 {summary.totalValue > 0
                   ? `₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : '₺0,00'}
@@ -180,7 +180,7 @@ export default function PortfolioSummary() {
               {/* Clean K/Z text — NO button border, perfectly responsive without overflow */}
               {summary.totalValue > 0 && (
                 <div
-                  className={`inline-flex items-center gap-1.5 text-base sm:text-lg font-bold tabular-nums transition-colors ${
+                  className={`inline-flex items-center gap-1.5 text-sm sm:text-lg font-bold tabular-nums transition-colors ${
                     isPositive ? 'text-emerald-400' : 'text-rose-400'
                   }`}
                 >
@@ -207,7 +207,7 @@ export default function PortfolioSummary() {
                     <span>
                       ${(summary.totalValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       {' '}
-                      <span className="text-white/30">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
+                      <span className="text-white/30 hidden sm:inline">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
                     </span>
                   </>
                 )}
