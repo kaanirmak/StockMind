@@ -111,7 +111,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="space-y-6 animate-fade-in pb-20 md:pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -120,14 +120,17 @@ export default function ReportsPage() {
             Detaylı getiri analizleri, varlık dağılımı ve vergi/kar-zarar dökümü.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="md"
+
+        {/* Action buttons — responsive: stacked on mobile, row on desktop */}
+        <div className="grid grid-cols-1 sm:flex sm:flex-row gap-2">
+          {/* Email button — glassmorphic card on mobile */}
+          <button
             onClick={handleSendEmailReport}
             disabled={sendingEmail}
-            leftIcon={
-              sendingEmail ? (
+            className="glass-card flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group"
+          >
+            <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-accent/15 sm:bg-transparent flex items-center justify-center shrink-0">
+              {sendingEmail ? (
                 <svg className="animate-spin h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -136,42 +139,61 @@ export default function ReportsPage() {
                 <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
-              )
-            }
-          >
-            {sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}
-          </Button>
-          <Button
-            variant="secondary"
-            size="md"
+              )}
+            </div>
+            <div className="text-left sm:hidden">
+              <span className="text-text-primary block font-semibold">{sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}</span>
+              <span className="text-[11px] text-text-muted">Raporu e-posta ile paylaş</span>
+            </div>
+            <span className="hidden sm:inline text-text-primary">{sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}</span>
+          </button>
+
+          {/* Print button */}
+          <button
             onClick={handlePrint}
             disabled={summary.holdings.length === 0}
-            leftIcon={
-              <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            className="glass-card flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group"
+          >
+            <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-accent/15 sm:bg-transparent flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 text-accent-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
               </svg>
-            }
-          >
-            Yazdır / PDF
-          </Button>
-          <Button
-            variant="primary"
-            size="md"
+            </div>
+            <div className="text-left sm:hidden">
+              <span className="text-text-primary block font-semibold">Yazdır / PDF</span>
+              <span className="text-[11px] text-text-muted">Raporu yazdır veya PDF olarak kaydet</span>
+            </div>
+            <span className="hidden sm:inline text-text-primary">Yazdır / PDF</span>
+          </button>
+
+          {/* CSV Export button */}
+          <button
             onClick={handleExportCSV}
             disabled={summary.holdings.length === 0}
-            leftIcon={
+            className="flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 cursor-pointer bg-gradient-to-r from-accent to-accent-secondary text-white shadow-lg shadow-accent/25 hover:shadow-accent/40 hover:brightness-110"
+          >
+            <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-white/10 sm:bg-transparent flex items-center justify-center shrink-0">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-            }
-          >
-            CSV Dışa Aktar
-          </Button>
+            </div>
+            <div className="text-left sm:hidden">
+              <span className="block">CSV Dışa Aktar</span>
+              <span className="text-[11px] text-white/70 font-normal">Verileri CSV dosyası olarak indir</span>
+            </div>
+            <span className="hidden sm:inline">CSV Dışa Aktar</span>
+          </button>
         </div>
       </div>
 
       {summary.holdings.length === 0 ? (
-        <div className="glass-card p-12 text-center text-text-muted space-y-3">
+        <div className="glass-purple p-10 sm:p-12 text-center text-text-muted space-y-4 rounded-2xl">
+          {/* Empty state illustration */}
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          </div>
           <p className="text-base font-semibold text-text-primary">Rapor oluşturulacak varlık bulunmuyor</p>
           <p className="text-xs max-w-sm mx-auto">
             Portföyünüze alım işlemi eklediğinizde burada otomatik olarak performans raporları, vergi/kâr-zarar dökümü ve getiri tablosu oluşturulacaktır.
@@ -186,12 +208,12 @@ export default function ReportsPage() {
         </div>
       ) : (
         /* Main Report Document Card */
-        <div className="glass-card p-6 space-y-8 print:border-none print:shadow-none">
+        <div className="glass-card p-4 sm:p-6 space-y-8 print:border-none print:shadow-none">
           {/* Report Meta Header */}
           <div className="flex flex-col sm:flex-row justify-between pb-6 border-b border-border/80 gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-black bg-gradient-to-r from-accent to-accent-secondary bg-clip-text text-transparent">
+                <span className="text-xl font-black gradient-text">
                   StockMind
                 </span>
                 <span className="text-xs text-text-muted">| Portföy Durum Belgesi</span>
@@ -207,28 +229,28 @@ export default function ReportsPage() {
           </div>
 
           {/* High-level Summary Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
-              <span className="text-xs text-text-muted block">Toplam Piyasa Değeri</span>
-              <span className="text-xl font-bold font-mono text-text-primary mt-1 block">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div className="glass-purple p-4 rounded-xl">
+              <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Piyasa Değeri</span>
+              <span className="text-lg sm:text-xl font-bold font-mono text-text-primary mt-1 block">
                 ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </span>
             </div>
-            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
-              <span className="text-xs text-text-muted block">Toplam Yatırım Maliyeti</span>
-              <span className="text-xl font-bold font-mono text-text-secondary mt-1 block">
+            <div className="glass-purple p-4 rounded-xl">
+              <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Yatırım Maliyeti</span>
+              <span className="text-lg sm:text-xl font-bold font-mono text-text-secondary mt-1 block">
                 ₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </span>
             </div>
-            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
-              <span className="text-xs text-text-muted block">Net Kar / Zarar</span>
-              <span className={`text-xl font-bold font-mono ${summary.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+            <div className="glass-purple p-4 rounded-xl">
+              <span className="text-[11px] sm:text-xs text-text-muted block">Net Kar / Zarar</span>
+              <span className={`text-lg sm:text-xl font-bold font-mono ${summary.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
                 {summary.totalPnL >= 0 ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </span>
             </div>
-            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
-              <span className="text-xs text-text-muted block">Toplam Getiri Oranı</span>
-              <span className={`text-xl font-bold font-mono ${summary.totalPnLPercent >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+            <div className="glass-purple p-4 rounded-xl">
+              <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Getiri Oranı</span>
+              <span className={`text-lg sm:text-xl font-bold font-mono ${summary.totalPnLPercent >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
                 {summary.totalPnLPercent >= 0 ? '+' : ''}%{summary.totalPnLPercent.toFixed(2)}
               </span>
             </div>
@@ -237,7 +259,9 @@ export default function ReportsPage() {
           {/* Detailed Holdings Statement */}
           <div className="space-y-3">
             <h3 className="text-base font-bold text-text-primary">Portföy Varlık Listesi</h3>
-            <div className="overflow-x-auto">
+
+            {/* Desktop table — hidden on mobile */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs border border-border/60 rounded-xl overflow-hidden">
                 <thead className="bg-bg-secondary text-text-muted uppercase border-b border-border/60">
                   <tr>
@@ -270,6 +294,74 @@ export default function ReportsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile card layout — visible only on mobile */}
+            <div className="md:hidden space-y-3 stagger-children">
+              {summary.holdings.map((h) => (
+                <div
+                  key={h.symbol}
+                  className="glass-card p-4 space-y-3"
+                >
+                  {/* Card header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+                        <span className="text-sm font-black text-accent">
+                          {h.symbol.substring(0, 2)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-text-primary block">{h.symbol}</span>
+                        <span className="text-[11px] text-text-muted">
+                          {h.assetType === 'stock' ? 'Hisse Senedi' : 'TEFAS Fon'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className={`text-right`}>
+                      <span className={`text-sm font-bold font-mono ${h.pnl >= 0 ? 'text-success' : 'text-danger'} block`}>
+                        {h.pnl >= 0 ? '+' : ''}{h.pnlPercent.toFixed(1)}%
+                      </span>
+                      <span className={`text-[11px] font-mono ${h.pnl >= 0 ? 'text-success/70' : 'text-danger/70'}`}>
+                        {h.pnl >= 0 ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card stats grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
+                      <span className="text-[10px] text-text-muted block uppercase tracking-wider">Adet</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{h.totalQuantity.toLocaleString('tr-TR')}</span>
+                    </div>
+                    <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
+                      <span className="text-[10px] text-text-muted block uppercase tracking-wider">Maliyet</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">₺{h.averageCost.toFixed(2)}</span>
+                    </div>
+                    <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
+                      <span className="text-[10px] text-text-muted block uppercase tracking-wider">Son Fiyat</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">₺{h.currentPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
+                      <span className="text-[10px] text-text-muted block uppercase tracking-wider">Değer</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+
+                  {/* Portfolio weight bar */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-accent to-accent-secondary transition-all duration-500"
+                        style={{ width: `${Math.min(h.weight, 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-mono text-text-muted font-semibold shrink-0">
+                      %{h.weight.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

@@ -32,7 +32,7 @@ export default function Sidebar() {
           <img
             src="/logo.png"
             alt="StockMind"
-            className={`${collapsed ? 'h-9 w-9' : 'h-11 w-auto max-w-[190px]'} object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_14px_rgba(99,102,241,0.25)]`}
+            className={`${collapsed ? 'h-9 w-9' : 'h-11 w-auto max-w-[190px]'} object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_14px_rgba(139,92,246,0.35)]`}
           />
         </div>
       </Link>

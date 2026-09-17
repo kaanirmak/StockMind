@@ -4,6 +4,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   glass?: boolean;
   hoverEffect?: boolean;
   glow?: boolean;
+  variant?: 'default' | 'purple';
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -11,19 +12,22 @@ export const Card: React.FC<CardProps> = ({
   glass = true,
   hoverEffect = false,
   glow = false,
+  variant = 'default',
   children,
   ...props
 }) => {
-  const baseClasses = glass
-    ? 'glass-card'
-    : 'bg-bg-card border border-border rounded-2xl';
+  const baseClasses = variant === 'purple'
+    ? 'glass-purple rounded-2xl'
+    : glass
+      ? 'glass-card'
+      : 'bg-bg-card border border-border rounded-2xl';
 
   const hoverClasses = hoverEffect
     ? 'transition-all duration-300 hover:border-accent/40 hover:shadow-xl hover:shadow-accent/5 hover:-translate-y-0.5'
     : '';
 
   const glowClasses = glow
-    ? 'relative before:absolute before:-inset-0.5 before:bg-gradient-to-r before:from-accent before:to-accent-secondary before:rounded-2xl before:blur-md before:opacity-20 before:-z-10'
+    ? 'relative before:absolute before:-inset-0.5 before:bg-gradient-to-r before:from-accent before:to-accent-secondary before:rounded-2xl before:blur-md before:opacity-20 before:-z-10 animate-purple-glow'
     : '';
 
   return (
