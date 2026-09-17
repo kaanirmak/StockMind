@@ -178,8 +178,10 @@ export function calculatePortfolioHistory(
 
   // Build timeline from transactions
   const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-  const firstTxDate = new Date(sorted[0].transactionDate).getTime();
-  const timeSpan = Math.max(86400000, now - firstTxDate);
+  const rawFirstTxDate = new Date(sorted[0].transactionDate).getTime();
+  // If first transaction is very recent (e.g. imported today), extend baseline to 30 days ago
+  const effectiveFirstDate = Math.min(rawFirstTxDate, now - 30 * 86400000);
+  const timeSpan = Math.max(30 * 86400000, now - effectiveFirstDate);
 
   // Accumulate holding positions and invested cost over transaction milestones
   interface Milestone {
@@ -209,7 +211,7 @@ export function calculatePortfolioHistory(
   const points: HistoryPoint[] = [];
 
   for (let i = 0; i < sampleCount; i++) {
-    const t = firstTxDate + (i / (sampleCount - 1)) * timeSpan;
+    const t = effectiveFirstDate + (i / (sampleCount - 1)) * timeSpan;
     const progress = i / (sampleCount - 1);
 
     // Find latest milestone at or before this date
