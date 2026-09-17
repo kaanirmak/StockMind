@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
+import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import { Badge, Button, Modal, Input, useToast } from '@/components/ui';
@@ -36,7 +37,7 @@ export default function PortfolioPage() {
 
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
-  const [activeTab, setActiveTab] = useState<'holdings' | 'transactions'>('holdings');
+  const [activeTab, setActiveTab] = useState<'holdings' | 'heatmap' | 'transactions'>('holdings');
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -472,6 +473,16 @@ export default function PortfolioPage() {
               Varlıklarım ({summary.holdings.length})
             </button>
             <button
+              onClick={() => setActiveTab('heatmap')}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'heatmap'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
+              }`}
+            >
+              <span>Isı Haritası</span>
+            </button>
+            <button
               onClick={() => setActiveTab('transactions')}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                 activeTab === 'transactions'
@@ -515,6 +526,10 @@ export default function PortfolioPage() {
             holdings={summary.holdings}
             onAddTransaction={() => setIsTradeModalOpen(true)}
           />
+        ) : activeTab === 'heatmap' ? (
+          <div className="animate-fade-in">
+            <PortfolioHeatmap />
+          </div>
         ) : (
           /* Transaction History Table */
           <div className="rounded-2xl bg-bg-card border border-border shadow-sm overflow-hidden">
