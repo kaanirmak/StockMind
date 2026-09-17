@@ -116,6 +116,32 @@ export default function MobileNav() {
     (item) => pathname === item.href || pathname.startsWith(item.href + '/')
   );
 
+  // Hide router when entering detail pages (e.g. /stocks/[symbol] or /funds/[code])
+  const isDetailRoute =
+    (pathname.startsWith('/stocks/') && pathname !== '/stocks') ||
+    (pathname.startsWith('/funds/') && pathname !== '/funds');
+
+  // Hide on scroll down, show on scroll up
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY.current && currentScrollY > 70) {
+        setIsVisible(false);
+      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 30) {
+        setIsVisible(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const shouldHide = isDetailRoute || (!isVisible && !showMore);
+
   return (
     <>
       {/* Backdrop overlay */}
@@ -172,7 +198,11 @@ export default function MobileNav() {
       )}
 
       {/* Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border">
+      <nav
+        className={`md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border transition-transform duration-300 ease-in-out ${
+          shouldHide ? 'translate-y-full pointer-events-none' : 'translate-y-0'
+        }`}
+      >
         <div className="flex items-center justify-around h-16 px-2">
           {mobileNavItems.map((item) => {
             const isActive =
