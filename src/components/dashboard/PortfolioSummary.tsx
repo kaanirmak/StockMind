@@ -1,36 +1,38 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
-
-type TimePeriod = 'daily' | 'weekly' | 'monthly' | 'total';
+import { calculatePortfolioHistory, HistoryPoint, TimePeriod } from '@/lib/portfolio/history';
 
 export default function PortfolioSummary() {
-  const { getSummary } = usePortfolioStore();
+  const { getSummary, transactions, livePrices } = usePortfolioStore();
   const summary = getSummary();
   const [period, setPeriod] = useState<TimePeriod>('total');
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
-  // Derive P&L values based on selected period
+  const usdQuote = livePrices['USDTRY'] || livePrices['USD'];
+  const usdTry = typeof usdQuote === 'number' ? usdQuote : (usdQuote && typeof usdQuote === 'object' ? usdQuote.price : 38.5);
+
+  // Period P&L fallback
   const periodData = useMemo(() => {
     switch (period) {
       case 'daily':
         return {
-          label: 'Günlük',
+          label: 'Bugün',
           pnl: summary.dailyPnL,
           pnlPercent: summary.dailyPnLPercent,
         };
       case 'weekly':
-        // Weekly approximation: dailyPnL * 5
         return {
-          label: 'Haftalık',
+          label: 'Bu Hafta',
           pnl: summary.dailyPnL * 5,
           pnlPercent: summary.dailyPnLPercent * 5,
         };
       case 'monthly':
-        // Monthly approximation: dailyPnL * 22
         return {
-          label: 'Aylık',
+          label: 'Bu Ay',
           pnl: summary.dailyPnL * 22,
           pnlPercent: summary.dailyPnLPercent * 22,
         };
@@ -44,60 +46,113 @@ export default function PortfolioSummary() {
     }
   }, [period, summary]);
 
-  const isPositive = periodData.pnl >= 0;
+  // Calculate real historical timeline from transactions
+  const historyPoints = useMemo(() => {
+    return calculatePortfolioHistory(transactions, summary, period, livePrices);
+  }, [transactions, summary, period, livePrices]);
 
-  // Generate a smooth SVG wave path for the mini chart
-  const chartPath = useMemo(() => {
-    const width = 400;
-    const height = 80;
-    const points = 12;
-    const data: number[] = [];
+  // Chart SVG geometry
+  const chartWidth = 500;
+  const chartHeight = 90;
+  const paddingX = 14;
+  const paddingTop = 14;
+  const paddingBottom = 16;
 
-    // Generate a smooth wave based on holdings data or placeholder
-    if (summary.holdings.length > 0) {
-      // Use holdings weights to generate variation
-      const baseValue = summary.totalValue;
-      for (let i = 0; i < points; i++) {
-        const progress = i / (points - 1);
-        const noise = Math.sin(progress * Math.PI * 2.5) * 0.08 + Math.cos(progress * Math.PI * 1.3) * 0.05;
-        const trend = isPositive ? progress * 0.1 : -progress * 0.05;
-        data.push(baseValue * (0.85 + noise + trend));
-      }
-    } else {
-      // Placeholder wave
-      for (let i = 0; i < points; i++) {
-        const progress = i / (points - 1);
-        data.push(50 + Math.sin(progress * Math.PI * 2) * 20 + progress * 15);
-      }
+  const chartData = useMemo(() => {
+    if (historyPoints.length === 0) {
+      const midY = chartHeight / 2;
+      return {
+        linePath: `M 0 ${midY} L ${chartWidth} ${midY}`,
+        areaPath: `M 0 ${midY} L ${chartWidth} ${midY} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`,
+        pointsCoords: [],
+        lastCoords: { x: chartWidth - paddingX, y: midY },
+      };
     }
 
-    // Normalize to chart dimensions
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min || 1;
-    const padding = 10;
+    const values = historyPoints.map((p) => p.value);
+    const minVal = Math.min(...values);
+    const maxVal = Math.max(...values);
+    const range = maxVal - minVal || (maxVal > 0 ? maxVal * 0.1 : 1);
 
-    const normalized = data.map((v) => {
-      return height - padding - ((v - min) / range) * (height - padding * 2);
+    const stepX = (chartWidth - 2 * paddingX) / (historyPoints.length - 1 || 1);
+    const coords = historyPoints.map((p, i) => {
+      const x = paddingX + i * stepX;
+      const normalizedY = (p.value - minVal) / range;
+      const y = chartHeight - paddingBottom - normalizedY * (chartHeight - paddingTop - paddingBottom);
+      return { x, y, point: p };
     });
 
-    // Create smooth cubic bezier path
-    const stepX = width / (points - 1);
-    let path = `M 0 ${normalized[0]}`;
-
-    for (let i = 1; i < normalized.length; i++) {
-      const x = i * stepX;
-      const prevX = (i - 1) * stepX;
-      const cx1 = prevX + stepX * 0.4;
-      const cx2 = x - stepX * 0.4;
-      path += ` C ${cx1} ${normalized[i - 1]}, ${cx2} ${normalized[i]}, ${x} ${normalized[i]}`;
+    // Build smooth cubic bezier curve
+    let linePath = `M ${coords[0].x} ${coords[0].y}`;
+    for (let i = 1; i < coords.length; i++) {
+      const prev = coords[i - 1];
+      const curr = coords[i];
+      const dx = curr.x - prev.x;
+      const cx1 = prev.x + dx * 0.45;
+      const cy1 = prev.y;
+      const cx2 = curr.x - dx * 0.45;
+      const cy2 = curr.y;
+      linePath += ` C ${cx1} ${cy1}, ${cx2} ${cy2}, ${curr.x} ${curr.y}`;
     }
 
-    // Area fill path
-    const areaPath = `${path} L ${width} ${height} L 0 ${height} Z`;
+    const last = coords[coords.length - 1];
+    const first = coords[0];
+    const areaPath = `${linePath} L ${last.x} ${chartHeight} L ${first.x} ${chartHeight} Z`;
 
-    return { linePath: path, areaPath, lastX: (points - 1) * stepX, lastY: normalized[normalized.length - 1] };
-  }, [summary, isPositive]);
+    return {
+      linePath,
+      areaPath,
+      pointsCoords: coords,
+      lastCoords: last,
+    };
+  }, [historyPoints]);
+
+  // Pointer scrubber handlers
+  const handlePointer = useCallback((clientX: number) => {
+    if (!chartContainerRef.current || chartData.pointsCoords.length === 0) return;
+    const rect = chartContainerRef.current.getBoundingClientRect();
+    const relativeX = (clientX - rect.left) / rect.width;
+    const clampedX = Math.max(0, Math.min(1, relativeX));
+    const targetSvgX = clampedX * chartWidth;
+
+    // Find closest coordinate point
+    let closestIndex = 0;
+    let minDistance = Infinity;
+    chartData.pointsCoords.forEach((c, idx) => {
+      const dist = Math.abs(c.x - targetSvgX);
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestIndex = idx;
+      }
+    });
+
+    setHoverIndex(closestIndex);
+  }, [chartData.pointsCoords]);
+
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    handlePointer(e.clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches[0]) {
+      handlePointer(e.touches[0].clientX);
+    }
+  };
+
+  const onPointerLeave = () => {
+    setHoverIndex(null);
+  };
+
+  // Active hover point or current live state
+  const hoveredPoint = hoverIndex !== null ? historyPoints[hoverIndex] : null;
+  const activeCoord = hoverIndex !== null && chartData.pointsCoords[hoverIndex]
+    ? chartData.pointsCoords[hoverIndex]
+    : null;
+
+  const displayValue = hoveredPoint ? hoveredPoint.value : summary.totalValue;
+  const displayPnL = hoveredPoint ? hoveredPoint.pnl : periodData.pnl;
+  const displayPnLPercent = hoveredPoint ? hoveredPoint.pnlPercent : periodData.pnlPercent;
+  const isPositive = displayPnL >= 0;
 
   const periods: { key: TimePeriod; label: string }[] = [
     { key: 'daily', label: 'Bugün' },
@@ -106,51 +161,62 @@ export default function PortfolioSummary() {
     { key: 'total', label: 'Toplam' },
   ];
 
-  // USD/TRY from live prices
-  const { livePrices } = usePortfolioStore();
-  const usdTry = livePrices['USDTRY']?.price;
-
   return (
     <div className="space-y-4">
-      {/* ═══════════════════════════════════════
-          HERO CARD — Purple to Black Gradient
-          ═══════════════════════════════════════ */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/[0.06]">
-        {/* Gradient background: purple → dark */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#3b1a7e] via-[#1a0e3a] to-[#080810]" />
+      {/* ═══════════════════════════════════════════════════════
+          HERO CARD — Premium Purple to Black Gradient
+          ═══════════════════════════════════════════════════════ */}
+      <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+        {/* Background gradient: vivid purple to deep obsidian */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#35186f] via-[#160c2e] to-[#08060f]" />
 
-        {/* Mesh overlay for depth */}
-        <div className="absolute inset-0 opacity-40" style={{
-          background: 'radial-gradient(ellipse at 30% 20%, rgba(139, 92, 246, 0.25) 0%, transparent 60%), radial-gradient(ellipse at 80% 60%, rgba(192, 132, 252, 0.1) 0%, transparent 50%)',
-        }} />
+        {/* Ambient radial glows */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-50"
+          style={{
+            background:
+              'radial-gradient(ellipse at 25% 15%, rgba(168, 85, 247, 0.35) 0%, transparent 60%), radial-gradient(ellipse at 85% 70%, rgba(139, 92, 246, 0.15) 0%, transparent 50%)',
+          }}
+        />
 
-        {/* Noise texture overlay */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")',
-        }} />
+        {/* Subtle glass texture overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.025]"
+          style={{
+            backgroundImage:
+              'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
+          }}
+        />
 
-        <div className="relative z-10 p-5 sm:p-6 pb-0">
-          {/* Top row: badge + period selector */}
-          <div className="flex items-center justify-between mb-4">
-            {/* Live badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.07] border border-white/[0.08] backdrop-blur-sm">
-              <span className="relative flex h-2 w-2">
+        <div className="relative z-10 p-5 sm:p-7 pb-0">
+          {/* Top row: Brand Logo + Period Selector */}
+          <div className="flex items-center justify-between gap-3 mb-4">
+            {/* StockMind Logo on dark background */}
+            <div className="flex items-center gap-2.5">
+              <img
+                src="/logo-white.png"
+                alt="StockMind"
+                className="h-8 sm:h-9 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
+              />
+              <span className="relative flex h-2 w-2 ml-0.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
               </span>
-              <span className="text-[11px] font-bold text-white/80 uppercase tracking-widest">Canlı Portföy</span>
             </div>
 
-            {/* Period selector */}
-            <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-white/[0.06] border border-white/[0.06]">
+            {/* Period selector pills */}
+            <div className="flex items-center gap-0.5 p-1 rounded-2xl bg-white/[0.07] border border-white/[0.08] backdrop-blur-md">
               {periods.map((p) => (
                 <button
                   key={p.key}
-                  onClick={() => setPeriod(p.key)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
+                  onClick={() => {
+                    setPeriod(p.key);
+                    setHoverIndex(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
                     period === p.key
-                      ? 'bg-white/15 text-white shadow-sm'
-                      : 'text-white/50 hover:text-white/80'
+                      ? 'bg-white/20 text-white shadow-[0_2px_8px_rgba(0,0,0,0.25)] border border-white/10'
+                      : 'text-white/50 hover:text-white/80 hover:bg-white/5'
                   }`}
                 >
                   {p.label}
@@ -159,122 +225,196 @@ export default function PortfolioSummary() {
             </div>
           </div>
 
-          {/* Main value */}
-          <div className="mb-1">
-            <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight tabular-nums">
-              {summary.totalValue > 0
-                ? `₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                : '₺0,00'}
-            </h2>
-          </div>
+          {/* Middle Row: Main Portfolio Value + Sub info on Left, P&L Badge on Right */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+            <div>
+              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight tabular-nums leading-none">
+                {displayValue > 0
+                  ? `₺${displayValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : '₺0,00'}
+              </h2>
 
-          {/* Sub info row: cost + usd + pnl badge */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-5">
-            <span className="text-xs text-white/40 font-medium">
-              Maliyet: {formatCurrency(summary.totalCost)}
-              {usdTry && usdTry > 0 && (
-                <>
-                  {' • '}${(summary.totalValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  {' '}
-                  <span className="text-white/25">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
-                </>
-              )}
-            </span>
-
-            {/* P&L Badge */}
-            {summary.totalValue > 0 && (
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border ${
-                isPositive
-                  ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400'
-                  : 'bg-red-500/15 border-red-500/25 text-red-400'
-              }`}>
-                {isPositive ? (
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
-                  </svg>
-                ) : (
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" />
-                  </svg>
+              {/* Sub-info: Cost, USD equivalent, and Date marker */}
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-white/50 font-medium mt-2">
+                <span>Maliyet: {formatCurrency(summary.totalCost)}</span>
+                {usdTry && usdTry > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>
+                      ${(displayValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {' '}
+                      <span className="text-white/30">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
+                    </span>
+                  </>
                 )}
-                {getPnLSign(periodData.pnl)}{formatCurrency(Math.abs(periodData.pnl))}
-                {' '}
-                ({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})
-              </span>
+                {hoveredPoint && (
+                  <>
+                    <span>•</span>
+                    <span className="text-violet-300 font-semibold bg-violet-500/20 px-2 py-0.5 rounded-md border border-violet-500/30 animate-fade-in">
+                      {hoveredPoint.dateLabel}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* P&L Badge (Right Aligned as in user sketch) */}
+            {summary.totalValue > 0 && (
+              <div className="self-start sm:self-center">
+                <div
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs sm:text-sm font-bold border backdrop-blur-md transition-all duration-200 shadow-sm ${
+                    isPositive
+                      ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                      : 'bg-rose-500/15 border-rose-500/30 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.15)]'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    {isPositive ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" />
+                    )}
+                  </svg>
+                  <span>{getPnLSign(displayPnL)}{formatCurrency(Math.abs(displayPnL))}</span>
+                  <span className="opacity-90">({getPnLSign(displayPnLPercent)}%{Math.abs(displayPnLPercent).toFixed(1)})</span>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Mini chart — SVG wave */}
-          <div className="relative h-20 sm:h-24 -mx-5 sm:-mx-6 overflow-hidden">
+          {/* ═══════════════════════════════════════════════════════
+              INTERACTIVE REAL CHART with Scrubber
+              ═══════════════════════════════════════════════════════ */}
+          <div
+            ref={chartContainerRef}
+            onMouseMove={onMouseMove}
+            onMouseLeave={onPointerLeave}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onPointerLeave}
+            className="relative h-24 sm:h-28 -mx-5 sm:-mx-7 cursor-crosshair select-none touch-none"
+          >
             <svg
-              viewBox={`0 0 400 80`}
+              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
               preserveAspectRatio="none"
-              className="w-full h-full"
+              className="w-full h-full overflow-visible"
             >
               <defs>
-                <linearGradient id="chartAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={isPositive ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.2)'} />
-                  <stop offset="100%" stopColor="transparent" />
+                {/* Smooth area fill gradient */}
+                <linearGradient id="heroChartArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor={isPositive ? 'rgba(52, 211, 153, 0.3)' : 'rgba(244, 63, 94, 0.25)'}
+                  />
+                  <stop
+                    offset="50%"
+                    stopColor="rgba(168, 85, 247, 0.15)"
+                  />
+                  <stop offset="100%" stopColor="rgba(8, 6, 15, 0)" />
                 </linearGradient>
-                <linearGradient id="chartLineGradient" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity="0.4" />
-                  <stop offset="50%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity="1" />
-                  <stop offset="100%" stopColor={isPositive ? '#34d399' : '#f87171'} stopOpacity="1" />
+
+                {/* Vibrant stroke gradient */}
+                <linearGradient id="heroChartLine" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#c084fc" stopOpacity="0.8" />
+                  <stop offset="70%" stopColor={isPositive ? '#34d399' : '#fb7185'} stopOpacity="1" />
+                  <stop offset="100%" stopColor="#ffffff" stopOpacity="1" />
                 </linearGradient>
               </defs>
 
-              {/* Area fill */}
-              <path
-                d={chartPath.areaPath}
-                fill="url(#chartAreaGradient)"
-              />
+              {/* Area fill under the curve */}
+              <path d={chartData.areaPath} fill="url(#heroChartArea)" />
 
-              {/* Line */}
+              {/* Curve line */}
               <path
-                d={chartPath.linePath}
+                d={chartData.linePath}
                 fill="none"
-                stroke="url(#chartLineGradient)"
-                strokeWidth="2"
+                stroke="url(#heroChartLine)"
+                strokeWidth="2.75"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
 
-              {/* End dot */}
-              <circle
-                cx={chartPath.lastX}
-                cy={chartPath.lastY}
-                r="4"
-                fill={isPositive ? '#10b981' : '#ef4444'}
-                stroke="white"
-                strokeWidth="1.5"
-                className="animate-pulse"
-              />
-              {/* Glow ring */}
-              <circle
-                cx={chartPath.lastX}
-                cy={chartPath.lastY}
-                r="8"
-                fill="none"
-                stroke={isPositive ? '#10b981' : '#ef4444'}
-                strokeWidth="1"
-                opacity="0.3"
-              />
+              {/* Interactive Scrubber: Vertical Dotted Line */}
+              {activeCoord && (
+                <line
+                  x1={activeCoord.x}
+                  y1={activeCoord.y}
+                  x2={activeCoord.x}
+                  y2={chartHeight}
+                  stroke="rgba(255, 255, 255, 0.45)"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 3"
+                />
+              )}
+
+              {/* Interactive Scrubber: Circular Node on Curve */}
+              {activeCoord ? (
+                <g>
+                  {/* Outer glow ring */}
+                  <circle
+                    cx={activeCoord.x}
+                    cy={activeCoord.y}
+                    r="8"
+                    fill="none"
+                    stroke={isPositive ? '#34d399' : '#fb7185'}
+                    strokeWidth="1.75"
+                    opacity="0.85"
+                  />
+                  {/* White circle ring */}
+                  <circle
+                    cx={activeCoord.x}
+                    cy={activeCoord.y}
+                    r="5"
+                    fill="#ffffff"
+                    stroke="rgba(0,0,0,0.3)"
+                    strokeWidth="1"
+                  />
+                  {/* Inner node dot */}
+                  <circle
+                    cx={activeCoord.x}
+                    cy={activeCoord.y}
+                    r="2.5"
+                    fill={isPositive ? '#059669' : '#e11d48'}
+                  />
+                </g>
+              ) : (
+                /* Default end point marker when not hovering */
+                <g>
+                  <circle
+                    cx={chartData.lastCoords.x}
+                    cy={chartData.lastCoords.y}
+                    r="4"
+                    fill={isPositive ? '#34d399' : '#fb7185'}
+                    stroke="#ffffff"
+                    strokeWidth="1.75"
+                  />
+                  <circle
+                    cx={chartData.lastCoords.x}
+                    cy={chartData.lastCoords.y}
+                    r="9"
+                    fill="none"
+                    stroke={isPositive ? '#34d399' : '#fb7185'}
+                    strokeWidth="1.25"
+                    opacity="0.4"
+                    className="animate-pulse"
+                  />
+                </g>
+              )}
             </svg>
           </div>
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════
+      {/* ═══════════════════════════════════════════════════════
           STAT CARDS ROW — Below the hero
-          ═══════════════════════════════════════ */}
+          ═══════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Daily P&L */}
         <div className="glass-card p-4 relative overflow-hidden group">
-          <div className={`absolute inset-0 bg-gradient-to-br ${summary.dailyPnL >= 0 ? 'from-emerald-500/10 to-transparent' : 'from-red-500/10 to-transparent'} opacity-60`} />
+          <div className={`absolute inset-0 bg-gradient-to-br ${summary.dailyPnL >= 0 ? 'from-emerald-500/10 to-transparent' : 'from-rose-500/10 to-transparent'} opacity-60`} />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] text-text-muted font-medium uppercase tracking-wider">Günlük K/Z</span>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${summary.dailyPnL >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${summary.dailyPnL >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-rose-500/15 text-rose-400'}`}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   {summary.dailyPnL >= 0 ? (
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
@@ -284,11 +424,11 @@ export default function PortfolioSummary() {
                 </svg>
               </div>
             </div>
-            <div className={`text-lg font-bold tabular-nums ${summary.dailyPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <div className={`text-lg font-bold tabular-nums ${summary.dailyPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {getPnLSign(summary.dailyPnL)}{formatCurrency(Math.abs(summary.dailyPnL))}
             </div>
             {summary.totalValue > 0 && (
-              <div className={`text-xs font-medium mt-0.5 ${summary.dailyPnLPercent >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}`}>
+              <div className={`text-xs font-medium mt-0.5 ${summary.dailyPnLPercent >= 0 ? 'text-emerald-400/70' : 'text-rose-400/70'}`}>
                 {getPnLSign(summary.dailyPnLPercent)}{formatPercent(Math.abs(summary.dailyPnLPercent))}
               </div>
             )}
@@ -297,7 +437,7 @@ export default function PortfolioSummary() {
 
         {/* Total P&L */}
         <div className="glass-card p-4 relative overflow-hidden group">
-          <div className={`absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-60`} />
+          <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent opacity-60" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] text-text-muted font-medium uppercase tracking-wider">Toplam K/Z</span>
@@ -307,11 +447,11 @@ export default function PortfolioSummary() {
                 </svg>
               </div>
             </div>
-            <div className={`text-lg font-bold tabular-nums ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <div className={`text-lg font-bold tabular-nums ${summary.totalPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {getPnLSign(summary.totalPnL)}{formatCurrency(Math.abs(summary.totalPnL))}
             </div>
             {summary.totalCost > 0 && (
-              <div className={`text-xs font-medium mt-0.5 ${summary.totalPnLPercent >= 0 ? 'text-emerald-400/70' : 'text-red-400/70'}`}>
+              <div className={`text-xs font-medium mt-0.5 ${summary.totalPnLPercent >= 0 ? 'text-emerald-400/70' : 'text-rose-400/70'}`}>
                 {getPnLSign(summary.totalPnLPercent)}{formatPercent(Math.abs(summary.totalPnLPercent))}
               </div>
             )}
