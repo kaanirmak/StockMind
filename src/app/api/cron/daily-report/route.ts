@@ -12,9 +12,24 @@ export async function POST(request: Request) {
 
 async function handleDailyReport(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const targetEmail = searchParams.get('email') || process.env.SMTP_USER || 'support@stockmind.app';
-    const targetName = searchParams.get('name') || 'Kaan Irmak';
+    let targetEmail = '';
+    let targetName = '';
+    let customSmtp: any = undefined;
+
+    if (request.method === 'POST') {
+      try {
+        const body = await request.json();
+        targetEmail = body.email;
+        targetName = body.name;
+        customSmtp = body.customSmtp;
+      } catch (_) {}
+    }
+
+    if (!targetEmail) {
+      const { searchParams } = new URL(request.url);
+      targetEmail = searchParams.get('email') || process.env.SMTP_USER || 'support@stockmind.app';
+      targetName = searchParams.get('name') || 'Kaan Irmak';
+    }
 
     // Fetch live market closing prices for the report
     const [gold, usdtry, btc, thyao, xu100] = await Promise.all([
@@ -42,10 +57,11 @@ async function handleDailyReport(request: Request) {
         totalPnL: 8420,
         totalPnLPercent: 4.78,
       },
+      customSmtp,
     });
 
     return NextResponse.json({
-      success: true,
+      success: result.success,
       timestamp: new Date().toISOString(),
       recipient: targetEmail,
       marketSummary: {
@@ -55,7 +71,8 @@ async function handleDailyReport(request: Request) {
         thyao: thyao?.price,
       },
       emailResult: result,
-    });
+      error: !result.success ? result.message : undefined,
+    }, { status: result.success ? 200 : 400 });
   } catch (error: any) {
     console.error('Daily Report Cron Error:', error);
     return NextResponse.json(

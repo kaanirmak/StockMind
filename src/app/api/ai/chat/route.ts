@@ -27,10 +27,10 @@ export async function POST(request: Request) {
         createdAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Chat API Error:', error);
     return NextResponse.json(
-      { success: false, error: 'AI yanıtı alınamadı' },
+      { success: false, error: error.message || 'AI yanıtı alınamadı' },
       { status: 500 }
     );
   }

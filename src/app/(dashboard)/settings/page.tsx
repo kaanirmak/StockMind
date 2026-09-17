@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
   const [currency, setCurrency] = useState('TRY');
   const [openRouterKey, setOpenRouterKey] = useState('');
-  const [defaultModel, setDefaultModel] = useState('google/gemma-4-31b-it:free');
+  const [defaultModel, setDefaultModel] = useState('openrouter/free');
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
@@ -232,17 +232,21 @@ export default function SettingsPage() {
 
     setSendingDailyReport(true);
     try {
-      const res = await fetch(
-        `/api/cron/daily-report?email=${encodeURIComponent(targetEmail)}&name=${encodeURIComponent(
-          fullName || 'Yatırımcı'
-        )}`
-      );
+      const res = await fetch('/api/cron/daily-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: targetEmail,
+          name: fullName || 'Yatırımcı',
+          customSmtp: getCustomSmtpPayload(),
+        }),
+      });
       const data = await res.json();
       if (data.success) {
         showToast({
           type: 'success',
           title: '18:30 Bülteni Gönderildi! 📬',
-          message: `Günlük piyasa kapanış ve portföy bülteni ${targetEmail} (${fullName}) adresine gönderildi.`,
+          message: `Günlük piyasa kapanış ve portföy bülteni ${targetEmail} (${fullName || 'Yatırımcı'}) adresine gönderildi.`,
         });
         if (data.emailResult?.previewUrl) {
           setEmailPreviewUrl(data.emailResult.previewUrl);
@@ -251,7 +255,7 @@ export default function SettingsPage() {
         showToast({
           type: 'danger',
           title: 'Bülten Gönderilemedi',
-          message: data.error || 'Günlük bülten iletilemedi.',
+          message: data.error || data.emailResult?.message || 'Günlük bülten iletilemedi.',
         });
       }
     } catch (err: any) {

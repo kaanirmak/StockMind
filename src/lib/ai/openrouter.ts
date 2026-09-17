@@ -16,13 +16,15 @@ export interface OpenRouterChatOptions {
   };
 }
 
-const DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
+const DEFAULT_MODEL = 'openrouter/free';
 
 export const AVAILABLE_MODELS = [
-  { id: 'google/gemma-4-31b-it:free', name: 'Google Gemma 31B (Ücretsiz / Free)', provider: 'Google' },
-  { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'NVIDIA Nemotron 120B (Ücretsiz / Free)', provider: 'NVIDIA' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3 (Yüksek Mantık & Hız)', provider: 'DeepSeek' },
-  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B (Çok Yönlü)', provider: 'Meta' },
+  { id: 'openrouter/free', name: 'OpenRouter Free (Otomatik Ücretsiz Model)', provider: 'OpenRouter' },
+  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3 (Yüksek Akıl & Hız - Önerilen)', provider: 'DeepSeek' },
+  { id: 'google/gemini-2.5-flash', name: 'Google Gemini 2.5 Flash (Ultra Hızlı)', provider: 'Google' },
+  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B (Çok Yönlü Analiz)', provider: 'Meta' },
+  { id: 'openai/gpt-4o-mini', name: 'OpenAI GPT-4o Mini (Akıllı Finans)', provider: 'OpenAI' },
+  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B (Derin Piyasa Analizi)', provider: 'Alibaba' },
 ];
 
 export const FINANCIAL_SYSTEM_PROMPT = `Sen StockMind platformunun yapay zeka destekli kıdemli finansal analisti ve portföy danışmanısın.
@@ -38,11 +40,12 @@ export async function callOpenRouter(
   messages: OpenRouterMessage[],
   options?: OpenRouterChatOptions
 ): Promise<string> {
-  const apiKey = options?.apiKey || process.env.OPENROUTER_API_KEY;
+  const cleanApiKey = (options?.apiKey || '').trim();
+  const apiKey = cleanApiKey || process.env.OPENROUTER_API_KEY;
   const model = options?.model || DEFAULT_MODEL;
 
   if (!apiKey) {
-    // If no API key is provided, generate a rich, intelligent simulation response
+    // If no API key is provided at all, generate a rich, intelligent simulation response
     return generateSimulatedAIResponse(messages[messages.length - 1]?.content || '', options?.context);
   }
 
@@ -68,14 +71,32 @@ export async function callOpenRouter(
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.warn('OpenRouter API error response:', errorText);
+      console.warn('OpenRouter API error response:', res.status, errorText);
+
+      let parsedMsg = errorText;
+      try {
+        const json = JSON.parse(errorText);
+        if (json?.error?.message) {
+          parsedMsg = json.error.message;
+        }
+      } catch (_) {}
+
+      // If user passed their own key, throw clear error so they can diagnose their key/model
+      if (cleanApiKey) {
+        throw new Error(`OpenRouter (${res.status}): ${parsedMsg}`);
+      }
+
+      // If system key had a rate limit or failure, fallback to simulation
       return generateSimulatedAIResponse(messages[messages.length - 1]?.content || '', options?.context);
     }
 
     const data = await res.json();
     return data.choices?.[0]?.message?.content || 'Üzgünüm, analiz yanıtı oluşturulamadı.';
-  } catch (error) {
+  } catch (error: any) {
     console.error('OpenRouter call error:', error);
+    if (cleanApiKey) {
+      throw error;
+    }
     return generateSimulatedAIResponse(messages[messages.length - 1]?.content || '', options?.context);
   }
 }

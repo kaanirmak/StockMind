@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
 import { Button, Input, Badge } from '@/components/ui';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Message {
   id: string;
@@ -34,11 +36,57 @@ const PROMPT_SUGGESTIONS = [
 
 function AIAssistantContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const userKey = user?.id ? `user_${user.id}` : 'guest';
+
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0].id);
+  const [customApiKey, setCustomApiKey] = useState<string>('');
+  const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
+  const [tempKeyInput, setTempKeyInput] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load custom API key and default model from local settings
+  useEffect(() => {
+    try {
+      const savedSettings =
+        localStorage.getItem(`stockmind_settings_${userKey}`) ||
+        localStorage.getItem('stockmind_settings_guest');
+
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        if (parsed.openRouterKey) {
+          setCustomApiKey(parsed.openRouterKey);
+          setTempKeyInput(parsed.openRouterKey);
+        }
+        if (parsed.defaultModel) {
+          setSelectedModel(parsed.defaultModel);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load local AI settings in assistant:', e);
+    }
+  }, [userKey]);
+
+  const saveCustomKey = (key: string) => {
+    const trimmed = key.trim();
+    setCustomApiKey(trimmed);
+    try {
+      const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
+      const parsed = existing ? JSON.parse(existing) : {};
+      const updated = {
+        ...parsed,
+        openRouterKey: trimmed,
+        defaultModel: selectedModel,
+      };
+      localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Could not persist key to localStorage:', e);
+    }
+    setShowKeyModal(false);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -78,6 +126,7 @@ function AIAssistantContent() {
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           model: selectedModel,
+          apiKey: customApiKey.trim() || undefined,
         }),
       });
 
@@ -91,23 +140,24 @@ function AIAssistantContent() {
         };
         setMessages((prev) => [...prev, assistantMessage]);
       } else {
+        const errorText = data.error || 'AI yanıtı alınamadı.';
         setMessages((prev) => [
           ...prev,
           {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: '⚠️ Üzgünüm, şu an bağlantı kurulamadı. Lütfen tekrar deneyin.',
+            content: `⚠️ **AI Hatası:**\n\n${errorText}\n\n*İpucu: Kendi OpenRouter anahtarınızı test ediyorsanız, lütfen anahtarın geçerli olduğunu, bakiyesini ve seçili modelin hesabınızda kullanılabilir olduğunu kontrol edin. Yukarıdaki "API Anahtarı" butonundan anahtarınızı anında güncelleyebilirsiniz.*`,
             createdAt: new Date().toISOString(),
           },
         ]);
       }
-    } catch (err) {
+    } catch (err: any) {
       setMessages((prev) => [
         ...prev,
         {
           id: `err-${Date.now()}`,
           role: 'assistant',
-          content: '⚠️ Ağ hatası oluştu. Lütfen bağlantınızı kontrol edin.',
+          content: `⚠️ **Ağ Bağlantı Hatası:** ${err?.message || 'Sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol edin.'}`,
           createdAt: new Date().toISOString(),
         },
       ]);
@@ -121,7 +171,7 @@ function AIAssistantContent() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+    <div className="flex flex-col h-[calc(100vh-140px)] animate-fade-in relative">
       {/* Top Header & Model Selector */}
       <div className="glass-card p-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         <div className="flex items-center gap-3">
@@ -131,22 +181,58 @@ function AIAssistantContent() {
             </svg>
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-base font-bold text-text-primary">StockMind AI Danışman</h1>
               <Badge variant="success" size="sm" dot>
                 OpenRouter AI
               </Badge>
+
+              {/* API Key Status Pill */}
+              {customApiKey ? (
+                <button
+                  onClick={() => {
+                    setTempKeyInput(customApiKey);
+                    setShowKeyModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-all cursor-pointer"
+                  title="Özel API anahtarınızı görüntüleyin veya değiştirin"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Özel Key: {customApiKey.slice(0, 6)}...{customApiKey.slice(-4)}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setTempKeyInput('');
+                    setShowKeyModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-accent/15 border border-accent/30 text-accent hover:bg-accent/25 transition-all cursor-pointer"
+                  title="Kendi OpenRouter anahtarınızı ekleyin"
+                >
+                  <span>⚡ Kendi API Key'ini Tanımla</span>
+                </button>
+              )}
             </div>
-            <p className="text-xs text-text-muted">BIST, TEFAS ve Küresel Piyasalar Analiz Motoru</p>
+            <p className="text-xs text-text-muted">BIST, TEFAS ve Küresel Piyasalar Canlı Analiz Motoru</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
           {/* Model Selector */}
           <select
             value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3.5 py-2 focus:border-accent focus:outline-none"
+            onChange={(e) => {
+              setSelectedModel(e.target.value);
+              try {
+                const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
+                const parsed = existing ? JSON.parse(existing) : {};
+                localStorage.setItem(
+                  `stockmind_settings_${userKey}`,
+                  JSON.stringify({ ...parsed, defaultModel: e.target.value })
+                );
+              } catch (_) {}
+            }}
+            className="bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3 py-2 focus:border-accent focus:outline-none max-w-[220px] sm:max-w-none truncate cursor-pointer"
           >
             {AVAILABLE_MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -157,7 +243,7 @@ function AIAssistantContent() {
 
           <button
             onClick={handleClearChat}
-            className="p-2 text-text-muted hover:text-text-primary rounded-xl border border-border hover:bg-bg-hover transition-colors text-xs"
+            className="p-2 text-text-muted hover:text-text-primary rounded-xl border border-border hover:bg-bg-hover transition-colors text-xs cursor-pointer"
             title="Sohbeti Temizle"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,6 +252,76 @@ function AIAssistantContent() {
           </button>
         </div>
       </div>
+
+      {/* Quick API Key Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="glass-card max-w-md w-full p-6 border border-border rounded-2xl shadow-elevated space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center text-accent">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-text-primary">OpenRouter API Anahtarı</h3>
+                  <p className="text-[11px] text-text-muted">Kendi anahtarınızı tanımlayın ve anında test edin</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowKeyModal(false)}
+                className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-bg-hover transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-text-secondary">API Anahtarı (API Key)</label>
+              <input
+                type="password"
+                value={tempKeyInput}
+                onChange={(e) => setTempKeyInput(e.target.value)}
+                placeholder="sk-or-v1-xxxxxxxxxxxxxxxx..."
+                className="w-full bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none font-mono"
+              />
+              <p className="text-[11px] text-text-muted">
+                Anahtarınız sadece tarayıcınızda güvenle saklanır. OpenRouter üzerinden dilediğiniz yapay zeka modelini kullanabilirsiniz.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              {customApiKey ? (
+                <button
+                  type="button"
+                  onClick={() => saveCustomKey('')}
+                  className="text-xs text-danger hover:underline cursor-pointer"
+                >
+                  Anahtarı Kaldır
+                </button>
+              ) : (
+                <Link
+                  href="/settings"
+                  className="text-xs text-accent hover:underline"
+                  onClick={() => setShowKeyModal(false)}
+                >
+                  Detaylı Ayarlar &rarr;
+                </Link>
+              )}
+
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setShowKeyModal(false)}>
+                  İptal
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => saveCustomKey(tempKeyInput)}>
+                  Kaydet ve Kullan
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chat Messages Body */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 mb-4">
@@ -213,7 +369,7 @@ function AIAssistantContent() {
             </div>
             <div className="glass-card p-4 rounded-2xl rounded-tl-sm border-border/80 flex items-center gap-2 text-xs text-text-muted">
               <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
-              <span>StockMind analiz yapıyor ve yanıt oluşturuyor...</span>
+              <span>StockMind ({AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.provider || 'OpenRouter'}) yanıt oluşturuyor...</span>
             </div>
           </div>
         )}

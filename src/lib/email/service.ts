@@ -183,24 +183,35 @@ export async function sendTestEmail(payload: EmailPayload): Promise<{
         (!smtpHost && smtpUser?.includes('@gmail.com'));
 
       const cleanPass = smtpPass.replace(/\s+/g, '');
+      const portNum = Number(smtpPort) || (isGmail ? 465 : 587);
 
       const transporter = isGmail
         ? nodemailer.createTransport({
-            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: portNum === 587 ? 587 : 465,
+            secure: portNum === 587 ? false : true,
             auth: {
               user: smtpUser,
               pass: cleanPass,
+            },
+            tls: {
+              rejectUnauthorized: false,
             },
           })
         : nodemailer.createTransport({
             host: smtpHost || 'smtp.gmail.com',
-            port: smtpPort,
-            secure: smtpPort === 465,
+            port: portNum,
+            secure: portNum === 465,
             auth: {
               user: smtpUser,
               pass: cleanPass,
             },
+            tls: {
+              rejectUnauthorized: false,
+            },
           });
+
+      await transporter.verify();
 
       const info = await transporter.sendMail({
         from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
@@ -211,11 +222,16 @@ export async function sendTestEmail(payload: EmailPayload): Promise<{
 
       return {
         success: true,
-        message: `E-posta başarıyla ${to} adresine gönderildi (MessageId: ${info.messageId})`,
+        message: `E-posta başarıyla ${to} adresine iletildi! (${info.messageId})`,
         method: isGmail ? 'google_smtp' : 'custom_smtp',
       };
     } catch (err: any) {
-      console.warn('Custom SMTP delivery failed, trying Supabase / Ethereal fallback:', err.message);
+      console.error('SMTP delivery failed:', err);
+      return {
+        success: false,
+        message: `E-posta gönderilemedi (${err.code || 'HATA'}): ${err.message}. Gmail kullanıyorsanız 16 haneli 'Uygulama Şifresi' (App Password) oluşturduğunuzdan emin olun.`,
+        method: 'failed',
+      };
     }
   }
 

@@ -5,6 +5,99 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
+export interface NotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+  read: boolean;
+  category: 'portfolio' | 'market' | 'ai' | 'system';
+  link?: string;
+}
+
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: 'notif-1',
+    title: 'THYAO Direnç Seviyesinde',
+    description: 'THYAO hisseniz +%2.8 artışla ₺284 seviyesine ulaştı. Kâr realizasyonu hedefleri güncellendi.',
+    time: '15 dk önce',
+    read: false,
+    category: 'portfolio',
+    link: '/portfolio',
+  },
+  {
+    id: 'notif-2',
+    title: 'BIST 100 Günlük Kapanış',
+    description: 'BIST 100 endeksi günü pozitif bölgede kapattı. Volatilite göstergeleri dengeli seyrediyor.',
+    time: '45 dk önce',
+    read: false,
+    category: 'market',
+    link: '/dashboard',
+  },
+  {
+    id: 'notif-3',
+    title: 'TEFAS Fon Sepeti Analizi Hazır',
+    description: 'StockMind AI, teknoloji ve büyüme fonları için haftalık sepet önerisini tamamladı.',
+    time: '2 saat önce',
+    read: false,
+    category: 'ai',
+    link: '/ai-assistant',
+  },
+  {
+    id: 'notif-4',
+    title: '18:30 Günlük Bülten Servisi',
+    description: 'E-posta bildirim servisiniz aktif. Günlük kapanış bülteniniz her akşam iletilecektir.',
+    time: 'Bugün',
+    read: true,
+    category: 'system',
+    link: '/settings',
+  },
+];
+
+function getNotificationIcon(category: NotificationItem['category']) {
+  switch (category) {
+    case 'portfolio':
+      return (
+        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case 'market':
+      return (
+        <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      );
+    case 'ai':
+      return (
+        <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      );
+    case 'system':
+    default:
+      return (
+        <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+      );
+  }
+}
+
+function getNotificationIconColor(category: NotificationItem['category']) {
+  switch (category) {
+    case 'portfolio':
+      return 'bg-emerald-500/15 border border-emerald-500/30';
+    case 'market':
+      return 'bg-cyan-500/15 border border-cyan-500/30';
+    case 'ai':
+      return 'bg-accent/15 border border-accent/30';
+    case 'system':
+    default:
+      return 'bg-amber-500/15 border border-amber-500/30';
+  }
+}
+
 export default function Header() {
   const router = useRouter();
   const { profile, signOut } = useAuth();
@@ -12,11 +105,69 @@ export default function Header() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu on outside click
+  // Notification state
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  // Load and persist notifications
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('stockmind_notifications');
+      if (saved) {
+        setNotifications(JSON.parse(saved));
+      } else {
+        setNotifications(INITIAL_NOTIFICATIONS);
+      }
+    } catch (_) {
+      setNotifications(INITIAL_NOTIFICATIONS);
+    }
+  }, []);
+
+  const saveNotifications = (items: NotificationItem[]) => {
+    setNotifications(items);
+    try {
+      localStorage.setItem('stockmind_notifications', JSON.stringify(items));
+    } catch (_) {}
+  };
+
+  const markAllAsRead = () => {
+    const updated = notifications.map((n) => ({ ...n, read: true }));
+    saveNotifications(updated);
+  };
+
+  const clearAllNotifications = () => {
+    saveNotifications([]);
+  };
+
+  const deleteNotification = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    saveNotifications(notifications.filter((n) => n.id !== id));
+  };
+
+  const handleNotificationClick = (item: NotificationItem) => {
+    const updated = notifications.map((n) => (n.id === item.id ? { ...n, read: true } : n));
+    saveNotifications(updated);
+    setShowNotifications(false);
+    if (item.link) {
+      router.push(item.link);
+    }
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+  const displayedNotifications = filterUnreadOnly
+    ? notifications.filter((n) => !n.read)
+    : notifications;
+
+  // Close menus on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -290,14 +441,164 @@ export default function Header() {
           </Link>
         )}
 
-        {/* Notifications */}
-        <button className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-          </svg>
-          {/* Notification dot */}
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full animate-pulse-glow" />
-        </button>
+        {/* Notifications Dropdown */}
+        <div className="relative" ref={notificationRef}>
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className={`relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer ${
+              showNotifications ? 'bg-bg-hover text-text-primary' : ''
+            }`}
+            title="Bildirimler"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            {/* Unread badge counter */}
+            {unreadCount > 0 ? (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-white text-[10px] font-extrabold flex items-center justify-center shadow-lg shadow-accent/40 animate-pulse-glow">
+                {unreadCount}
+              </span>
+            ) : (
+              <span className="sr-only">Bildirim yok</span>
+            )}
+          </button>
+
+          {/* Notification Panel Dropdown */}
+          {showNotifications && (
+            <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] max-w-[calc(100vw-1.5rem)] glass-card rounded-2xl border border-border shadow-elevated py-2 animate-scale-in origin-top-right z-50 overflow-hidden">
+              {/* Panel Header */}
+              <div className="px-4 py-3 border-b border-border/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-text-primary">Bildirimler</span>
+                  {unreadCount > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-accent/20 text-accent">
+                      {unreadCount} yeni
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-bg-secondary text-text-muted">
+                      Güncel
+                    </span>
+                  )}
+                </div>
+
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-xs text-accent hover:underline font-medium cursor-pointer"
+                  >
+                    Tümünü Okundu Say
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 border-b border-border/40 text-xs">
+                <button
+                  onClick={() => setFilterUnreadOnly(false)}
+                  className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                    !filterUnreadOnly
+                      ? 'bg-accent/20 text-accent font-semibold'
+                      : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+                  }`}
+                >
+                  Tümü ({notifications.length})
+                </button>
+                <button
+                  onClick={() => setFilterUnreadOnly(true)}
+                  className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                    filterUnreadOnly
+                      ? 'bg-accent/20 text-accent font-semibold'
+                      : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+                  }`}
+                >
+                  Okunmamış ({unreadCount})
+                </button>
+              </div>
+
+              {/* Notifications List */}
+              <div className="max-h-[340px] overflow-y-auto divide-y divide-border/40">
+                {displayedNotifications.length === 0 ? (
+                  <div className="py-8 px-4 text-center">
+                    <div className="w-12 h-12 rounded-2xl bg-bg-secondary flex items-center justify-center mx-auto mb-2 text-text-muted">
+                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-xs font-semibold text-text-primary">Yeni bildirim bulunmuyor</p>
+                    <p className="text-[11px] text-text-muted mt-0.5">Tüm piyasa ve portföy hareketleri takip ediliyor.</p>
+                  </div>
+                ) : (
+                  displayedNotifications.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleNotificationClick(item)}
+                      className={`p-3 sm:px-4 hover:bg-bg-hover transition-colors cursor-pointer flex items-start gap-3 relative group ${
+                        !item.read ? 'bg-accent/[0.04]' : ''
+                      }`}
+                    >
+                      {/* Icon */}
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${getNotificationIconColor(item.category)}`}>
+                        {getNotificationIcon(item.category)}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className={`text-xs truncate ${!item.read ? 'font-bold text-text-primary' : 'font-medium text-text-secondary'}`}>
+                            {item.title}
+                          </p>
+                          <span className="text-[10px] text-text-muted shrink-0">{item.time}</span>
+                        </div>
+                        <p className="text-[11px] text-text-muted line-clamp-2 mt-0.5 leading-relaxed">
+                          {item.description}
+                        </p>
+                      </div>
+
+                      {/* Unread indicator */}
+                      {!item.read && (
+                        <span className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0 animate-pulse" />
+                      )}
+
+                      {/* Delete button on hover */}
+                      <button
+                        onClick={(e) => deleteNotification(item.id, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-danger rounded hover:bg-bg-secondary transition-all shrink-0 cursor-pointer"
+                        title="Sil"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Panel Footer */}
+              <div className="px-4 py-2.5 bg-bg-secondary/40 border-t border-border/60 flex items-center justify-between text-xs">
+                {notifications.length > 0 ? (
+                  <button
+                    onClick={clearAllNotifications}
+                    className="text-text-muted hover:text-danger transition-colors cursor-pointer text-[11px]"
+                  >
+                    Tümünü Temizle
+                  </button>
+                ) : <span />}
+
+                <Link
+                  href="/settings"
+                  onClick={() => setShowNotifications(false)}
+                  className="text-accent hover:underline font-medium text-[11px] inline-flex items-center gap-1"
+                >
+                  <span>Bildirim Ayarları</span>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Menu */}
         <div className="relative" ref={menuRef}>
