@@ -7,7 +7,6 @@ import { Holding } from '@/types/portfolio';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
 type MetricType = 'daily' | 'total';
-type FilterType = 'all' | 'stock' | 'fund';
 
 interface TreemapNode {
   holding: Holding;
@@ -154,7 +153,6 @@ export default function PortfolioHeatmap() {
   const { getSummary, livePrices } = usePortfolioStore();
   const summary = getSummary();
   const [metric, setMetric] = useState<MetricType>('daily');
-  const [filter, setFilter] = useState<FilterType>('all');
   const [hoveredNode, setHoveredNode] = useState<TreemapNode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 380 });
@@ -178,14 +176,8 @@ export default function PortfolioHeatmap() {
 
   // Filter holdings
   const filteredHoldings = useMemo(() => {
-    let list = summary.holdings.filter((h) => h.currentValue > 0);
-    if (filter === 'stock') {
-      list = list.filter((h) => h.assetType === 'stock');
-    } else if (filter === 'fund') {
-      list = list.filter((h) => h.assetType === 'fund');
-    }
-    return list;
-  }, [summary.holdings, filter]);
+    return summary.holdings.filter((h) => h.currentValue > 0);
+  }, [summary.holdings]);
 
   // Compute treemap nodes
   const nodes = useMemo(() => {
@@ -268,24 +260,6 @@ export default function PortfolioHeatmap() {
             >
               Toplam K/Z
             </button>
-          </div>
-
-          {/* Filter selector */}
-          <div className="flex items-center p-1 rounded-xl bg-white/[0.06] border border-white/[0.08]">
-            {(['all', 'stock', 'fund'] as FilterType[]).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setFilter(f)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  filter === f
-                    ? 'bg-violet-600/30 text-violet-200 border border-violet-500/30'
-                    : 'text-white/50 hover:text-white/80'
-                }`}
-              >
-                {f === 'all' ? 'Tümü' : f === 'stock' ? 'Hisseler' : 'Fonlar'}
-              </button>
-            ))}
           </div>
         </div>
       </div>
