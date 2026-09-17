@@ -11,7 +11,7 @@ export default function PortfolioSummary() {
   const router = useRouter();
   const { getSummary, livePrices } = usePortfolioStore();
   const summary = getSummary();
-  const [period, setPeriod] = useState<TimePeriod>('total');
+  const [period, setPeriod] = useState<TimePeriod>('daily');
 
   const usdQuote = livePrices['USDTRY'] || livePrices['USD'];
   const usdTry = typeof usdQuote === 'number' ? usdQuote : (usdQuote && typeof usdQuote === 'object' ? usdQuote.price : 38.5);
@@ -23,7 +23,7 @@ export default function PortfolioSummary() {
     { key: 'total', label: 'Toplam' },
   ];
 
-  const currentPeriodObj = periods.find((p) => p.key === period) || periods[3];
+  const currentPeriodObj = periods.find((p) => p.key === period) || periods[0];
 
   // Cycle to next period on click
   const handleCyclePeriod = (e: React.MouseEvent) => {
