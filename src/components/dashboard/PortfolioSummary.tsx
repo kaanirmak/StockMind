@@ -118,8 +118,8 @@ export default function PortfolioSummary() {
                 className="h-8 sm:h-9 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
               />
               <span className="relative flex h-2 w-2 ml-0.5">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isPositive ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${isPositive ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
               </span>
             </div>
 
@@ -134,7 +134,7 @@ export default function PortfolioSummary() {
               }`}
               title="Dönemi değiştirmek için tıklayın"
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${isPositive ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
               <span>{currentPeriodObj.label}</span>
             </button>
           </div>
