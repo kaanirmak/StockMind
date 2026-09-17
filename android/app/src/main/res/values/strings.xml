@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">StockMind</string>
+    <string name="error_title">Bağlantı Kurulamadı</string>
+    <string name="error_message">StockMind sunucusuna erişilemiyor. Lütfen internet bağlantınızı veya sunucu adresini kontrol edin.</string>
+    <string name="retry">Tekrar Dene</string>
+    <string name="change_url">Sunucu Adresini Değiştir</string>
+</resources>
