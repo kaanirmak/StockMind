@@ -16,13 +16,7 @@ export default function DashboardPage() {
   }, [fetchPortfoliosAndTransactions]);
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
-        <p className="text-text-secondary text-sm mt-1">Portföy ve piyasa özetiniz</p>
-      </div>
-
-      {/* Portfolio Summary Cards */}
+      {/* Portfolio Hero Card + Stats */}
       <PortfolioSummary />
 
       {/* Market Overview */}
