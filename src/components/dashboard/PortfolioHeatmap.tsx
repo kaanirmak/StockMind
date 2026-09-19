@@ -253,12 +253,9 @@ export default function PortfolioHeatmap() {
   };
 
   return (
-    <div
-      className="rounded-2xl sm:rounded-3xl bg-bg-card/80 backdrop-blur-xl p-3.5 sm:p-6 shadow-card transition-all !border-none"
-      style={{ border: 'none', borderWidth: 0, outline: 'none' }}
-    >
+    <div className="w-full space-y-3 sm:space-y-4">
       {/* Header Bar */}
-      <div className="flex items-center justify-between gap-2.5 mb-3 sm:mb-4">
+      <div className="flex items-center justify-between gap-2.5">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shrink-0">
             <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -509,7 +506,7 @@ export default function PortfolioHeatmap() {
       )}
 
       {/* Slim Legend Bar */}
-      <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-border/60 text-[10px] sm:text-xs text-text-muted">
+      <div className="flex items-center justify-between gap-2 pt-1 text-[10px] sm:text-xs text-text-muted">
         <div className="flex items-center gap-1.5">
           <span className="font-medium text-text-secondary">Skala:</span>
           <span className="text-rose-500 font-bold">-%5+</span>
