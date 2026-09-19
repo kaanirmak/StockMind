@@ -282,6 +282,47 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
   }
 
   try {
+    // 1.8 BIST 100 / BIST 30 Index Live Check
+    if (sym === 'XU100' || sym === 'BIST100' || sym === 'BIST' || sym === 'XU030' || sym === 'BIST30') {
+      const is30 = sym === 'XU030' || sym === 'BIST30';
+      const ticker = is30 ? 'XU030.IS' : 'XU100.IS';
+      try {
+        const indexRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null);
+
+        const meta = indexRes?.chart?.result?.[0]?.meta;
+        const currentPrice = meta?.regularMarketPrice || indexRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+        const changePercent = meta?.regularMarketChangePercent || 0;
+        const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
+        const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
+
+        if (currentPrice) {
+          return {
+            symbol: is30 ? 'XU030' : 'XU100',
+            name: is30 ? 'Borsa İstanbul 30 Endeksi' : 'Borsa İstanbul 100 Endeksi',
+            exchange: 'BIST',
+            currency: 'TRY',
+            sector: 'Borsa Endeksleri',
+            basePrice: Number(currentPrice.toFixed(2)),
+            price: Number(currentPrice.toFixed(2)),
+            change: Number(changeAmt.toFixed(2)),
+            changePercent: Number(changePercent.toFixed(2)),
+            high: meta?.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : Number((currentPrice * 1.01).toFixed(2)),
+            low: meta?.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : Number((currentPrice * 0.99).toFixed(2)),
+            open: meta?.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : currentPrice,
+            close: Number(currentPrice.toFixed(2)),
+            previousClose: Number(prevClose.toFixed(2)),
+            volume: meta?.regularMarketVolume || 100000000,
+            marketCap: 0,
+            timestamp: new Date().toISOString(),
+          } as any;
+        }
+      } catch (e) {
+        console.warn('Error fetching BIST index:', e);
+      }
+    }
     // 2. Gram Altın (TL) live calculation (XAUUSD * USDTRY / 31.1034768)
     if (sym === 'XAUTRYG' || sym === 'XAUTRY' || sym === 'GRAM_ALTIN' || sym === 'ALTIN' || sym === 'GA') {
       const [goldRes, fxRes] = await Promise.all([

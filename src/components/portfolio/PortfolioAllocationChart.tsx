@@ -47,9 +47,9 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
         </span>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-6 pt-2">
+      <div className="flex flex-col sm:flex-row items-center gap-4 pt-1">
         {/* SVG Donut Chart */}
-        <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
+        <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
           <svg viewBox="-1 -1 2 2" className="w-full h-full -rotate-90">
             {allocation.map((item, index) => {
               const startPercent = cumulativePercent;
@@ -76,13 +76,13 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
                 />
               );
             })}
-            {/* Center Donut Hole */}
-            <circle cx="0" cy="0" r="0.65" fill="#131b2e" />
+            {/* Center Donut Hole - Dinamik Tema Uyumu */}
+            <circle cx="0" cy="0" r="0.65" fill="var(--bg-card)" stroke="var(--border)" strokeWidth="0.015" />
           </svg>
 
           {/* Center Text */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider">Varlık</span>
+            <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Varlık</span>
             <span className="text-sm font-bold font-mono text-text-primary">
               {allocation.length} Adet
             </span>
@@ -90,21 +90,23 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
         </div>
 
         {/* Legend List */}
-        <div className="flex-1 space-y-2 w-full">
+        <div className="flex-1 space-y-1.5 w-full min-w-0 max-h-[300px] overflow-y-auto pr-1">
           {allocation.map((item) => (
             <div
               key={item.label}
-              className="flex items-center justify-between text-xs p-2 rounded-xl bg-bg-tertiary/40 hover:bg-bg-tertiary/80 transition-colors"
+              className="flex items-center justify-between gap-2 text-xs py-1.5 px-2.5 rounded-xl bg-bg-tertiary/40 hover:bg-bg-tertiary/80 transition-colors"
             >
-              <div className="flex items-center gap-2.5">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="font-semibold text-text-primary">{item.label}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-text-muted font-mono">
-                  ₺{item.value.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                <span className="font-semibold text-text-primary truncate" title={item.label}>
+                  {item.label}
                 </span>
-                <span className="font-mono font-bold text-text-primary w-12 text-right">
+              </div>
+              <div className="flex items-center gap-2 shrink-0 font-mono">
+                <span className="text-text-muted whitespace-nowrap text-right">
+                  ₺{item.value.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+                <span className="font-bold text-text-primary min-w-[42px] text-right">
                   %{item.percentage.toFixed(1)}
                 </span>
               </div>

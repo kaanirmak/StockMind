@@ -396,12 +396,12 @@ export default function PortfolioPage() {
       </div>
 
       {/* Main Grid: Allocation Chart & Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-5">
           <PortfolioAllocationChart allocation={summary.allocation} totalValue={summary.totalValue} />
         </div>
 
-        <div className="lg:col-span-2 flex flex-col justify-between p-6 rounded-2xl bg-bg-card border border-border shadow-sm">
+        <div className="lg:col-span-7 flex flex-col justify-between p-6 rounded-2xl bg-bg-card border border-border shadow-sm">
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-text-primary">Portföy Varlık Özeti</h3>

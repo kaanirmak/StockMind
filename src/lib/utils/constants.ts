@@ -59,6 +59,7 @@ export const NAV_ITEMS = [
   { href: '/funds', label: 'Fonlar', labelEn: 'Funds', icon: 'PiggyBank' },
   { href: '/watchlist', label: 'Takip Listesi', labelEn: 'Watchlist', icon: 'Star' },
   { href: '/reports', label: 'Raporlar', labelEn: 'Reports', icon: 'BarChart3' },
+  { href: '/quant-lab', label: 'Quant Lab', labelEn: 'Quant Lab', icon: 'Cpu' },
   { href: '/ai-assistant', label: 'AI Asistan', labelEn: 'AI Assistant', icon: 'Bot' },
   { href: '/news', label: 'Haberler', labelEn: 'News', icon: 'Newspaper' },
 ] as const;

@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
     if (!to) {
       return NextResponse.json(
-        { success: false, error: 'E-posta adresi belirtilmelidir.' },
+        { success: false, error: 'Alıcı e-posta adresi belirtilmelidir.' },
         { status: 400 }
       );
     }
@@ -20,6 +20,17 @@ export async function POST(request: Request) {
       portfolioSummary,
       customSmtp,
     });
+
+    if (!result.success && (result as any).requiresSmtpConfig) {
+      return NextResponse.json(
+        {
+          success: false,
+          requiresSmtpConfig: true,
+          error: (result as any).message || 'Özel SMTP gönderici bilgileri zorunludur.',
+        },
+        { status: 400 }
+      );
+    }
 
     return NextResponse.json(result);
   } catch (error: any) {

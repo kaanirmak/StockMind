@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
 import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/components/theme/ThemeProvider';
 
 export default function SettingsPage() {
   const { showToast } = useToast();
   const { user, profile, loading: authLoading, updateProfile } = useAuth();
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -145,11 +147,19 @@ export default function SettingsPage() {
       };
       localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
 
-      showToast({
-        type: 'success',
-        title: 'E-posta & Bildirim Ayarları Kaydedildi',
-        message: 'Bildirim e-posta adresiniz ve SMTP tercihleriniz başarıyla saklandı.',
-      });
+      if (!smtpUser.trim() || !smtpPass.trim()) {
+        showToast({
+          type: 'warning',
+          title: 'Ayarlar Kaydedildi (SMTP Eksik)',
+          message: 'Bildirim tercihleriniz saklandı ancak e-posta bildirimleri ve 18:30 bülteni için özel SMTP gönderici bilgileri zorunludur.',
+        });
+      } else {
+        showToast({
+          type: 'success',
+          title: 'E-posta & Özel SMTP Ayarları Kaydedildi 🎉',
+          message: 'Özel SMTP gönderici bilgileriniz ve bildirim tercihleriniz başarıyla aktif edildi.',
+        });
+      }
     } catch (e) {
       showToast({
         type: 'danger',
@@ -208,14 +218,14 @@ export default function SettingsPage() {
   };
 
   const getCustomSmtpPayload = () => {
-    if (!useCustomSmtp || !smtpUser || !smtpPass) return undefined;
+    if (!smtpUser.trim() || !smtpPass.trim()) return undefined;
     return {
       service: smtpService,
       host: smtpHost,
       port: Number(smtpPort),
-      user: smtpUser,
-      pass: smtpPass,
-      from: smtpFrom || smtpUser,
+      user: smtpUser.trim(),
+      pass: smtpPass.trim(),
+      from: smtpFrom.trim() || smtpUser.trim(),
     };
   };
 
@@ -226,6 +236,15 @@ export default function SettingsPage() {
         type: 'danger',
         title: 'Geçersiz E-posta',
         message: 'Lütfen geçerli bir bildirim e-posta adresi girin.',
+      });
+      return;
+    }
+
+    if (!smtpUser.trim() || !smtpPass.trim()) {
+      showToast({
+        type: 'danger',
+        title: 'Özel SMTP Bilgileri Zorunludur 🔑',
+        message: '18:30 Günlük Bültenini gönderebilmek için aşağıdaki SMTP Yapılandırması alanından gönderici e-posta ve şifrenizi (Uygulama Şifresi) girip kaydedin.',
       });
       return;
     }
@@ -276,6 +295,15 @@ export default function SettingsPage() {
         type: 'danger',
         title: 'Geçersiz E-posta',
         message: 'Lütfen geçerli bir alıcı e-posta adresi girin.',
+      });
+      return;
+    }
+
+    if (!smtpUser.trim() || !smtpPass.trim()) {
+      showToast({
+        type: 'danger',
+        title: 'Özel SMTP Bilgileri Zorunludur 🔑',
+        message: 'Test e-postası gönderebilmek için aşağıdaki SMTP Yapılandırması alanından gönderici e-posta ve şifrenizi (Google Uygulama Şifresi) tanımlamalısınız.',
       });
       return;
     }
@@ -372,6 +400,109 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Theme Selection Card (Görünüm ve Plan Tercihi) */}
+      <div className="glass-card p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
+          <div>
+            <h3 className="text-base font-bold text-text-primary">Görünüm & Tema (Plan Seçimi)</h3>
+            <p className="text-xs text-text-muted">Arayüz için göz yormayan Siyah Plan (Koyu) veya aydınlık ferah Beyaz Plan (Açık) seçin.</p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent border border-accent/30 self-start sm:self-auto">
+            Aktif: {resolvedTheme === 'dark' ? 'Siyah Plan (Koyu)' : 'Beyaz Plan (Açık)'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          {/* Siyah Plan Card */}
+          <button
+            type="button"
+            onClick={() => setTheme('dark')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group ${
+              resolvedTheme === 'dark'
+                ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10 ring-2 ring-accent/30'
+                : 'border-border bg-bg-secondary/60 hover:border-border-hover hover:bg-bg-hover'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🌙</span>
+                <span className="font-bold text-sm text-text-primary">Siyah Plan</span>
+              </div>
+              {resolvedTheme === 'dark' ? (
+                <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  Seçili
+                </span>
+              ) : (
+                <span className="text-xs text-text-muted group-hover:text-text-primary transition-colors">
+                  Seç
+                </span>
+              )}
+            </div>
+
+            {/* Dark Mode Miniature Preview */}
+            <div className="h-16 rounded-xl bg-[#0a0b14] border border-[#1e1f3a] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-2 rounded bg-violet-500/40" />
+                <div className="w-4 h-2 rounded bg-emerald-500/40" />
+              </div>
+              <div className="flex gap-1.5">
+                <div className="h-6 flex-1 rounded bg-[#12142a] border border-[#2d2f55]" />
+                <div className="h-6 flex-1 rounded bg-[#12142a] border border-[#2d2f55]" />
+              </div>
+            </div>
+
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Göz yormayan, modern mor-siyah neon cam tasarım. Düşük ışıkta kullanım ve gece analizleri için idealdir.
+            </p>
+          </button>
+
+          {/* Beyaz Plan Card */}
+          <button
+            type="button"
+            onClick={() => setTheme('light')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group ${
+              resolvedTheme === 'light'
+                ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10 ring-2 ring-accent/30'
+                : 'border-border bg-bg-secondary/60 hover:border-border-hover hover:bg-bg-hover'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">☀️</span>
+                <span className="font-bold text-sm text-text-primary">Beyaz Plan</span>
+              </div>
+              {resolvedTheme === 'light' ? (
+                <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                  Seçili
+                </span>
+              ) : (
+                <span className="text-xs text-text-muted group-hover:text-text-primary transition-colors">
+                  Seç
+                </span>
+              )}
+            </div>
+
+            {/* Light Mode Miniature Preview */}
+            <div className="h-16 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-2 rounded bg-violet-600/40" />
+                <div className="w-4 h-2 rounded bg-emerald-600/40" />
+              </div>
+              <div className="flex gap-1.5">
+                <div className="h-6 flex-1 rounded bg-white border border-[#cbd5e1] shadow-xs" />
+                <div className="h-6 flex-1 rounded bg-white border border-[#cbd5e1] shadow-xs" />
+              </div>
+            </div>
+
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Ferah, temiz, yüksek kontrastlı aydınlık tasarım. Gündüz kullanımı ve net okunabilirlik için optimize edilmiştir.
+            </p>
+          </button>
+        </div>
+      </div>
 
       {/* Profile Card */}
       <div className="glass-card p-6 space-y-6">
@@ -524,99 +655,132 @@ export default function SettingsPage() {
             </label>
           </div>
 
-          {/* Custom SMTP Toggle */}
-          <div className="pt-2 border-t border-border/60">
-            <div className="flex items-center justify-between mb-3">
+          {/* Mandatory Custom SMTP Section */}
+          <div className="pt-3 border-t border-border/60 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h4 className="text-sm font-bold text-text-primary">Özel Gönderici E-posta Sunucusu (SMTP)</h4>
-                <p className="text-xs text-text-muted">Kendi Gmail veya kurumsal e-posta sunucunuzdan gönderim yapın.</p>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-text-primary">Özel Gönderici E-posta Sunucusu (SMTP)</h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-accent/15 border border-accent/30 text-accent">
+                    Zorunlu Yapılandırma
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted mt-0.5">
+                  E-posta bildirimleri ve 18:30 piyasa bültenlerini gönderebilmek için kendi gönderici SMTP bilgilerinizi tanımlamanız zorunludur.
+                </p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useCustomSmtp}
-                  onChange={(e) => setUseCustomSmtp(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-bg-input peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-              </label>
-            </div>
 
-            {useCustomSmtp ? (
-              <div className="p-4 rounded-xl bg-bg-tertiary/60 border border-border/60 space-y-4 animate-fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Servis Tipi</label>
-                    <select
-                      value={smtpService}
-                      onChange={(e) => {
-                        setSmtpService(e.target.value);
-                        if (e.target.value === 'gmail') {
-                          setSmtpHost('smtp.gmail.com');
-                          setSmtpPort(587);
-                        }
-                      }}
-                      className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
-                    >
-                      <option value="gmail">Google Gmail (Önerilen)</option>
-                      <option value="custom">Özel SMTP Sunucusu (Yandex, Outlook, Kurumsal)</option>
-                    </select>
-                  </div>
-
-                  <Input
-                    label="Gönderici Başlığı (From)"
-                    value={smtpFrom}
-                    onChange={(e) => setSmtpFrom(e.target.value)}
-                    placeholder="StockMind <ben@gmail.com>"
-                    helperText="Boş bırakılırsa SMTP kullanıcı adı kullanılır."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="SMTP E-posta / Kullanıcı Adı"
-                    type="email"
-                    value={smtpUser}
-                    onChange={(e) => setSmtpUser(e.target.value)}
-                    placeholder="ornek@gmail.com"
-                    required={useCustomSmtp}
-                  />
-
-                  <Input
-                    label="SMTP Şifresi / Google Uygulama Şifresi"
-                    type="password"
-                    value={smtpPass}
-                    onChange={(e) => setSmtpPass(e.target.value)}
-                    placeholder="Google 16 haneli uygulama şifresi"
-                    helperText="Gmail için 'Uygulama Şifreleri' (App Password) oluşturulmalıdır."
-                    required={useCustomSmtp}
-                  />
-                </div>
-
-                {smtpService === 'custom' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Input
-                      label="SMTP Sunucu Adresi (Host)"
-                      value={smtpHost}
-                      onChange={(e) => setSmtpHost(e.target.value)}
-                      placeholder="mail.sirketiniz.com"
-                    />
-
-                    <Input
-                      label="SMTP Port"
-                      type="number"
-                      value={smtpPort.toString()}
-                      onChange={(e) => setSmtpPort(Number(e.target.value) || 587)}
-                      placeholder="587 veya 465"
-                    />
-                  </div>
+              {/* Status Pill */}
+              <div className="shrink-0">
+                {smtpUser && smtpPass ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Özel SMTP Aktif</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-400 animate-pulse">
+                    <span>⚠️ Gönderici Tanımlanmadı</span>
+                  </span>
                 )}
               </div>
-            ) : (
-              <p className="text-xs text-text-muted italic">
-                Varsayılan olarak StockMind sisteminin tanımlı güvenli bulut SMTP servisi kullanılır.
-              </p>
-            )}
+            </div>
+
+            <div className="p-4 rounded-xl bg-bg-tertiary/60 border border-border/60 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Servis Tipi</label>
+                  <select
+                    value={smtpService}
+                    onChange={(e) => {
+                      setSmtpService(e.target.value);
+                      if (e.target.value === 'gmail') {
+                        setSmtpHost('smtp.gmail.com');
+                        setSmtpPort(587);
+                      }
+                    }}
+                    className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
+                  >
+                    <option value="gmail">Google Gmail (Önerilen)</option>
+                    <option value="custom">Özel SMTP Sunucusu (Yandex, Outlook, Kurumsal)</option>
+                  </select>
+                </div>
+
+                <Input
+                  label="Gönderici Başlığı (From)"
+                  value={smtpFrom}
+                  onChange={(e) => setSmtpFrom(e.target.value)}
+                  placeholder="StockMind <ben@gmail.com>"
+                  helperText="Boş bırakılırsa SMTP kullanıcı adı kullanılır."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="SMTP E-posta / Gönderici Adresi *"
+                  type="email"
+                  value={smtpUser}
+                  onChange={(e) => setSmtpUser(e.target.value)}
+                  placeholder="ornek@gmail.com"
+                  required
+                />
+
+                <Input
+                  label="SMTP Şifresi / Google 16 Haneli Uygulama Şifresi *"
+                  type="password"
+                  value={smtpPass}
+                  onChange={(e) => setSmtpPass(e.target.value)}
+                  placeholder="16 haneli Google uygulama şifresi"
+                  helperText="Gmail için hesap şifreniz değil, 'Uygulama Şifresi' girilmelidir."
+                  required
+                />
+              </div>
+
+              {smtpService === 'custom' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="SMTP Sunucu Adresi (Host) *"
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    placeholder="mail.sirketiniz.com"
+                    required
+                  />
+
+                  <Input
+                    label="SMTP Port *"
+                    type="number"
+                    value={smtpPort.toString()}
+                    onChange={(e) => setSmtpPort(Number(e.target.value) || 587)}
+                    placeholder="587 veya 465"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Helpful Gmail Guide Box */}
+              <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 text-xs text-text-secondary space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-accent">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Gmail ile Nasıl 16 Haneli Uygulama Şifresi Alınır?</span>
+                </div>
+                <p className="leading-relaxed">
+                  1. Google Hesabınızda 2 Adımlı Doğrulama aktif olmalıdır.<br />
+                  2.{' '}
+                  <a
+                    href="https://myaccount.google.com/apppasswords"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent underline font-semibold hover:text-accent-secondary"
+                  >
+                    Google Uygulama Şifreleri Sayfası
+                  </a>{' '}
+                  bağlantısını açın.<br />
+                  3. Uygulama adı olarak &ldquo;StockMind&rdquo; yazın ve &ldquo;Oluştur&rdquo; butonuna basın.<br />
+                  4. Üretilen 16 haneli şifreyi kopyalayıp yukarıdaki alana yapıştırın.
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">

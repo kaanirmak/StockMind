@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, memo } from 'react';
+import { useTheme } from '@/components/theme/ThemeProvider';
 
 interface TradingViewChartProps {
   symbol: string;
@@ -54,11 +55,14 @@ export function getTradingViewWidgetSymbol(symbol: string, exchange?: string): s
 export const TradingViewChart = memo(function TradingViewChart({
   symbol,
   exchange,
-  theme = 'dark',
+  theme: customTheme,
   height = 560,
 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tvSymbol = getTradingViewWidgetSymbol(symbol, exchange);
+  const { resolvedTheme } = useTheme();
+
+  const activeTheme = customTheme || resolvedTheme || 'dark';
 
   useEffect(() => {
     const container = containerRef.current;
@@ -81,15 +85,15 @@ export const TradingViewChart = memo(function TradingViewChart({
       symbol: tvSymbol,
       interval: 'D',
       timezone: 'Europe/Istanbul',
-      theme: 'dark',
+      theme: activeTheme,
       style: '1', // Candlestick
       locale: 'tr',
       enable_publishing: false,
       allow_symbol_change: true,
       calendar: false,
       support_host: 'https://www.tradingview.com',
-      backgroundColor: '#0a0e1a',
-      gridColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: activeTheme === 'light' ? '#ffffff' : '#0a0e1a',
+      gridColor: activeTheme === 'light' ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)',
       hide_top_toolbar: false,
       hide_legend: false,
       save_image: true,
@@ -97,7 +101,7 @@ export const TradingViewChart = memo(function TradingViewChart({
         'MASimple@tv-basicstudies',
         'RSI@tv-basicstudies',
       ],
-      toolbar_bg: '#0f172a',
+      toolbar_bg: activeTheme === 'light' ? '#f8fafc' : '#0f172a',
     });
 
     container.appendChild(script);
@@ -107,7 +111,7 @@ export const TradingViewChart = memo(function TradingViewChart({
         container.innerHTML = '';
       }
     };
-  }, [tvSymbol]);
+  }, [tvSymbol, activeTheme]);
 
   return (
     <div className="tradingview-widget-container rounded-2xl overflow-hidden border border-border shadow-xl bg-bg-card" style={{ height }}>

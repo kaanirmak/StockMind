@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from '@/components/theme/ThemeProvider';
 
 const mobileNavItems = [
   {
@@ -55,6 +56,16 @@ const moreMenuItems = [
     ),
   },
   {
+    href: '/quant-lab',
+    label: 'Quant Lab',
+    badge: 'Pro',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
+      </svg>
+    ),
+  },
+  {
     href: '/funds',
     label: 'Fonlar',
     icon: (
@@ -95,6 +106,7 @@ const moreMenuItems = [
 
 export default function MobileNav() {
   const pathname = usePathname();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const [showMore, setShowMore] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -147,7 +159,7 @@ export default function MobileNav() {
       {/* Backdrop overlay */}
       {showMore && (
         <div
-          className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fade-in"
+          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-fade-in"
           onClick={() => setShowMore(false)}
         />
       )}
@@ -156,12 +168,36 @@ export default function MobileNav() {
       {showMore && (
         <div
           ref={panelRef}
-          className="md:hidden fixed bottom-16 left-3 right-3 z-50 animate-slide-up"
+          className="md:hidden fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 animate-slide-up"
         >
-          <div className="glass-purple rounded-2xl p-3 space-y-1 shadow-2xl">
-            {/* Panel header */}
-            <div className="px-3 pt-1 pb-2 border-b border-white/5 mb-1">
-              <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Daha Fazla</p>
+          <div className="glass-purple rounded-2xl p-3.5 space-y-1.5 shadow-2xl border border-border">
+            {/* Panel header & Quick Theme Switch */}
+            <div className="px-2 pt-1 pb-2 border-b border-border/60 flex items-center justify-between mb-2">
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Menü & Görünüm</p>
+              
+              {/* Quick Theme Switcher Pill */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-bg-card border border-border text-text-primary text-xs font-semibold hover:border-accent transition-all cursor-pointer shadow-sm active:scale-95"
+                title="Planı Değiştir"
+              >
+                {resolvedTheme === 'dark' ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                    </svg>
+                    <span>Beyaz Plan</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    </svg>
+                    <span>Siyah Plan</span>
+                  </>
+                )}
+              </button>
             </div>
 
             {moreMenuItems.map((item) => {
@@ -172,10 +208,10 @@ export default function MobileNav() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setShowMore(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] ${
                     isActive
-                      ? 'bg-accent/15 text-accent'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                      ? 'bg-accent/15 text-accent font-semibold'
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                   }`}
                 >
                   <span className={`shrink-0 ${isActive ? 'text-accent' : 'text-text-muted'}`}>
@@ -202,8 +238,9 @@ export default function MobileNav() {
         className={`md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border transition-transform duration-300 ease-in-out ${
           shouldHide ? 'translate-y-full pointer-events-none' : 'translate-y-0'
         }`}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
       >
-        <div className="flex items-center justify-around h-16 px-2">
+        <div className="flex items-center justify-around h-16 px-1">
           {mobileNavItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + '/');
@@ -212,14 +249,14 @@ export default function MobileNav() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setShowMore(false)}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 relative ${
+                className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[44px] rounded-xl transition-all duration-200 relative ${
                   isActive
-                    ? 'text-accent'
-                    : 'text-text-muted'
+                    ? 'text-accent font-semibold'
+                    : 'text-text-muted hover:text-text-secondary'
                 }`}
               >
                 <span className={isActive ? 'text-accent' : ''}>{item.icon}</span>
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[10px] font-medium leading-none">{item.label}</span>
                 {isActive && (
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-accent" />
                 )}
@@ -230,10 +267,10 @@ export default function MobileNav() {
           {/* More Button */}
           <button
             onClick={() => setShowMore(!showMore)}
-            className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 relative cursor-pointer ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[44px] rounded-xl transition-all duration-200 relative cursor-pointer ${
               showMore || isMoreActive
-                ? 'text-accent'
-                : 'text-text-muted'
+                ? 'text-accent font-semibold'
+                : 'text-text-muted hover:text-text-secondary'
             }`}
           >
             <span className={`transition-transform duration-300 ${showMore ? 'rotate-45' : ''}`}>
@@ -247,13 +284,13 @@ export default function MobileNav() {
                 </svg>
               )}
             </span>
-            <span className="text-[10px] font-medium">Daha</span>
+            <span className="text-[10px] font-medium leading-none">Daha</span>
             {isMoreActive && !showMore && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-accent" />
             )}
-            {/* Purple dot indicator for unvisited items */}
+            {/* Purple dot indicator */}
             {!showMore && !isMoreActive && (
-              <div className="absolute top-1 right-2 w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow" />
+              <div className="absolute top-1 right-2.5 w-1.5 h-1.5 rounded-full bg-accent animate-pulse-glow" />
             )}
           </button>
         </div>

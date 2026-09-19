@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, ColorType, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import { Candle, BollingerBandsResult, calculateSMA, calculateBollingerBands } from '@/lib/indicators';
 
 export interface CandlestickChartProps {
@@ -32,6 +33,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const [hoveredCandle, setHoveredCandle] = useState<Candle | null>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -43,39 +45,44 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     }
 
     const container = chartContainerRef.current;
+    const isDark = resolvedTheme !== 'light';
+    const textColor = isDark ? '#94a3b8' : '#475569';
+    const gridColor = isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(226, 232, 240, 0.7)';
+    const borderColor = isDark ? '#1e293b' : '#e2e8f0';
+    const labelBg = isDark ? '#1e293b' : '#334155';
 
     // Initialize chart
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#94a3b8',
+        textColor: textColor,
         fontSize: 12,
         fontFamily: 'Inter, system-ui, sans-serif',
       },
       grid: {
-        vertLines: { color: 'rgba(30, 41, 59, 0.4)', style: 1 },
-        horzLines: { color: 'rgba(30, 41, 59, 0.4)', style: 1 },
+        vertLines: { color: gridColor, style: 1 },
+        horzLines: { color: gridColor, style: 1 },
       },
       crosshair: {
         vertLine: {
-          color: '#6366f1',
+          color: isDark ? '#8b5cf6' : '#7c3aed',
           width: 1,
           style: 3,
-          labelBackgroundColor: '#1e293b',
+          labelBackgroundColor: labelBg,
         },
         horzLine: {
-          color: '#6366f1',
+          color: isDark ? '#8b5cf6' : '#7c3aed',
           width: 1,
           style: 3,
-          labelBackgroundColor: '#1e293b',
+          labelBackgroundColor: labelBg,
         },
       },
       rightPriceScale: {
-        borderColor: '#1e293b',
-        textColor: '#94a3b8',
+        borderColor: borderColor,
+        textColor: textColor,
       },
       timeScale: {
-        borderColor: '#1e293b',
+        borderColor: borderColor,
         timeVisible: true,
         secondsVisible: false,
       },
@@ -280,7 +287,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         chartRef.current = null;
       }
     };
-  }, [candles, height, showSMA20, showSMA50, showBB, showVolume, sma20, sma50, bollingerBands]);
+  }, [candles, height, showSMA20, showSMA50, showBB, showVolume, sma20, sma50, bollingerBands, resolvedTheme]);
 
   const latestCandle = candles[candles.length - 1];
   const activeCandle = hoveredCandle || latestCandle;

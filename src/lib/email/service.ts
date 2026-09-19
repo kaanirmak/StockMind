@@ -151,12 +151,16 @@ export function generateStockMindEmailHtml(userName: string = 'Kaan Irmak', payl
 `;
 }
 
-export async function sendTestEmail(payload: EmailPayload): Promise<{
+export interface SendEmailResult {
   success: boolean;
   message: string;
   previewUrl?: string;
   method?: string;
-}> {
+  requiresSmtpConfig?: boolean;
+  error?: string;
+}
+
+export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailResult> {
   const { to, userName = 'Kaan Irmak' } = payload;
 
   if (!to || !to.includes('@')) {
@@ -166,128 +170,82 @@ export async function sendTestEmail(payload: EmailPayload): Promise<{
   const html = generateStockMindEmailHtml(userName, payload);
   const subject = payload.subject || `StockMind Test Bildirimi • ${userName} (${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})`;
 
-  // Determine SMTP Configuration (custom user settings priority, fallback to environment)
-  const smtpUser = payload.customSmtp?.user || process.env.SMTP_USER;
-  const smtpPass = payload.customSmtp?.pass || process.env.SMTP_PASS;
-  const smtpHost = payload.customSmtp?.host || process.env.SMTP_HOST;
-  const smtpPort = payload.customSmtp?.port || Number(process.env.SMTP_PORT) || 587;
-  const smtpFrom = payload.customSmtp?.from || process.env.SMTP_FROM || `StockMind <${smtpUser}>`;
-  const smtpService = payload.customSmtp?.service || process.env.SMTP_SERVICE;
+  // Determine Custom SMTP Configuration (Must be provided by user, exactly like OpenRouter API key)
+  const smtpUser = (payload.customSmtp?.user || '').trim();
+  const smtpPass = (payload.customSmtp?.pass || '').trim();
+  const smtpHost = (payload.customSmtp?.host || '').trim();
+  const smtpPort = payload.customSmtp?.port || 587;
+  const smtpFrom = (payload.customSmtp?.from || '').trim() || `StockMind <${smtpUser}>`;
+  const smtpService = payload.customSmtp?.service || 'gmail';
 
-  // 1. If SMTP credentials exist, send via standard SMTP or Google/Gmail SMTP
-  if (smtpUser && smtpPass) {
-    try {
-      const isGmail =
-        smtpService === 'gmail' ||
-        smtpHost?.includes('gmail') ||
-        (!smtpHost && smtpUser?.includes('@gmail.com'));
-
-      const cleanPass = smtpPass.replace(/\s+/g, '');
-      const portNum = Number(smtpPort) || (isGmail ? 465 : 587);
-
-      const transporter = isGmail
-        ? nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: portNum === 587 ? 587 : 465,
-            secure: portNum === 587 ? false : true,
-            auth: {
-              user: smtpUser,
-              pass: cleanPass,
-            },
-            tls: {
-              rejectUnauthorized: false,
-            },
-          })
-        : nodemailer.createTransport({
-            host: smtpHost || 'smtp.gmail.com',
-            port: portNum,
-            secure: portNum === 465,
-            auth: {
-              user: smtpUser,
-              pass: cleanPass,
-            },
-            tls: {
-              rejectUnauthorized: false,
-            },
-          });
-
-      await transporter.verify();
-
-      const info = await transporter.sendMail({
-        from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
-        to,
-        subject,
-        html,
-      });
-
-      return {
-        success: true,
-        message: `E-posta başarıyla ${to} adresine iletildi! (${info.messageId})`,
-        method: isGmail ? 'google_smtp' : 'custom_smtp',
-      };
-    } catch (err: any) {
-      console.error('SMTP delivery failed:', err);
-      return {
-        success: false,
-        message: `E-posta gönderilemedi (${err.code || 'HATA'}): ${err.message}. Gmail kullanıyorsanız 16 haneli 'Uygulama Şifresi' (App Password) oluşturduğunuzdan emin olun.`,
-        method: 'failed',
-      };
-    }
+  // 1. Özel Gönderici SMTP Bilgileri Zorunludur (Tıpkı OpenRouter API Key gibi)
+  if (!smtpUser || !smtpPass) {
+    return {
+      success: false,
+      requiresSmtpConfig: true,
+      error: 'SMTP_CONFIG_REQUIRED',
+      message:
+        'Özel Gönderici SMTP Bilgileri Zorunludur. E-posta bildirimlerini ve 18:30 bültenlerini gönderebilmek için lütfen Ayarlar sayfasından kendi özel SMTP gönderici e-posta adresinizi ve şifrenizi (Google Uygulama Şifresi) tanımlayın.',
+      method: 'failed',
+    };
   }
 
-  // 2. Try Supabase Auth email service (triggers official Supabase email delivery)
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SECRET_KEY) {
-    try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SECRET_KEY
-      );
-
-      const { data, error } = await supabase.auth.admin.generateLink({
-        type: 'magiclink',
-        email: to,
-      });
-
-      if (!error && data) {
-        console.log(`Supabase email link generated for ${to}:`, data.properties?.action_link);
-      }
-    } catch (e: any) {
-      console.warn('Supabase auth email notice:', e.message);
-    }
-  }
-
-  // 3. Send using Ethereal Test Mail Service (Instant live real web preview)
+  // 2. Real SMTP delivery via Gmail or Custom Server
   try {
-    const testAccount = await nodemailer.createTestAccount();
-    const testTransporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
+    const isGmail =
+      smtpService === 'gmail' ||
+      smtpHost?.includes('gmail') ||
+      (!smtpHost && smtpUser?.includes('@gmail.com'));
 
-    const info = await testTransporter.sendMail({
-      from: 'StockMind Finansal Zeka <notifications@stockmind.app>',
+    const cleanPass = smtpPass.replace(/\s+/g, '');
+    const portNum = Number(smtpPort) || (isGmail ? 465 : 587);
+
+    const transporter = isGmail
+      ? nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: portNum === 587 ? 587 : 465,
+          secure: portNum === 587 ? false : true,
+          auth: {
+            user: smtpUser,
+            pass: cleanPass,
+          },
+          tls: {
+            rejectUnauthorized: false,
+          },
+        })
+      : nodemailer.createTransport({
+          host: smtpHost || 'smtp.gmail.com',
+          port: portNum,
+          secure: portNum === 465,
+          auth: {
+            user: smtpUser,
+            pass: cleanPass,
+          },
+          tls: {
+            rejectUnauthorized: false,
+          },
+        });
+
+    await transporter.verify();
+
+    const info = await transporter.sendMail({
+      from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
       to,
       subject,
       html,
     });
 
-    const previewUrl = nodemailer.getTestMessageUrl(info) || undefined;
-
     return {
       success: true,
-      message: `Test e-postası başarıyla gönderildi ve oluşturuldu!`,
-      previewUrl,
-      method: 'test_service',
+      message: `E-posta başarıyla ${to} adresine iletildi! (${info.messageId})`,
+      method: isGmail ? 'google_smtp' : 'custom_smtp',
     };
   } catch (err: any) {
+    console.error('SMTP delivery failed:', err);
     return {
       success: false,
-      message: `E-posta gönderiminde hata: ${err.message}`,
+      message: `E-posta gönderilemedi (${err.code || 'HATA'}): ${err.message}. Gmail kullanıyorsanız 16 haneli 'Uygulama Şifresi' (App Password) oluşturduğunuzdan emin olun.`,
+      method: 'failed',
     };
   }
 }

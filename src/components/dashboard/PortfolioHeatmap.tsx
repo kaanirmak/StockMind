@@ -253,37 +253,37 @@ export default function PortfolioHeatmap() {
   };
 
   return (
-    <div className="rounded-2xl sm:rounded-3xl border border-white/[0.08] bg-gradient-to-b from-[#1c113b]/90 via-[#100a26]/95 to-[#080512] p-3.5 sm:p-6 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.4)]">
+    <div className="rounded-2xl sm:rounded-3xl border border-border glass-card p-3.5 sm:p-6 shadow-card transition-all">
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2.5 mb-3 sm:mb-4">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-violet-500/20 to-purple-600/30 border border-violet-500/30 flex items-center justify-center text-violet-300 shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shrink-0">
             <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
             </svg>
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm sm:text-base md:text-lg font-bold text-white tracking-tight flex items-center gap-1.5 sm:gap-2">
+            <h3 className="text-sm sm:text-base md:text-lg font-bold text-text-primary tracking-tight flex items-center gap-1.5 sm:gap-2">
               <span className="truncate">Portföy Isı Haritası</span>
-              <span className="text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/10 shrink-0">
+              <span className="text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25 shrink-0">
                 {filteredHoldings.length}
               </span>
             </h3>
-            <p className="text-[11px] sm:text-xs text-white/40 hidden sm:block">
+            <p className="text-[11px] sm:text-xs text-text-muted hidden sm:block">
               Kutu büyüklüğü portföy ağırlığını, renk ise getiriyi gösterir
             </p>
           </div>
         </div>
 
         {/* Metric Switcher (Compact on mobile) */}
-        <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-white/[0.06] border border-white/[0.08] shrink-0">
+        <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-bg-secondary border border-border shrink-0">
           <button
             type="button"
             onClick={() => setMetric('daily')}
             className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               metric === 'daily'
-                ? 'bg-white/15 text-white shadow-sm'
-                : 'text-white/50 hover:text-white/80'
+                ? 'bg-accent text-white shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
             }`}
           >
             Günlük
@@ -293,8 +293,8 @@ export default function PortfolioHeatmap() {
             onClick={() => setMetric('total')}
             className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               metric === 'total'
-                ? 'bg-white/15 text-white shadow-sm'
-                : 'text-white/50 hover:text-white/80'
+                ? 'bg-accent text-white shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
             }`}
           >
             <span className="sm:hidden">Toplam</span>
@@ -444,31 +444,31 @@ export default function PortfolioHeatmap() {
 
       {/* Touch-Friendly Active Asset Card */}
       {activeNode && (
-        <div className="mt-2.5 sm:mt-3 p-2.5 sm:p-3 rounded-xl bg-white/[0.05] border border-white/[0.08] backdrop-blur-md flex items-center justify-between gap-2.5 transition-all">
+        <div className="mt-2.5 sm:mt-3 p-2.5 sm:p-3 rounded-xl bg-bg-secondary/70 border border-border flex items-center justify-between gap-2.5 transition-all">
           {/* Left info */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div
               className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 border ${
                 activeNode.metricValue >= 0
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                  : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                  ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30'
+                  : 'bg-rose-500/20 text-rose-500 border-rose-500/30'
               }`}
             >
               {activeNode.holding.symbol.slice(0, 3)}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 leading-tight">
-                <span className="font-bold text-xs sm:text-sm text-white truncate">
+                <span className="font-bold text-xs sm:text-sm text-text-primary truncate">
                   {activeNode.holding.symbol}
                 </span>
-                <span className="text-[9px] uppercase font-bold text-white/40 bg-black/30 px-1 py-0.5 rounded shrink-0">
+                <span className="text-[9px] uppercase font-bold text-text-muted bg-bg-tertiary px-1 py-0.5 rounded shrink-0 border border-border">
                   {activeNode.holding.assetType === 'stock' ? 'Hisse' : 'Fon'}
                 </span>
               </div>
-              <div className="text-[10px] sm:text-[11px] text-white/50 flex items-center gap-1.5 tabular-nums truncate mt-0.5">
+              <div className="text-[10px] sm:text-[11px] text-text-muted flex items-center gap-1.5 tabular-nums truncate mt-0.5">
                 <span>{formatCurrency(activeNode.holding.currentValue)}</span>
                 <span>•</span>
-                <span className="text-violet-300 font-semibold">%{activeNode.weightPercent.toFixed(1)} Pay</span>
+                <span className="text-accent font-semibold">%{activeNode.weightPercent.toFixed(1)} Pay</span>
               </div>
             </div>
           </div>
@@ -478,12 +478,12 @@ export default function PortfolioHeatmap() {
             <div className="text-right">
               <div
                 className={`text-xs sm:text-sm font-black tabular-nums ${
-                  activeNode.metricValue >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  activeNode.metricValue >= 0 ? 'text-emerald-500' : 'text-rose-500'
                 }`}
               >
                 {getPnLSign(activeNode.metricValue)}%{Math.abs(activeNode.metricValue).toFixed(2)}
               </div>
-              <div className="text-[9px] sm:text-[10px] text-white/40">
+              <div className="text-[9px] sm:text-[10px] text-text-muted">
                 {metric === 'daily' ? 'Günlük' : 'Toplam'}
               </div>
             </div>
@@ -494,7 +494,7 @@ export default function PortfolioHeatmap() {
                   ? `/stocks/${activeNode.holding.symbol}`
                   : `/funds/${activeNode.holding.symbol}`
               }
-              className="px-2.5 py-1.5 rounded-lg bg-violet-600/30 hover:bg-violet-600/50 active:scale-95 border border-violet-500/30 text-violet-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg bg-accent text-white hover:opacity-90 active:scale-95 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-sm"
             >
               <span className="text-[11px]">İncele</span>
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -506,14 +506,14 @@ export default function PortfolioHeatmap() {
       )}
 
       {/* Slim Legend Bar */}
-      <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-white/[0.06] text-[10px] sm:text-xs text-white/40">
+      <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-border/60 text-[10px] sm:text-xs text-text-muted">
         <div className="flex items-center gap-1.5">
-          <span className="font-medium text-white/50">Skala:</span>
-          <span className="text-rose-400 font-bold">-%5+</span>
-          <div className="h-1.5 sm:h-2 w-20 sm:w-32 rounded-full bg-gradient-to-r from-rose-600 via-rose-950 via-slate-800 via-emerald-950 to-emerald-500 border border-white/10" />
-          <span className="text-emerald-400 font-bold">+%5+</span>
+          <span className="font-medium text-text-secondary">Skala:</span>
+          <span className="text-rose-500 font-bold">-%5+</span>
+          <div className="h-1.5 sm:h-2 w-20 sm:w-32 rounded-full bg-gradient-to-r from-rose-600 via-rose-950 via-slate-800 via-emerald-950 to-emerald-500 border border-border" />
+          <span className="text-emerald-500 font-bold">+%5+</span>
         </div>
-        <span className="text-white/30 text-[10px]">
+        <span className="text-text-muted text-[10px]">
           Kutuya dokunarak inceleyin
         </span>
       </div>

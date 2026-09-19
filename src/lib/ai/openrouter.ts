@@ -9,6 +9,7 @@ export interface OpenRouterChatOptions {
   model?: string;
   temperature?: number;
   apiKey?: string;
+  injectedContext?: string;
   context?: {
     symbol?: string;
     stockData?: any;
@@ -45,9 +46,13 @@ export async function callOpenRouter(
   const model = options?.model || DEFAULT_MODEL;
 
   if (!apiKey) {
-    // If no API key is provided at all, generate a rich, intelligent simulation response
-    return generateSimulatedAIResponse(messages[messages.length - 1]?.content || '', options?.context);
+    // Key olmadığında dummy cevap vermek yerine açıkça API_KEY_REQUIRED fırlatıyoruz
+    throw new Error('API_KEY_REQUIRED');
   }
+
+  const effectiveSystemPrompt = options?.injectedContext
+    ? `${FINANCIAL_SYSTEM_PROMPT}\n\n${options.injectedContext}`
+    : FINANCIAL_SYSTEM_PROMPT;
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -61,7 +66,7 @@ export async function callOpenRouter(
       body: JSON.stringify({
         model,
         messages: [
-          { role: 'system', content: FINANCIAL_SYSTEM_PROMPT },
+          { role: 'system', content: effectiveSystemPrompt },
           ...messages,
         ],
         temperature: options?.temperature ?? 0.7,
@@ -81,23 +86,18 @@ export async function callOpenRouter(
         }
       } catch (_) {}
 
-      // If user passed their own key, throw clear error so they can diagnose their key/model
-      if (cleanApiKey) {
-        throw new Error(`OpenRouter (${res.status}): ${parsedMsg}`);
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Geçersiz veya yetkisiz OpenRouter API anahtarı. Lütfen anahtarınızı ve bakiyenizi kontrol edin.');
       }
 
-      // If system key had a rate limit or failure, fallback to simulation
-      return generateSimulatedAIResponse(messages[messages.length - 1]?.content || '', options?.context);
+      throw new Error(`OpenRouter (${res.status}): ${parsedMsg}`);
     }
 
     const data = await res.json();
     return data.choices?.[0]?.message?.content || 'Üzgünüm, analiz yanıtı oluşturulamadı.';
   } catch (error: any) {
     console.error('OpenRouter call error:', error);
-    if (cleanApiKey) {
-      throw error;
-    }
-    return generateSimulatedAIResponse(messages[messages.length - 1]?.content || '', options?.context);
+    throw error;
   }
 }
 

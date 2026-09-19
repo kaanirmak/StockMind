@@ -13,7 +13,7 @@ export interface HoldingsTableProps {
 export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTransaction }) => {
   if (holdings.length === 0) {
     return (
-      <div className="glass-card p-12 text-center text-text-muted space-y-3">
+      <div className="glass-card p-8 sm:p-12 text-center text-text-muted space-y-3">
         <svg className="w-12 h-12 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
@@ -36,7 +36,116 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
 
   return (
     <div className="glass-card overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* ═══════════════════════════════════════════
+          MOBILE CARD VIEW (md:hidden) — Touch-friendly, clean & compact
+          ═══════════════════════════════════════════ */}
+      <div className="md:hidden divide-y divide-border/50">
+        {/* Mobile Header Summary Pill */}
+        <div className="p-3 bg-bg-secondary/70 flex items-center justify-between text-xs font-semibold">
+          <span className="text-text-muted">{holdings.length} Varlık Bulunuyor</span>
+          <div className="flex items-center gap-2">
+            <span className="text-text-primary font-bold">₺{totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isTotalProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
+              {isTotalProfit ? '+' : ''}{totalPnLPercent.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+
+        {/* List of Asset Cards */}
+        {holdings.map((h) => {
+          const isProfit = h.pnl >= 0;
+          const link = h.assetType === 'stock' ? `/stocks/${h.symbol}` : `/funds/${h.symbol}`;
+          const dailyChange = h.dailyChangePercent || 0;
+          const isUsd = h.originalCurrency === 'USD';
+
+          return (
+            <Link
+              key={`m-${h.assetType}-${h.symbol}`}
+              href={link}
+              className="block p-4 hover:bg-bg-hover/60 active:bg-bg-hover transition-colors"
+            >
+              {/* Top Row: Symbol, Exchange & Weight */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center font-bold text-xs text-accent">
+                    {h.symbol.substring(0, 2)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-sm text-text-primary">{h.symbol}</span>
+                      <Badge variant={h.assetType === 'stock' ? 'purple' : 'info'} size="sm">
+                        {h.assetType === 'stock' ? (isUsd ? 'ABD' : 'BIST') : 'TEFAS'}
+                      </Badge>
+                    </div>
+                    <span className="text-[11px] text-text-muted line-clamp-1">
+                      {h.exchange || (h.assetType === 'fund' ? 'Yatırım Fonu' : 'Hisse')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Weight badge */}
+                <div className="text-right">
+                  <span className="text-[11px] font-semibold text-text-muted px-2 py-0.5 rounded-full bg-bg-tertiary border border-border">
+                    %{h.weight.toFixed(1)} Portföy
+                  </span>
+                </div>
+              </div>
+
+              {/* Middle Grid: Price, Quantity, Cost & Total Value */}
+              <div className="grid grid-cols-2 gap-2 text-xs py-2 px-2.5 rounded-xl bg-bg-secondary/50 border border-border/40 mb-2.5 font-mono">
+                <div>
+                  <span className="text-[10px] text-text-muted block font-sans">Son Fiyat</span>
+                  <div className="flex items-center gap-1 font-bold text-text-primary mt-0.5">
+                    <span>₺{h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}</span>
+                    {dailyChange !== 0 && (
+                      <span className={`text-[10px] font-medium ${dailyChange >= 0 ? 'text-success' : 'text-danger'}`}>
+                        {dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] text-text-muted block font-sans">Piyasa Değeri</span>
+                  <span className="font-bold text-text-primary text-sm mt-0.5 block">
+                    ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-text-muted block font-sans">Adet / Pay</span>
+                  <span className="text-text-secondary font-medium mt-0.5 block">
+                    {h.totalQuantity.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                  </span>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] text-text-muted block font-sans">Ort. Maliyet</span>
+                  <span className="text-text-secondary font-medium mt-0.5 block">
+                    ₺{h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bottom Row: Profit / Loss Pill */}
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <span className="text-[11px] text-text-muted font-medium">Toplam Getiri:</span>
+                <div className={`flex items-center gap-1.5 font-bold font-mono ${isProfit ? 'text-success' : 'text-danger'}`}>
+                  <span>{isProfit ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isProfit ? 'bg-success/15' : 'bg-danger/15'}`}>
+                    {isProfit ? '+' : ''}{h.pnlPercent.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* ═══════════════════════════════════════════
+          DESKTOP TABLE VIEW (hidden md:block) — Full 9-Column Table
+          ═══════════════════════════════════════════ */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-bg-secondary/80 text-text-muted text-xs uppercase tracking-wider border-b border-border/80">
             <tr>
