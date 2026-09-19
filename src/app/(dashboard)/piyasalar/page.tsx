@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useStocks, StockWithQuote } from '@/hooks/useStockData';
@@ -11,7 +11,7 @@ import { useWatchlistStore } from '@/store/useWatchlistStore';
 
 type TabId = 'stocks' | 'funds';
 
-export default function PiyasalarPage() {
+function PiyasalarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = (searchParams.get('tab') as TabId) || 'stocks';
@@ -509,5 +509,23 @@ export default function PiyasalarPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PiyasalarPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 w-48 bg-bg-card rounded-lg border border-border" />
+        <div className="h-12 w-full bg-bg-card rounded-xl border border-border" />
+        <div className="glass-card p-6">
+          <div className="space-y-3">
+            {[...Array(8)].map((_, i) => <div key={i} className="h-12 bg-bg-secondary rounded-lg border border-border/40" />)}
+          </div>
+        </div>
+      </div>
+    }>
+      <PiyasalarContent />
+    </Suspense>
   );
 }
