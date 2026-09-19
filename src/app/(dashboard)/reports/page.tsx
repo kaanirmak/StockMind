@@ -24,19 +24,54 @@ export default function ReportsPage() {
   };
 
   const handleSendEmailReport = async () => {
+    // Read SMTP settings from localStorage (set in /settings page)
+    const smtpUser = (localStorage.getItem('stockmind_settings_smtp_user') || '').trim();
+    const smtpPass = (localStorage.getItem('stockmind_settings_smtp_pass') || '').trim();
+    const smtpHost = (localStorage.getItem('stockmind_settings_smtp_host') || '').trim();
+    const smtpPort = Number(localStorage.getItem('stockmind_settings_smtp_port') || '587');
+    const smtpFrom = (localStorage.getItem('stockmind_settings_smtp_from') || '').trim();
+    const smtpService = (localStorage.getItem('stockmind_settings_smtp_service') || 'gmail').trim();
+    const recipientEmail = (localStorage.getItem('stockmind_settings_email') || '').trim() || smtpUser;
+
+    if (!smtpUser || !smtpPass) {
+      showToast({
+        type: 'danger',
+        title: 'SMTP Ayarları Gerekli',
+        message: 'E-posta göndermek için Ayarlar sayfasından SMTP bilgilerinizi kaydedin.',
+      });
+      return;
+    }
+
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      showToast({
+        type: 'danger',
+        title: 'Alıcı E-posta Eksik',
+        message: 'Ayarlar sayfasından alıcı e-posta adresinizi girin.',
+      });
+      return;
+    }
+
     setSendingEmail(true);
     try {
       const res = await fetch('/api/send-test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: 'support@stockmind.app',
-          userName: 'Kaan Irmak',
-          subject: `StockMind Portföy Raporu • ${activePortfolio.name} (${new Date().toLocaleDateString('tr-TR')})`,
+          to: recipientEmail,
+          userName: localStorage.getItem('stockmind_settings_name') || 'Kullanıcı',
+          subject: `StockMind Portföy Raporu • ${activePortfolio?.name || 'Portföy'} (${new Date().toLocaleDateString('tr-TR')})`,
           portfolioSummary: {
             totalValue: summary.totalValue,
             totalPnL: summary.totalPnL,
             totalPnLPercent: summary.totalPnLPercent,
+          },
+          customSmtp: {
+            user: smtpUser,
+            pass: smtpPass,
+            host: smtpHost,
+            port: smtpPort,
+            from: smtpFrom || `StockMind <${smtpUser}>`,
+            service: smtpService,
           },
         }),
       });
@@ -46,13 +81,19 @@ export default function ReportsPage() {
         showToast({
           type: 'success',
           title: 'Rapor E-postayla Gönderildi! 📨',
-          message: data.message || 'Portföy performans raporunuz e-posta adresinize iletildi.',
+          message: data.message || `Portföy raporunuz ${recipientEmail} adresine iletildi.`,
+        });
+      } else if (data.requiresSmtpConfig) {
+        showToast({
+          type: 'danger',
+          title: 'SMTP Yapılandırması Gerekli',
+          message: 'Ayarlar → E-posta bölümünden SMTP bilgilerinizi ekleyin.',
         });
       } else {
         showToast({
           type: 'danger',
           title: 'Gönderim Başarısız',
-          message: data.message || 'E-posta iletilemedi.',
+          message: data.message || data.error || 'E-posta iletilemedi. Gmail kullanıyorsanız 16 haneli App Password gereklidir.',
         });
       }
     } catch (err: any) {
@@ -65,6 +106,7 @@ export default function ReportsPage() {
       setSendingEmail(false);
     }
   };
+
 
   const handleExportCSV = () => {
     if (summary.holdings.length === 0) return;

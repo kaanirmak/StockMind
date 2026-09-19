@@ -55,11 +55,11 @@ export const RISK_LEVELS = {
 export const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', labelEn: 'Dashboard', icon: 'LayoutDashboard' },
   { href: '/portfolio', label: 'Portföy', labelEn: 'Portfolio', icon: 'Briefcase' },
-  { href: '/stocks', label: 'Hisseler', labelEn: 'Stocks', icon: 'TrendingUp' },
-  { href: '/funds', label: 'Fonlar', labelEn: 'Funds', icon: 'PiggyBank' },
+  { href: '/piyasalar', label: 'Piyasalar', labelEn: 'Markets', icon: 'TrendingUp' },
   { href: '/watchlist', label: 'Takip Listesi', labelEn: 'Watchlist', icon: 'Star' },
   { href: '/reports', label: 'Raporlar', labelEn: 'Reports', icon: 'BarChart3' },
   { href: '/quant-lab', label: 'Quant Lab', labelEn: 'Quant Lab', icon: 'Cpu' },
   { href: '/ai-assistant', label: 'AI Asistan', labelEn: 'AI Assistant', icon: 'Bot' },
   { href: '/news', label: 'Haberler', labelEn: 'News', icon: 'Newspaper' },
 ] as const;
+
