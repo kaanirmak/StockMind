@@ -253,7 +253,7 @@ export default function PortfolioHeatmap() {
   };
 
   return (
-    <div className="rounded-2xl sm:rounded-3xl border border-border glass-card p-3.5 sm:p-6 shadow-card transition-all">
+    <div className="rounded-2xl sm:rounded-3xl border-0 glass-card p-3.5 sm:p-6 shadow-card transition-all">
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2.5 mb-3 sm:mb-4">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
@@ -306,7 +306,7 @@ export default function PortfolioHeatmap() {
       {/* Heatmap Area */}
       <div
         ref={containerRef}
-        className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 border border-white/[0.06]"
+        className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 border-0"
         style={{ height: dimensions.height }}
       >
         {nodes.length === 0 ? (
