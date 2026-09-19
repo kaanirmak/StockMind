@@ -1,0 +1,474 @@
+'use client';
+
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { Transaction, PortfolioSummary } from '@/types/portfolio';
+import { getPortfolioDailyActivity, DayPnLRecord } from '@/lib/portfolio/dailyActivity';
+import { formatCurrency, formatPercent } from '@/lib/utils/format';
+
+interface DailyPnLCalendarHeatmapProps {
+  portfolioId: string;
+  summary: PortfolioSummary;
+  transactions: Transaction[];
+  className?: string;
+}
+
+export function DailyPnLCalendarHeatmap({
+  portfolioId,
+  summary,
+  transactions,
+  className = '',
+}: DailyPnLCalendarHeatmapProps) {
+  const [timeframe, setTimeframe] = useState<'1Y' | '6M' | 'YTD'>('1Y');
+  const [hoveredDay, setHoveredDay] = useState<DayPnLRecord | null>(null);
+  const [selectedDay, setSelectedDay] = useState<DayPnLRecord | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Compute heatmap data
+  const heatmapData = useMemo(() => {
+    return getPortfolioDailyActivity(portfolioId, summary, transactions, timeframe);
+  }, [portfolioId, summary, transactions, timeframe]);
+
+  // Auto-scroll to today (right side) on initial mount or timeframe change
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    }
+  }, [timeframe]);
+
+  // Color mapper based on level
+  const getCellColor = (day: DayPnLRecord) => {
+    if (day.isFuture) {
+      return 'bg-transparent border border-transparent pointer-events-none opacity-0';
+    }
+    if (day.isWeekend) {
+      return 'bg-bg-tertiary/20 dark:bg-slate-900/30 border border-border/10 opacity-35 hover:opacity-80';
+    }
+
+    // Profit levels: 1 to 4
+    if (day.level === 4) {
+      return 'bg-emerald-400 border border-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.45)]';
+    }
+    if (day.level === 3) {
+      return 'bg-emerald-500/85 border border-emerald-400/60 shadow-[0_0_5px_rgba(16,185,129,0.3)]';
+    }
+    if (day.level === 2) {
+      return 'bg-emerald-500/55 border border-emerald-500/40';
+    }
+    if (day.level === 1) {
+      return 'bg-emerald-500/25 border border-emerald-500/30';
+    }
+
+    // Loss levels: -1 to -4
+    if (day.level === -4) {
+      return 'bg-rose-500 border border-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.45)]';
+    }
+    if (day.level === -3) {
+      return 'bg-rose-500/85 border border-rose-400/60 shadow-[0_0_5px_rgba(244,63,94,0.3)]';
+    }
+    if (day.level === -2) {
+      return 'bg-rose-500/55 border border-rose-500/40';
+    }
+    if (day.level === -1) {
+      return 'bg-rose-500/25 border border-rose-500/30';
+    }
+
+    // Neutral / 0%
+    return 'bg-bg-tertiary/60 dark:bg-slate-800/60 border border-border/40';
+  };
+
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const activeDisplayDay = selectedDay || hoveredDay;
+
+  return (
+    <div className={`rounded-3xl glass-card border border-border/70 p-5 sm:p-7 shadow-xl backdrop-blur-xl relative overflow-hidden ${className}`}>
+      {/* Background ambient lighting */}
+      <div className="absolute top-0 right-1/4 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 via-accent/15 to-purple-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-black text-text-primary tracking-tight">
+                  Günlük Kâr / Zarar Aktivite Haritası
+                </h3>
+                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 text-accent border border-accent/20">
+                  GitHub Stili
+                </span>
+              </div>
+              <p className="text-xs text-text-muted mt-0.5">
+                Portföyünüzün her günkü getirisini gün gün takip edin
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Action: Timeframe Buttons + Collapse Toggle */}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-bg-secondary/70 border border-border/60">
+            <button
+              onClick={() => setTimeframe('1Y')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeframe === '1Y'
+                  ? 'bg-accent text-white shadow-md'
+                  : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              1 Yıl
+            </button>
+            <button
+              onClick={() => setTimeframe('6M')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeframe === '6M'
+                  ? 'bg-accent text-white shadow-md'
+                  : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              6 Ay
+            </button>
+            <button
+              onClick={() => setTimeframe('YTD')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeframe === 'YTD'
+                  ? 'bg-accent text-white shadow-md'
+                  : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              2026 (YTD)
+            </button>
+          </div>
+
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-2 rounded-xl bg-bg-secondary/70 hover:bg-bg-hover border border-border/60 text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+            title={isCollapsed ? 'Haritayı Genişlet' : 'Haritayı Daralt'}
+          >
+            <svg
+              className={`w-4 h-4 transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Stats Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 relative z-10">
+        {/* Win Rate */}
+        <div className="p-3.5 rounded-2xl bg-bg-secondary/50 border border-border/50 hover:border-emerald-500/30 transition-colors">
+          <span className="text-[11px] font-medium text-text-muted block">Kazanma Oranı</span>
+          <div className="flex items-baseline gap-1.5 mt-1">
+            <span className="text-xl font-black text-emerald-400 font-mono">
+              %{heatmapData.stats.winRate}
+            </span>
+            <span className="text-[10px] text-text-muted">
+              ({heatmapData.stats.profitableDays}k / {heatmapData.stats.lossDays}z)
+            </span>
+          </div>
+        </div>
+
+        {/* Current Streak */}
+        <div className="p-3.5 rounded-2xl bg-bg-secondary/50 border border-border/50 hover:border-accent/30 transition-colors">
+          <span className="text-[11px] font-medium text-text-muted block">Mevcut Seri</span>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-xl font-black text-text-primary font-mono">
+              {heatmapData.stats.currentStreak.count} Gün
+            </span>
+            {heatmapData.stats.currentStreak.type === 'win' && (
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
+                🔥 Kâr
+              </span>
+            )}
+            {heatmapData.stats.currentStreak.type === 'loss' && (
+              <span className="text-xs font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20">
+                📉 Zarar
+              </span>
+            )}
+            {heatmapData.stats.currentStreak.type === 'neutral' && (
+              <span className="text-xs font-bold text-text-muted">Nötr</span>
+            )}
+          </div>
+        </div>
+
+        {/* Best Day */}
+        <div className="p-3.5 rounded-2xl bg-bg-secondary/50 border border-border/50 hover:border-emerald-500/30 transition-colors">
+          <span className="text-[11px] font-medium text-text-muted block">En İyi Gün</span>
+          <div className="mt-1">
+            {heatmapData.stats.bestDay ? (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-base font-black text-emerald-400 font-mono">
+                  +{formatCurrency(heatmapData.stats.bestDay.pnl)}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-400/80">
+                  (+{heatmapData.stats.bestDay.pnlPercent}%)
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-text-muted">-</span>
+            )}
+          </div>
+        </div>
+
+        {/* Period Total */}
+        <div className="p-3.5 rounded-2xl bg-bg-secondary/50 border border-border/50 hover:border-accent/30 transition-colors">
+          <span className="text-[11px] font-medium text-text-muted block">Dönem Net K/Z</span>
+          <div className="mt-1">
+            <span
+              className={`text-base font-black font-mono ${
+                heatmapData.stats.totalPeriodPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            >
+              {heatmapData.stats.totalPeriodPnL >= 0 ? '+' : ''}
+              {formatCurrency(heatmapData.stats.totalPeriodPnL)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {!isCollapsed && (
+        <>
+          {/* Heatmap Grid Section */}
+          <div className="relative animate-fade-in">
+        {/* Horizontal scroll container */}
+        <div
+          ref={scrollContainerRef}
+          className="overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-text-muted/40 transition-colors"
+        >
+          <div className="inline-block min-w-full">
+            {/* Month labels row */}
+            <div className="flex ml-8 mb-1.5 text-[11px] font-medium text-text-muted select-none">
+              {heatmapData.weeks.map((_, wIdx) => {
+                const header = heatmapData.monthHeaders.find((m) => m.weekIndex === wIdx);
+                return (
+                  <div key={wIdx} className="w-[15px] mr-[3px] text-left shrink-0">
+                    {header && <span className="font-semibold text-text-secondary">{header.name}</span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Grid rows with weekday labels on left */}
+            <div className="flex">
+              {/* Day of week labels (Mon, Wed, Fri) */}
+              <div className="flex flex-col justify-between text-[10px] font-semibold text-text-muted pr-2 select-none h-[126px] py-[2px]">
+                <span className="leading-none">Pzt</span>
+                <span className="leading-none">Çar</span>
+                <span className="leading-none">Cum</span>
+                <span className="leading-none opacity-40">Paz</span>
+              </div>
+
+              {/* 53 Columns of 7 Days */}
+              <div className="flex gap-[3px]">
+                {heatmapData.weeks.map((week, wIdx) => (
+                  <div key={wIdx} className="flex flex-col gap-[3px] shrink-0">
+                    {week.map((day) => {
+                      const isHovered = hoveredDay?.date === day.date;
+                      const isSelected = selectedDay?.date === day.date;
+
+                      return (
+                        <button
+                          key={day.date}
+                          type="button"
+                          onMouseEnter={(e) => {
+                            if (!day.isFuture) {
+                              setHoveredDay(day);
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top });
+                            }
+                          }}
+                          onMouseLeave={() => {
+                            setHoveredDay(null);
+                            setTooltipPos(null);
+                          }}
+                          onClick={() => {
+                            if (!day.isFuture) {
+                              setSelectedDay(selectedDay?.date === day.date ? null : day);
+                            }
+                          }}
+                          className={`w-[15px] h-[15px] rounded-[3px] transition-all duration-150 relative cursor-pointer ${getCellColor(
+                            day
+                          )} ${
+                            isHovered || isSelected
+                              ? 'scale-125 z-20 ring-2 ring-white/80 shadow-lg'
+                              : 'hover:scale-115'
+                          } ${day.isToday ? 'ring-1.5 ring-accent' : ''}`}
+                          aria-label={`${day.date}: ${day.pnl} TRY`}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile scroll hint */}
+        <div className="flex sm:hidden items-center justify-between text-[11px] text-text-muted mt-1 px-1">
+          <span>← Geçmiş günleri görmek için kaydırın</span>
+          <span>Bugün →</span>
+        </div>
+      </div>
+
+      {/* Floating Tooltip (Desktop hover) */}
+      {hoveredDay && tooltipPos && (
+        <div
+          className="fixed pointer-events-none z-50 transform -translate-x-1/2 -translate-y-full mb-2.5 hidden sm:block animate-fade-in"
+          style={{
+            left: `${tooltipPos.x}px`,
+            top: `${tooltipPos.y - 8}px`,
+          }}
+        >
+          <div className="glass-card bg-bg-card/95 border border-border shadow-2xl rounded-xl p-3 min-w-[200px] text-xs space-y-1.5 backdrop-blur-2xl">
+            <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
+              <span className="font-bold text-text-primary">
+                {new Date(hoveredDay.date).toLocaleDateString('tr-TR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  weekday: 'short',
+                })}
+              </span>
+              {hoveredDay.isToday && (
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-accent text-white uppercase">
+                  Bugün
+                </span>
+              )}
+            </div>
+
+            {hoveredDay.isWeekend ? (
+              <div className="text-text-muted italic py-0.5">Hafta Sonu • Borsa Kapalı</div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">Günlük Getiri:</span>
+                  <span
+                    className={`font-black font-mono text-sm ${
+                      hoveredDay.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                  >
+                    {hoveredDay.pnl >= 0 ? '+' : ''}
+                    {formatCurrency(hoveredDay.pnl)} ({hoveredDay.pnl >= 0 ? '+' : ''}
+                    {hoveredDay.pnlPercent}%)
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">Portföy Değeri:</span>
+                  <span className="font-semibold text-text-primary font-mono">
+                    {formatCurrency(hoveredDay.portfolioValue)}
+                  </span>
+                </div>
+
+                {hoveredDay.transactionsCount > 0 && (
+                  <div className="pt-1 border-t border-border/40 text-[11px] text-accent flex items-center gap-1 font-medium">
+                    <span>📌</span>
+                    <span>
+                      {hoveredDay.transactionsCount} İşlem ({hoveredDay.transactionsSymbols.join(', ')})
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Selected Day Card for Mobile (or on click) */}
+      {selectedDay && (
+        <div className="mt-4 p-4 rounded-2xl bg-bg-secondary/70 border border-border animate-fade-in flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
+                selectedDay.pnl >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+              }`}
+            >
+              {selectedDay.pnl >= 0 ? '↗' : '↘'}
+            </div>
+            <div>
+              <p className="text-xs text-text-muted font-medium">
+                {new Date(selectedDay.date).toLocaleDateString('tr-TR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                  weekday: 'long',
+                })}
+              </p>
+              <h4
+                className={`text-lg font-black font-mono ${
+                  selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                }`}
+              >
+                {selectedDay.pnl >= 0 ? '+' : ''}
+                {formatCurrency(selectedDay.pnl)} ({selectedDay.pnl >= 0 ? '+' : ''}
+                {selectedDay.pnlPercent}%)
+              </h4>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-border/50 pt-2 sm:pt-0">
+            <div className="text-right">
+              <span className="text-[11px] text-text-muted block">Portföy Büyüklüğü</span>
+              <span className="text-sm font-bold text-text-primary font-mono">
+                {formatCurrency(selectedDay.portfolioValue)}
+              </span>
+            </div>
+            {selectedDay.transactionsCount > 0 && (
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-accent/15 text-accent border border-accent/25">
+                {selectedDay.transactionsCount} İşlem
+              </span>
+            )}
+            <button
+              onClick={() => setSelectedDay(null)}
+              className="p-1 text-text-muted hover:text-text-primary text-xs"
+              title="Kapat"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Footer: Legend & Info */}
+      <div className="mt-5 pt-4 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-text-muted">
+        <div className="flex items-center gap-2">
+          <span>{heatmapData.stats.totalTradingDays} İşlem Günü İncelendi</span>
+          <span>•</span>
+          <span className="text-emerald-400 font-semibold">{heatmapData.stats.profitableDays} Kârlı</span>
+          <span>•</span>
+          <span className="text-rose-400 font-semibold">{heatmapData.stats.lossDays} Zararlı</span>
+        </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-1.5 select-none">
+            <span className="text-[11px] text-rose-400 font-medium mr-1">Zarar</span>
+            <div className="w-3 h-3 rounded-[2px] bg-rose-500 border border-rose-300" title="> %3 Zarar" />
+            <div className="w-3 h-3 rounded-[2px] bg-rose-500/85 border border-rose-400/60" title="%1.5 - %3 Zarar" />
+            <div className="w-3 h-3 rounded-[2px] bg-rose-500/55 border border-rose-500/40" title="%0.5 - %1.5 Zarar" />
+            <div className="w-3 h-3 rounded-[2px] bg-rose-500/25 border border-rose-500/30" title="%0 - %0.5 Zarar" />
+            <div className="w-3 h-3 rounded-[2px] bg-bg-tertiary/60 border border-border/40" title="Nötr" />
+            <div className="w-3 h-3 rounded-[2px] bg-emerald-500/25 border border-emerald-500/30" title="%0 - %0.5 Kâr" />
+            <div className="w-3 h-3 rounded-[2px] bg-emerald-500/55 border border-emerald-500/40" title="%0.5 - %1.5 Kâr" />
+            <div className="w-3 h-3 rounded-[2px] bg-emerald-500/85 border border-emerald-400/60" title="%1.5 - %3 Kâr" />
+            <div className="w-3 h-3 rounded-[2px] bg-emerald-400 border border-emerald-300" title="> %3 Kâr" />
+            <span className="text-[11px] text-emerald-400 font-medium ml-1">Kâr</span>
+          </div>
+        </div>
+      </>
+    )}
+  </div>
+);
+}
+export default DailyPnLCalendarHeatmap;

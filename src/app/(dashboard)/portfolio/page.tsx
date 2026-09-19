@@ -5,6 +5,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
+import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import { Badge, Button, Modal, Input, useToast } from '@/components/ui';
@@ -386,11 +387,21 @@ export default function PortfolioPage() {
           <h3 className={`text-2xl font-black mt-1 font-mono ${summary.dailyPnL >= 0 ? 'text-success' : 'text-danger'}`}>
             {summary.dailyPnL >= 0 ? '+' : ''}₺{summary.dailyPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
           </h3>
-          <div className="flex items-center gap-1.5 mt-2 text-xs">
-            <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
-              {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
-            </Badge>
-            <span className="text-text-muted">bugün • {activeTransactions.length} işlem</span>
+          <div className="flex items-center justify-between gap-1.5 mt-2 text-xs">
+            <div className="flex items-center gap-1.5">
+              <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
+                {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
+              </Badge>
+              <span className="text-text-muted">bugün</span>
+            </div>
+            <a
+              href="#daily-calendar"
+              className="text-[11px] font-bold text-accent hover:underline flex items-center gap-1 transition-colors"
+              title="GitHub Stili Günlük Kâr Takvimine Git"
+            >
+              <span>📅 Takvim</span>
+              <span>↓</span>
+            </a>
           </div>
         </div>
       </div>
@@ -456,6 +467,15 @@ export default function PortfolioPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* GitHub-Style Daily PnL Activity Calendar Heatmap */}
+      <div id="daily-calendar" className="scroll-mt-20">
+        <DailyPnLCalendarHeatmap
+          portfolioId={activePortfolioId}
+          summary={summary}
+          transactions={activeTransactions}
+        />
       </div>
 
       {/* Tabs: Holdings vs Transaction History */}
