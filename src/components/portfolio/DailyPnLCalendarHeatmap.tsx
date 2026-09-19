@@ -22,13 +22,86 @@ export function DailyPnLCalendarHeatmap({
   const [hoveredDay, setHoveredDay] = useState<DayPnLRecord | null>(null);
   const [selectedDay, setSelectedDay] = useState<DayPnLRecord | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [priceHistoryMap, setPriceHistoryMap] = useState<Record<string, Record<string, number>>>({});
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Compute heatmap data
+  // Fetch 100% REAL historical daily prices for active portfolio holdings
+  useEffect(() => {
+    // Collect unique symbols and their asset types
+    const symbolMap = new Map<string, 'stock' | 'fund'>();
+    (summary.holdings || []).forEach((h) => {
+      if (h.symbol) symbolMap.set(h.symbol.toUpperCase(), h.assetType);
+    });
+    transactions.forEach((t) => {
+      if (t.symbol) symbolMap.set(t.symbol.toUpperCase(), t.assetType || 'stock');
+    });
+
+    if (symbolMap.size === 0) return;
+
+    let isMounted = true;
+    setLoadingHistory(true);
+
+    const fetchAllHistory = async () => {
+      const historyMap: Record<string, Record<string, number>> = {};
+
+      const promises = Array.from(symbolMap.entries()).map(async ([symbol, assetType]) => {
+        try {
+          if (assetType === 'fund') {
+            const res = await fetch(`/api/funds/${symbol}`);
+            if (res.ok) {
+              const json = await res.json();
+              const list = json.data?.history || [];
+              const m: Record<string, number> = {};
+              for (const pt of list) {
+                if (pt.date && pt.price != null) {
+                  m[pt.date] = Number(pt.price);
+                }
+              }
+              historyMap[symbol] = m;
+              historyMap[symbol.toUpperCase()] = m;
+            }
+          } else {
+            const res = await fetch(`/api/stocks/${symbol}/history?timeframe=1Y`);
+            if (res.ok) {
+              const json = await res.json();
+              const list = json.data || [];
+              const m: Record<string, number> = {};
+              for (const pt of list) {
+                const dStr = pt.time || pt.date;
+                if (dStr && pt.close != null) {
+                  m[dStr] = Number(pt.close);
+                }
+              }
+              historyMap[symbol] = m;
+              historyMap[symbol.toUpperCase()] = m;
+            }
+          }
+        } catch (err) {
+          console.warn(`[DailyPnLHeatmap] Could not fetch real history for ${symbol}:`, err);
+        }
+      });
+
+      await Promise.all(promises);
+
+      if (isMounted) {
+        setPriceHistoryMap(historyMap);
+        setLoadingHistory(false);
+      }
+    };
+
+    fetchAllHistory();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [summary.holdings, transactions]);
+
+  // Compute heatmap data using strictly REAL data
   const heatmapData = useMemo(() => {
-    return getPortfolioDailyActivity(portfolioId, summary, transactions, timeframe);
-  }, [portfolioId, summary, transactions, timeframe]);
+    return getPortfolioDailyActivity(portfolioId, summary, transactions, timeframe, priceHistoryMap);
+  }, [portfolioId, summary, transactions, timeframe, priceHistoryMap]);
 
   // Auto-scroll to today (right side) on initial mount or timeframe change
   useEffect(() => {
@@ -37,7 +110,7 @@ export function DailyPnLCalendarHeatmap({
     }
   }, [timeframe]);
 
-  // Color mapper based on level
+  // Color mapper based on level strictly for real data
   const getCellColor = (day: DayPnLRecord) => {
     if (day.isFuture) {
       return 'bg-transparent border border-transparent pointer-events-none opacity-0';
@@ -46,7 +119,12 @@ export function DailyPnLCalendarHeatmap({
       return 'bg-bg-tertiary/20 dark:bg-slate-900/30 border border-border/10 opacity-35 hover:opacity-80';
     }
 
-    // Profit levels: 1 to 4
+    // Days without verified closing price data or snapshots stay neutral
+    if (!day.hasRealData) {
+      return 'bg-bg-tertiary/40 dark:bg-slate-800/40 border border-border/30 hover:border-accent/40';
+    }
+
+    // Real profit levels: 1 to 4
     if (day.level === 4) {
       return 'bg-emerald-400 border border-emerald-300 shadow-[0_0_8px_rgba(52,211,153,0.45)]';
     }
@@ -60,7 +138,7 @@ export function DailyPnLCalendarHeatmap({
       return 'bg-emerald-500/25 border border-emerald-500/30';
     }
 
-    // Loss levels: -1 to -4
+    // Real loss levels: -1 to -4
     if (day.level === -4) {
       return 'bg-rose-500 border border-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.45)]';
     }
@@ -105,9 +183,21 @@ export function DailyPnLCalendarHeatmap({
                   GitHub Stili
                 </span>
               </div>
-              <p className="text-xs text-text-muted mt-0.5">
-                Portföyünüzün her günkü getirisini gün gün takip edin
-              </p>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                <span className="text-xs text-text-muted">
+                  Portföyünüzün her günkü getirisini gün gün takip edin
+                </span>
+                <span className="text-text-muted/40">•</span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  100% Gerçek BIST & TEFAS Kapanış Verileri
+                </span>
+                {loadingHistory && (
+                  <span className="text-[10px] text-text-muted animate-pulse">
+                    (Geçmiş fiyatlar alınıyor...)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -350,10 +440,37 @@ export function DailyPnLCalendarHeatmap({
 
             {hoveredDay.isWeekend ? (
               <div className="text-text-muted italic py-0.5">Hafta Sonu • Borsa Kapalı</div>
+            ) : !hoveredDay.hasRealData ? (
+              <div className="py-1 space-y-1">
+                <div className="text-text-muted text-[11px] flex items-center justify-between">
+                  <span>Kapanış Verisi:</span>
+                  <span className="font-semibold text-text-secondary">Kayıtlı Veri Yok</span>
+                </div>
+                {hoveredDay.transactionsCount > 0 && (
+                  <div className="pt-1 border-t border-border/40 text-[11px] text-accent flex items-center gap-1 font-medium">
+                    <span>📌</span>
+                    <span>
+                      {hoveredDay.transactionsCount} İşlem ({hoveredDay.transactionsSymbols.join(', ')})
+                    </span>
+                  </div>
+                )}
+                {hoveredDay.holdingsAtDate && hoveredDay.holdingsAtDate.length > 0 && (
+                  <div className="pt-1 border-t border-border/40 flex items-center justify-between text-[11px]">
+                    <span className="text-text-muted">Eldeki Varlıklar:</span>
+                    <span className="font-bold text-accent font-mono truncate max-w-[130px]">
+                      {hoveredDay.holdingsAtDate.map((h) => h.symbol).slice(0, 3).join(', ')}
+                      {hoveredDay.holdingsAtDate.length > 3 ? ` +${hoveredDay.holdingsAtDate.length - 3}` : ''}
+                    </span>
+                  </div>
+                )}
+                <div className="pt-1 text-[10px] text-text-muted/80 text-center font-medium">
+                  Detaylı varlık listesi için tıklayın 👆
+                </div>
+              </div>
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-text-muted">Günlük Getiri:</span>
+                  <span className="text-text-muted">Gerçek Getiri:</span>
                   <span
                     className={`font-black font-mono text-sm ${
                       hoveredDay.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
@@ -408,12 +525,14 @@ export function DailyPnLCalendarHeatmap({
             <div className="flex items-center gap-3">
               <div
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner ${
-                  selectedDay.pnl >= 0
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  selectedDay.hasRealData
+                    ? selectedDay.pnl >= 0
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    : 'bg-bg-tertiary text-text-muted border border-border'
                 }`}
               >
-                {selectedDay.pnl >= 0 ? '↗' : '↘'}
+                {selectedDay.hasRealData ? (selectedDay.pnl >= 0 ? '↗' : '↘') : '•'}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -437,16 +556,24 @@ export function DailyPnLCalendarHeatmap({
                   )}
                 </div>
                 <div className="flex items-baseline gap-2 mt-0.5">
-                  <span
-                    className={`text-lg font-black font-mono ${
-                      selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
-                  >
-                    {selectedDay.pnl >= 0 ? '+' : ''}
-                    {formatCurrency(selectedDay.pnl)} ({selectedDay.pnl >= 0 ? '+' : ''}
-                    {selectedDay.pnlPercent}%)
-                  </span>
-                  <span className="text-xs text-text-muted">günlük getiri</span>
+                  {selectedDay.hasRealData ? (
+                    <>
+                      <span
+                        className={`text-lg font-black font-mono ${
+                          selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {selectedDay.pnl >= 0 ? '+' : ''}
+                        {formatCurrency(selectedDay.pnl)} ({selectedDay.pnl >= 0 ? '+' : ''}
+                        {selectedDay.pnlPercent}%)
+                      </span>
+                      <span className="text-xs text-text-muted">gerçek günlük getiri</span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-semibold text-text-muted">
+                      {selectedDay.isWeekend ? 'Piyasa Kapalı' : 'Bu tarih için kayıtlı borsa kapanış fiyatı bulunmuyor'}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

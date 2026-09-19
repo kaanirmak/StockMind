@@ -21,6 +21,7 @@ export interface DayPnLRecord {
   isWeekend: boolean;
   isFuture: boolean;
   isToday: boolean;
+  hasRealData: boolean; // True only if real market price history, live store, or snapshot exists
   pnl: number; // in TRY
   pnlPercent: number; // e.g. +1.25 or -0.80
   portfolioValue: number;
@@ -66,19 +67,6 @@ export interface HeatmapData {
 }
 
 /**
- * Deterministic pseudo-random float [0, 1) based on a string seed
- */
-function seededRandom(seedStr: string): number {
-  let hash = 0;
-  for (let i = 0; i < seedStr.length; i++) {
-    hash = (hash << 5) - hash + seedStr.charCodeAt(i);
-    hash |= 0;
-  }
-  const x = Math.sin(hash) * 10000;
-  return x - Math.floor(x);
-}
-
-/**
  * Format Date to YYYY-MM-DD
  */
 export function formatISODate(d: Date): string {
@@ -92,13 +80,19 @@ const TR_MONTHS_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu
 const TR_DAYS_SHORT = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
 /**
- * Generate or retrieve the GitHub-style Daily PnL Heatmap
+ * Generate 100% REAL Daily PnL Heatmap
+ * - Strictly NO random or simulated data.
+ * - Uses live portfolio data for today.
+ * - Uses real historical closing price maps (from BIST / TEFAS APIs) when available.
+ * - Uses real recorded daily closing snapshots from localStorage.
+ * - Replays actual transaction history to determine held assets per day.
  */
 export function getPortfolioDailyActivity(
   portfolioId: string,
   summary: PortfolioSummary,
   transactions: Transaction[],
-  timeframe: '1Y' | '6M' | 'YTD' = '1Y'
+  timeframe: '1Y' | '6M' | 'YTD' = '1Y',
+  priceHistoryMap: Record<string, Record<string, number>> = {}
 ): HeatmapData {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -116,11 +110,10 @@ export function getPortfolioDailyActivity(
   }
 
   // Adjust startDate to Monday so columns align cleanly (Mon = 0, Sun = 6)
-  // JS getDay(): 0 is Sunday, 1 is Monday...
-  const startDayOfWeek = (startDate.getDay() + 6) % 7; // Convert to Mon=0 ... Sun=6
+  const startDayOfWeek = (startDate.getDay() + 6) % 7;
   startDate.setDate(startDate.getDate() - startDayOfWeek);
 
-  // 2. Load stored daily snapshots from localStorage if available
+  // 2. Load stored real daily snapshots from localStorage
   const storageKey = `stockmind_daily_snapshots_${portfolioId}`;
   let savedSnapshots: Record<string, { pnl: number; pnlPercent: number; value: number }> = {};
   if (typeof window !== 'undefined') {
@@ -131,7 +124,7 @@ export function getPortfolioDailyActivity(
       // ignore
     }
 
-    // Automatically record or update today's live snapshot
+    // Automatically persist today's real live snapshot
     if (summary && summary.totalValue > 0) {
       savedSnapshots[todayStr] = {
         pnl: summary.dailyPnL || 0,
@@ -147,31 +140,53 @@ export function getPortfolioDailyActivity(
   }
 
   // 3. Map transactions by date
-  const txByDate: Record<string, { count: number; symbols: string[] }> = {};
+  const txByDate: Record<string, { count: number; symbols: string[]; transactions: Transaction[] }> = {};
   for (const tx of transactions) {
     if (!tx.transactionDate) continue;
     const dStr = tx.transactionDate.split('T')[0];
     if (!txByDate[dStr]) {
-      txByDate[dStr] = { count: 0, symbols: [] };
+      txByDate[dStr] = { count: 0, symbols: [], transactions: [] };
     }
     txByDate[dStr].count += 1;
+    txByDate[dStr].transactions.push(tx);
     if (tx.symbol && !txByDate[dStr].symbols.includes(tx.symbol)) {
       txByDate[dStr].symbols.push(tx.symbol);
     }
   }
 
-  // 4. Generate day by day timeline
+  // Sort transactions chronologically for accurate position replay
+  const sortedTransactions = [...transactions]
+    .filter((t) => t && t.transactionDate && t.quantity > 0)
+    .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
+
+  // 4. Precompute timeline dates to find previous trading days
+  const dateList: string[] = [];
+  const tempCur = new Date(startDate);
+  while (tempCur <= today || (tempCur.getDay() !== 1 && dateList.length % 7 !== 0)) {
+    dateList.push(formatISODate(tempCur));
+    tempCur.setDate(tempCur.getDate() + 1);
+  }
+
+  // Helper to find previous trading day (skipping weekends)
+  const getPreviousTradingDate = (idx: number): string | null => {
+    for (let i = idx - 1; i >= 0; i--) {
+      const d = new Date(dateList[i]);
+      const dow = (d.getDay() + 6) % 7;
+      if (dow !== 5 && dow !== 6) {
+        return dateList[i];
+      }
+    }
+    return null;
+  };
+
+  // 5. Generate day by day timeline
   const days: DayPnLRecord[] = [];
   const currentVal = summary.totalValue || 0;
   const currentCost = summary.totalCost || 0;
-  const totalPnL = summary.totalPnL || 0;
 
-  // Track running portfolio value backward/forward
-  let runningVal = currentVal;
-
-  const curDate = new Date(startDate);
-  while (curDate <= today || (curDate.getDay() !== 1 && days.length % 7 !== 0)) {
-    const dStr = formatISODate(curDate);
+  for (let idx = 0; idx < dateList.length; idx++) {
+    const dStr = dateList[idx];
+    const curDate = new Date(dStr);
     const dayOfWeek = (curDate.getDay() + 6) % 7; // Mon=0, ..., Sun=6
     const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; // Sat or Sun
     const isFuture = curDate.getTime() > today.getTime();
@@ -180,71 +195,9 @@ export function getPortfolioDailyActivity(
     let pnl = 0;
     let pnlPercent = 0;
     let val = currentVal;
+    let hasRealData = false;
 
-    if (isFuture) {
-      pnl = 0;
-      pnlPercent = 0;
-    } else if (isToday) {
-      pnl = summary.dailyPnL || 0;
-      pnlPercent = summary.dailyPnLPercent || 0;
-      val = currentVal;
-    } else if (savedSnapshots[dStr]) {
-      // Stored real snapshot
-      pnl = savedSnapshots[dStr].pnl;
-      pnlPercent = savedSnapshots[dStr].pnlPercent;
-      val = savedSnapshots[dStr].value || currentVal;
-    } else if (isWeekend) {
-      // Weekend: market closed, 0 return
-      pnl = 0;
-      pnlPercent = 0;
-    } else {
-      // Realistic simulation based on portfolio characteristics and date seed
-      const seed = `${portfolioId}_${dStr}`;
-      const rand1 = seededRandom(seed);
-      const rand2 = seededRandom(seed + '_sub');
-
-      // Check if user had transactions on or before this day
-      const hasTx = txByDate[dStr];
-
-      // Base market return distribution (skewed slightly positive like long-term stock market)
-      // Normal-ish distribution around +0.08% daily mean with standard deviation ~1.2%
-      const u1 = Math.max(0.0001, rand1);
-      const u2 = rand2;
-      const normalRand = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
-
-      // Skew positive if portfolio overall is in profit, negative if in loss
-      const trendBias = totalPnL >= 0 ? 0.12 : -0.06;
-      let simPercent = (normalRand * 1.15 + trendBias);
-
-      // Clamp between -6.5% and +8.5%
-      simPercent = Math.max(-6.5, Math.min(8.5, simPercent));
-
-      // Extra volatility boost if transactions took place on that day
-      if (hasTx) {
-        simPercent = simPercent * 1.3;
-      }
-
-      // Compute PnL in TRY based on portfolio value
-      pnlPercent = Number(simPercent.toFixed(2));
-      pnl = Number(((currentVal * (pnlPercent / 100))).toFixed(2));
-      val = Math.max(0, currentVal - pnl);
-    }
-
-    // Determine visual intensity level (-4 to +4)
-    let level = 0;
-    if (!isWeekend && !isFuture && currentVal > 0) {
-      if (pnlPercent >= 3.0) level = 4;
-      else if (pnlPercent >= 1.5) level = 3;
-      else if (pnlPercent >= 0.5) level = 2;
-      else if (pnlPercent > 0.02) level = 1;
-      else if (pnlPercent <= -3.0) level = -4;
-      else if (pnlPercent <= -1.5) level = -3;
-      else if (pnlPercent <= -0.5) level = -2;
-      else if (pnlPercent < -0.02) level = -1;
-      else level = 0;
-    }
-
-    // Compute holdings snapshot as of this date
+    // 5.1 Reconstruct holdings held on this date from real transactions
     let holdingsAtDate: HistoricalHoldingSnapshot[] = [];
 
     if (isToday) {
@@ -254,15 +207,11 @@ export function getPortfolioDailyActivity(
         quantity: h.totalQuantity,
         averageCost: h.averageCost,
         totalCost: h.totalCost,
-        todayTransactions: transactions
-          .filter((tx) => tx.transactionDate?.split('T')[0] === dStr && tx.symbol === h.symbol)
+        todayTransactions: txByDate[dStr]?.transactions
+          .filter((tx) => tx.symbol === h.symbol)
           .map((tx) => ({ type: tx.transactionType, quantity: tx.quantity, price: tx.price })),
       }));
     } else {
-      const sortedTransactions = [...transactions]
-        .filter((t) => t && t.transactionDate && t.quantity > 0)
-        .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
-
       const txsUntilToday = sortedTransactions.filter((tx) => tx.transactionDate.split('T')[0] <= dStr);
       if (txsUntilToday.length > 0) {
         const map: Record<string, HistoricalHoldingSnapshot> = {};
@@ -299,7 +248,8 @@ export function getPortfolioDailyActivity(
           }
         }
         holdingsAtDate = Object.values(map).filter((h) => h.quantity > 0);
-      } else if (summary.holdings && summary.holdings.length > 0) {
+      } else if (summary.holdings && summary.holdings.length > 0 && sortedTransactions.length === 0) {
+        // If holdings exist in store but transactions table is not backfilled
         holdingsAtDate = summary.holdings.map((h) => ({
           symbol: h.symbol,
           assetType: h.assetType,
@@ -310,6 +260,77 @@ export function getPortfolioDailyActivity(
       }
     }
 
+    // 5.2 Calculate 100% REAL Daily PnL
+    if (isFuture || isWeekend) {
+      // Market closed or future date
+      pnl = 0;
+      pnlPercent = 0;
+      hasRealData = false;
+    } else if (isToday) {
+      // Live current portfolio data
+      pnl = summary.dailyPnL || 0;
+      pnlPercent = summary.dailyPnLPercent || 0;
+      val = currentVal;
+      hasRealData = true;
+    } else if (savedSnapshots[dStr]) {
+      // Real recorded daily snapshot from database/localStorage
+      pnl = savedSnapshots[dStr].pnl;
+      pnlPercent = savedSnapshots[dStr].pnlPercent;
+      val = savedSnapshots[dStr].value || currentVal;
+      hasRealData = true;
+    } else {
+      // Calculate from real historical price quotes of held assets
+      const prevTradingDate = getPreviousTradingDate(idx);
+      let dayPnlSum = 0;
+      let dayPrevValSum = 0;
+      let dayValSum = 0;
+      let validAssetCount = 0;
+
+      if (prevTradingDate && holdingsAtDate.length > 0) {
+        for (const h of holdingsAtDate) {
+          const symPrices = priceHistoryMap[h.symbol] || priceHistoryMap[h.symbol.toUpperCase()];
+          if (symPrices) {
+            const pToday = symPrices[dStr];
+            const pPrev = symPrices[prevTradingDate];
+            if (pToday != null && pPrev != null && pPrev > 0) {
+              const diff = pToday - pPrev;
+              dayPnlSum += h.quantity * diff;
+              dayPrevValSum += h.quantity * pPrev;
+              dayValSum += h.quantity * pToday;
+              validAssetCount++;
+            }
+          }
+        }
+      }
+
+      if (validAssetCount > 0 && dayPrevValSum > 0) {
+        // 100% Real PnL calculated from official historical closing prices
+        pnl = Number(dayPnlSum.toFixed(2));
+        pnlPercent = Number(((dayPnlSum / dayPrevValSum) * 100).toFixed(2));
+        val = Number(dayValSum.toFixed(2));
+        hasRealData = true;
+      } else {
+        // NO fake/random data. If no historical price or snapshot exists:
+        pnl = 0;
+        pnlPercent = 0;
+        hasRealData = false;
+      }
+    }
+
+    // Determine visual intensity level (-4 to +4) strictly based on REAL data
+    let level = 0;
+    if (hasRealData && !isWeekend && !isFuture) {
+      if (pnlPercent >= 3.0) level = 4;
+      else if (pnlPercent >= 1.5) level = 3;
+      else if (pnlPercent >= 0.5) level = 2;
+      else if (pnlPercent > 0.02) level = 1;
+      else if (pnlPercent <= -3.0) level = -4;
+      else if (pnlPercent <= -1.5) level = -3;
+      else if (pnlPercent <= -0.5) level = -2;
+      else if (pnlPercent < -0.02) level = -1;
+      else level = 0;
+    }
+
     days.push({
       date: dStr,
       timestamp: curDate.getTime(),
@@ -318,6 +339,7 @@ export function getPortfolioDailyActivity(
       isWeekend,
       isFuture,
       isToday,
+      hasRealData,
       pnl,
       pnlPercent,
       portfolioValue: val,
@@ -327,11 +349,9 @@ export function getPortfolioDailyActivity(
       level,
       holdingsAtDate,
     });
-
-    curDate.setDate(curDate.getDate() + 1);
   }
 
-  // 5. Structure into 7-row columns (weeks)
+  // 6. Structure into 7-row columns (weeks)
   const weeks: DayPnLRecord[][] = [];
   let currentWeek: DayPnLRecord[] = [];
 
@@ -346,12 +366,11 @@ export function getPortfolioDailyActivity(
     weeks.push(currentWeek);
   }
 
-  // 6. Calculate month headers with column indices
+  // 7. Calculate month headers with column indices
   const monthHeaders: { name: string; weekIndex: number }[] = [];
   let lastMonth = -1;
 
   weeks.forEach((week, wIdx) => {
-    // Check if the 1st day of any month falls in this week
     const firstDay = week.find((d) => new Date(d.date).getDate() <= 7);
     if (firstDay) {
       const m = new Date(firstDay.date).getMonth();
@@ -365,7 +384,7 @@ export function getPortfolioDailyActivity(
     }
   });
 
-  // 7. Calculate comprehensive statistics
+  // 8. Calculate statistics strictly over days with REAL data
   let profitableDays = 0;
   let lossDays = 0;
   let neutralDays = 0;
@@ -373,10 +392,10 @@ export function getPortfolioDailyActivity(
   let bestDay: DayPnLRecord | null = null;
   let worstDay: DayPnLRecord | null = null;
 
-  // Active trading days (weekdays up to today)
-  const activeDays = days.filter((d) => !d.isWeekend && !d.isFuture);
+  // Active trading days with verified real data
+  const realDays = days.filter((d) => !d.isWeekend && !d.isFuture && d.hasRealData);
 
-  for (const d of activeDays) {
+  for (const d of realDays) {
     totalPeriodPnL += d.pnl;
     if (d.pnl > 0.01) {
       profitableDays++;
@@ -389,10 +408,10 @@ export function getPortfolioDailyActivity(
     }
   }
 
-  const totalTradingDays = activeDays.length;
+  const totalTradingDays = realDays.length;
   const winRate = totalTradingDays > 0 ? Number(((profitableDays / totalTradingDays) * 100).toFixed(1)) : 0;
 
-  // Calculate current streak & longest streaks
+  // Calculate real streaks
   let currentStreakCount = 0;
   let currentStreakType: 'win' | 'loss' | 'neutral' = 'neutral';
   let longestWinStreak = 0;
@@ -401,8 +420,8 @@ export function getPortfolioDailyActivity(
   let runningWin = 0;
   let runningLoss = 0;
 
-  for (let i = 0; i < activeDays.length; i++) {
-    const d = activeDays[i];
+  for (let i = 0; i < realDays.length; i++) {
+    const d = realDays[i];
     if (d.pnl > 0.01) {
       runningWin++;
       runningLoss = 0;
@@ -417,19 +436,19 @@ export function getPortfolioDailyActivity(
     }
   }
 
-  // Determine current streak from the end
-  if (activeDays.length > 0) {
-    const lastDay = activeDays[activeDays.length - 1];
+  // Determine current streak from real days ending at today
+  if (realDays.length > 0) {
+    const lastDay = realDays[realDays.length - 1];
     if (lastDay.pnl > 0.01) {
       currentStreakType = 'win';
-      for (let i = activeDays.length - 1; i >= 0; i--) {
-        if (activeDays[i].pnl > 0.01) currentStreakCount++;
+      for (let i = realDays.length - 1; i >= 0; i--) {
+        if (realDays[i].pnl > 0.01) currentStreakCount++;
         else break;
       }
     } else if (lastDay.pnl < -0.01) {
       currentStreakType = 'loss';
-      for (let i = activeDays.length - 1; i >= 0; i--) {
-        if (activeDays[i].pnl < -0.01) currentStreakCount++;
+      for (let i = realDays.length - 1; i >= 0; i--) {
+        if (realDays[i].pnl < -0.01) currentStreakCount++;
         else break;
       }
     } else {
