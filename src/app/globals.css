@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Override Tailwind v4 dark mode to use class-based (.dark) instead of media query */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ═══════════════════════════════════════════
    StockMind Design System — Dual Theme (Siyah & Beyaz Planlar)
    ═══════════════════════════════════════════ */
