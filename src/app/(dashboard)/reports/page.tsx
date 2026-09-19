@@ -7,7 +7,7 @@ import { Button, Badge, useToast } from '@/components/ui';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
-  const { portfolios, activePortfolioId, getSummary, fetchPortfoliosAndTransactions } = usePortfolioStore();
+  const { portfolios, activePortfolioId, getSummary, fetchPortfoliosAndTransactions, loading: pricesLoading } = usePortfolioStore();
   const [isMounted, setIsMounted] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -24,6 +24,35 @@ export default function ReportsPage() {
   };
 
   const handleSendEmailReport = async () => {
+    // If prices are still loading, wait up to 12 seconds for them to settle
+    if (pricesLoading) {
+      showToast({
+        type: 'info',
+        title: 'Fiyatlar Yükleniyor...',
+        message: 'TEFAS fon fiyatları alınıyor, lütfen birkaç saniye bekleyin.',
+      });
+      // Poll until loading is done (max 12 sec, check every 500ms)
+      const settled = await new Promise<boolean>((resolve) => {
+        const start = Date.now();
+        const interval = setInterval(() => {
+          const currentLoading = usePortfolioStore.getState().loading;
+          if (!currentLoading || Date.now() - start > 12000) {
+            clearInterval(interval);
+            resolve(!currentLoading);
+          }
+        }, 500);
+      });
+      if (!settled) {
+        showToast({
+          type: 'warning',
+          title: 'Fiyatlar Henüz Yüklenemedi',
+          message: 'Bazı TEFAS fon fiyatları alınamadı. Mevcut verilerle gönderiliyor.',
+        });
+      }
+    }
+
+    // Re-read the summary now that prices should be loaded
+    const currentSummary = usePortfolioStore.getState().getSummary();
     // Settings saves everything as one JSON object under stockmind_settings_{userKey}
     // We need to find the right key (could be 'guest' or 'user_{id}')
     let settings: Record<string, any> = {};
@@ -83,9 +112,9 @@ export default function ReportsPage() {
           userName: settings.fullName || 'Kullanıcı',
           subject: `StockMind Portföy Raporu • ${activePortfolio?.name || 'Portföy'} (${new Date().toLocaleDateString('tr-TR')})`,
           portfolioSummary: {
-            totalValue: summary.totalValue,
-            totalPnL: summary.totalPnL,
-            totalPnLPercent: summary.totalPnLPercent,
+            totalValue: currentSummary.totalValue,
+            totalPnL: currentSummary.totalPnL,
+            totalPnLPercent: currentSummary.totalPnLPercent,
           },
           customSmtp: {
             user: smtpUser,
@@ -190,11 +219,11 @@ export default function ReportsPage() {
           {/* Email button — glassmorphic card on mobile */}
           <button
             onClick={handleSendEmailReport}
-            disabled={sendingEmail}
+            disabled={sendingEmail || pricesLoading}
             className="glass-card flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group"
           >
             <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-accent/15 sm:bg-transparent flex items-center justify-center shrink-0">
-              {sendingEmail ? (
+              {(sendingEmail || pricesLoading) ? (
                 <svg className="animate-spin h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -206,10 +235,16 @@ export default function ReportsPage() {
               )}
             </div>
             <div className="text-left sm:hidden">
-              <span className="text-text-primary block font-semibold">{sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}</span>
-              <span className="text-[11px] text-text-muted">Raporu e-posta ile paylaş</span>
+              <span className="text-text-primary block font-semibold">
+                {pricesLoading ? 'Fiyatlar yükleniyor...' : sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}
+              </span>
+              <span className="text-[11px] text-text-muted">
+                {pricesLoading ? 'TEFAS fon fiyatları alınıyor' : 'Raporu e-posta ile paylaş'}
+              </span>
             </div>
-            <span className="hidden sm:inline text-text-primary">{sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}</span>
+            <span className="hidden sm:inline text-text-primary">
+              {pricesLoading ? 'Fiyatlar yükleniyor...' : sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}
+            </span>
           </button>
 
           {/* Print button */}
