@@ -264,18 +264,30 @@ export default function Header() {
       <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0 mr-2 sm:mr-4">
         <Link
           href="/dashboard"
-          className="md:hidden flex items-center shrink-0 rounded-xl p-0.5 hover:opacity-80 transition-opacity"
+          className="md:hidden relative flex items-center justify-center shrink-0 rounded-xl p-1 group transition-all"
           title="StockMind Ana Sayfa"
         >
+          {/* Transition gradient aura behind mobile logo */}
+          <div
+            className={`absolute inset-0 rounded-xl bg-gradient-to-tr from-violet-600/30 via-fuchsia-500/25 to-indigo-600/30 blur-sm transition-all duration-500 ${
+              searchResults.loading
+                ? 'opacity-100 scale-110 animate-aura-expand'
+                : 'opacity-40 group-hover:opacity-100 group-hover:scale-105'
+            }`}
+          />
           <img
             src="/icon-brain-light.png"
             alt="StockMind"
-            className="h-8 w-8 object-contain dark:hidden"
+            className={`h-7 w-7 object-contain dark:hidden relative z-10 transition-transform ${
+              searchResults.loading ? 'animate-brain-pulse' : 'group-hover:scale-105'
+            }`}
           />
           <img
             src="/icon-brain-dark.png"
             alt="StockMind"
-            className="h-8 w-8 object-contain hidden dark:block drop-shadow-[0_0_10px_rgba(139,92,246,0.35)]"
+            className={`h-7 w-7 object-contain hidden dark:block relative z-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.45)] transition-transform ${
+              searchResults.loading ? 'animate-brain-pulse' : 'group-hover:scale-105'
+            }`}
           />
         </Link>
         <div className="flex-1 relative min-w-0" ref={searchContainerRef}>

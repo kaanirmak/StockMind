@@ -534,6 +534,77 @@ html.dark .glass-purple {
   animation: slideDown 0.25s ease-in forwards;
 }
 
+/* Brain Logo Loading & Gradient Transition Animations */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes brain-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.45));
+  }
+  50% {
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 28px rgba(192, 132, 252, 0.75));
+  }
+}
+
+@keyframes aura-expand {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.35;
+  }
+}
+
+@keyframes ring-wave {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.animate-brain-pulse {
+  animation: brain-pulse 2.4s ease-in-out infinite;
+}
+
+.animate-aura-expand {
+  animation: aura-expand 3s ease-in-out infinite;
+}
+
+.animate-ring-wave-1 {
+  animation: ring-wave 2.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.animate-ring-wave-2 {
+  animation: ring-wave 2.5s cubic-bezier(0, 0.2, 0.8, 1) infinite 1.25s;
+}
+
 /* Staggered children animations */
 .stagger-children > * {
   opacity: 0;

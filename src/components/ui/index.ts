@@ -7,3 +7,4 @@ export * from './Modal';
 export * from './Tabs';
 export * from './Skeleton';
 export * from './Toast';
+export * from './BrainLogoLoader';

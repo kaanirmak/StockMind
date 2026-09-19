@@ -18,9 +18,9 @@ export default function LandingPage() {
       <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 h-20">
         <Link href="/" className="flex items-center group">
           <img
-            src="/logo.png"
+            src="/logo-white.png"
             alt="StockMind"
-            className="h-12 sm:h-14 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_18px_rgba(99,102,241,0.35)]"
+            className="h-9 sm:h-11 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_18px_rgba(139,92,246,0.35)]"
           />
         </Link>
         <div className="flex items-center gap-4">

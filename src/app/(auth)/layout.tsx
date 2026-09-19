@@ -25,9 +25,9 @@ export default function AuthLayout({
         <div className="relative z-10 px-12 max-w-lg">
           <Link href="/" className="inline-block mb-8 group">
             <img
-              src="/logo.png"
+              src="/logo-white.png"
               alt="StockMind"
-              className="h-16 lg:h-20 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_24px_rgba(99,102,241,0.35)]"
+              className="h-12 lg:h-14 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_24px_rgba(139,92,246,0.35)]"
             />
           </Link>
           

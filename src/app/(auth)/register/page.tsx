@@ -95,9 +95,9 @@ export default function RegisterPage() {
       {/* Mobile Logo */}
       <Link href="/" className="flex items-center justify-center mb-8 lg:hidden group">
         <img
-          src="/logo.png"
+          src="/logo-white.png"
           alt="StockMind"
-          className="h-12 w-auto object-contain drop-shadow-[0_0_15px_rgba(99,102,241,0.35)]"
+          className="h-10 w-auto object-contain drop-shadow-[0_0_15px_rgba(139,92,246,0.35)]"
         />
       </Link>
 
