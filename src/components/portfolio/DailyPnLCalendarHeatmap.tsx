@@ -372,6 +372,16 @@ export function DailyPnLCalendarHeatmap({
                   </span>
                 </div>
 
+                {hoveredDay.holdingsAtDate && hoveredDay.holdingsAtDate.length > 0 && (
+                  <div className="pt-1.5 border-t border-border/40 flex items-center justify-between text-[11px]">
+                    <span className="text-text-muted">Eldeki Varlıklar:</span>
+                    <span className="font-bold text-accent font-mono truncate max-w-[130px]">
+                      {hoveredDay.holdingsAtDate.map((h) => h.symbol).slice(0, 3).join(', ')}
+                      {hoveredDay.holdingsAtDate.length > 3 ? ` +${hoveredDay.holdingsAtDate.length - 3}` : ''}
+                    </span>
+                  </div>
+                )}
+
                 {hoveredDay.transactionsCount > 0 && (
                   <div className="pt-1 border-t border-border/40 text-[11px] text-accent flex items-center gap-1 font-medium">
                     <span>📌</span>
@@ -380,63 +390,172 @@ export function DailyPnLCalendarHeatmap({
                     </span>
                   </div>
                 )}
+
+                <div className="pt-1 text-[10px] text-text-muted/80 text-center font-medium">
+                  Detaylı varlık listesi için tıklayın 👆
+                </div>
               </>
             )}
           </div>
         </div>
       )}
 
-      {/* Selected Day Card for Mobile (or on click) */}
+      {/* Selected Day Full Portfolio Breakdown Inspector */}
       {selectedDay && (
-        <div className="mt-4 p-4 rounded-2xl bg-bg-secondary/70 border border-border animate-fade-in flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg ${
-                selectedDay.pnl >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
-              }`}
-            >
-              {selectedDay.pnl >= 0 ? '↗' : '↘'}
-            </div>
-            <div>
-              <p className="text-xs text-text-muted font-medium">
-                {new Date(selectedDay.date).toLocaleDateString('tr-TR', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                  weekday: 'long',
-                })}
-              </p>
-              <h4
-                className={`text-lg font-black font-mono ${
-                  selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+        <div className="mt-5 p-5 sm:p-6 rounded-2xl bg-bg-secondary/90 border border-border shadow-2xl backdrop-blur-2xl animate-fade-in space-y-4">
+          {/* Top Row: Date, PnL, Total Value, Close */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/50">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner ${
+                  selectedDay.pnl >= 0
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                 }`}
               >
-                {selectedDay.pnl >= 0 ? '+' : ''}
-                {formatCurrency(selectedDay.pnl)} ({selectedDay.pnl >= 0 ? '+' : ''}
-                {selectedDay.pnlPercent}%)
-              </h4>
+                {selectedDay.pnl >= 0 ? '↗' : '↘'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-bold text-text-primary">
+                    {new Date(selectedDay.date).toLocaleDateString('tr-TR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      weekday: 'long',
+                    })}
+                  </span>
+                  {selectedDay.isToday && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-accent text-white uppercase">
+                      Bugün
+                    </span>
+                  )}
+                  {selectedDay.isWeekend && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-bg-tertiary text-text-muted border border-border">
+                      Hafta Sonu • Borsa Kapalı
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span
+                    className={`text-lg font-black font-mono ${
+                      selectedDay.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    }`}
+                  >
+                    {selectedDay.pnl >= 0 ? '+' : ''}
+                    {formatCurrency(selectedDay.pnl)} ({selectedDay.pnl >= 0 ? '+' : ''}
+                    {selectedDay.pnlPercent}%)
+                  </span>
+                  <span className="text-xs text-text-muted">günlük getiri</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between sm:justify-end gap-4">
+              <div className="text-left sm:text-right">
+                <span className="text-[11px] text-text-muted block">O Günkü Portföy Büyüklüğü</span>
+                <span className="text-base font-black text-text-primary font-mono">
+                  {formatCurrency(selectedDay.portfolioValue)}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedDay(null)}
+                className="p-2 rounded-xl bg-bg-card hover:bg-bg-hover text-text-muted hover:text-text-primary border border-border/60 transition-colors cursor-pointer"
+                title="Paneli Kapat"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 border-border/50 pt-2 sm:pt-0">
-            <div className="text-right">
-              <span className="text-[11px] text-text-muted block">Portföy Büyüklüğü</span>
-              <span className="text-sm font-bold text-text-primary font-mono">
-                {formatCurrency(selectedDay.portfolioValue)}
-              </span>
+          {/* Holdings Section: "Bu Tarihte Elinizdeki Varlıklar" */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+                  📦 Bu Tarihte Elinizdeki Varlıklar
+                </span>
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg-tertiary text-text-muted border border-border/40">
+                  {selectedDay.holdingsAtDate?.length || 0} Adet Varlık
+                </span>
+              </div>
+              {selectedDay.transactionsCount > 0 && (
+                <span className="text-xs font-semibold text-accent flex items-center gap-1">
+                  <span>⚡</span>
+                  <span>{selectedDay.transactionsCount} İşlem Yapıldı</span>
+                </span>
+              )}
             </div>
-            {selectedDay.transactionsCount > 0 && (
-              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-accent/15 text-accent border border-accent/25">
-                {selectedDay.transactionsCount} İşlem
-              </span>
+
+            {selectedDay.holdingsAtDate && selectedDay.holdingsAtDate.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                {selectedDay.holdingsAtDate.map((holding) => (
+                  <div
+                    key={holding.symbol}
+                    className="p-3.5 rounded-xl bg-bg-card/75 border border-border/60 hover:border-accent/40 transition-all flex items-center justify-between gap-3 group"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-sm text-text-primary font-mono tracking-tight group-hover:text-accent transition-colors">
+                          {holding.symbol}
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.2 text-[9px] font-bold rounded ${
+                            holding.assetType === 'fund'
+                              ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25'
+                              : 'bg-blue-500/15 text-blue-400 border border-blue-500/25'
+                          }`}
+                        >
+                          {holding.assetType === 'fund' ? 'TEFAS Fon' : 'Hisse'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
+                        <span className="font-semibold text-text-secondary">
+                          {holding.quantity.toLocaleString('tr-TR')} Adet
+                        </span>
+                        {holding.averageCost > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>Mlyt: {formatCurrency(holding.averageCost)}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Today's Transactions badge if any */}
+                    {holding.todayTransactions && holding.todayTransactions.length > 0 ? (
+                      <div className="text-right shrink-0 space-y-1">
+                        {holding.todayTransactions.map((tx, idx) => (
+                          <span
+                            key={idx}
+                            className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              tx.type === 'buy'
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                            }`}
+                          >
+                            {tx.type === 'buy' ? '+' : '-'}{tx.quantity} {tx.type === 'buy' ? 'Alış' : 'Satış'}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-mono font-semibold text-text-secondary block">
+                          {formatCurrency(holding.quantity * (holding.averageCost || 0))}
+                        </span>
+                        <span className="text-[10px] text-text-muted">Maliyet Değeri</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-center rounded-xl bg-bg-card/40 border border-dashed border-border text-xs text-text-muted">
+                Bu tarihte portföyünüzde kayıtlı bir hisse senedi veya fon bulunmuyordu.
+              </div>
             )}
-            <button
-              onClick={() => setSelectedDay(null)}
-              className="p-1 text-text-muted hover:text-text-primary text-xs"
-              title="Kapat"
-            >
-              ✕
-            </button>
           </div>
         </div>
       )}

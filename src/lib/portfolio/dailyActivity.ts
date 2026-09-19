@@ -1,5 +1,18 @@
 import { Transaction, PortfolioSummary } from '@/types/portfolio';
 
+export interface HistoricalHoldingSnapshot {
+  symbol: string;
+  assetType: 'stock' | 'fund';
+  quantity: number;
+  averageCost: number;
+  totalCost: number;
+  todayTransactions?: {
+    type: 'buy' | 'sell';
+    quantity: number;
+    price: number;
+  }[];
+}
+
 export interface DayPnLRecord {
   date: string; // YYYY-MM-DD
   timestamp: number;
@@ -15,6 +28,7 @@ export interface DayPnLRecord {
   transactionsCount: number;
   transactionsSymbols: string[];
   level: number; // -4 to +4 (4 is highest profit, -4 is highest loss, 0 is neutral)
+  holdingsAtDate: HistoricalHoldingSnapshot[];
 }
 
 export interface HeatmapStats {
@@ -230,6 +244,72 @@ export function getPortfolioDailyActivity(
       else level = 0;
     }
 
+    // Compute holdings snapshot as of this date
+    let holdingsAtDate: HistoricalHoldingSnapshot[] = [];
+
+    if (isToday) {
+      holdingsAtDate = (summary.holdings || []).map((h) => ({
+        symbol: h.symbol,
+        assetType: h.assetType,
+        quantity: h.totalQuantity,
+        averageCost: h.averageCost,
+        totalCost: h.totalCost,
+        todayTransactions: transactions
+          .filter((tx) => tx.transactionDate?.split('T')[0] === dStr && tx.symbol === h.symbol)
+          .map((tx) => ({ type: tx.transactionType, quantity: tx.quantity, price: tx.price })),
+      }));
+    } else {
+      const sortedTransactions = [...transactions]
+        .filter((t) => t && t.transactionDate && t.quantity > 0)
+        .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
+
+      const txsUntilToday = sortedTransactions.filter((tx) => tx.transactionDate.split('T')[0] <= dStr);
+      if (txsUntilToday.length > 0) {
+        const map: Record<string, HistoricalHoldingSnapshot> = {};
+        for (const tx of txsUntilToday) {
+          if (!map[tx.symbol]) {
+            map[tx.symbol] = {
+              symbol: tx.symbol,
+              assetType: tx.assetType || 'stock',
+              quantity: 0,
+              averageCost: 0,
+              totalCost: 0,
+              todayTransactions: [],
+            };
+          }
+          const item = map[tx.symbol];
+          const isTxToday = tx.transactionDate.split('T')[0] === dStr;
+          if (isTxToday) {
+            if (!item.todayTransactions) item.todayTransactions = [];
+            item.todayTransactions.push({
+              type: tx.transactionType,
+              quantity: tx.quantity,
+              price: tx.price,
+            });
+          }
+
+          if (tx.transactionType === 'buy') {
+            const addedCost = tx.quantity * tx.price;
+            item.totalCost += addedCost;
+            item.quantity += tx.quantity;
+            item.averageCost = item.quantity > 0 ? item.totalCost / item.quantity : 0;
+          } else {
+            item.quantity = Math.max(0, item.quantity - tx.quantity);
+            item.totalCost = item.quantity * item.averageCost;
+          }
+        }
+        holdingsAtDate = Object.values(map).filter((h) => h.quantity > 0);
+      } else if (summary.holdings && summary.holdings.length > 0) {
+        holdingsAtDate = summary.holdings.map((h) => ({
+          symbol: h.symbol,
+          assetType: h.assetType,
+          quantity: h.totalQuantity,
+          averageCost: h.averageCost,
+          totalCost: h.totalCost,
+        }));
+      }
+    }
+
     days.push({
       date: dStr,
       timestamp: curDate.getTime(),
@@ -245,6 +325,7 @@ export function getPortfolioDailyActivity(
       transactionsCount: txByDate[dStr]?.count || 0,
       transactionsSymbols: txByDate[dStr]?.symbols || [],
       level,
+      holdingsAtDate,
     });
 
     curDate.setDate(curDate.getDate() + 1);
