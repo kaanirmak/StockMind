@@ -24,20 +24,42 @@ export default function ReportsPage() {
   };
 
   const handleSendEmailReport = async () => {
-    // Read SMTP settings from localStorage (set in /settings page)
-    const smtpUser = (localStorage.getItem('stockmind_settings_smtp_user') || '').trim();
-    const smtpPass = (localStorage.getItem('stockmind_settings_smtp_pass') || '').trim();
-    const smtpHost = (localStorage.getItem('stockmind_settings_smtp_host') || '').trim();
-    const smtpPort = Number(localStorage.getItem('stockmind_settings_smtp_port') || '587');
-    const smtpFrom = (localStorage.getItem('stockmind_settings_smtp_from') || '').trim();
-    const smtpService = (localStorage.getItem('stockmind_settings_smtp_service') || 'gmail').trim();
-    const recipientEmail = (localStorage.getItem('stockmind_settings_email') || '').trim() || smtpUser;
+    // Settings saves everything as one JSON object under stockmind_settings_{userKey}
+    // We need to find the right key (could be 'guest' or 'user_{id}')
+    let settings: Record<string, any> = {};
+    try {
+      // Try 'guest' first, then look for user_ keys
+      const guestRaw = localStorage.getItem('stockmind_settings_guest');
+      if (guestRaw) {
+        settings = JSON.parse(guestRaw);
+      } else {
+        // Find any stockmind_settings_ key
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i) || '';
+          if (key.startsWith('stockmind_settings_') && !key.includes('_smtp_')) {
+            try {
+              const raw = localStorage.getItem(key);
+              if (raw) settings = JSON.parse(raw);
+              break;
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+
+    const smtpUser = (settings.smtpUser || '').trim();
+    const smtpPass = (settings.smtpPass || '').trim();
+    const smtpHost = (settings.smtpHost || 'smtp.gmail.com').trim();
+    const smtpPort = Number(settings.smtpPort || 587);
+    const smtpFrom = (settings.smtpFrom || '').trim();
+    const smtpService = (settings.smtpService || 'gmail').trim();
+    const recipientEmail = (settings.notificationEmail || smtpUser || '').trim();
 
     if (!smtpUser || !smtpPass) {
       showToast({
         type: 'danger',
         title: 'SMTP Ayarları Gerekli',
-        message: 'E-posta göndermek için Ayarlar sayfasından SMTP bilgilerinizi kaydedin.',
+        message: 'E-posta göndermek için Ayarlar → E-posta & Bildirimler bölümünden SMTP bilgilerinizi kaydedin.',
       });
       return;
     }
@@ -46,7 +68,7 @@ export default function ReportsPage() {
       showToast({
         type: 'danger',
         title: 'Alıcı E-posta Eksik',
-        message: 'Ayarlar sayfasından alıcı e-posta adresinizi girin.',
+        message: 'Ayarlar sayfasından bildirim e-posta adresinizi girin.',
       });
       return;
     }
@@ -58,7 +80,7 @@ export default function ReportsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: recipientEmail,
-          userName: localStorage.getItem('stockmind_settings_name') || 'Kullanıcı',
+          userName: settings.fullName || 'Kullanıcı',
           subject: `StockMind Portföy Raporu • ${activePortfolio?.name || 'Portföy'} (${new Date().toLocaleDateString('tr-TR')})`,
           portfolioSummary: {
             totalValue: summary.totalValue,
