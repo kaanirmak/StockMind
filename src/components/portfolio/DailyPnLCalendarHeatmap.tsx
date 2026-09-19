@@ -24,6 +24,7 @@ export function DailyPnLCalendarHeatmap({
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   const [priceHistoryMap, setPriceHistoryMap] = useState<Record<string, Record<string, number>>>({});
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [assetFilterTab, setAssetFilterTab] = useState<'all' | 'loss' | 'gain'>('all');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -499,6 +500,50 @@ export function DailyPnLCalendarHeatmap({
                   </div>
                 )}
 
+                {hoveredDay.losingHoldings && hoveredDay.losingHoldings.length > 0 && (
+                  <div className="pt-1.5 border-t border-border/40 text-[11px] space-y-1">
+                    <div className="text-rose-400 font-bold flex items-center justify-between">
+                      <span>📉 Zarar Edenler ({hoveredDay.losingHoldings.length}):</span>
+                      <span className="font-mono">-{formatCurrency(hoveredDay.totalGrossLoss)}</span>
+                    </div>
+                    {hoveredDay.losingHoldings.slice(0, 3).map((lh) => (
+                      <div key={lh.symbol} className="flex items-center justify-between text-[10.5px]">
+                        <span className="font-mono font-bold text-text-primary">{lh.symbol}</span>
+                        <span className="text-rose-400 font-mono font-semibold">
+                          {formatCurrency(lh.dailyPnL || 0)} ({lh.dailyPnLPercent}%)
+                        </span>
+                      </div>
+                    ))}
+                    {hoveredDay.losingHoldings.length > 3 && (
+                      <div className="text-[9.5px] text-text-muted text-right">
+                        +{hoveredDay.losingHoldings.length - 3} varlık daha
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {hoveredDay.winningHoldings && hoveredDay.winningHoldings.length > 0 && (
+                  <div className="pt-1 border-t border-border/40 text-[11px] space-y-1">
+                    <div className="text-emerald-400 font-bold flex items-center justify-between">
+                      <span>📈 Kâr Edenler ({hoveredDay.winningHoldings.length}):</span>
+                      <span className="font-mono">+{formatCurrency(hoveredDay.totalGrossGain)}</span>
+                    </div>
+                    {hoveredDay.winningHoldings.slice(0, 2).map((wh) => (
+                      <div key={wh.symbol} className="flex items-center justify-between text-[10.5px]">
+                        <span className="font-mono font-bold text-text-primary">{wh.symbol}</span>
+                        <span className="text-emerald-400 font-mono font-semibold">
+                          +{formatCurrency(wh.dailyPnL || 0)} (+{wh.dailyPnLPercent}%)
+                        </span>
+                      </div>
+                    ))}
+                    {hoveredDay.winningHoldings.length > 2 && (
+                      <div className="text-[9.5px] text-text-muted text-right">
+                        +{hoveredDay.winningHoldings.length - 2} varlık daha
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {hoveredDay.transactionsCount > 0 && (
                   <div className="pt-1 border-t border-border/40 text-[11px] text-accent flex items-center gap-1 font-medium">
                     <span>📌</span>
@@ -509,7 +554,7 @@ export function DailyPnLCalendarHeatmap({
                 )}
 
                 <div className="pt-1 text-[10px] text-text-muted/80 text-center font-medium">
-                  Detaylı varlık listesi için tıklayın 👆
+                  Hangi varlıktan ne kadar kâr/zarar edildiğini görmek için tıklayın 👆
                 </div>
               </>
             )}
@@ -567,7 +612,7 @@ export function DailyPnLCalendarHeatmap({
                         {formatCurrency(selectedDay.pnl)} ({selectedDay.pnl >= 0 ? '+' : ''}
                         {selectedDay.pnlPercent}%)
                       </span>
-                      <span className="text-xs text-text-muted">gerçek günlük getiri</span>
+                      <span className="text-xs text-text-muted">günlük net portföy getirisi</span>
                     </>
                   ) : (
                     <span className="text-sm font-semibold text-text-muted">
@@ -597,86 +642,395 @@ export function DailyPnLCalendarHeatmap({
             </div>
           </div>
 
-          {/* Holdings Section: "Bu Tarihte Elinizdeki Varlıklar" */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                  📦 Bu Tarihte Elinizdeki Varlıklar
-                </span>
-                <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg-tertiary text-text-muted border border-border/40">
-                  {selectedDay.holdingsAtDate?.length || 0} Adet Varlık
-                </span>
+          {/* DEDICATED LOSS BREAKDOWN PANEL: "Neyden Ne Zarar Ettiniz?" */}
+          {selectedDay.losingHoldings && selectedDay.losingHoldings.length > 0 ? (
+            <div className="rounded-2xl bg-rose-500/10 border border-rose-500/30 p-4 sm:p-5 space-y-3 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-500/20 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 text-base shrink-0 shadow-inner">
+                    📉
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-text-primary tracking-tight flex items-center gap-2">
+                      <span>Neyden Ne Zarar Ettiniz? (Zarar Dökümü)</span>
+                      <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-rose-500/25 text-rose-300 border border-rose-500/30">
+                        {selectedDay.losingHoldings.length} Varlık Zararda
+                      </span>
+                    </h4>
+                    <p className="text-xs text-rose-200/80 mt-0.5">
+                      Bu tarihte portföyünüze zarar yazan tüm hisse ve fonların detaylı dökümü
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-[10px] uppercase font-bold text-rose-300/80 block">Toplam Brüt Zarar</span>
+                  <span className="text-lg font-black text-rose-400 font-mono">
+                    -{formatCurrency(selectedDay.totalGrossLoss)}
+                  </span>
+                </div>
               </div>
-              {selectedDay.transactionsCount > 0 && (
-                <span className="text-xs font-semibold text-accent flex items-center gap-1">
-                  <span>⚡</span>
-                  <span>{selectedDay.transactionsCount} İşlem Yapıldı</span>
-                </span>
-              )}
-            </div>
 
-            {selectedDay.holdingsAtDate && selectedDay.holdingsAtDate.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
-                {selectedDay.holdingsAtDate.map((holding) => (
+              {/* Grid of Losing Assets with Exact Loss Math */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {selectedDay.losingHoldings.map((h) => (
                   <div
-                    key={holding.symbol}
-                    className="p-3.5 rounded-xl bg-bg-card/75 border border-border/60 hover:border-accent/40 transition-all flex items-center justify-between gap-3 group"
+                    key={h.symbol}
+                    className="p-3.5 rounded-xl bg-bg-card/90 border border-rose-500/30 hover:border-rose-500/60 transition-all shadow-sm flex flex-col justify-between gap-2.5"
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-sm text-text-primary font-mono tracking-tight group-hover:text-accent transition-colors">
-                          {holding.symbol}
-                        </span>
-                        <span
-                          className={`px-1.5 py-0.2 text-[9px] font-bold rounded ${
-                            holding.assetType === 'fund'
-                              ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25'
-                              : 'bg-blue-500/15 text-blue-400 border border-blue-500/25'
-                          }`}
-                        >
-                          {holding.assetType === 'fund' ? 'TEFAS Fon' : 'Hisse'}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-base text-text-primary font-mono tracking-tight">
+                            {h.symbol}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.2 text-[9px] font-bold rounded ${
+                              h.assetType === 'fund'
+                                ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25'
+                                : 'bg-blue-500/15 text-blue-400 border border-blue-500/25'
+                            }`}
+                          >
+                            {h.assetType === 'fund' ? 'Fon' : 'Hisse'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-text-muted mt-0.5 block">
+                          Eldeki Miktar:{' '}
+                          <strong className="text-text-secondary">{h.quantity.toLocaleString('tr-TR')} Adet</strong>
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
-                        <span className="font-semibold text-text-secondary">
-                          {holding.quantity.toLocaleString('tr-TR')} Adet
+
+                      <div className="text-right">
+                        <span className="text-base font-black text-rose-400 font-mono block">
+                          {formatCurrency(h.dailyPnL || 0)}
                         </span>
-                        {holding.averageCost > 0 && (
-                          <>
-                            <span>•</span>
-                            <span>Mlyt: {formatCurrency(holding.averageCost)}</span>
-                          </>
-                        )}
+                        <span className="text-xs font-bold text-rose-300 font-mono">
+                          ({h.dailyPnLPercent}%)
+                        </span>
                       </div>
                     </div>
 
-                    {/* Today's Transactions badge if any */}
-                    {holding.todayTransactions && holding.todayTransactions.length > 0 ? (
-                      <div className="text-right shrink-0 space-y-1">
-                        {holding.todayTransactions.map((tx, idx) => (
-                          <span
-                            key={idx}
-                            className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                              tx.type === 'buy'
-                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
-                            }`}
-                          >
-                            {tx.type === 'buy' ? '+' : '-'}{tx.quantity} {tx.type === 'buy' ? 'Alış' : 'Satış'}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-mono font-semibold text-text-secondary block">
-                          {formatCurrency(holding.quantity * (holding.averageCost || 0))}
+                    {/* Math Breakdown Box */}
+                    <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-200/90 space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-muted">Fiyat Hareketi:</span>
+                        <span className="font-mono font-semibold text-text-secondary">
+                          {h.previousClosePrice != null ? formatCurrency(h.previousClosePrice) : '-'} ➔{' '}
+                          {h.priceOnDate != null ? formatCurrency(h.priceOnDate) : '-'}
+                          {h.priceDiff != null && (
+                            <span className="text-rose-400 font-bold ml-1">
+                              ({h.priceDiff < 0 ? '' : '+'}{h.priceDiff.toFixed(2)} ₺/adet)
+                            </span>
+                          )}
                         </span>
-                        <span className="text-[10px] text-text-muted">Maliyet Değeri</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-rose-500/15 font-semibold">
+                        <span>Zarar Hesabı:</span>
+                        <span className="font-mono text-rose-300">
+                          {h.quantity.toLocaleString('tr-TR')} adet × {h.priceDiff != null ? h.priceDiff.toFixed(2) : '0'} ₺ ={' '}
+                          {formatCurrency(h.dailyPnL || 0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Share of total day's loss */}
+                    {h.lossSharePercent != null && h.lossSharePercent > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] text-text-muted mb-1">
+                          <span>Günün Toplam Zararındaki Payı:</span>
+                          <span className="font-bold text-rose-300 font-mono">%{h.lossSharePercent}</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-rose-950/50 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-rose-500 shadow-sm"
+                            style={{ width: `${Math.min(100, Math.max(6, h.lossSharePercent))}%` }}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          ) : selectedDay.hasRealData ? (
+            <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-3 text-xs text-emerald-300 shadow-sm">
+              <span className="text-xl">✨</span>
+              <div>
+                <strong className="block font-bold text-emerald-200">Bu tarihte hiç zarar etmediniz!</strong>
+                <span>Portföyünüzdeki tüm varlıklar günü kârlı veya nötr getiriyle tamamladı.</span>
+              </div>
+            </div>
+          ) : null}
+
+          {/* DEDICATED GAIN BREAKDOWN PANEL: "Neyden Ne Kazandınız?" */}
+          {selectedDay.winningHoldings && selectedDay.winningHoldings.length > 0 && (
+            <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-4 sm:p-5 space-y-3 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-base shrink-0 shadow-inner">
+                    📈
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-text-primary tracking-tight flex items-center gap-2">
+                      <span>Neyden Ne Kazandınız? (Kâr Dökümü)</span>
+                      <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/30">
+                        {selectedDay.winningHoldings.length} Varlık Kârda
+                      </span>
+                    </h4>
+                    <p className="text-xs text-emerald-200/80 mt-0.5">
+                      Bu tarihte değer kazanan varlıklarınız ve portföyünüze sağladıkları net kârlar
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-[10px] uppercase font-bold text-emerald-300/80 block">Toplam Brüt Kâr</span>
+                  <span className="text-lg font-black text-emerald-400 font-mono">
+                    +{formatCurrency(selectedDay.totalGrossGain)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Grid of Winning Assets with Exact Gain Math */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {selectedDay.winningHoldings.map((h) => (
+                  <div
+                    key={h.symbol}
+                    className="p-3.5 rounded-xl bg-bg-card/90 border border-emerald-500/30 hover:border-emerald-500/60 transition-all shadow-sm flex flex-col justify-between gap-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-base text-text-primary font-mono tracking-tight">
+                            {h.symbol}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.2 text-[9px] font-bold rounded ${
+                              h.assetType === 'fund'
+                                ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25'
+                                : 'bg-blue-500/15 text-blue-400 border border-blue-500/25'
+                            }`}
+                          >
+                            {h.assetType === 'fund' ? 'Fon' : 'Hisse'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-text-muted mt-0.5 block">
+                          Eldeki Miktar:{' '}
+                          <strong className="text-text-secondary">{h.quantity.toLocaleString('tr-TR')} Adet</strong>
+                        </span>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-base font-black text-emerald-400 font-mono block">
+                          +{formatCurrency(h.dailyPnL || 0)}
+                        </span>
+                        <span className="text-xs font-bold text-emerald-300 font-mono">
+                          (+{h.dailyPnLPercent}%)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Math Breakdown Box */}
+                    <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-200/90 space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-text-muted">Fiyat Hareketi:</span>
+                        <span className="font-mono font-semibold text-text-secondary">
+                          {h.previousClosePrice != null ? formatCurrency(h.previousClosePrice) : '-'} ➔{' '}
+                          {h.priceOnDate != null ? formatCurrency(h.priceOnDate) : '-'}
+                          {h.priceDiff != null && (
+                            <span className="text-emerald-400 font-bold ml-1">
+                              (+{h.priceDiff.toFixed(2)} ₺/adet)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-emerald-500/15 font-semibold">
+                        <span>Kâr Hesabı:</span>
+                        <span className="font-mono text-emerald-300">
+                          {h.quantity.toLocaleString('tr-TR')} adet × +{h.priceDiff != null ? h.priceDiff.toFixed(2) : '0'} ₺ ={' '}
+                          +{formatCurrency(h.dailyPnL || 0)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Share of total day's gain */}
+                    {h.gainSharePercent != null && h.gainSharePercent > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between text-[10px] text-text-muted mb-1">
+                          <span>Günün Toplam Kârındaki Payı:</span>
+                          <span className="font-bold text-emerald-300 font-mono">%{h.gainSharePercent}</span>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full bg-emerald-950/50 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-emerald-500 shadow-sm"
+                            style={{ width: `${Math.min(100, Math.max(6, h.gainSharePercent))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Holdings Section with Filter Tabs */}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
+                  📦 Bu Tarihteki Tüm Varlıklar
+                </span>
+                <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg-tertiary text-text-muted border border-border/40">
+                  {selectedDay.holdingsAtDate?.length || 0} Varlık
+                </span>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-bg-card/70 border border-border/60 self-start sm:self-auto">
+                <button
+                  onClick={() => setAssetFilterTab('all')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    assetFilterTab === 'all'
+                      ? 'bg-accent text-white shadow-sm'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  Tümü ({selectedDay.holdingsAtDate?.length || 0})
+                </button>
+                <button
+                  onClick={() => setAssetFilterTab('loss')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    assetFilterTab === 'loss'
+                      ? 'bg-rose-500 text-white shadow-sm'
+                      : 'text-rose-400 hover:bg-rose-500/10'
+                  }`}
+                >
+                  📉 Zarar ({selectedDay.losingHoldings?.length || 0})
+                </button>
+                <button
+                  onClick={() => setAssetFilterTab('gain')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    assetFilterTab === 'gain'
+                      ? 'bg-emerald-500 text-white shadow-sm'
+                      : 'text-emerald-400 hover:bg-emerald-500/10'
+                  }`}
+                >
+                  📈 Kâr ({selectedDay.winningHoldings?.length || 0})
+                </button>
+              </div>
+            </div>
+
+            {selectedDay.holdingsAtDate && selectedDay.holdingsAtDate.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto pr-1">
+                {selectedDay.holdingsAtDate
+                  .filter((h) => {
+                    if (assetFilterTab === 'loss') return h.dailyPnL != null && h.dailyPnL < -0.01;
+                    if (assetFilterTab === 'gain') return h.dailyPnL != null && h.dailyPnL > 0.01;
+                    return true;
+                  })
+                  .map((holding) => (
+                    <div
+                      key={holding.symbol}
+                      className={`p-3.5 rounded-xl bg-bg-card/85 border transition-all flex items-center justify-between gap-3 group ${
+                        holding.dailyPnL != null && holding.dailyPnL < -0.01
+                          ? 'border-rose-500/30 hover:border-rose-500/60'
+                          : holding.dailyPnL != null && holding.dailyPnL > 0.01
+                          ? 'border-emerald-500/30 hover:border-emerald-500/60'
+                          : 'border-border/60 hover:border-accent/40'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-sm text-text-primary font-mono tracking-tight group-hover:text-accent transition-colors">
+                            {holding.symbol}
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.2 text-[9px] font-bold rounded ${
+                              holding.assetType === 'fund'
+                                ? 'bg-purple-500/15 text-purple-400 border border-purple-500/25'
+                                : 'bg-blue-500/15 text-blue-400 border border-blue-500/25'
+                            }`}
+                          >
+                            {holding.assetType === 'fund' ? 'Fon' : 'Hisse'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
+                          <span className="font-medium text-text-secondary">
+                            {holding.quantity.toLocaleString('tr-TR')} Adet
+                          </span>
+                          {holding.priceOnDate != null && (
+                            <>
+                              <span>•</span>
+                              <span>{formatCurrency(holding.priceOnDate)}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Price diff info */}
+                        {holding.previousClosePrice != null && holding.priceOnDate != null && holding.priceDiff != null && (
+                          <div className="mt-1 text-[10.5px] text-text-muted font-mono">
+                            Dün: {formatCurrency(holding.previousClosePrice)} ➔ Bugün: {formatCurrency(holding.priceOnDate)}
+                          </div>
+                        )}
+
+                        {/* If transactions occurred today */}
+                        {holding.todayTransactions && holding.todayTransactions.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            {holding.todayTransactions.map((tx, idx) => (
+                              <span
+                                key={idx}
+                                className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                                  tx.type === 'buy'
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : 'bg-rose-500/20 text-rose-400'
+                                }`}
+                              >
+                                {tx.type === 'buy' ? 'Alış:' : 'Satış:'} {tx.quantity} @ {formatCurrency(tx.price)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right side: Asset's PnL on this date */}
+                      <div className="text-right shrink-0">
+                        {holding.dailyPnL != null && holding.dailyPnL !== 0 ? (
+                          <div>
+                            <span
+                              className={`text-xs font-black font-mono block ${
+                                holding.dailyPnL > 0 ? 'text-emerald-400' : 'text-rose-400'
+                              }`}
+                            >
+                              {holding.dailyPnL > 0 ? '+' : ''}
+                              {formatCurrency(holding.dailyPnL)}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold block ${
+                                holding.dailyPnL > 0 ? 'text-emerald-300' : 'text-rose-300'
+                              }`}
+                            >
+                              {holding.dailyPnL > 0 ? '+' : ''}{holding.dailyPnLPercent}%
+                            </span>
+                            <span
+                              className={`text-[9px] uppercase font-black px-1.5 py-0.5 rounded mt-1 inline-block ${
+                                holding.dailyPnL > 0
+                                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                                  : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                              }`}
+                            >
+                              {holding.dailyPnL > 0 ? 'Kâr' : 'Zarar'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-xs font-mono font-semibold text-text-secondary block">
+                              {formatCurrency(holding.quantity * (holding.priceOnDate || holding.averageCost || 0))}
+                            </span>
+                            <span className="text-[10px] text-text-muted">Toplam Değer</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
               </div>
             ) : (
               <div className="p-6 text-center rounded-xl bg-bg-card/40 border border-dashed border-border text-xs text-text-muted">
