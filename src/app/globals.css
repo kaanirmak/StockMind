@@ -220,6 +220,15 @@ body {
   transform: translateY(-1px);
 }
 
+.border-0,
+.border-none,
+.\!border-none,
+.\!border-0 {
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+}
+
 .glass-subtle {
   background: rgba(248, 250, 252, 0.85);
   backdrop-filter: blur(8px);

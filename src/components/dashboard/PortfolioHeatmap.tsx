@@ -253,7 +253,10 @@ export default function PortfolioHeatmap() {
   };
 
   return (
-    <div className="rounded-2xl sm:rounded-3xl border-0 glass-card p-3.5 sm:p-6 shadow-card transition-all">
+    <div
+      className="rounded-2xl sm:rounded-3xl bg-bg-card/80 backdrop-blur-xl p-3.5 sm:p-6 shadow-card transition-all !border-none"
+      style={{ border: 'none', borderWidth: 0, outline: 'none' }}
+    >
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2.5 mb-3 sm:mb-4">
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
@@ -444,7 +447,7 @@ export default function PortfolioHeatmap() {
 
       {/* Touch-Friendly Active Asset Card */}
       {activeNode && (
-        <div className="mt-2.5 sm:mt-3 p-2.5 sm:p-3 rounded-xl bg-bg-secondary/70 border border-border flex items-center justify-between gap-2.5 transition-all">
+        <div className="mt-2.5 sm:mt-3 p-2.5 sm:p-3 rounded-xl bg-bg-secondary/70 flex items-center justify-between gap-2.5 transition-all !border-none" style={{ border: 'none' }}>
           {/* Left info */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div

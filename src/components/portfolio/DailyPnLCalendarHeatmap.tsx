@@ -161,7 +161,10 @@ export function DailyPnLCalendarHeatmap({
   const activeDisplayDay = selectedDay || hoveredDay;
 
   return (
-    <div className={`rounded-3xl glass-card border-0 p-5 sm:p-7 shadow-xl backdrop-blur-xl relative overflow-hidden ${className}`}>
+    <div
+      className={`rounded-3xl bg-bg-card/80 backdrop-blur-xl p-5 sm:p-7 shadow-xl relative overflow-hidden !border-none ${className}`}
+      style={{ border: 'none', borderWidth: 0, outline: 'none' }}
+    >
       {/* Background ambient lighting */}
       <div className="absolute top-0 right-1/4 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
