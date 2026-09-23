@@ -16,13 +16,14 @@ export interface ExcelImportModalProps {
 }
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onClose }) => {
-  const { addBatchTransactions, activePortfolioId, portfolios } = usePortfolioStore();
+  const { addBatchTransactions, clearPortfolioTransactions, activePortfolioId, portfolios } = usePortfolioStore();
   const { showToast } = useToast();
 
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [validRows, setValidRows] = useState<ParsedRowResult[]>([]);
   const [invalidRows, setInvalidRows] = useState<ParsedRowResult[]>([]);
   const [activeTab, setActiveTab] = useState<'valid' | 'invalid'>('valid');
@@ -127,6 +128,10 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
 
     setIsSubmitting(true);
     try {
+      if (overwriteExisting && activePortfolioId) {
+        await clearPortfolioTransactions(activePortfolioId);
+      }
+
       const txPayload = validRows.map((r) => ({
         portfolioId: activePortfolioId,
         symbol: r.data.symbol,
@@ -448,13 +453,30 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                   </div>
                 )}
 
-                {/* Summary bar */}
+                {/* Summary bar & Overwrite checkbox */}
                 {validRows.length > 0 && (
-                  <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary text-xs text-text-secondary">
-                    <span>Toplam {validRows.length} İşlem</span>
-                    <span className="font-bold text-text-primary">
-                      Toplam Portföy Maliyet Karşılığı: ₺{totalValidCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                    </span>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-bg-secondary text-xs text-text-secondary">
+                      <span>Toplam {validRows.length} İşlem</span>
+                      <span className="font-bold text-text-primary">
+                        Toplam Portföy Maliyet Karşılığı: ₺{totalValidCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+
+                    <label className="flex items-center gap-2.5 p-3 rounded-xl border border-border bg-bg-card hover:bg-bg-secondary/40 cursor-pointer transition-colors text-xs select-none">
+                      <input
+                        type="checkbox"
+                        checked={overwriteExisting}
+                        onChange={(e) => setOverwriteExisting(e.target.checked)}
+                        className="rounded border-border text-accent focus:ring-accent w-4 h-4 cursor-pointer"
+                      />
+                      <div>
+                        <span className="font-semibold text-text-primary">Mevcut portföy işlemlerini temizle ve sıfırdan yükle</span>
+                        <p className="text-[11px] text-text-muted mt-0.5">
+                          Eski CSV veya hatalı yüklenmiş geçmiş işlemleri silip sadece bu dosyadaki güncel kayıtları yükler.
+                        </p>
+                      </div>
+                    </label>
                   </div>
                 )}
               </>
@@ -509,6 +531,8 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   İçe Aktarılıyor...
                 </div>
+              ) : overwriteExisting ? (
+                `✓ Portföyü Sıfırla ve ${validRows.length} İşlemi Yükle`
               ) : (
                 `✓ ${validRows.length} İşlemi Portföye Ekle`
               )}
