@@ -44,10 +44,11 @@ CREATE POLICY "Public can view funds"
   ON public.funds FOR SELECT
   USING (true);
 
--- Only authenticated admins or service role can insert/update/delete funds
-CREATE POLICY "Service role can manage funds"
+-- Allow server sync / anonymous cache / authenticated users to manage fund market data
+CREATE POLICY "Public and service can upsert funds"
   ON public.funds FOR ALL
-  USING (auth.jwt() ->> 'role' = 'service_role' OR auth.uid() IS NOT NULL);
+  USING (true)
+  WITH CHECK (true);
 
 -- Auto-update updated_at trigger
 CREATE TRIGGER funds_updated_at
@@ -80,7 +81,8 @@ CREATE POLICY "Public can view fund history"
   ON public.fund_daily_history FOR SELECT
   USING (true);
 
--- Service role / admin can manage history
-CREATE POLICY "Service role can manage fund history"
+-- Allow server sync / anonymous cache / authenticated users to manage fund price history
+CREATE POLICY "Public and service can upsert fund history"
   ON public.fund_daily_history FOR ALL
-  USING (auth.jwt() ->> 'role' = 'service_role' OR auth.uid() IS NOT NULL);
+  USING (true)
+  WITH CHECK (true);

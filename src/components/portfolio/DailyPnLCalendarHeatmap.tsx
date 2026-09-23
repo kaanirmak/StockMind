@@ -184,21 +184,21 @@ export function DailyPnLCalendarHeatmap({
                   Günlük Kâr / Zarar Aktivite Haritası
                 </h3>
                 <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 text-accent border border-accent/20">
-                  GitHub Stili
+                  Zaman Serisi Matrisi
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                <span className="text-xs text-text-muted">
-                  Portföyünüzün her günkü getirisini gün gün takip edin
+                <span className="text-xs text-text-secondary">
+                  Portföy getiri ve performans geçmişi
                 </span>
                 <span className="text-text-muted/40">•</span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  100% Gerçek BIST & TEFAS Kapanış Verileri
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  BIST & TEFAS Kapanış Verileri
                 </span>
                 {loadingHistory && (
-                  <span className="text-[10px] text-text-muted animate-pulse">
-                    (Geçmiş fiyatlar alınıyor...)
+                  <span className="text-[10px] text-text-muted">
+                    (Veriler güncelleniyor...)
                   </span>
                 )}
               </div>
