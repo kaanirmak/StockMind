@@ -173,7 +173,9 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
   const totalValidCost = validRows.reduce((acc, r) => {
     const isUsd = (r.data.currency || '').toUpperCase() === 'USD' || r.data.exchange === 'NASDAQ' || r.data.exchange === 'NYSE';
     const rate = isUsd ? (r.data.exchangeRate && r.data.exchangeRate > 0 ? r.data.exchangeRate : 38.5) : 1.0;
-    return acc + (r.data.quantity * r.data.price * rate) + ((r.data.commission || 0) * (isUsd ? rate : 1.0));
+    const txCost = (r.data.quantity * r.data.price * rate) + ((r.data.commission || 0) * (isUsd ? rate : 1.0));
+    // Buy adds to cost, sell reduces it
+    return r.data.transactionType === 'sell' ? acc - txCost : acc + txCost;
   }, 0);
 
   return (
