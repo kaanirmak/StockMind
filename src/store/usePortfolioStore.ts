@@ -870,13 +870,14 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
           if (insertedList && insertedList.length > 0) {
             set((state) => {
-              const updated = [...insertedList, ...state.transactions];
+              const otherPortTxs = state.transactions.filter((t) => t.portfolioId !== targetPort.id);
+              const updated = [...insertedList, ...otherPortTxs];
               saveLocalState(user.id, {
                 portfolios: state.portfolios,
-                activePortfolioId: state.activePortfolioId,
+                activePortfolioId: targetPort.id,
                 transactions: updated,
               });
-              return { transactions: updated };
+              return { transactions: updated, activePortfolioId: targetPort.id };
             });
             get().fetchLivePrices();
             return insertedList;
@@ -895,13 +896,14 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         }));
 
         set((state) => {
-          const updated = [...fallbackTxs, ...state.transactions];
+          const otherPortTxs = state.transactions.filter((t) => t.portfolioId !== (targetPort?.id || targetPortfolioId || 'p-default'));
+          const updated = [...fallbackTxs, ...otherPortTxs];
           saveLocalState(user?.id, {
             portfolios: state.portfolios,
-            activePortfolioId: state.activePortfolioId,
+            activePortfolioId: targetPort?.id || targetPortfolioId || 'p-default',
             transactions: updated,
           });
-          return { transactions: updated };
+          return { transactions: updated, activePortfolioId: targetPort?.id || targetPortfolioId || 'p-default' };
         });
 
         get().fetchLivePrices();
