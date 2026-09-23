@@ -40,6 +40,7 @@ function normalizeHeader(header: string): string {
 /**
  * Parses numeric price or quantity handling Turkish comma vs dot decimals
  * (e.g. 85,00 -> 85, 5.429,22 -> 5429.22, 49.785,95 -> 49785.95, 9,17 -> 9.17, 2.923361 -> 2.923361)
+ * Also handles trailing/leading commas from bad CSV splits (e.g. "2," -> 2)
  */
 export function parseCleanNumber(val: any): number {
   if (val == null || val === '') return 0;
@@ -48,6 +49,11 @@ export function parseCleanNumber(val: any): number {
   let str = String(val).trim();
   // Remove currency symbols, units and spaces
   str = str.replace(/[₺$€TLUSDTRY\s'"]/gi, '');
+
+  // Strip leading/trailing commas from bad CSV splits (e.g. "2," -> "2", ",5" -> "5")
+  str = str.replace(/^,+|,+$/g, '');
+
+  if (str === '') return 0;
 
   if (str.includes('.') && str.includes(',')) {
     const dotIdx = str.lastIndexOf('.');
@@ -143,7 +149,8 @@ function parseTransactionType(val: any): TransactionType {
 }
 
 /**
- * Smart CSV parser supporting auto-delimiter detection (;, \t, ,) and quote handling
+ * Smart CSV parser supporting auto-delimiter detection (;, \t, ,) and quote handling.
+ * Prioritises semicolon for Turkish CSV files where comma is the decimal separator.
  */
 function parseCsvSmart(text: string): Record<string, any>[] {
   if (text.charCodeAt(0) === 0xFEFF) {
@@ -158,10 +165,32 @@ function parseCsvSmart(text: string): Record<string, any>[] {
   const semiCount = (firstLine.match(/;/g) || []).length;
   const commaCount = (firstLine.match(/,/g) || []).length;
 
+  // Detect delimiter: prefer tab > semicolon > comma.
+  // Semicolon is strongly preferred for Turkish CSVs because comma is the decimal separator.
   let delimiter = ',';
-  if (tabCount >= 3) delimiter = '\t';
-  else if (semiCount >= 3) delimiter = ';';
-  else if (commaCount >= 3) delimiter = ',';
+  if (tabCount >= 3) {
+    delimiter = '\t';
+  } else if (semiCount >= 2) {
+    // Semicolons almost always indicate an intentional delimiter choice (Turkish/European CSVs)
+    delimiter = ';';
+  } else if (commaCount >= 3) {
+    delimiter = ',';
+  }
+
+  // Validation: if we chose comma, double-check against data rows.
+  // Turkish CSVs with comma delimiter will produce wrong column counts because
+  // values like "0,00" and "5.429,22" also contain commas.
+  if (delimiter === ',' && lines.length > 1) {
+    const headerCols = commaCount + 1;
+    // Count semicolons across first data lines — if they consistently produce the same column count,
+    // the file is actually semicolon-delimited even if the header had few semicolons.
+    const sampleLines = lines.slice(1, Math.min(4, lines.length));
+    const dataSemiCounts = sampleLines.map((l) => (l.match(/;/g) || []).length);
+    const headerSemiCount = semiCount;
+    if (headerSemiCount >= 1 && dataSemiCounts.every((c) => c === headerSemiCount)) {
+      delimiter = ';';
+    }
+  }
 
   const parseLine = (line: string, delim: string): string[] => {
     const res: string[] = [];
@@ -313,10 +342,6 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
       price = Number((totalAmount / quantity).toFixed(6));
     }
 
-    if (price <= 0) {
-      errors.push('Geçerli bir birim fiyat veya toplam tutar bulunamadı');
-    }
-
     // 8. Date / Tarih
     const rawDate = findVal(['tarih', 'islemtarihi', 'date', 'transactiondate', 'zaman', 'valor']);
     const transactionDate = parseCleanDate(rawDate);
@@ -333,6 +358,18 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
       notesParts.push(`[${String(rawBroker).trim()}]`);
     }
     const notes = notesParts.join(' ');
+
+    // Detect bonus share (bedelsiz pay) transactions — price=0 is valid for these
+    const rawNotesStr = String(rawNotes || '').toLowerCase();
+    const isBonusShare =
+      rawNotesStr.includes('bedelsiz') ||
+      rawNotesStr.includes('bonus') ||
+      rawNotesStr.includes('hibe') ||
+      rawNotesStr.includes('sermaye artırımı');
+
+    if (price <= 0 && !isBonusShare) {
+      errors.push('Geçerli bir birim fiyat veya toplam tutar bulunamadı');
+    }
 
     // 10. Auto-detect Asset Type and Exchange
     const cleaned = cleanSymbol(symbol);
