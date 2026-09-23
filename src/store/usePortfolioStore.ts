@@ -563,23 +563,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           createdAt: p.created_at,
         }));
 
-        // Sync any local portfolios for THIS user that were created offline
-        const idMap = new Map<string, string>(); // oldLocalId -> newDbId
-        for (const lp of local.portfolios) {
-          if (!isUuid(lp.id) || !mappedPortfolios.some((mp) => mp.id === lp.id)) {
-            const dbId = await ensurePortfolioInSupabase(supabase, user, lp);
-            idMap.set(lp.id, dbId);
-            if (!mappedPortfolios.some((mp) => mp.id === dbId)) {
-              mappedPortfolios.push({
-                ...lp,
-                id: dbId,
-                userId: user.id,
-              });
-            }
-          }
-        }
-
-        // 2. Fetch user's transactions from Supabase DB
+        // 2. Fetch user's transactions from Supabase DB (Authoritative source of truth)
         const { data: dbTransactions, error: txError } = await supabase
           .from('transactions')
           .select('*')
@@ -587,45 +571,17 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           .order('transaction_date', { ascending: false });
 
         if (txError) {
-          console.warn('Failed to fetch DB transactions, preserving user local transactions:', txError);
+          console.warn('Failed to fetch DB transactions:', txError);
         }
 
         const mappedTransactions: Transaction[] = (dbTransactions || []).map(parseTransactionFromDb);
-
-        // Check for unsynced local transactions for THIS user
-        const dbTxIds = new Set(mappedTransactions.map((t) => t.id));
-        const unsyncedLocalTxs = local.transactions.filter((lt) => !dbTxIds.has(lt.id));
-        const allTransactions: Transaction[] = [...mappedTransactions];
-
-        if (unsyncedLocalTxs.length > 0) {
-          for (const lt of unsyncedLocalTxs) {
-            let targetPid = idMap.get(lt.portfolioId) || lt.portfolioId;
-            if (!mappedPortfolios.some((p) => p.id === targetPid)) {
-              targetPid = mappedPortfolios[0]?.id || targetPid;
-            }
-
-            try {
-              const inserted = await insertSingleTransactionSupabase(supabase, user, targetPid, {
-                ...lt,
-                portfolioId: targetPid,
-              });
-              if (inserted) {
-                allTransactions.unshift(inserted);
-              } else {
-                allTransactions.unshift({ ...lt, portfolioId: targetPid });
-              }
-            } catch (err) {
-              allTransactions.unshift({ ...lt, portfolioId: targetPid });
-            }
-          }
-        }
 
         // Determine valid activePortfolioId for this user
         const currentActive = get().activePortfolioId;
         let validActiveId = currentActive;
 
         if (!mappedPortfolios.some((p) => p.id === validActiveId)) {
-          validActiveId = idMap.get(local.activePortfolioId) || local.activePortfolioId;
+          validActiveId = local.activePortfolioId;
           if (!mappedPortfolios.some((p) => p.id === validActiveId)) {
             validActiveId = mappedPortfolios[0]?.id || 'p-default';
           }
@@ -634,7 +590,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         set({
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
           activePortfolioId: validActiveId,
-          transactions: allTransactions,
+          transactions: mappedTransactions,
           currentUserId: user.id,
           loading: false,
         });
@@ -644,7 +600,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         saveLocalState(user.id, {
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
           activePortfolioId: validActiveId,
-          transactions: allTransactions,
+          transactions: mappedTransactions,
         });
       } catch (err: any) {
         console.error('Error in fetchPortfoliosAndTransactions:', err);
@@ -736,9 +692,25 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
 
-        if (user && isUuid(id)) {
-          await supabase.from('transactions').delete().eq('portfolio_id', id).eq('user_id', user.id);
-          await supabase.from('portfolios').delete().eq('id', id).eq('user_id', user.id);
+        if (user) {
+          if (isUuid(id)) {
+            await supabase.from('transactions').delete().eq('portfolio_id', id).eq('user_id', user.id);
+            await supabase.from('portfolios').delete().eq('id', id).eq('user_id', user.id);
+          } else {
+            const port = get().portfolios.find((p) => p.id === id);
+            if (port) {
+              const { data: dbP } = await supabase
+                .from('portfolios')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('name', port.name)
+                .maybeSingle();
+              if (dbP?.id) {
+                await supabase.from('transactions').delete().eq('portfolio_id', dbP.id).eq('user_id', user.id);
+                await supabase.from('portfolios').delete().eq('id', dbP.id).eq('user_id', user.id);
+              }
+            }
+          }
         }
 
         set((state) => {
@@ -974,8 +946,23 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
 
-        if (user && isUuid(portfolioId)) {
-          await supabase.from('transactions').delete().eq('portfolio_id', portfolioId).eq('user_id', user.id);
+        if (user) {
+          if (isUuid(portfolioId)) {
+            await supabase.from('transactions').delete().eq('portfolio_id', portfolioId).eq('user_id', user.id);
+          } else {
+            const port = get().portfolios.find((p) => p.id === portfolioId);
+            if (port) {
+              const { data: dbP } = await supabase
+                .from('portfolios')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('name', port.name)
+                .maybeSingle();
+              if (dbP?.id) {
+                await supabase.from('transactions').delete().eq('portfolio_id', dbP.id).eq('user_id', user.id);
+              }
+            }
+          }
         }
 
         set((state) => {
