@@ -41,6 +41,7 @@ function normalizeHeader(header: string): string {
  * Parses numeric price or quantity handling Turkish comma vs dot decimals
  * (e.g. 85,00 -> 85, 5.429,22 -> 5429.22, 49.785,95 -> 49785.95, 9,17 -> 9.17, 2.923361 -> 2.923361)
  * Also handles trailing/leading commas from bad CSV splits (e.g. "2," -> 2)
+ * Turkish thousands with single dot: 1.000 -> 1000, 28.550 -> 28550
  */
 export function parseCleanNumber(val: any): number {
   if (val == null || val === '') return 0;
@@ -74,10 +75,24 @@ export function parseCleanNumber(val: any): number {
       str = str.replace(/,/g, '');
     }
   } else if (str.includes('.')) {
-    // Check if multiple dots exist (thousands separators: 1.000.000 -> 1000000)
     const dots = (str.match(/\./g) || []).length;
     if (dots > 1) {
+      // Multiple dots are always thousands separators: 1.000.000 -> 1000000
       str = str.replace(/\./g, '');
+    } else {
+      // Single dot: check if it's a Turkish thousands separator (e.g. 1.000, 28.550)
+      // Pattern: digits.3digits with NO more digits after → thousands separator
+      // e.g. "1.000" → 1000, "28.550" → 28550
+      // vs. "2.923361" → 2.923361 (decimal), "0.50" → 0.50 (decimal)
+      const singleDotMatch = str.match(/^(\d+)\.(\d+)$/);
+      if (singleDotMatch) {
+        const afterDot = singleDotMatch[2];
+        if (afterDot.length === 3) {
+          // Exactly 3 digits after dot → Turkish thousands separator
+          str = str.replace('.', '');
+        }
+        // Otherwise keep as decimal (e.g. 2.923361, 0.50, 1.25)
+      }
     }
   }
 
@@ -151,6 +166,7 @@ function parseTransactionType(val: any): TransactionType {
 /**
  * Smart CSV parser supporting auto-delimiter detection (;, \t, ,) and quote handling.
  * Prioritises semicolon for Turkish CSV files where comma is the decimal separator.
+ * Includes column-count validation to detect mismatches from ambiguous delimiters.
  */
 function parseCsvSmart(text: string): Record<string, any>[] {
   if (text.charCodeAt(0) === 0xFEFF) {
@@ -164,33 +180,6 @@ function parseCsvSmart(text: string): Record<string, any>[] {
   const tabCount = (firstLine.match(/\t/g) || []).length;
   const semiCount = (firstLine.match(/;/g) || []).length;
   const commaCount = (firstLine.match(/,/g) || []).length;
-
-  // Detect delimiter: prefer tab > semicolon > comma.
-  // Semicolon is strongly preferred for Turkish CSVs because comma is the decimal separator.
-  let delimiter = ',';
-  if (tabCount >= 3) {
-    delimiter = '\t';
-  } else if (semiCount >= 2) {
-    // Semicolons almost always indicate an intentional delimiter choice (Turkish/European CSVs)
-    delimiter = ';';
-  } else if (commaCount >= 3) {
-    delimiter = ',';
-  }
-
-  // Validation: if we chose comma, double-check against data rows.
-  // Turkish CSVs with comma delimiter will produce wrong column counts because
-  // values like "0,00" and "5.429,22" also contain commas.
-  if (delimiter === ',' && lines.length > 1) {
-    const headerCols = commaCount + 1;
-    // Count semicolons across first data lines — if they consistently produce the same column count,
-    // the file is actually semicolon-delimited even if the header had few semicolons.
-    const sampleLines = lines.slice(1, Math.min(4, lines.length));
-    const dataSemiCounts = sampleLines.map((l) => (l.match(/;/g) || []).length);
-    const headerSemiCount = semiCount;
-    if (headerSemiCount >= 1 && dataSemiCounts.every((c) => c === headerSemiCount)) {
-      delimiter = ';';
-    }
-  }
 
   const parseLine = (line: string, delim: string): string[] => {
     const res: string[] = [];
@@ -216,21 +205,83 @@ function parseCsvSmart(text: string): Record<string, any>[] {
     return res;
   };
 
-  const headers = parseLine(firstLine, delimiter);
-  const rows: Record<string, any>[] = [];
+  /**
+   * Tries to parse the CSV with the given delimiter.
+   * Returns null if column counts are inconsistent, otherwise returns parsed rows.
+   */
+  const tryParseWith = (delimiter: string): Record<string, any>[] | null => {
+    const headers = parseLine(firstLine, delimiter);
+    const headerCount = headers.length;
+    if (headerCount < 2) return null;
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = parseLine(lines[i], delimiter);
-    if (cols.length === 0 || cols.every((c) => c === '')) continue;
+    const rows: Record<string, any>[] = [];
+    let mismatchCount = 0;
 
-    const rowObj: Record<string, any> = {};
-    headers.forEach((h, idx) => {
-      rowObj[h] = cols[idx] || '';
-    });
-    rows.push(rowObj);
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseLine(lines[i], delimiter);
+      if (cols.length === 0 || cols.every((c) => c === '')) continue;
+
+      if (cols.length !== headerCount) {
+        mismatchCount++;
+      }
+
+      const rowObj: Record<string, any> = {};
+      headers.forEach((h, idx) => {
+        rowObj[h] = cols[idx] || '';
+      });
+      rows.push(rowObj);
+    }
+
+    // If more than half the rows have mismatched column counts, this delimiter is wrong
+    if (rows.length > 0 && mismatchCount > rows.length * 0.3) {
+      return null;
+    }
+
+    return rows;
+  };
+
+  // Determine delimiter priority: prefer tab > semicolon > comma
+  // Semicolon is strongly preferred for Turkish CSVs because comma is the decimal separator.
+  const candidates: string[] = [];
+
+  if (tabCount >= 3) {
+    candidates.push('\t');
+  }
+  if (semiCount >= 2) {
+    candidates.push(';');
+  }
+  if (commaCount >= 3) {
+    candidates.push(',');
+  }
+  // Ensure at least one candidate
+  if (candidates.length === 0) {
+    if (semiCount >= 1) candidates.push(';');
+    else if (commaCount >= 1) candidates.push(',');
+    else if (tabCount >= 1) candidates.push('\t');
+    else candidates.push(',');
   }
 
-  return rows;
+  // Try each candidate delimiter; use the first one that produces consistent column counts
+  for (const delim of candidates) {
+    const result = tryParseWith(delim);
+    if (result !== null && result.length > 0) {
+      return result;
+    }
+  }
+
+  // If all candidates fail column-count validation, try them all as fallback
+  // (semicolon first since it's safest for Turkish data)
+  for (const fallbackDelim of [';', '\t', ',']) {
+    if (candidates.includes(fallbackDelim)) continue;
+    const result = tryParseWith(fallbackDelim);
+    if (result !== null && result.length > 0) {
+      return result;
+    }
+  }
+
+  // All delimiter strategies failed column-count validation.
+  // Return empty to fall through to XLSX library fallback which has its own CSV parser.
+  return [];
 }
 
 /**
