@@ -92,6 +92,20 @@ export default function Sidebar() {
         })}
       </nav>
 
+      {/* Pro Membership Indicator */}
+      {!collapsed && (
+        <div className="mx-3 mb-2 p-3 rounded-2xl bg-gradient-to-br from-violet-600/10 via-accent/10 to-fuchsia-600/10 border border-accent/25 relative overflow-hidden">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] uppercase font-black tracking-wider text-accent flex items-center gap-1">
+              <span>★</span> PRO AKTİF
+            </span>
+            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-gradient-to-r from-accent to-fuchsia-600 text-white shadow-xs">PRO</span>
+          </div>
+          <p className="text-xs font-bold text-text-primary">StockMind Pro</p>
+          <p className="text-[10px] text-text-muted mt-0.5">Sınırsız portföy & derinlikli analizler.</p>
+        </div>
+      )}
+
       {/* Settings + Collapse */}
       <div className="px-3 py-4 border-t border-border space-y-1">
         {/* Theme Plan Switcher */}

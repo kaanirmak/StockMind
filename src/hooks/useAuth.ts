@@ -27,6 +27,8 @@ export function useAuth() {
         avatarUrl: data?.avatar_url || currentUser?.user_metadata?.avatar_url || currentUser?.user_metadata?.picture || null,
         preferredLanguage: data?.preferred_language || 'tr',
         preferredCurrency: data?.preferred_currency || 'TRY',
+        isPro: true,
+        plan: 'pro',
         createdAt: data?.created_at || new Date().toISOString(),
         updatedAt: data?.updated_at || new Date().toISOString(),
       };
@@ -43,6 +45,8 @@ export function useAuth() {
           avatarUrl: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || null,
           preferredLanguage: 'tr',
           preferredCurrency: 'TRY',
+          isPro: true,
+          plan: 'pro',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -69,6 +73,8 @@ export function useAuth() {
         avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (profile?.avatarUrl || null),
         preferredLanguage: updates.preferredLanguage || profile?.preferredLanguage || 'tr',
         preferredCurrency: updates.preferredCurrency || profile?.preferredCurrency || 'TRY',
+        isPro: true,
+        plan: 'pro',
         createdAt: profile?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -115,6 +121,8 @@ export function useAuth() {
         avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (data?.avatar_url || profile?.avatarUrl || null),
         preferredLanguage: updates.preferredLanguage || data?.preferred_language || profile?.preferredLanguage || 'tr',
         preferredCurrency: updates.preferredCurrency || data?.preferred_currency || profile?.preferredCurrency || 'TRY',
+        isPro: true,
+        plan: 'pro',
         createdAt: data?.created_at || profile?.createdAt || new Date().toISOString(),
         updatedAt: data?.updated_at || new Date().toISOString(),
       };
@@ -131,6 +139,8 @@ export function useAuth() {
         avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (profile?.avatarUrl || null),
         preferredLanguage: updates.preferredLanguage || profile?.preferredLanguage || 'tr',
         preferredCurrency: updates.preferredCurrency || profile?.preferredCurrency || 'TRY',
+        isPro: true,
+        plan: 'pro',
         createdAt: profile?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

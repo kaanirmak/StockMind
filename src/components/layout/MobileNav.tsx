@@ -164,7 +164,12 @@ export default function MobileNav() {
           <div className="glass-purple rounded-2xl p-3.5 space-y-1.5 shadow-2xl border border-border">
             {/* Panel header & Quick Theme Switch */}
             <div className="px-2 pt-1 pb-2 border-b border-border/60 flex items-center justify-between mb-2">
-              <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Menü & Görünüm</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">Menü</p>
+                <span className="px-1.5 py-0.2 rounded bg-gradient-to-r from-accent to-fuchsia-600 text-white text-[9px] font-black tracking-wider shadow-xs">
+                  PRO
+                </span>
+              </div>
               
               {/* Quick Theme Switcher Pill */}
               <button

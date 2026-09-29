@@ -675,11 +675,18 @@ export default function Header() {
               )}
             </div>
             <div className="hidden lg:flex flex-col text-left">
-              <span className="text-xs font-bold text-text-primary max-w-[120px] truncate leading-tight">
-                {profile?.fullName || profile?.username || 'Misafir Kullanıcı'}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-text-primary max-w-[110px] truncate leading-tight">
+                  {profile?.fullName || profile?.username || 'Misafir Kullanıcı'}
+                </span>
+                {(profile?.isPro ?? true) && (
+                  <span className="px-1.5 py-0.2 rounded-md bg-gradient-to-r from-violet-600 via-accent to-fuchsia-600 text-white text-[9px] font-black tracking-wider uppercase shadow-xs shadow-accent/30 flex items-center gap-0.5 shrink-0">
+                    <span className="text-[8px]">★</span> PRO
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] text-text-muted">
-                {profile ? 'Hesabım' : 'Misafir Modu'}
+                {profile ? ((profile?.isPro ?? true) ? 'StockMind Pro' : 'Hesabım') : 'Misafir Modu'}
               </span>
             </div>
             <svg className={`w-4 h-4 text-text-muted transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -705,11 +712,18 @@ export default function Header() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-text-primary truncate">
-                    {profile?.fullName || 'Misafir Kullanıcı'}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-bold text-text-primary truncate">
+                      {profile?.fullName || 'Misafir Kullanıcı'}
+                    </p>
+                    {(profile?.isPro ?? true) && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-gradient-to-r from-violet-600 via-accent to-fuchsia-600 text-white text-[10px] font-black tracking-wider uppercase shadow-xs shadow-accent/30 flex items-center gap-0.5 shrink-0">
+                        <span className="text-[8px]">★</span> PRO
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-text-muted truncate mt-0.5">
-                    {profile?.username || 'Giriş Yapılmadı'}
+                    {profile?.username || 'Giriş Yapılmadı'} • {(profile?.isPro ?? true) ? '⭐ Pro Üye' : 'Standart'}
                   </p>
                 </div>
               </div>

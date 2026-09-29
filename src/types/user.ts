@@ -7,6 +7,8 @@ export interface UserProfile {
   avatarUrl: string | null;
   preferredLanguage: 'tr' | 'en';
   preferredCurrency: string;
+  isPro?: boolean;
+  plan?: 'free' | 'pro' | 'enterprise';
   createdAt: string;
   updatedAt: string;
 }

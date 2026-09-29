@@ -643,9 +643,16 @@ export default function SettingsPage() {
             <h3 className="text-base font-bold text-text-primary">Profil Bilgileri</h3>
             <p className="text-xs text-text-muted">Kişisel bilgilerinizi ve tercih ettiğiniz para birimini güncelleyin.</p>
           </div>
-          <Badge variant="purple" size="sm">
-            {user ? 'Kişisel Hesap' : 'Misafir Profil'}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {(profile?.isPro ?? true) && (
+              <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-600/15 via-accent/15 to-fuchsia-600/15 border border-accent/35 text-accent font-bold text-xs flex items-center gap-1.5 shadow-xs">
+                <span>⭐</span> StockMind PRO
+              </span>
+            )}
+            <Badge variant="purple" size="sm">
+              {user ? 'Kişisel Hesap' : 'Misafir Profil'}
+            </Badge>
+          </div>
         </div>
 
         <form onSubmit={handleSaveProfile} className="space-y-6">
@@ -683,6 +690,11 @@ export default function SettingsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="text-base font-bold text-text-primary">{fullName || 'Kullanıcı'}</h4>
+                    {(profile?.isPro ?? true) && (
+                      <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-violet-600 via-accent to-fuchsia-600 text-white text-[10px] font-black tracking-wider uppercase shadow-xs shadow-accent/30 flex items-center gap-1 shrink-0">
+                        <span>★</span> PRO
+                      </span>
+                    )}
                     {avatarUrl && (
                       <Badge variant="info" size="sm">Özel Fotoğraf</Badge>
                     )}
