@@ -12,7 +12,7 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string, currentUser?: User | null) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -20,23 +20,36 @@ export function useAuth() {
         .eq('id', userId)
         .maybeSingle();
 
-      if (data) {
-        const userProf: UserProfile = {
-          id: data.id,
-          username: data.username,
-          fullName: data.full_name,
-          avatarUrl: data.avatar_url,
-          preferredLanguage: data.preferred_language || 'tr',
-          preferredCurrency: data.preferred_currency || 'TRY',
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-        setProfile(userProf);
-        useAuthStore.getState().setUser(userProf);
-        return userProf;
-      }
+      const userProf: UserProfile = {
+        id: userId,
+        username: data?.username || currentUser?.email?.split('@')[0] || 'kullanici',
+        fullName: data?.full_name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || null,
+        avatarUrl: data?.avatar_url || currentUser?.user_metadata?.avatar_url || currentUser?.user_metadata?.picture || null,
+        preferredLanguage: data?.preferred_language || 'tr',
+        preferredCurrency: data?.preferred_currency || 'TRY',
+        createdAt: data?.created_at || new Date().toISOString(),
+        updatedAt: data?.updated_at || new Date().toISOString(),
+      };
+      setProfile(userProf);
+      useAuthStore.getState().setUser(userProf);
+      return userProf;
     } catch (e) {
       console.warn('fetchProfile error:', e);
+      if (currentUser) {
+        const fallbackProf: UserProfile = {
+          id: userId,
+          username: currentUser.email?.split('@')[0] || 'kullanici',
+          fullName: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || null,
+          avatarUrl: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || null,
+          preferredLanguage: 'tr',
+          preferredCurrency: 'TRY',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        setProfile(fallbackProf);
+        useAuthStore.getState().setUser(fallbackProf);
+        return fallbackProf;
+      }
     }
     return null;
   }, [supabase]);
@@ -45,9 +58,28 @@ export function useAuth() {
     fullName?: string;
     preferredLanguage?: 'tr' | 'en';
     preferredCurrency?: string;
-    avatarUrl?: string;
+    avatarUrl?: string | null;
   }) => {
-    if (!user) return false;
+    if (!user) {
+      // Guest profile update
+      const guestProf: UserProfile = {
+        id: 'guest',
+        username: 'guest',
+        fullName: updates.fullName !== undefined ? updates.fullName : (profile?.fullName || 'Misafir Kullanıcı'),
+        avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (profile?.avatarUrl || null),
+        preferredLanguage: updates.preferredLanguage || profile?.preferredLanguage || 'tr',
+        preferredCurrency: updates.preferredCurrency || profile?.preferredCurrency || 'TRY',
+        createdAt: profile?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setProfile(guestProf);
+      useAuthStore.getState().setUser(guestProf);
+      try {
+        localStorage.setItem('stockmind_guest_profile', JSON.stringify(guestProf));
+      } catch (e) {}
+      return true;
+    }
+
     try {
       const payload: any = {
         id: user.id,
@@ -58,35 +90,72 @@ export function useAuth() {
       if (updates.preferredCurrency !== undefined) payload.preferred_currency = updates.preferredCurrency;
       if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl;
 
+      // Update Supabase auth user metadata as well
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            full_name: updates.fullName !== undefined ? updates.fullName : (user.user_metadata?.full_name || ''),
+            avatar_url: updates.avatarUrl !== undefined ? updates.avatarUrl : (user.user_metadata?.avatar_url || null),
+          },
+        });
+      } catch (authMetaErr) {
+        console.warn('Failed to update auth metadata:', authMetaErr);
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .upsert(payload)
         .select()
         .single();
 
-      if (!error && data) {
-        const updatedProf: UserProfile = {
-          id: data.id,
-          username: data.username,
-          fullName: data.full_name,
-          avatarUrl: data.avatar_url,
-          preferredLanguage: data.preferred_language || 'tr',
-          preferredCurrency: data.preferred_currency || 'TRY',
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-        setProfile(updatedProf);
-        useAuthStore.getState().setUser(updatedProf);
-        return true;
-      }
+      const updatedProf: UserProfile = {
+        id: user.id,
+        username: data?.username || profile?.username || user.email?.split('@')[0] || 'kullanici',
+        fullName: updates.fullName !== undefined ? updates.fullName : (data?.full_name || profile?.fullName || null),
+        avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (data?.avatar_url || profile?.avatarUrl || null),
+        preferredLanguage: updates.preferredLanguage || data?.preferred_language || profile?.preferredLanguage || 'tr',
+        preferredCurrency: updates.preferredCurrency || data?.preferred_currency || profile?.preferredCurrency || 'TRY',
+        createdAt: data?.created_at || profile?.createdAt || new Date().toISOString(),
+        updatedAt: data?.updated_at || new Date().toISOString(),
+      };
+      setProfile(updatedProf);
+      useAuthStore.getState().setUser(updatedProf);
+      return true;
     } catch (e) {
       console.error('updateProfile error:', e);
+      // Fallback local update
+      const fallbackProf: UserProfile = {
+        id: user.id,
+        username: profile?.username || user.email?.split('@')[0] || 'kullanici',
+        fullName: updates.fullName !== undefined ? updates.fullName : (profile?.fullName || null),
+        avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (profile?.avatarUrl || null),
+        preferredLanguage: updates.preferredLanguage || profile?.preferredLanguage || 'tr',
+        preferredCurrency: updates.preferredCurrency || profile?.preferredCurrency || 'TRY',
+        createdAt: profile?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setProfile(fallbackProf);
+      useAuthStore.getState().setUser(fallbackProf);
+      return true;
     }
-    return false;
   };
 
   useEffect(() => {
     let isMounted = true;
+
+    const loadGuestProfile = () => {
+      try {
+        const savedGuest = localStorage.getItem('stockmind_guest_profile');
+        if (savedGuest) {
+          const parsed = JSON.parse(savedGuest);
+          setProfile(parsed);
+          useAuthStore.getState().setUser(parsed);
+          return;
+        }
+      } catch (e) {}
+      setProfile(null);
+      useAuthStore.getState().clearUser();
+    };
 
     const getUser = async () => {
       try {
@@ -94,11 +163,10 @@ export function useAuth() {
         if (isMounted) {
           setUser(currentUser);
           if (currentUser) {
-            await fetchProfile(currentUser.id);
+            await fetchProfile(currentUser.id, currentUser);
             useWatchlistStore.getState().loadUserWatchlist(currentUser.id);
           } else {
-            setProfile(null);
-            useAuthStore.getState().clearUser();
+            loadGuestProfile();
             useWatchlistStore.getState().loadUserWatchlist(null);
           }
           usePortfolioStore.getState().fetchPortfoliosAndTransactions();
@@ -118,11 +186,10 @@ export function useAuth() {
         if (isMounted) {
           setUser(authUser);
           if (authUser) {
-            await fetchProfile(authUser.id);
+            await fetchProfile(authUser.id, authUser);
             useWatchlistStore.getState().loadUserWatchlist(authUser.id);
           } else {
-            setProfile(null);
-            useAuthStore.getState().clearUser();
+            loadGuestProfile();
             useWatchlistStore.getState().loadUserWatchlist(null);
           }
           usePortfolioStore.getState().fetchPortfoliosAndTransactions();

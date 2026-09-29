@@ -1,11 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
 import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
+
+const AVATAR_PRESETS: Array<{ label: string; icon: string; colors: [string, string] }> = [
+  { label: 'Boğa (Bull)', icon: '🐂', colors: ['#059669', '#10b981'] },
+  { label: 'Ayı (Bear)', icon: '🐻', colors: ['#b45309', '#d97706'] },
+  { label: 'Roket (Rocket)', icon: '🚀', colors: ['#4f46e5', '#7c3aed'] },
+  { label: 'Elmas (Diamond)', icon: '💎', colors: ['#0284c7', '#38bdf8'] },
+  { label: 'Yapay Zeka (AI)', icon: '🤖', colors: ['#9333ea', '#c084fc'] },
+  { label: 'Aslan (Lion)', icon: '🦁', colors: ['#d97706', '#fbbf24'] },
+  { label: 'Grafik (Trend)', icon: '📈', colors: ['#0d9488', '#14b8a6'] },
+  { label: 'Para Çantası', icon: '💰', colors: ['#15803d', '#84cc16'] },
+];
 
 export default function SettingsPage() {
   const { showToast } = useToast();
@@ -14,6 +25,10 @@ export default function SettingsPage() {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [notificationEmail, setNotificationEmail] = useState('');
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
   const [currency, setCurrency] = useState('TRY');
@@ -45,11 +60,15 @@ export default function SettingsPage() {
     if (user) {
       setEmail(user.email || '');
       setFullName(profile?.fullName || user.user_metadata?.full_name || user.email?.split('@')[0] || '');
+      if (profile?.avatarUrl) setAvatarUrl(profile.avatarUrl);
+      else if (user.user_metadata?.avatar_url) setAvatarUrl(user.user_metadata.avatar_url);
+      else if (user.user_metadata?.picture) setAvatarUrl(user.user_metadata.picture);
       if (profile?.preferredLanguage) setLanguage(profile.preferredLanguage);
       if (profile?.preferredCurrency) setCurrency(profile.preferredCurrency);
     } else {
       setEmail('misafir@stockmind.app');
-      setFullName('Misafir Kullanıcı');
+      setFullName(profile?.fullName || 'Misafir Kullanıcı');
+      if (profile?.avatarUrl) setAvatarUrl(profile.avatarUrl);
     }
 
     // Load AI & notification preferences per user
@@ -82,22 +101,135 @@ export default function SettingsPage() {
     }
   }, [user, profile, userKey]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast({
+        type: 'danger',
+        title: 'Geçersiz Dosya Türü',
+        message: 'Lütfen bir resim dosyası seçin (PNG, JPG, WebP vb.).',
+      });
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showToast({
+        type: 'danger',
+        title: 'Dosya Boyutu Çok Büyük',
+        message: 'Lütfen 10MB\'dan küçük bir görsel seçin.',
+      });
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const size = 256;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            setIsUploadingPhoto(false);
+            return;
+          }
+
+          const minDim = Math.min(img.width, img.height);
+          const startX = (img.width - minDim) / 2;
+          const startY = (img.height - minDim) / 2;
+
+          ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
+          const compressed = canvas.toDataURL('image/jpeg', 0.88);
+          setAvatarUrl(compressed);
+          showToast({
+            type: 'success',
+            title: 'Fotoğraf Seçildi',
+            message: 'Profilinizi kaydetmek için lütfen "Profili Kaydet" butonuna tıklayın.',
+          });
+        } catch (err) {
+          console.error('Image crop error:', err);
+          showToast({
+            type: 'danger',
+            title: 'Hata',
+            message: 'Görsel işlenemedi.',
+          });
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      };
+      img.onerror = () => {
+        setIsUploadingPhoto(false);
+        showToast({
+          type: 'danger',
+          title: 'Hata',
+          message: 'Görsel okunamadı.',
+        });
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      setIsUploadingPhoto(false);
+      showToast({
+        type: 'danger',
+        title: 'Hata',
+        message: 'Dosya okunurken bir sorun oluştu.',
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectPresetAvatar = (emoji: string, bgGradient: [string, string]) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${bgGradient[0]}" />
+          <stop offset="100%" stop-color="${bgGradient[1]}" />
+        </linearGradient>
+      </defs>
+      <rect width="256" height="256" rx="64" fill="url(#g)" />
+      <text x="50%" y="54%" font-size="120" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+    </svg>`;
+    const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    setAvatarUrl(dataUrl);
+    showToast({
+      type: 'info',
+      title: 'Avatar Seçildi',
+      message: 'Değişikliği uygulamak için "Profili Kaydet" butonuna tıklayın.',
+    });
+  };
+
+  const handleRemovePhoto = () => {
+    setAvatarUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    showToast({
+      type: 'info',
+      title: 'Fotoğraf Kaldırıldı',
+      message: 'Profil baş harfi varsayılan olarak gösterilecek. "Profili Kaydet" ile onaylayın.',
+    });
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingProfile(true);
     try {
-      if (user) {
-        const success = await updateProfile({
-          fullName: fullName.trim(),
-          preferredLanguage: language,
-          preferredCurrency: currency,
-        });
+      const success = await updateProfile({
+        fullName: fullName.trim(),
+        preferredLanguage: language,
+        preferredCurrency: currency,
+        avatarUrl: avatarUrl,
+      });
 
+      if (user) {
         if (success) {
           showToast({
             type: 'success',
             title: 'Profil Güncellendi',
-            message: 'Profil ve para birimi tercihleriniz hesabınıza kaydedildi.',
+            message: 'Profil bilgileriniz ve fotoğrafınız hesabınıza kaydedildi.',
           });
         } else {
           showToast({
@@ -111,7 +243,7 @@ export default function SettingsPage() {
         showToast({
           type: 'info',
           title: 'Misafir Ayarları Kaydedildi',
-          message: 'Tercihleriniz bu tarayıcı için kaydedildi. Kalıcı hesap için giriş yapabilirsiniz.',
+          message: 'Profil fotoğrafınız ve tercihleriniz bu tarayıcı için kaydedildi.',
         });
       }
     } catch (err: any) {
@@ -516,14 +648,108 @@ export default function SettingsPage() {
           </Badge>
         </div>
 
-        <form onSubmit={handleSaveProfile} className="space-y-4">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-accent to-accent-secondary flex items-center justify-center font-bold text-2xl text-white shadow-lg shadow-accent/20">
-              {userInitial}
+        <form onSubmit={handleSaveProfile} className="space-y-6">
+          {/* Avatar Section */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-bg-surface-2/60 border border-border/60 flex flex-col md:flex-row items-start md:items-center gap-5">
+            <div className="relative group flex-shrink-0">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-accent to-accent-secondary flex items-center justify-center font-bold text-3xl text-white shadow-lg shadow-accent/20 overflow-hidden ring-2 ring-border/50">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={fullName || 'Avatar'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  userInitial
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex flex-col items-center justify-center text-white text-[11px] font-semibold gap-1 backdrop-blur-xs cursor-pointer"
+                title="Fotoğraf Yükle / Değiştir"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Değiştir</span>
+              </button>
             </div>
-            <div>
-              <h4 className="text-sm font-bold text-text-primary">{fullName || 'Kullanıcı'}</h4>
-              <p className="text-xs text-text-muted">{email}</p>
+
+            <div className="flex-1 space-y-2.5 w-full">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-bold text-text-primary">{fullName || 'Kullanıcı'}</h4>
+                    {avatarUrl && (
+                      <Badge variant="info" size="sm">Özel Fotoğraf</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-muted mt-0.5">{email}</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                    className="gap-1.5 text-xs h-8 cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    {isUploadingPhoto ? 'Yükleniyor...' : 'Fotoğraf Seç'}
+                  </Button>
+
+                  {avatarUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemovePhoto}
+                      className="text-xs h-8 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 cursor-pointer"
+                    >
+                      Kaldır
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Avatar Presets */}
+              <div className="pt-2 border-t border-border/40">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <span className="text-[11px] font-medium text-text-secondary">
+                    Veya hazır bir finans avatarı seçin:
+                  </span>
+                  <span className="text-[10px] text-text-muted">
+                    Otomatik optimize edilir (JPG/WebP)
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {AVATAR_PRESETS.map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => handleSelectPresetAvatar(p.icon, p.colors)}
+                      title={p.label}
+                      className="w-8 h-8 rounded-xl bg-bg-surface hover:scale-110 active:scale-95 border border-border/60 hover:border-accent hover:shadow-sm flex items-center justify-center text-sm transition-all duration-150 cursor-pointer"
+                    >
+                      {p.icon}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 

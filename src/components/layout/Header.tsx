@@ -657,10 +657,22 @@ export default function Header() {
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-bg-hover transition-all duration-200 cursor-pointer"
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold shadow-sm ${
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold shadow-sm overflow-hidden flex-shrink-0 ${
               profile ? 'gradient-accent' : 'bg-amber-500/80'
             }`}>
-              {profile?.fullName?.charAt(0)?.toUpperCase() || profile?.username?.charAt(0)?.toUpperCase() || 'M'}
+              {profile?.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.fullName || 'Profil'}
+                  className="w-full h-full object-cover rounded-lg"
+                  onError={(e) => {
+                    // fallback if image fails to load
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                profile?.fullName?.charAt(0)?.toUpperCase() || profile?.username?.charAt(0)?.toUpperCase() || 'M'
+              )}
             </div>
             <div className="hidden lg:flex flex-col text-left">
               <span className="text-xs font-bold text-text-primary max-w-[120px] truncate leading-tight">
@@ -677,14 +689,29 @@ export default function Header() {
 
           {/* Dropdown */}
           {showUserMenu && (
-            <div className="absolute right-0 top-full mt-2 w-60 glass-card rounded-xl border border-border shadow-elevated py-1 animate-scale-in origin-top-right z-50">
-              <div className="px-4 py-3 border-b border-border">
-                <p className="text-sm font-bold text-text-primary truncate">
-                  {profile?.fullName || 'Misafir Kullanıcı'}
-                </p>
-                <p className="text-xs text-text-muted truncate mt-0.5">
-                  {profile?.username || 'Giriş Yapılmadı'}
-                </p>
+            <div className="absolute right-0 top-full mt-2 w-64 glass-card rounded-xl border border-border shadow-elevated py-1 animate-scale-in origin-top-right z-50">
+              <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-base font-semibold shadow-sm overflow-hidden flex-shrink-0 ${
+                  profile ? 'gradient-accent' : 'bg-amber-500/80'
+                }`}>
+                  {profile?.avatarUrl ? (
+                    <img
+                      src={profile.avatarUrl}
+                      alt={profile.fullName || 'Profil'}
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : (
+                    profile?.fullName?.charAt(0)?.toUpperCase() || profile?.username?.charAt(0)?.toUpperCase() || 'M'
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-text-primary truncate">
+                    {profile?.fullName || 'Misafir Kullanıcı'}
+                  </p>
+                  <p className="text-xs text-text-muted truncate mt-0.5">
+                    {profile?.username || 'Giriş Yapılmadı'}
+                  </p>
+                </div>
               </div>
 
               {!profile && (
