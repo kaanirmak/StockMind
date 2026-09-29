@@ -6,27 +6,48 @@ import type { Transaction, Holding, PortfolioSummary } from '@/types';
  * Calculate weighted average cost for a symbol from a list of transactions
  */
 export function calculateAverageCost(transactions: Transaction[]): number {
-  let totalQuantity = 0;
-  let totalCost = 0;
+  interface CostLot {
+    quantity: number;
+    price: number;
+    commission: number;
+  }
 
-  const sorted = [...transactions].sort(
-    (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime()
-  );
+  const sorted = [...transactions].sort((a, b) => {
+    const timeDiff = new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime();
+    if (timeDiff !== 0) return timeDiff;
+    if (a.transactionType === 'sell' && b.transactionType === 'buy') return -1;
+    if (a.transactionType === 'buy' && b.transactionType === 'sell') return 1;
+    return 0;
+  });
+
+  const lots: CostLot[] = [];
 
   for (const tx of sorted) {
     if (tx.transactionType === 'buy') {
-      totalCost += tx.quantity * tx.price + tx.commission;
-      totalQuantity += tx.quantity;
+      lots.push({
+        quantity: tx.quantity,
+        price: tx.price,
+        commission: tx.commission || 0,
+      });
     } else if (tx.transactionType === 'sell') {
-      if (totalQuantity > 0) {
-        const avgCostPerUnit = totalCost / totalQuantity;
-        totalCost -= tx.quantity * avgCostPerUnit;
-        totalQuantity -= tx.quantity;
+      let remainingSell = tx.quantity;
+      while (remainingSell > 0 && lots.length > 0) {
+        if (lots[0].quantity <= remainingSell + 0.000001) {
+          remainingSell -= lots[0].quantity;
+          lots.shift();
+        } else {
+          const ratio = remainingSell / lots[0].quantity;
+          lots[0].quantity -= remainingSell;
+          lots[0].commission -= lots[0].commission * ratio;
+          remainingSell = 0;
+        }
       }
     }
   }
 
-  return totalQuantity > 0 ? totalCost / totalQuantity : 0;
+  const remainingQty = lots.reduce((sum, l) => sum + l.quantity, 0);
+  const remainingCost = lots.reduce((sum, l) => sum + (l.quantity * l.price + l.commission), 0);
+  return remainingQty > 0 ? remainingCost / remainingQty : 0;
 }
 
 /**

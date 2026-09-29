@@ -76,6 +76,13 @@ export function getCurrentAssetPrice(
   return { price: lastTxPrice || 1.0, changePercent: 0 };
 }
 
+interface CostLot {
+  shares: number;
+  costTry: number;
+  costNative: number;
+  date: string;
+}
+
 export function calculatePortfolioHoldings(
   transactions: Transaction[],
   livePrices?: Record<string, PriceQuote | number>
@@ -90,8 +97,7 @@ export function calculatePortfolioHoldings(
       exchange: any;
       currency: 'TRY' | 'USD';
       totalShares: number;
-      totalBuyCostTry: number;
-      totalBuyCostNative: number;
+      lots: CostLot[];
       buyQuantity: number;
       lastPrice: number;
     }
@@ -133,8 +139,7 @@ export function calculatePortfolioHoldings(
       exchange: effectiveEx,
       currency,
       totalShares: 0,
-      totalBuyCostTry: 0,
-      totalBuyCostNative: 0,
+      lots: [] as CostLot[],
       buyQuantity: 0,
       lastPrice: t.price,
     };
@@ -147,15 +152,34 @@ export function calculatePortfolioHoldings(
 
     if (t.transactionType === 'buy') {
       existing.totalShares += t.quantity;
-      existing.totalBuyCostTry += tryCost;
-      existing.totalBuyCostNative += nativeCost;
       existing.buyQuantity += t.quantity;
+      existing.lots.push({
+        shares: t.quantity,
+        costTry: tryCost,
+        costNative: nativeCost,
+        date: t.transactionDate,
+      });
     } else if (t.transactionType === 'sell') {
-      const avgTryCost = existing.totalShares > 0 ? existing.totalBuyCostTry / existing.totalShares : 0;
-      const avgNativeCost = existing.totalShares > 0 ? existing.totalBuyCostNative / existing.totalShares : 0;
+      let sellQty = t.quantity;
       existing.totalShares = Math.max(0, existing.totalShares - t.quantity);
-      existing.totalBuyCostTry = existing.totalShares * avgTryCost;
-      existing.totalBuyCostNative = existing.totalShares * avgNativeCost;
+      // Consume lots in FIFO order (oldest first)
+      while (sellQty > 0.0000001 && existing.lots.length > 0) {
+        const oldest = existing.lots[0];
+        if (oldest.shares <= sellQty + 0.0000001) {
+          sellQty -= oldest.shares;
+          existing.lots.shift();
+        } else {
+          const ratio = sellQty / oldest.shares;
+          oldest.costTry -= oldest.costTry * ratio;
+          oldest.costNative -= oldest.costNative * ratio;
+          oldest.shares -= sellQty;
+          sellQty = 0;
+        }
+      }
+      if (existing.totalShares <= 0.0000001) {
+        existing.totalShares = 0;
+        existing.lots = [];
+      }
     }
 
     map.set(key, existing);
@@ -164,7 +188,7 @@ export function calculatePortfolioHoldings(
   const holdings: Holding[] = [];
 
   map.forEach((item) => {
-    if (item.totalShares > 0) {
+    if (item.totalShares > 0.0000001 && item.lots.length > 0) {
       const { price: currentPriceNative, changePercent: dailyChangePercent } = getCurrentAssetPrice(
         item.symbol,
         item.assetType,
@@ -174,9 +198,10 @@ export function calculatePortfolioHoldings(
 
       const isUsd = item.currency === 'USD';
       const currentPriceTry = isUsd ? currentPriceNative * liveUsdTry : currentPriceNative;
-      const averageCostTry = item.totalShares > 0 ? item.totalBuyCostTry / item.totalShares : 0;
-      const originalAvgCost = item.totalShares > 0 ? item.totalBuyCostNative / item.totalShares : 0;
-      const totalCostTry = item.totalBuyCostTry;
+      const totalCostTry = item.lots.reduce((acc, l) => acc + l.costTry, 0);
+      const totalCostNative = item.lots.reduce((acc, l) => acc + l.costNative, 0);
+      const averageCostTry = item.totalShares > 0 ? totalCostTry / item.totalShares : 0;
+      const originalAvgCost = item.totalShares > 0 ? totalCostNative / item.totalShares : 0;
       const currentValueTry = item.totalShares * currentPriceTry;
       const pnlTry = currentValueTry - totalCostTry;
       const pnlPercent = totalCostTry > 0 ? (pnlTry / totalCostTry) * 100 : 0;

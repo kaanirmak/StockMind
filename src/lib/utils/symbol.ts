@@ -41,21 +41,27 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
   // Note: .E is the official Borsa Istanbul equity suffix (e.g. THYAO.E, GARAN.E)
   raw = raw.replace(/\.(IS|E|TI|BIST)$/i, '').trim();
 
-  // 4. Alias checks for commodities
+  // 4. Alias checks for commodities and certificates
+  if (raw === 'ALTIN' || raw === 'ALTIN.S1' || raw === 'ALTINS1' || raw === 'ALTIN_S1') {
+    return { symbol: 'ALTIN', assetType: 'stock', exchange: 'BIST' };
+  }
   if (
     raw === 'GRAM_ALTIN' ||
     raw === 'GRAM ALTIN' ||
-    raw === 'ALTIN' ||
+    raw === 'GRAM-ALTIN' ||
     raw === 'GA' ||
     raw === 'XAUTRYG' ||
     raw === 'XAUTRY'
   ) {
     return { symbol: 'GRAM_ALTIN', assetType: 'stock', exchange: 'BIST' };
   }
+  if (raw === 'GUMUS' || raw === 'GUMUS.S1' || raw === 'GUMUSS1' || raw === 'GUMUS_S1') {
+    return { symbol: 'GUMUS', assetType: 'stock', exchange: 'BIST' };
+  }
   if (
     raw === 'GRAM_GUMUS' ||
     raw === 'GRAM GUMUS' ||
-    raw === 'GUMUS' ||
+    raw === 'GRAM-GUMUS' ||
     raw === 'XAGTRYG' ||
     raw === 'XAGTRY'
   ) {

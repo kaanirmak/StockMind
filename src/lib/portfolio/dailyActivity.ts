@@ -247,7 +247,7 @@ export function getPortfolioDailyActivity(
     } else {
       const txsUntilToday = sortedTransactions.filter((tx) => tx.transactionDate.split('T')[0] <= dStr);
       if (txsUntilToday.length > 0) {
-        const map: Record<string, HistoricalHoldingSnapshot> = {};
+        const map: Record<string, HistoricalHoldingSnapshot & { lots: { quantity: number; price: number }[] }> = {};
         for (const tx of txsUntilToday) {
           if (!map[tx.symbol]) {
             map[tx.symbol] = {
@@ -257,6 +257,7 @@ export function getPortfolioDailyActivity(
               averageCost: 0,
               totalCost: 0,
               todayTransactions: [],
+              lots: [],
             };
           }
           const item = map[tx.symbol];
@@ -271,16 +272,27 @@ export function getPortfolioDailyActivity(
           }
 
           if (tx.transactionType === 'buy') {
-            const addedCost = tx.quantity * tx.price;
-            item.totalCost += addedCost;
-            item.quantity += tx.quantity;
-            item.averageCost = item.quantity > 0 ? item.totalCost / item.quantity : 0;
+            item.lots.push({ quantity: tx.quantity, price: tx.price });
           } else {
-            item.quantity = Math.max(0, item.quantity - tx.quantity);
-            item.totalCost = item.quantity * item.averageCost;
+            let remainingSell = tx.quantity;
+            while (remainingSell > 0 && item.lots.length > 0) {
+              if (item.lots[0].quantity <= remainingSell + 0.000001) {
+                remainingSell -= item.lots[0].quantity;
+                item.lots.shift();
+              } else {
+                item.lots[0].quantity -= remainingSell;
+                remainingSell = 0;
+              }
+            }
           }
+
+          item.quantity = item.lots.reduce((sum, l) => sum + l.quantity, 0);
+          item.totalCost = item.lots.reduce((sum, l) => sum + l.quantity * l.price, 0);
+          item.averageCost = item.quantity > 0 ? item.totalCost / item.quantity : 0;
         }
-        holdingsAtDate = Object.values(map).filter((h) => h.quantity > 0);
+        holdingsAtDate = Object.values(map)
+          .filter((h) => h.quantity > 0)
+          .map(({ lots, ...rest }) => rest);
       } else if (summary.holdings && summary.holdings.length > 0 && sortedTransactions.length === 0) {
         // If holdings exist in store but transactions table is not backfilled
         holdingsAtDate = summary.holdings.map((h) => ({
