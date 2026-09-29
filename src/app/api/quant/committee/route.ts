@@ -16,7 +16,8 @@ export async function POST(request: Request) {
 
     const cleanSymbol = symbol.trim().toUpperCase();
     const liveQuote = quote || (await getStockBySymbolLive(cleanSymbol).catch(() => null));
-    const report = await runInvestmentCommittee(cleanSymbol, liveQuote, apiKey);
+    const effectiveApiKey = apiKey?.trim() || process.env.OPENROUTER_API_KEY?.trim();
+    const report = await runInvestmentCommittee(cleanSymbol, liveQuote, effectiveApiKey);
 
     return NextResponse.json({
       success: true,

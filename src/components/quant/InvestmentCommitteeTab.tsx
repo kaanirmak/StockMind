@@ -102,6 +102,16 @@ export default function InvestmentCommitteeTab({
     }, 450);
 
     try {
+      const activeHolding = portfolioStocks.find((h) => h.symbol.toUpperCase() === cleanSym);
+      const quotePayload = activeHolding
+        ? {
+            price: activeHolding.currentPrice,
+            changePercent: activeHolding.dailyChangePercent,
+            name: activeHolding.symbol,
+            sector: activeHolding.assetType === 'fund' ? 'Yatırım Fonu' : 'Hisse Senedi',
+          }
+        : undefined;
+
       // First try API route, with graceful fallback to client-side runner
       const res = await fetch('/api/quant/committee', {
         method: 'POST',
@@ -109,6 +119,7 @@ export default function InvestmentCommitteeTab({
         body: JSON.stringify({
           symbol: cleanSym,
           apiKey: customApiKey || undefined,
+          quote: quotePayload,
         }),
       });
 
