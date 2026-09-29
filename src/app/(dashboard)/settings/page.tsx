@@ -130,7 +130,7 @@ export default function SettingsPage() {
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          const size = 256;
+          const size = 128;
           canvas.width = size;
           canvas.height = size;
           const ctx = canvas.getContext('2d');
@@ -144,7 +144,8 @@ export default function SettingsPage() {
           const startY = (img.height - minDim) / 2;
 
           ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
-          const compressed = canvas.toDataURL('image/jpeg', 0.88);
+          // 128x128 JPEG at 0.75 is only ~4KB, keeping profile payload minimal
+          const compressed = canvas.toDataURL('image/jpeg', 0.75);
           setAvatarUrl(compressed);
           showToast({
             type: 'success',

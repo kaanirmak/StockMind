@@ -20,11 +20,16 @@ export function useAuth() {
         .eq('id', userId)
         .maybeSingle();
 
+      const metaAvatar = currentUser?.user_metadata?.avatar_url;
+      const safeMetaAvatar = metaAvatar && !metaAvatar.startsWith('data:') && metaAvatar.length < 500 ? metaAvatar : null;
+      const pictureAvatar = currentUser?.user_metadata?.picture;
+      const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
+
       const userProf: UserProfile = {
         id: userId,
         username: data?.username || currentUser?.email?.split('@')[0] || 'kullanici',
         fullName: data?.full_name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || null,
-        avatarUrl: data?.avatar_url || currentUser?.user_metadata?.avatar_url || currentUser?.user_metadata?.picture || null,
+        avatarUrl: data?.avatar_url || safeMetaAvatar || safePicture || null,
         preferredLanguage: data?.preferred_language || 'tr',
         preferredCurrency: data?.preferred_currency || 'TRY',
         isPro: true,
@@ -38,11 +43,16 @@ export function useAuth() {
     } catch (e) {
       console.warn('fetchProfile error:', e);
       if (currentUser) {
+        const metaAvatar = currentUser?.user_metadata?.avatar_url;
+        const safeMetaAvatar = metaAvatar && !metaAvatar.startsWith('data:') && metaAvatar.length < 500 ? metaAvatar : null;
+        const pictureAvatar = currentUser?.user_metadata?.picture;
+        const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
+
         const fallbackProf: UserProfile = {
           id: userId,
           username: currentUser.email?.split('@')[0] || 'kullanici',
           fullName: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || null,
-          avatarUrl: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || null,
+          avatarUrl: safeMetaAvatar || safePicture || null,
           preferredLanguage: 'tr',
           preferredCurrency: 'TRY',
           isPro: true,
@@ -97,11 +107,19 @@ export function useAuth() {
       if (updates.avatarUrl !== undefined) payload.avatar_url = updates.avatarUrl;
 
       // Update Supabase auth user metadata as well
+      // CRITICAL: NEVER store base64/data URLs in Supabase auth user_metadata!
+      // Auth user_metadata is encoded into the JWT, which @supabase/ssr writes into cookies.
+      // If avatar_url is base64, cookies swell to >30KB-80KB, causing Vercel Edge 494 REQUEST_HEADER_TOO_LARGE.
+      // Base64 avatars are stored strictly in the PostgreSQL 'profiles' table.
       try {
+        const safeAuthAvatar = (updates.avatarUrl && !updates.avatarUrl.startsWith('data:') && updates.avatarUrl.length < 500)
+          ? updates.avatarUrl
+          : null;
+
         await supabase.auth.updateUser({
           data: {
             full_name: updates.fullName !== undefined ? updates.fullName : (user.user_metadata?.full_name || ''),
-            avatar_url: updates.avatarUrl !== undefined ? updates.avatarUrl : (user.user_metadata?.avatar_url || null),
+            avatar_url: safeAuthAvatar,
           },
         });
       } catch (authMetaErr) {
@@ -167,12 +185,26 @@ export function useAuth() {
       useAuthStore.getState().clearUser();
     };
 
+    const cleanupBloatedMetadata = async (u: User) => {
+      const metaAvatar = u.user_metadata?.avatar_url;
+      if (metaAvatar && (metaAvatar.startsWith('data:') || metaAvatar.length > 500)) {
+        try {
+          await supabase.auth.updateUser({
+            data: { avatar_url: null },
+          });
+        } catch (e) {
+          console.warn('Failed to purge bloated avatar from auth metadata:', e);
+        }
+      }
+    };
+
     const getUser = async () => {
       try {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (isMounted) {
           setUser(currentUser);
           if (currentUser) {
+            cleanupBloatedMetadata(currentUser);
             await fetchProfile(currentUser.id, currentUser);
             useWatchlistStore.getState().loadUserWatchlist(currentUser.id);
           } else {
@@ -196,6 +228,7 @@ export function useAuth() {
         if (isMounted) {
           setUser(authUser);
           if (authUser) {
+            cleanupBloatedMetadata(authUser);
             await fetchProfile(authUser.id, authUser);
             useWatchlistStore.getState().loadUserWatchlist(authUser.id);
           } else {
