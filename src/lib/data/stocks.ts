@@ -166,6 +166,7 @@ export async function fetchAllTradingViewStocks(): Promise<{ bist: StockMarketIn
           'Low.All',
           'price_earnings_ttm',
           'dividend_yield_recent',
+          'exchange',
         ],
         sort: { sortBy: 'market_cap_basic', sortOrder: 'desc' },
         range: [0, 500],
@@ -176,17 +177,18 @@ export async function fetchAllTradingViewStocks(): Promise<{ bist: StockMarketIn
     if (usRes.ok) {
       const usData = await usRes.json();
       usData.data?.forEach((item: any) => {
-        const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield] = item.d;
+        const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield, rawExchange] = item.d;
         if (name && close !== null && close !== undefined) {
           const currentPrice = Number(close.toFixed(2));
           const changePercent = Number((change || 0).toFixed(2));
           const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
           const sector = SECTOR_TR_MAP[rawSector] || rawSector || 'Teknoloji & Büyüme';
+          const isNyse = String(rawExchange || '').toUpperCase().includes('NYSE');
 
           usStocks.push({
             symbol: name,
             name: desc || name,
-            exchange: 'NASDAQ',
+            exchange: isNyse ? 'NYSE' : 'NASDAQ',
             currency: 'USD',
             sector,
             basePrice: currentPrice,
@@ -775,7 +777,8 @@ export async function getAllStocksLive(filter?: {
     for (const stock of allStocks) {
       if (filter.exchange && filter.exchange !== 'ALL') {
         if (filter.exchange === 'BIST' && stock.exchange !== 'BIST') continue;
-        if ((filter.exchange === 'NASDAQ' || filter.exchange === 'NYSE') && stock.exchange === 'BIST') continue;
+        if (filter.exchange === 'NASDAQ' && stock.exchange !== 'NASDAQ') continue;
+        if (filter.exchange === 'NYSE' && stock.exchange !== 'NYSE') continue;
       }
       if (filter.sector && filter.sector !== 'ALL' && !stock.sector.toLowerCase().includes(filter.sector.toLowerCase())) {
         continue;
@@ -795,7 +798,8 @@ export async function getAllStocksLive(filter?: {
   return (allStocks.filter((stock) => {
     if (filter?.exchange && filter.exchange !== 'ALL') {
       if (filter.exchange === 'BIST' && stock.exchange !== 'BIST') return false;
-      if ((filter.exchange === 'NASDAQ' || filter.exchange === 'NYSE') && stock.exchange === 'BIST') return false;
+      if (filter.exchange === 'NASDAQ' && stock.exchange !== 'NASDAQ') return false;
+      if (filter.exchange === 'NYSE' && stock.exchange !== 'NYSE') return false;
     }
     if (filter?.sector && filter.sector !== 'ALL' && !stock.sector.toLowerCase().includes(filter.sector.toLowerCase())) {
       return false;
@@ -841,6 +845,12 @@ export const POPULAR_STOCKS: StockMarketInfo[] = [
   { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NASDAQ', currency: 'USD', sector: 'Bilişim & Yazılım', basePrice: 498.78, marketCap: 3703000000000, high52w: 510.0, low52w: 380.0 },
   { symbol: 'PLTR', name: 'Palantir Technologies', exchange: 'NASDAQ', currency: 'USD', sector: 'Bilişim & Yazılım', basePrice: 174.21, marketCap: 418600000000, high52w: 180.0, low52w: 22.5 },
   { symbol: 'TSLA', name: 'Tesla, Inc.', exchange: 'NASDAQ', currency: 'USD', sector: 'Ulaştırma & Havacılık', basePrice: 357.6, marketCap: 1412000000000, high52w: 380.0, low52w: 138.8 },
+  { symbol: 'BRK.B', name: 'Berkshire Hathaway Inc.', exchange: 'NYSE', currency: 'USD', sector: 'Bankacılık & Finans', basePrice: 462.5, marketCap: 1012000000000, high52w: 485.0, low52w: 360.0 },
+  { symbol: 'JPM', name: 'JPMorgan Chase & Co.', exchange: 'NYSE', currency: 'USD', sector: 'Bankacılık & Finans', basePrice: 228.4, marketCap: 648000000000, high52w: 240.0, low52w: 145.0 },
+  { symbol: 'WMT', name: 'Walmart Inc.', exchange: 'NYSE', currency: 'USD', sector: 'Perakende Ticaret', basePrice: 85.3, marketCap: 686000000000, high52w: 88.0, low52w: 52.0 },
+  { symbol: 'V', name: 'Visa Inc.', exchange: 'NYSE', currency: 'USD', sector: 'Bankacılık & Finans', basePrice: 295.6, marketCap: 595000000000, high52w: 305.0, low52w: 230.0 },
+  { symbol: 'KO', name: 'The Coca-Cola Company', exchange: 'NYSE', currency: 'USD', sector: 'Gıda & İçecek', basePrice: 68.2, marketCap: 293000000000, high52w: 73.0, low52w: 55.0 },
+  { symbol: 'DIS', name: 'The Walt Disney Company', exchange: 'NYSE', currency: 'USD', sector: 'Eğlence & Medya', basePrice: 112.4, marketCap: 205000000000, high52w: 123.0, low52w: 88.0 },
 ];
 
 /**

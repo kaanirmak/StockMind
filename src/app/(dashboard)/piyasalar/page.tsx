@@ -9,16 +9,28 @@ import { TefasFundInfo } from '@/lib/data/funds';
 import { Badge, Button, Input, TableSkeleton, useToast } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 
-type TabId = 'stocks' | 'funds';
+type MarketId = 'BIST' | 'TEFAS' | 'NASDAQ' | 'NYSE';
+
+const MARKETS: Array<{ id: MarketId; label: string; icon: string; name: string }> = [
+  { id: 'BIST', label: 'BIST', icon: '🇹🇷', name: 'Borsa İstanbul' },
+  { id: 'TEFAS', label: 'TEFAS', icon: '📊', name: 'Yatırım Fonları' },
+  { id: 'NASDAQ', label: 'NASDAQ', icon: '🇺🇸', name: 'NASDAQ' },
+  { id: 'NYSE', label: 'NYSE', icon: '🏛️', name: 'NYSE' },
+];
 
 function PiyasalarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab = (searchParams.get('tab') as TabId) || 'stocks';
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+
+  const rawParam = (searchParams.get('market') || searchParams.get('tab') || searchParams.get('exchange') || 'BIST').toUpperCase();
+  const initialMarket: MarketId = 
+    rawParam === 'FUNDS' || rawParam === 'TEFAS' ? 'TEFAS' :
+    rawParam === 'NASDAQ' ? 'NASDAQ' :
+    rawParam === 'NYSE' ? 'NYSE' : 'BIST';
+
+  const [activeMarket, setActiveMarket] = useState<MarketId>(initialMarket);
 
   // Stocks state
-  const [selectedExchange, setSelectedExchange] = useState<string>('ALL');
   const [selectedSector, setSelectedSector] = useState<string>('ALL');
   const [stockSearch, setStockSearch] = useState<string>('');
   const [stockSortBy, setStockSortBy] = useState<'changePercent' | 'price' | 'volume' | 'marketCap'>('changePercent');
@@ -38,17 +50,22 @@ function PiyasalarContent() {
   const { showToast } = useToast();
   const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
 
-  const handleTabChange = (tab: TabId) => {
-    setActiveTab(tab);
-    router.replace(`/piyasalar?tab=${tab}`, { scroll: false });
+  const handleMarketChange = (market: MarketId) => {
+    setActiveMarket(market);
+    router.replace(`/piyasalar?market=${market.toLowerCase()}`, { scroll: false });
   };
 
-  // Stocks data
-  const { stocks, loading: stocksLoading, error: stocksError } = useStocks({
-    exchange: selectedExchange,
-    sector: selectedSector,
-    search: stockSearch,
-  });
+  // Stocks data (active when activeMarket is BIST, NASDAQ, or NYSE)
+  const isStocksMarket = activeMarket !== 'TEFAS';
+  const { stocks, loading: stocksLoading, error: stocksError } = useStocks(
+    isStocksMarket
+      ? {
+          exchange: activeMarket,
+          sector: selectedSector,
+          search: stockSearch,
+        }
+      : undefined
+  );
 
   const sortedStocks = [...stocks].sort((a, b) => {
     const valA = a[stockSortBy] || 0;
@@ -106,7 +123,7 @@ function PiyasalarContent() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Piyasalar</h1>
           <p className="text-text-secondary text-xs sm:text-sm mt-0.5">
-            Hisse senetleri ve TEFAS yatırım fonlarını tek ekrandan takip edin.
+            BIST, TEFAS Fonları, NASDAQ ve NYSE piyasalarını anlık verilerle takip edin.
           </p>
         </div>
         {/* View Mode Toggle */}
@@ -132,57 +149,43 @@ function PiyasalarContent() {
         </div>
       </div>
 
-      {/* Main Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-bg-secondary rounded-xl border border-border w-full">
-        <button
-          onClick={() => handleTabChange('stocks')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all cursor-pointer ${activeTab === 'stocks' ? 'bg-accent text-white shadow-lg shadow-accent/25' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'}`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
-          </svg>
-          <span>Hisse Senetleri</span>
-          {!stocksLoading && <span className="text-[10px] opacity-70 hidden sm:inline">({stocks.length})</span>}
-        </button>
-        <button
-          onClick={() => handleTabChange('funds')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all cursor-pointer ${activeTab === 'funds' ? 'bg-accent text-white shadow-lg shadow-accent/25' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'}`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
-          </svg>
-          <span>TEFAS Fonları</span>
-          {!fundsLoading && <span className="text-[10px] opacity-70 hidden sm:inline">({funds.length})</span>}
-        </button>
+      {/* Direct Market Tabs: BIST | TEFAS | NASDAQ | NYSE */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-bg-secondary rounded-2xl border border-border w-full overflow-x-auto">
+        {MARKETS.map((m) => {
+          const isActive = activeMarket === m.id;
+          return (
+            <button
+              key={m.id}
+              onClick={() => handleMarketChange(m.id)}
+              className={`flex-1 min-w-[100px] sm:min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-accent text-white shadow-lg shadow-accent/25'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              <span className="text-base">{m.icon}</span>
+              <span>{m.label}</span>
+              <span className="text-[10px] font-normal opacity-80 hidden md:inline">
+                ({m.name})
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ═══════════════════ STOCKS TAB ═══════════════════ */}
-      {activeTab === 'stocks' && (
+      {/* ═══════════════════ STOCKS (BIST / NASDAQ / NYSE) ═══════════════════ */}
+      {isStocksMarket && (
         <div className="space-y-4">
           {/* Stocks Filters */}
           <div className="glass-card p-3 sm:p-4 space-y-3">
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-              {/* Exchange Filter */}
-              <div className="flex items-center gap-1 p-1 bg-bg-secondary rounded-xl border border-border overflow-x-auto flex-1 sm:flex-none">
-                {[
-                  { id: 'ALL', label: 'Tümü' },
-                  { id: 'BIST', label: '🇹🇷 BIST' },
-                  { id: 'NASDAQ', label: '🇺🇸 NASDAQ' },
-                  { id: 'NYSE', label: '🇺🇸 NYSE' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setSelectedExchange(tab.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex-shrink-0 ${selectedExchange === tab.id ? 'bg-accent text-white shadow' : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'}`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
               {/* Search */}
               <div className="flex-1">
                 <Input
-                  placeholder="Sembol veya şirket ara..."
+                  placeholder={`${activeMarket} sembol veya şirket ara (örn: ${
+                    activeMarket === 'BIST' ? 'THYAO, ASELS, GARAN' :
+                    activeMarket === 'NASDAQ' ? 'NVDA, AAPL, MSFT' : 'BRK.B, JPM, WMT'
+                  })...`}
                   value={stockSearch}
                   onChange={(e) => setStockSearch(e.target.value)}
                   leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
@@ -198,7 +201,7 @@ function PiyasalarContent() {
                   onClick={() => setSelectedSector(sector)}
                   className={`px-2.5 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${selectedSector === sector ? 'bg-accent/20 border-accent text-accent font-semibold' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'}`}
                 >
-                  {sector === 'ALL' ? 'Tümü' : sector}
+                  {sector === 'ALL' ? 'Tüm Sektörler' : sector}
                 </button>
               ))}
             </div>
@@ -337,8 +340,8 @@ function PiyasalarContent() {
         </div>
       )}
 
-      {/* ═══════════════════ FUNDS TAB ═══════════════════ */}
-      {activeTab === 'funds' && (
+      {/* ═══════════════════ FUNDS TAB (TEFAS) ═══════════════════ */}
+      {activeMarket === 'TEFAS' && (
         <div className="space-y-4">
           {/* Funds Filters */}
           <div className="glass-card p-3 sm:p-4 space-y-3">
