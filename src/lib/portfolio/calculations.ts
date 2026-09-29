@@ -98,9 +98,21 @@ export function calculatePortfolioHoldings(
   >();
 
   // Sort by date ascending to correctly calculate weighted cost
-  const sorted = [...transactions].sort(
-    (a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime()
-  );
+  // Critical: On the same calendar day, BUY transactions must always be processed before SELL
+  // so that intraday positions (e.g. day trades, IPO sales) properly reduce shares to zero.
+  const sorted = [...transactions].sort((a, b) => {
+    const da = new Date(a.transactionDate).getTime();
+    const db = new Date(b.transactionDate).getTime();
+    if (da !== db) return da - db;
+    if (a.transactionType === 'buy' && b.transactionType === 'sell') return -1;
+    if (a.transactionType === 'sell' && b.transactionType === 'buy') return 1;
+    if (a.createdAt && b.createdAt) {
+      const ca = new Date(a.createdAt).getTime();
+      const cb = new Date(b.createdAt).getTime();
+      if (ca !== cb) return ca - cb;
+    }
+    return 0;
+  });
 
   for (const t of sorted) {
     const { symbol: cleanSym, assetType: cleanType, exchange: cleanEx } = cleanSymbol(t.symbol);

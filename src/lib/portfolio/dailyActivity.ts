@@ -172,7 +172,14 @@ export function getPortfolioDailyActivity(
   // Sort transactions chronologically for accurate position replay
   const sortedTransactions = [...transactions]
     .filter((t) => t && t.transactionDate && t.quantity > 0)
-    .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
+    .sort((a, b) => {
+      const da = new Date(a.transactionDate).getTime();
+      const db = new Date(b.transactionDate).getTime();
+      if (da !== db) return da - db;
+      if (a.transactionType === 'buy' && b.transactionType === 'sell') return -1;
+      if (a.transactionType === 'sell' && b.transactionType === 'buy') return 1;
+      return 0;
+    });
 
   // 4. Precompute timeline dates to find previous trading days
   const dateList: string[] = [];

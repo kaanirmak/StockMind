@@ -263,23 +263,32 @@ async function insertBatchTransactionsSupabase(
   portfolioId: string,
   txList: Omit<Transaction, 'id' | 'createdAt' | 'userId'>[]
 ): Promise<Transaction[] | null> {
+  if (!isUuid(portfolioId)) {
+    console.warn('insertBatchTransactionsSupabase: portfolioId is not a valid UUID:', portfolioId);
+    return null;
+  }
+
   try {
-    // Attempt 1: Full insert
-    const fullRows = txList.map((tx) => ({
-      portfolio_id: portfolioId,
-      user_id: user.id,
-      symbol: tx.symbol.toUpperCase(),
-      asset_type: tx.assetType,
-      transaction_type: tx.transactionType,
-      quantity: tx.quantity,
-      price: tx.price,
-      currency: tx.currency || 'TRY',
-      exchange_rate: tx.exchangeRate || null,
-      commission: tx.commission || 0,
-      transaction_date: tx.transactionDate,
-      exchange: tx.exchange || null,
-      notes: tx.notes || null,
-    }));
+    // Attempt 1: Full insert with currency & exchange_rate
+    const fullRows = txList.map((tx) => {
+      const { symbol, assetType, exchange } = cleanSymbol(tx.symbol);
+      const isUsd = (tx.currency || '').toUpperCase() === 'USD' || exchange === 'NASDAQ' || exchange === 'NYSE';
+      return {
+        portfolio_id: portfolioId,
+        user_id: user.id,
+        symbol: (symbol || tx.symbol).toUpperCase().trim(),
+        asset_type: (tx.assetType === 'fund' || assetType === 'fund') ? 'fund' : 'stock',
+        transaction_type: tx.transactionType === 'sell' ? 'sell' : 'buy',
+        quantity: Math.max(0.0001, Number(tx.quantity) || 1),
+        price: Math.max(0, Number(tx.price) || 0),
+        currency: isUsd ? 'USD' : (tx.currency || 'TRY').toUpperCase(),
+        exchange_rate: tx.exchangeRate ? Number(tx.exchangeRate) : (isUsd ? 38.5 : null),
+        commission: Math.max(0, Number(tx.commission) || 0),
+        transaction_date: tx.transactionDate || new Date().toISOString().split('T')[0],
+        exchange: exchange || tx.exchange || null,
+        notes: tx.notes || null,
+      };
+    });
 
     const { data, error } = await supabase.from('transactions').insert(fullRows).select();
     if (!error && data && data.length > 0) {
@@ -291,10 +300,16 @@ async function insertBatchTransactionsSupabase(
       });
     }
 
-    // Attempt 2: Fallback with base schema
+    if (error) {
+      console.warn('insertBatchTransactionsSupabase fullRows error, attempting baseRows fallback:', error.message || error);
+    }
+
+    // Attempt 2: Fallback with base schema (no currency or exchange_rate columns in DB)
     const baseRows = txList.map((tx) => {
+      const { symbol, assetType, exchange } = cleanSymbol(tx.symbol);
+      const isUsd = (tx.currency || '').toUpperCase() === 'USD' || exchange === 'NASDAQ' || exchange === 'NYSE';
       const notesMeta =
-        tx.currency === 'USD'
+        isUsd
           ? tx.notes
             ? `${tx.notes} [CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
             : `[CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
@@ -303,14 +318,14 @@ async function insertBatchTransactionsSupabase(
       return {
         portfolio_id: portfolioId,
         user_id: user.id,
-        symbol: tx.symbol.toUpperCase(),
-        asset_type: tx.assetType,
-        transaction_type: tx.transactionType,
-        quantity: tx.quantity,
-        price: tx.price,
-        commission: tx.commission || 0,
-        transaction_date: tx.transactionDate,
-        exchange: tx.exchange || null,
+        symbol: (symbol || tx.symbol).toUpperCase().trim(),
+        asset_type: (tx.assetType === 'fund' || assetType === 'fund') ? 'fund' : 'stock',
+        transaction_type: tx.transactionType === 'sell' ? 'sell' : 'buy',
+        quantity: Math.max(0.0001, Number(tx.quantity) || 1),
+        price: Math.max(0, Number(tx.price) || 0),
+        commission: Math.max(0, Number(tx.commission) || 0),
+        transaction_date: tx.transactionDate || new Date().toISOString().split('T')[0],
+        exchange: exchange || tx.exchange || null,
         notes: notesMeta,
       };
     });
@@ -323,6 +338,10 @@ async function insertBatchTransactionsSupabase(
         parsed.exchangeRate = txList[idx]?.exchangeRate;
         return parsed;
       });
+    }
+
+    if (baseError) {
+      console.warn('insertBatchTransactionsSupabase baseRows error:', baseError.message || baseError);
     }
 
     return null;
@@ -500,10 +519,15 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         if (!user) {
           // Guest mode: load strictly from guest storage
           const local = loadLocalState(null);
+          const activeId = local.activePortfolioId || 'p-default';
+          const guestTxs = local.transactions.map((t) => ({
+            ...t,
+            portfolioId: t.portfolioId || activeId,
+          }));
           set({
             portfolios: local.portfolios.length > 0 ? local.portfolios : INITIAL_PORTFOLIOS,
-            activePortfolioId: local.activePortfolioId || 'p-default',
-            transactions: local.transactions,
+            activePortfolioId: activeId,
+            transactions: guestTxs,
             currentUserId: null,
             loading: false,
           });
@@ -563,12 +587,13 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           createdAt: p.created_at,
         }));
 
-        // 2. Fetch user's transactions from Supabase DB (Authoritative source of truth)
+        // 2. Fetch user's transactions from Supabase DB
         const { data: dbTransactions, error: txError } = await supabase
           .from('transactions')
           .select('*')
           .eq('user_id', user.id)
-          .order('transaction_date', { ascending: false });
+          .order('transaction_date', { ascending: true })
+          .order('created_at', { ascending: true });
 
         if (txError) {
           console.warn('Failed to fetch DB transactions:', txError);
@@ -587,10 +612,48 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           }
         }
 
+        // Safety check: If Supabase returned 0 transactions, but local storage HAS transactions:
+        // DO NOT obliterate local transactions! Preserve them and trigger sync to Supabase.
+        let effectiveTransactions = mappedTransactions;
+        if (mappedTransactions.length === 0 && local.transactions && local.transactions.length > 0) {
+          console.info('[PortfolioStore] Supabase returned 0 transactions, preserving local transactions & syncing...');
+          effectiveTransactions = local.transactions;
+          if (validActiveId && isUuid(validActiveId)) {
+            insertBatchTransactionsSupabase(
+              supabase,
+              user,
+              validActiveId,
+              local.transactions.map((t) => ({ ...t, portfolioId: validActiveId }))
+            ).catch((err) => console.warn('Background sync to Supabase failed:', err));
+          }
+        }
+
+        // Check if effectiveTransactions are all under a specific portfolioId
+        // If current validActiveId has NO transactions, but another portfolio in mappedPortfolios DOES,
+        // switch to that portfolio!
+        const portWithTxs = mappedPortfolios.find((p) => effectiveTransactions.some((t) => t.portfolioId === p.id));
+        if (portWithTxs && !effectiveTransactions.some((t) => t.portfolioId === validActiveId)) {
+          validActiveId = portWithTxs.id;
+        }
+
+        // If transactions exist with 'p-default' or missing portfolioId, re-tag them to validActiveId.
+        // Filter out orphaned transactions that belong to deleted/unknown portfolios instead of merging them!
+        const validPortfolioIds = new Set(mappedPortfolios.map((p) => p.id));
+        if (effectiveTransactions.length > 0 && validActiveId) {
+          effectiveTransactions = effectiveTransactions
+            .map((t) => {
+              if ((!t.portfolioId || t.portfolioId === 'p-default') && validActiveId) {
+                return { ...t, portfolioId: validActiveId };
+              }
+              return t;
+            })
+            .filter((t) => validPortfolioIds.has(t.portfolioId));
+        }
+
         set({
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
           activePortfolioId: validActiveId,
-          transactions: mappedTransactions,
+          transactions: effectiveTransactions,
           currentUserId: user.id,
           loading: false,
         });
@@ -600,7 +663,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         saveLocalState(user.id, {
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
           activePortfolioId: validActiveId,
-          transactions: mappedTransactions,
+          transactions: effectiveTransactions,
         });
       } catch (err: any) {
         console.error('Error in fetchPortfoliosAndTransactions:', err);
@@ -948,27 +1011,21 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
 
+        let dbPortId = portfolioId;
         if (user) {
-          if (isUuid(portfolioId)) {
-            await supabase.from('transactions').delete().eq('portfolio_id', portfolioId).eq('user_id', user.id);
-          } else {
-            const port = get().portfolios.find((p) => p.id === portfolioId);
+          if (!isUuid(portfolioId)) {
+            const port = get().portfolios.find((p) => p.id === portfolioId) || get().portfolios[0];
             if (port) {
-              const { data: dbP } = await supabase
-                .from('portfolios')
-                .select('id')
-                .eq('user_id', user.id)
-                .eq('name', port.name)
-                .maybeSingle();
-              if (dbP?.id) {
-                await supabase.from('transactions').delete().eq('portfolio_id', dbP.id).eq('user_id', user.id);
-              }
+              dbPortId = await ensurePortfolioInSupabase(supabase, user, port);
             }
+          }
+          if (isUuid(dbPortId)) {
+            await supabase.from('transactions').delete().eq('portfolio_id', dbPortId).eq('user_id', user.id);
           }
         }
 
         set((state) => {
-          const updated = state.transactions.filter((t) => t.portfolioId !== portfolioId);
+          const updated = state.transactions.filter((t) => t.portfolioId !== portfolioId && t.portfolioId !== dbPortId);
           saveLocalState(user?.id, {
             portfolios: state.portfolios,
             activePortfolioId: state.activePortfolioId,
@@ -988,7 +1045,10 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     getSummary: () => {
       const { transactions, activePortfolioId, livePrices, portfolios } = get();
       const effectiveActiveId = activePortfolioId || portfolios[0]?.id || 'p-default';
-      const filtered = transactions.filter((t) => t.portfolioId === effectiveActiveId);
+      let filtered = transactions.filter((t) => t.portfolioId === effectiveActiveId);
+      if (filtered.length === 0 && transactions.length > 0 && portfolios.length <= 1) {
+        filtered = transactions;
+      }
       return calculatePortfolioSummary(filtered, livePrices);
     },
   };

@@ -37,7 +37,15 @@ export function calculatePortfolioHistory(
   // Filter valid transactions
   const sorted = [...transactions]
     .filter((t) => t && t.quantity > 0 && t.price > 0 && t.transactionDate)
-    .sort((a, b) => new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime());
+    .sort((a, b) => {
+      const diff = new Date(a.transactionDate).getTime() - new Date(b.transactionDate).getTime();
+      if (diff !== 0) return diff;
+      const typeA = a.transactionType || (a as any).type;
+      const typeB = b.transactionType || (b as any).type;
+      if (typeA === 'buy' && typeB === 'sell') return -1;
+      if (typeA === 'sell' && typeB === 'buy') return 1;
+      return 0;
+    });
 
   // Helper for USD/TRY rate
   const usdQuote = livePrices['USDTRY'] || livePrices['USD'];

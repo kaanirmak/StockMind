@@ -1,16 +1,28 @@
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
+import { POPULAR_ALIASES, normalizeText } from '@/lib/utils/search';
 
 const TEFAS_SET = new Set((TEFAS_DIRECTORY as { code: string }[]).map((f) => f.code.toUpperCase()));
 
 /**
- * Cleans broker prefixes (FON:, IST:, MUTF:, BIST:, etc.) and detects asset type & exchange
+ * Cleans broker prefixes (FON:, IST:, MUTF:, BIST:, etc.), ISIN codes, suffixes (.IS, .E)
+ * and detects asset type & exchange. Also maps company names to tickers.
  */
 export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' | 'fund'; exchange: string } {
-  let raw = String(sym || '').toUpperCase().trim();
+  let raw = String(sym || '').replace(/['"“”]/g, '').trim().toUpperCase();
   let assetType: 'stock' | 'fund' = 'stock';
   let exchange = 'BIST';
 
-  // Strip prefixes
+  if (!raw) {
+    return { symbol: '', assetType: 'stock', exchange: 'BIST' };
+  }
+
+  // 1. Detect and unpack Turkish ISIN codes (e.g. TRATHYAO91M5 -> THYAO, TRAASELS91H2 -> ASELS)
+  const isinMatch = raw.match(/^TR[AE]([A-Z0-9]{4,5})[0-9A-Z]{3,4}$/i);
+  if (isinMatch && isinMatch[1]) {
+    raw = isinMatch[1].toUpperCase();
+  }
+
+  // 2. Strip prefixes (FON:, IST:, BIST:, NASDAQ:, etc.)
   if (raw.startsWith('FON:') || raw.startsWith('MUTF:') || raw.startsWith('TEFAS:')) {
     raw = raw.replace(/^(FON|MUTF|TEFAS):/, '').trim();
     assetType = 'fund';
@@ -25,10 +37,11 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
     exchange = 'NASDAQ';
   }
 
-  // Strip trailing suffixes (.IS, .E, .TI)
-  raw = raw.replace(/\.(IS|E|TI)$/, '').trim();
+  // 3. Strip trailing suffixes (.IS, .E, .TI, .BIST)
+  // Note: .E is the official Borsa Istanbul equity suffix (e.g. THYAO.E, GARAN.E)
+  raw = raw.replace(/\.(IS|E|TI|BIST)$/i, '').trim();
 
-  // Alias checks for commodities
+  // 4. Alias checks for commodities
   if (
     raw === 'GRAM_ALTIN' ||
     raw === 'GRAM ALTIN' ||
@@ -49,7 +62,22 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
     return { symbol: 'GRAM_GUMUS', assetType: 'stock', exchange: 'BIST' };
   }
 
-  // Check if symbol is in TEFAS directory or follows 3-letter uppercase fund pattern
+  // 5. If raw looks like a full company name rather than a ticker (contains space or > 5 chars)
+  // Attempt to resolve via POPULAR_ALIASES
+  if (raw.includes(' ') || raw.length > 5) {
+    const norm = normalizeText(raw);
+    for (const [ticker, aliases] of Object.entries(POPULAR_ALIASES)) {
+      if (aliases.some((a) => {
+        const normA = normalizeText(a);
+        return norm === normA || norm.includes(normA) || normA.includes(norm);
+      })) {
+        raw = ticker;
+        break;
+      }
+    }
+  }
+
+  // 6. Check if symbol is in TEFAS directory or follows fund patterns
   if (TEFAS_SET.has(raw)) {
     assetType = 'fund';
     exchange = 'TEFAS';

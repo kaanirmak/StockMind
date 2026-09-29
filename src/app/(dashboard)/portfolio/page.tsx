@@ -48,7 +48,10 @@ export default function PortfolioPage() {
 
   const summary = getSummary();
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
-  const activeTransactions = transactions.filter((t) => t.portfolioId === activePortfolioId);
+  let activeTransactions = transactions.filter((t) => t.portfolioId === activePortfolioId);
+  if (activeTransactions.length === 0 && transactions.length > 0 && portfolios.length <= 1) {
+    activeTransactions = transactions;
+  }
 
   const isProfit = summary.totalPnL >= 0;
 

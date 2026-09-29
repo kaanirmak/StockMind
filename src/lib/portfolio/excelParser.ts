@@ -27,7 +27,11 @@ const TEFAS_CODES = new Set(
 function normalizeHeader(header: string): string {
   return String(header || '')
     .trim()
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[_\s\-()\/.]+/g, '')
     .replace(/ı/g, 'i')
     .replace(/ğ/g, 'g')
@@ -41,7 +45,6 @@ function normalizeHeader(header: string): string {
  * Parses numeric price or quantity handling Turkish comma vs dot decimals
  * (e.g. 85,00 -> 85, 5.429,22 -> 5429.22, 49.785,95 -> 49785.95, 9,17 -> 9.17, 2.923361 -> 2.923361)
  * Also handles trailing/leading commas from bad CSV splits (e.g. "2," -> 2)
- * Turkish thousands with single dot: 1.000 -> 1000, 28.550 -> 28550
  */
 export function parseCleanNumber(val: any): number {
   if (val == null || val === '') return 0;
@@ -50,6 +53,11 @@ export function parseCleanNumber(val: any): number {
   let str = String(val).trim();
   // Remove currency symbols, units and spaces
   str = str.replace(/[₺$€TLUSDTRY\s'"]/gi, '');
+
+  // Check if string matches Turkish dot-thousands with trailing comma (e.g. "1.324,") BEFORE stripping trailing commas
+  if (/^\d{1,3}(\.\d{3})+,\s*$/.test(str)) {
+    str = str.replace(/[.,]/g, '');
+  }
 
   // Strip leading/trailing commas from bad CSV splits (e.g. "2," -> "2", ",5" -> "5")
   str = str.replace(/^,+|,+$/g, '');
@@ -67,7 +75,7 @@ export function parseCleanNumber(val: any): number {
       str = str.replace(/,/g, '');
     }
   } else if (str.includes(',')) {
-    // Check if comma is decimal (e.g. 85,00 or 9,17 or 2,923361) vs multiple thousands
+    // Comma alone: in Turkish and European formats, comma is decimal separator: 85,00 -> 85.00
     const commas = (str.match(/,/g) || []).length;
     if (commas === 1) {
       str = str.replace(',', '.');
@@ -79,21 +87,10 @@ export function parseCleanNumber(val: any): number {
     if (dots > 1) {
       // Multiple dots are always thousands separators: 1.000.000 -> 1000000
       str = str.replace(/\./g, '');
-    } else {
-      // Single dot: check if it's a Turkish thousands separator (e.g. 1.000, 28.550)
-      // Pattern: digits.3digits with NO more digits after → thousands separator
-      // e.g. "1.000" → 1000, "28.550" → 28550
-      // vs. "2.923361" → 2.923361 (decimal), "0.50" → 0.50 (decimal)
-      const singleDotMatch = str.match(/^(\d+)\.(\d+)$/);
-      if (singleDotMatch) {
-        const afterDot = singleDotMatch[2];
-        if (afterDot.length === 3) {
-          // Exactly 3 digits after dot → Turkish thousands separator
-          str = str.replace('.', '');
-        }
-        // Otherwise keep as decimal (e.g. 2.923361, 0.50, 1.25)
-      }
     }
+    // Single dot alone: in CSV or standard number strings, single dot is DECIMAL:
+    // e.g. 28.55, 28.550, 1.25, 0.50, 1250.75
+    // Never strip single dot, as that turns 28.550 into 28550!
   }
 
   const num = parseFloat(str);
@@ -106,11 +103,24 @@ export function parseCleanNumber(val: any): number {
 function parseCleanDate(val: any): string {
   if (!val) return new Date().toISOString().split('T')[0];
 
+  // If Date object (from XLSX cellDates: true)
+  if (val instanceof Date) {
+    if (!isNaN(val.getTime())) {
+      const year = val.getFullYear();
+      const month = String(val.getMonth() + 1).padStart(2, '0');
+      const day = String(val.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
   // If Excel serial date number
   if (typeof val === 'number') {
     const date = new Date((val - 25569) * 86400 * 1000);
     if (!isNaN(date.getTime())) {
-      return date.toISOString().split('T')[0];
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
   }
 
@@ -137,10 +147,58 @@ function parseCleanDate(val: any): string {
   // Fallback to JS Date parser
   const parsed = new Date(str);
   if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * Intelligent two-pass header value finder with exact priority matching and negative filtering.
+ * Prevents false positives (e.g. 'Hesap Kodu' matching symbol 'kod', or 'Pay Piyasası' matching quantity 'pay').
+ */
+function findHeaderValue(
+  row: Record<string, any>,
+  exactMatches: string[],
+  partialMatches: string[],
+  excludePatterns: string[] = []
+): any {
+  const keys = Object.keys(row);
+
+  // Pass 1: Exact match against normalized header
+  for (const pattern of exactMatches) {
+    const normPattern = normalizeHeader(pattern);
+    for (const key of keys) {
+      const normKey = normalizeHeader(key);
+      if (excludePatterns.some((ex) => normKey.includes(normalizeHeader(ex)))) continue;
+      if (normKey === normPattern) {
+        const val = row[key];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return val;
+        }
+      }
+    }
+  }
+
+  // Pass 2: Partial contains match against normalized header
+  for (const pattern of partialMatches) {
+    const normPattern = normalizeHeader(pattern);
+    for (const key of keys) {
+      const normKey = normalizeHeader(key);
+      if (excludePatterns.some((ex) => normKey.includes(normalizeHeader(ex)))) continue;
+      if (normKey.includes(normPattern)) {
+        const val = row[key];
+        if (val !== undefined && val !== null && String(val).trim() !== '') {
+          return val;
+        }
+      }
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -149,14 +207,22 @@ function parseCleanDate(val: any): string {
 function parseTransactionType(val: any): TransactionType {
   const str = String(val || '')
     .trim()
-    .toLowerCase();
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ı/g, 'i')
+    .replace(/ş/g, 's');
 
   if (
     str.includes('sat') ||
     str.includes('sell') ||
     str === 's' ||
     str.startsWith('-') ||
-    str.includes('cikis')
+    str.includes('cikis') ||
+    str.includes('itfa') ||
+    str.includes('tasfiye')
   ) {
     return 'sell';
   }
@@ -290,12 +356,30 @@ function parseCsvSmart(text: string): Record<string, any>[] {
 export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<ExcelParseResponse> {
   let rawRows: Record<string, any>[] = [];
 
+  const buffer = file instanceof File ? await file.arrayBuffer() : file;
+
   // Check if it's a CSV or text file
-  const isCsv = file instanceof File && (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt'));
+  let isCsv = false;
+  if (file instanceof File) {
+    const ext = file.name.toLowerCase();
+    isCsv = ext.endsWith('.csv') || ext.endsWith('.txt') || ext.endsWith('.tsv') || ext.endsWith('.cvs');
+  }
+
+  // If not identified by extension, check magic bytes:
+  // XLSX is a ZIP archive starting with PK (0x50, 0x4B)
+  // Legacy XLS is BIFF starting with 0xD0, 0xCF
+  if (!isCsv && buffer.byteLength >= 4) {
+    const bytes = new Uint8Array(buffer.slice(0, 4));
+    const isZip = bytes[0] === 0x50 && bytes[1] === 0x4B;
+    const isBiff = bytes[0] === 0xD0 && bytes[1] === 0xCF;
+    if (!isZip && !isBiff) {
+      isCsv = true;
+    }
+  }
 
   if (isCsv) {
     try {
-      const text = await (file as File).text();
+      const text = file instanceof File ? await file.text() : new TextDecoder('utf-8').decode(buffer);
       rawRows = parseCsvSmart(text);
     } catch (e) {
       console.warn('Smart CSV parser failed, falling back to XLSX reader:', e);
@@ -303,7 +387,6 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
   }
 
   if (rawRows.length === 0) {
-    const buffer = file instanceof File ? await file.arrayBuffer() : file;
     const workbook = XLSX.read(buffer, {
       type: 'array',
       raw: true,
@@ -328,64 +411,97 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     const rowNumber = index + 2; // +2 considering 1-based index and header row
     const errors: string[] = [];
 
-    // Find keys by fuzzy header matching
-    const keys = Object.keys(row);
-
-    const findVal = (patterns: string[]): any => {
-      for (const key of keys) {
-        const normKey = normalizeHeader(key);
-        if (patterns.some((p) => normKey.includes(normalizeHeader(p)))) {
-          return row[key];
-        }
-      }
-      return undefined;
-    };
-
     // 1. Symbol / Hisse Kodu (Sembol)
-    const rawSymbol =
-      findVal(['hissekodusembol', 'hissekodu', 'sembol', 'kod', 'symbol', 'hisse', 'fon', 'ticker', 'varlik']) || '';
-    let symbol = String(rawSymbol).trim().toUpperCase();
+    // Priority: Explicit stock/fund ticker columns first
+    let rawSymbol = findHeaderValue(
+      row,
+      ['hissekodusembol', 'hissekodu', 'sembol', 'symbol', 'ticker', 'menkulkiymetkodu', 'paykodu', 'fonkodu', 'varlikkodu', 'kiymetkodu', 'hissekodd'],
+      ['hissekod', 'fonkod', 'sembol', 'symbol', 'ticker', 'menkulkiymetkod', 'paykod'],
+      ['hesap', 'musteri', 'sube', 'takas', 'emir', 'islem', 'kurum', 'banka', 'referans', 'dekont', 'isin', 'adi', 'tanimi', 'unvan', 'doviz', 'fiyat', 'tutar']
+    );
+
+    // If no ticker column, fallback to ISIN code
+    if (!rawSymbol) {
+      rawSymbol = findHeaderValue(
+        row,
+        ['isinkodu', 'isin', 'isincode'],
+        ['isin'],
+        ['hesap', 'musteri', 'sube', 'kurum']
+      );
+    }
+
+    // If still no ticker column, fallback to Asset / Company Name column (e.g. 'Hisse Adı', 'Menkul Kıymet Tanımı')
+    if (!rawSymbol) {
+      rawSymbol = findHeaderValue(
+        row,
+        ['hisseadi', 'menkulkiymetadi', 'menkulkiymettanimi', 'fonadi', 'varlikadi', 'kiymetadi', 'sirketunvani', 'unvan'],
+        ['hissead', 'fonad', 'kiymetad', 'varlikad'],
+        ['hesap', 'musteri', 'sube', 'kurum', 'banka', 'turu', 'tipi']
+      );
+    }
+
+    let symbol = String(rawSymbol || '').trim().toUpperCase();
 
     if (!symbol) {
       errors.push('Hisse Kodu (Sembol) eksik');
     }
 
     // 2. Transaction Type / İşlem Türü
-    const rawType = findVal(['islemturu', 'islemtipi', 'islem', 'tur', 'tip', 'action', 'type', 'alissatis']);
+    const rawType = findHeaderValue(
+      row,
+      ['islemturu', 'islemtipi', 'islemcesidi', 'hareketturu', 'harekettipi', 'alissatis', 'alimsatim', 'islem', 'action', 'side', 'type'],
+      ['islemtur', 'islemtip', 'harekettur', 'harekettip', 'alissat', 'alimsat'],
+      ['doviz', 'hesap', 'varlik', 'emir', 'piyasa', 'fiyat', 'miktar', 'tutar', 'komisyon']
+    );
     const transactionType = parseTransactionType(rawType);
 
     // 3. Currency / Döviz Türü
-    const rawCurrency = findVal(['dovizturu', 'doviz', 'parabirimi', 'currency']);
+    const rawCurrency = findHeaderValue(
+      row,
+      ['dovizturu', 'dovizkodu', 'dovizcinsi', 'parabirimi', 'doviz', 'currency', 'ccy'],
+      ['doviztur', 'dovizkod', 'parabirim', 'currency'],
+      ['kur', 'rate', 'fiyat', 'tutar']
+    );
     let currency = String(rawCurrency || 'TRY').toUpperCase().trim();
 
     // 4. Exchange Rate / Döviz Kuru (USD/TRY)
-    const rawFxRate = findVal([
-      'dovizkuruusdtry',
-      'dovizkuru',
-      'usdtrykuru',
-      'usdkuru',
-      'islemkuru',
-      'kur',
-      'exchangerate',
-      'fxrate',
-      'rate',
-    ]);
+    const rawFxRate = findHeaderValue(
+      row,
+      ['dovizkuruusdtry', 'dovizkuru', 'usdtrykuru', 'usdkuru', 'islemkuru', 'kur', 'fxrate', 'exchangerate', 'rate'],
+      ['dovizkur', 'usdtry', 'islemkur', 'fxrate', 'exchangerate'],
+      ['turu', 'cinsi', 'para']
+    );
     const parsedFxRate = parseCleanNumber(rawFxRate);
     const exchangeRate = parsedFxRate > 0 ? parsedFxRate : undefined;
 
     // 5. Quantity / Miktar (Adet)
-    const rawQty = findVal(['miktaradet', 'miktar', 'adet', 'lot', 'pay', 'quantity', 'qty', 'shares']);
-    const quantity = Math.abs(parseCleanNumber(rawQty));
-    if (quantity <= 0) {
-      errors.push('Geçerli bir miktar/adet bulunamadı');
-    }
+    // Exclude 'piyasa' (Pay Piyasası), 'fiyat', 'tutar', 'kur'
+    const rawQty = findHeaderValue(
+      row,
+      ['miktaradet', 'miktar', 'adet', 'lot', 'payadedi', 'islemadedi', 'hisseadedi', 'shares', 'quantity', 'qty'],
+      ['miktar', 'adet', 'lot', 'payaded', 'shares'],
+      ['piyasa', 'fiyat', 'tutar', 'kur', 'oran', 'kar', 'zarar', 'bakiye', 'toplamtutar']
+    );
+    let quantity = Math.abs(parseCleanNumber(rawQty));
 
     // 6. Unit Price / Birim Fiyat
-    const rawPrice = findVal(['birimfiyat', 'fiyat', 'maliyet', 'unitprice', 'price', 'cost']);
+    // Exclude 'toplam', 'tutar', 'hacim', 'adet', 'miktar'
+    const rawPrice = findHeaderValue(
+      row,
+      ['birimfiyat', 'fiyat', 'maliyet', 'ortalamamaliyet', 'alisfiyati', 'satisfiyati', 'islemfiyati', 'unitprice', 'price', 'cost'],
+      ['birimfiyat', 'alisfiyat', 'satisfiyat', 'islemfiyat', 'fiyat', 'maliyet', 'unitprice', 'cost'],
+      ['toplam', 'tutar', 'hacim', 'adet', 'miktar', 'lot', 'payadedi', 'komisyon', 'bakiye']
+    );
     let price = Math.abs(parseCleanNumber(rawPrice));
 
     // 7. Total Amount / Toplam Tutar
-    const rawTotal = findVal(['toplamtutar', 'toplam', 'tutar', 'total', 'amount']);
+    // Exclude 'adet', 'lot', 'pay', 'miktar', 'fiyat'
+    const rawTotal = findHeaderValue(
+      row,
+      ['toplamtutar', 'islemtutari', 'tutar', 'nettutar', 'toplam', 'total', 'amount', 'hacim'],
+      ['toplamtutar', 'islemtutar', 'nettutar', 'tutar', 'totalamount', 'total'],
+      ['adet', 'lot', 'pay', 'miktar', 'fiyat', 'komisyon', 'bakiye']
+    );
     const totalAmount = Math.abs(parseCleanNumber(rawTotal));
 
     // If unit price was missing but total amount and quantity exist, auto-calculate unit price
@@ -393,13 +509,47 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
       price = Number((totalAmount / quantity).toFixed(6));
     }
 
+    // If quantity was missing but total amount and price exist, auto-calculate quantity
+    if (quantity <= 0 && totalAmount > 0 && price > 0) {
+      quantity = Math.round((totalAmount / price) * 1000000) / 1000000;
+    }
+
+    // Sanity check: if quantity, price, and totalAmount all exist, verify consistency
+    if (quantity > 0 && price > 0 && totalAmount > 0) {
+      const impliedQty = totalAmount / price;
+      const ratio = impliedQty / quantity;
+      // If parsed quantity is ~1000x smaller or larger due to thousands/decimal delimiter issue
+      if (Math.abs(ratio - 1000) < 0.05 || Math.abs(ratio - 0.001) < 0.00005) {
+        quantity = Math.round(impliedQty * 1000000) / 1000000;
+      }
+    }
+
+    if (quantity <= 0) {
+      errors.push('Geçerli bir miktar/adet bulunamadı');
+    }
+
     // 8. Date / Tarih
-    const rawDate = findVal(['tarih', 'islemtarihi', 'date', 'transactiondate', 'zaman', 'valor']);
+    const rawDate = findHeaderValue(
+      row,
+      ['islemtarihi', 'harekettarihi', 'tarih', 'date', 'transactiondate', 'zaman', 'valortarihi', 'valor'],
+      ['islemtarih', 'harekettarih', 'tarih', 'date', 'valortarih'],
+      ['saat', 'vade']
+    );
     const transactionDate = parseCleanDate(rawDate);
 
     // 9. Notes & Broker / Notlar & Aracı Kurum / Kanal
-    const rawNotes = findVal(['notlar', 'not', 'aciklama', 'notes', 'description']);
-    const rawBroker = findVal(['aracikurumkanal', 'aracikurum', 'kanal', 'kurum', 'broker', 'banka', 'platform']);
+    const rawNotes = findHeaderValue(
+      row,
+      ['notlar', 'not', 'aciklama', 'notes', 'description'],
+      ['not', 'aciklama', 'desc'],
+      []
+    );
+    const rawBroker = findHeaderValue(
+      row,
+      ['aracikurumkanal', 'aracikurum', 'kanal', 'kurum', 'broker', 'banka', 'platform'],
+      ['aracikurum', 'broker', 'banka', 'platform'],
+      []
+    );
 
     const notesParts: string[] = [];
     if (rawNotes && String(rawNotes).trim().length > 0) {
