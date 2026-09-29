@@ -54,6 +54,12 @@ export interface Holding {
   pnlPercent: number;
   weight: number; // percentage of portfolio
   dailyChangePercent?: number;
+  lots?: {
+    shares: number;
+    costTry: number;
+    costNative: number;
+    date: string;
+  }[];
 }
 
 export interface PortfolioSummary {

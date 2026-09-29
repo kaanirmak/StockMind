@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
@@ -12,6 +12,23 @@ export default function PortfolioSummary() {
   const { getSummary, livePrices } = usePortfolioStore();
   const summary = getSummary();
   const [period, setPeriod] = useState<TimePeriod>('daily');
+  const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('stockmind_privacy_mode');
+      if (saved === 'true') setIsPrivacyMode(true);
+    } catch {}
+  }, []);
+
+  const togglePrivacyMode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = !isPrivacyMode;
+    setIsPrivacyMode(next);
+    try {
+      localStorage.setItem('stockmind_privacy_mode', String(next));
+    } catch {}
+  };
 
   const usdQuote = livePrices['USDTRY'] || livePrices['USD'];
   const usdTry = typeof usdQuote === 'number' ? usdQuote : (usdQuote && typeof usdQuote === 'object' ? usdQuote.price : 38.5);
@@ -141,8 +158,27 @@ export default function PortfolioSummary() {
               </span>
             </div>
 
-            {/* Right side: Period button + Subtle Link hint */}
+            {/* Right side: Period button + Privacy Eye + Subtle Link hint */}
             <div className="flex items-center gap-2">
+              {/* Privacy Mode Eye Toggle */}
+              <button
+                type="button"
+                onClick={togglePrivacyMode}
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/15 border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer shadow-sm active:scale-90"
+                title={isPrivacyMode ? 'Tutarları Göster' : 'Gizlilik Modu (Tutarları Gizle)'}
+              >
+                {isPrivacyMode ? (
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
+              </button>
+
               {/* Single Period Pill: Click to cycle directly */}
               <button
                 type="button"
@@ -171,7 +207,11 @@ export default function PortfolioSummary() {
           <div className="space-y-2">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               {/* Big Portfolio Value */}
-              <h2 className="text-2xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight tabular-nums leading-none">
+              <h2
+                className={`text-2xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight tabular-nums leading-none transition-all duration-300 ${
+                  isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''
+                }`}
+              >
                 {summary.totalValue > 0
                   ? `₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   : '₺0,00'}
@@ -180,9 +220,9 @@ export default function PortfolioSummary() {
               {/* Clean K/Z text — NO button border, perfectly responsive without overflow */}
               {summary.totalValue > 0 && (
                 <div
-                  className={`inline-flex items-center gap-1.5 text-sm sm:text-lg font-bold tabular-nums transition-colors ${
+                  className={`inline-flex items-center gap-1.5 text-sm sm:text-lg font-bold tabular-nums transition-all duration-300 ${
                     isPositive ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
+                  } ${isPrivacyMode ? 'filter blur-[6px] select-none opacity-60' : ''}`}
                 >
                   <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     {isPositive ? (
@@ -198,7 +238,11 @@ export default function PortfolioSummary() {
             </div>
 
             {/* Sub-info: Cost, USD equivalent, and click hint */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium transition-all duration-300 ${
+                isPrivacyMode ? 'filter blur-[5px] select-none opacity-60' : ''
+              }`}
+            >
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                 <span>Maliyet: {formatCurrency(summary.totalCost)}</span>
                 {usdTry && usdTry > 0 && (

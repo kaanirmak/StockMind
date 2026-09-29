@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useStockDetail, useStockHistory, useStockIndicators } from '@/hooks/useStockData';
 import { CandlestickChart } from '@/components/stocks/CandlestickChart';
-import { TradingViewChart } from '@/components/stocks/TradingViewChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
 import { Badge, Button, Modal, Input, useToast } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
@@ -21,7 +20,6 @@ export default function StockDetailPage({
   const { showToast } = useToast();
   const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
 
-  const [chartEngine, setChartEngine] = useState<'tradingview' | 'stockmind'>('tradingview');
   const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL'>('1Y');
   const [showSMA20, setShowSMA20] = useState(true);
   const [showSMA50, setShowSMA50] = useState(false);
@@ -163,134 +161,100 @@ export default function StockDetailPage({
       </div>
 
       {/* Chart Section */}
-      <div className="space-y-4">
-        {/* Controls Bar: Chart Mode Toggle, Timeframe & Indicators */}
-        <div className="flex flex-wrap items-center justify-between gap-3 glass-card p-3">
-          {/* Chart Engine Switcher */}
-          <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-border">
-            <button
-              onClick={() => setChartEngine('tradingview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                chartEngine === 'tradingview'
-                  ? 'bg-gradient-to-r from-accent to-accent-secondary text-white shadow-lg shadow-accent/20'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-              <span>TradingView Canlı</span>
-            </button>
-            <button
-              onClick={() => {
-                setChartEngine('stockmind');
-                setTimeframe('1Y');
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                chartEngine === 'stockmind'
-                  ? 'bg-gradient-to-r from-accent to-accent-secondary text-white shadow-lg shadow-accent/20'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span>StockMind Pro</span>
-            </button>
+      <div className="space-y-3">
+        {/* Controls Bar: Timeframe & Indicators in a mobile-friendly horizontal scroller */}
+        <div className="glass-card p-2.5 sm:p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+          {/* Timeframe Selector with smooth mobile scroll */}
+          <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-border overflow-x-auto no-scrollbar">
+            {[
+              { id: '1D', label: '1G' },
+              { id: '1W', label: '1H' },
+              { id: '1M', label: '1A' },
+              { id: '3M', label: '3A' },
+              { id: '6M', label: '6A' },
+              { id: '1Y', label: '1Y' },
+              { id: '5Y', label: '5Y' },
+              { id: 'ALL', label: 'Tümü' },
+            ].map((tf) => (
+              <button
+                key={tf.id}
+                onClick={() => setTimeframe(tf.id as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  timeframe === tf.id
+                    ? 'bg-accent text-white shadow-md shadow-accent/25'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
           </div>
 
-          {/* Timeframe & Indicator toggles for StockMind mode */}
-          {chartEngine === 'stockmind' && (
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-border">
-                {[
-                  { id: '1D', label: '1G' },
-                  { id: '1W', label: '1H' },
-                  { id: '1M', label: '1A' },
-                  { id: '3M', label: '3A' },
-                  { id: '6M', label: '6A' },
-                  { id: '1Y', label: '1Y' },
-                  { id: '5Y', label: '5Y' },
-                  { id: 'ALL', label: 'Tümü' },
-                ].map((tf) => (
-                  <button
-                    key={tf.id}
-                    onClick={() => setTimeframe(tf.id as any)}
-                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                      timeframe === tf.id
-                        ? 'bg-accent text-white shadow'
-                        : 'text-text-secondary hover:text-text-primary'
-                    }`}
-                  >
-                    {tf.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap text-xs">
-                <button
-                  onClick={() => setShowSMA20(!showSMA20)}
-                  className={`px-2.5 py-1 rounded-lg border transition-colors cursor-pointer font-medium ${
-                    showSMA20
-                      ? 'bg-warning/20 border-warning text-warning'
-                      : 'bg-bg-tertiary border-border text-text-muted'
-                  }`}
-                >
-                  SMA 20
-                </button>
-                <button
-                  onClick={() => setShowSMA50(!showSMA50)}
-                  className={`px-2.5 py-1 rounded-lg border transition-colors cursor-pointer font-medium ${
-                    showSMA50
-                      ? 'bg-info/20 border-info text-info'
-                      : 'bg-bg-tertiary border-border text-text-muted'
-                  }`}
-                >
-                  SMA 50
-                </button>
-                <button
-                  onClick={() => setShowBB(!showBB)}
-                  className={`px-2.5 py-1 rounded-lg border transition-colors cursor-pointer font-medium ${
-                    showBB
-                      ? 'bg-accent-secondary/20 border-accent-secondary text-accent-secondary'
-                      : 'bg-bg-tertiary border-border text-text-muted'
-                  }`}
-                >
-                  Bollinger
-                </button>
-                <button
-                  onClick={() => setShowVolume(!showVolume)}
-                  className={`px-2.5 py-1 rounded-lg border transition-colors cursor-pointer font-medium ${
-                    showVolume
-                      ? 'bg-accent/20 border-accent text-accent'
-                      : 'bg-bg-tertiary border-border text-text-muted'
-                  }`}
-                >
-                  Hacim
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Indicator toggles */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+            <button
+              onClick={() => setShowSMA20(!showSMA20)}
+              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 ${
+                showSMA20
+                  ? 'bg-warning/20 border-warning text-warning'
+                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${showSMA20 ? 'bg-warning' : 'bg-text-muted'}`} />
+              SMA 20
+            </button>
+            <button
+              onClick={() => setShowSMA50(!showSMA50)}
+              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 ${
+                showSMA50
+                  ? 'bg-info/20 border-info text-info'
+                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${showSMA50 ? 'bg-info' : 'bg-text-muted'}`} />
+              SMA 50
+            </button>
+            <button
+              onClick={() => setShowBB(!showBB)}
+              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 ${
+                showBB
+                  ? 'bg-accent-secondary/20 border-accent-secondary text-accent-secondary'
+                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${showBB ? 'bg-accent-secondary' : 'bg-text-muted'}`} />
+              Bollinger
+            </button>
+            <button
+              onClick={() => setShowVolume(!showVolume)}
+              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 ${
+                showVolume
+                  ? 'bg-accent/20 border-accent text-accent'
+                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${showVolume ? 'bg-accent' : 'bg-text-muted'}`} />
+              Hacim
+            </button>
+          </div>
         </div>
 
-        {/* Chart Engine Rendering */}
-        {chartEngine === 'tradingview' ? (
-          <TradingViewChart symbol={symbol} exchange={stock?.exchange} height={560} />
-        ) : chartLoading && candles.length === 0 ? (
-          <div className="glass-card h-[480px] flex items-center justify-center text-text-muted">
+        {/* Unified Native Candlestick Chart */}
+        {chartLoading && candles.length === 0 ? (
+          <div className="glass-card h-[360px] sm:h-[460px] flex items-center justify-center text-text-muted">
             <div className="flex flex-col items-center gap-2">
               <svg className="animate-spin h-8 w-8 text-accent" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <span>Gerçek piyasa verileri yükleniyor...</span>
+              <span className="text-sm font-medium">Piyasa mum verileri yükleniyor...</span>
             </div>
           </div>
         ) : (
           <CandlestickChart
             candles={candles}
             symbol={symbol}
-            height={480}
+            height={460}
             showSMA20={showSMA20}
             showSMA50={showSMA50}
             showBB={showBB}

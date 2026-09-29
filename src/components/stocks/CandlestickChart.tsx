@@ -51,6 +51,9 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     const borderColor = isDark ? '#1e293b' : '#e2e8f0';
     const labelBg = isDark ? '#1e293b' : '#334155';
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    const effectiveHeight = isMobile ? Math.min(360, height) : height;
+
     // Initialize chart
     const chart = createChart(container, {
       layout: {
@@ -87,7 +90,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         secondsVisible: false,
       },
       width: container.clientWidth,
-      height: height,
+      height: effectiveHeight,
     });
 
     chartRef.current = chart;
@@ -274,7 +277,11 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     // Resize observer
     const handleResize = () => {
       if (chartRef.current && container) {
-        chartRef.current.applyOptions({ width: container.clientWidth });
+        const isMobileNow = window.innerWidth < 640;
+        chartRef.current.applyOptions({
+          width: container.clientWidth,
+          height: isMobileNow ? Math.min(360, height) : height,
+        });
       }
     };
 

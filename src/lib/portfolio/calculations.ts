@@ -226,6 +226,12 @@ export function calculatePortfolioHoldings(
         pnlPercent: Number(pnlPercent.toFixed(2)),
         dailyChangePercent: Number(dailyChangePercent.toFixed(2)),
         weight: 0,
+        lots: item.lots.map((l) => ({
+          shares: l.shares,
+          costTry: l.costTry,
+          costNative: l.costNative,
+          date: l.date,
+        })),
       });
     }
   });
