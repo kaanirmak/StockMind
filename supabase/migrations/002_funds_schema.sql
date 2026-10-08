@@ -40,17 +40,20 @@ CREATE INDEX IF NOT EXISTS idx_funds_risk_value ON public.funds(risk_value);
 ALTER TABLE public.funds ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read funds data
+DROP POLICY IF EXISTS "Public can view funds" ON public.funds;
 CREATE POLICY "Public can view funds"
   ON public.funds FOR SELECT
   USING (true);
 
 -- Allow server sync / anonymous cache / authenticated users to manage fund market data
+DROP POLICY IF EXISTS "Public and service can upsert funds" ON public.funds;
 CREATE POLICY "Public and service can upsert funds"
   ON public.funds FOR ALL
   USING (true)
   WITH CHECK (true);
 
 -- Auto-update updated_at trigger
+DROP TRIGGER IF EXISTS funds_updated_at ON public.funds;
 CREATE TRIGGER funds_updated_at
   BEFORE UPDATE ON public.funds
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
@@ -77,11 +80,13 @@ CREATE INDEX IF NOT EXISTS idx_fund_history_date ON public.fund_daily_history(pr
 ALTER TABLE public.fund_daily_history ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read history
+DROP POLICY IF EXISTS "Public can view fund history" ON public.fund_daily_history;
 CREATE POLICY "Public can view fund history"
   ON public.fund_daily_history FOR SELECT
   USING (true);
 
 -- Allow server sync / anonymous cache / authenticated users to manage fund price history
+DROP POLICY IF EXISTS "Public and service can upsert fund history" ON public.fund_daily_history;
 CREATE POLICY "Public and service can upsert fund history"
   ON public.fund_daily_history FOR ALL
   USING (true)

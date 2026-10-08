@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ═══════════════════════════════════════════
 -- 1. PROFILES
 -- ═══════════════════════════════════════════
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT UNIQUE,
   full_name TEXT,
@@ -21,14 +21,17 @@ CREATE TABLE public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
   ON public.profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
@@ -47,7 +50,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_auth_user_created
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
@@ -60,6 +64,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS profiles_updated_at ON public.profiles;
 CREATE TRIGGER profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
@@ -67,7 +72,7 @@ CREATE TRIGGER profiles_updated_at
 -- ═══════════════════════════════════════════
 -- 2. PORTFOLIOS
 -- ═══════════════════════════════════════════
-CREATE TABLE public.portfolios (
+CREATE TABLE IF NOT EXISTS public.portfolios (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -77,22 +82,26 @@ CREATE TABLE public.portfolios (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_portfolios_user_id ON public.portfolios(user_id);
+CREATE INDEX IF NOT EXISTS idx_portfolios_user_id ON public.portfolios(user_id);
 
 ALTER TABLE public.portfolios ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own portfolios" ON public.portfolios;
 CREATE POLICY "Users can view own portfolios"
   ON public.portfolios FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create own portfolios" ON public.portfolios;
 CREATE POLICY "Users can create own portfolios"
   ON public.portfolios FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own portfolios" ON public.portfolios;
 CREATE POLICY "Users can update own portfolios"
   ON public.portfolios FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own portfolios" ON public.portfolios;
 CREATE POLICY "Users can delete own portfolios"
   ON public.portfolios FOR DELETE
   USING (auth.uid() = user_id);
@@ -107,14 +116,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_profile_created
+DROP TRIGGER IF EXISTS on_profile_created ON public.profiles;
+CREATE TRIGGER on_profile_created
   AFTER INSERT ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_profile();
 
 -- ═══════════════════════════════════════════
 -- 3. TRANSACTIONS
 -- ═══════════════════════════════════════════
-CREATE TABLE public.transactions (
+CREATE TABLE IF NOT EXISTS public.transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   portfolio_id UUID NOT NULL REFERENCES public.portfolios(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -130,24 +140,28 @@ CREATE TABLE public.transactions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_transactions_portfolio_id ON public.transactions(portfolio_id);
-CREATE INDEX idx_transactions_user_id ON public.transactions(user_id);
-CREATE INDEX idx_transactions_symbol ON public.transactions(symbol);
+CREATE INDEX IF NOT EXISTS idx_transactions_portfolio_id ON public.transactions(portfolio_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON public.transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_symbol ON public.transactions(symbol);
 
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own transactions" ON public.transactions;
 CREATE POLICY "Users can view own transactions"
   ON public.transactions FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create own transactions" ON public.transactions;
 CREATE POLICY "Users can create own transactions"
   ON public.transactions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own transactions" ON public.transactions;
 CREATE POLICY "Users can update own transactions"
   ON public.transactions FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own transactions" ON public.transactions;
 CREATE POLICY "Users can delete own transactions"
   ON public.transactions FOR DELETE
   USING (auth.uid() = user_id);
@@ -155,29 +169,33 @@ CREATE POLICY "Users can delete own transactions"
 -- ═══════════════════════════════════════════
 -- 4. WATCHLISTS
 -- ═══════════════════════════════════════════
-CREATE TABLE public.watchlists (
+CREATE TABLE IF NOT EXISTS public.watchlists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_watchlists_user_id ON public.watchlists(user_id);
+CREATE INDEX IF NOT EXISTS idx_watchlists_user_id ON public.watchlists(user_id);
 
 ALTER TABLE public.watchlists ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own watchlists" ON public.watchlists;
 CREATE POLICY "Users can view own watchlists"
   ON public.watchlists FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create own watchlists" ON public.watchlists;
 CREATE POLICY "Users can create own watchlists"
   ON public.watchlists FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own watchlists" ON public.watchlists;
 CREATE POLICY "Users can update own watchlists"
   ON public.watchlists FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own watchlists" ON public.watchlists;
 CREATE POLICY "Users can delete own watchlists"
   ON public.watchlists FOR DELETE
   USING (auth.uid() = user_id);
@@ -185,7 +203,7 @@ CREATE POLICY "Users can delete own watchlists"
 -- ═══════════════════════════════════════════
 -- 5. WATCHLIST ITEMS
 -- ═══════════════════════════════════════════
-CREATE TABLE public.watchlist_items (
+CREATE TABLE IF NOT EXISTS public.watchlist_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   watchlist_id UUID NOT NULL REFERENCES public.watchlists(id) ON DELETE CASCADE,
   symbol TEXT NOT NULL,
@@ -197,11 +215,11 @@ CREATE TABLE public.watchlist_items (
   UNIQUE(watchlist_id, symbol, exchange)
 );
 
-CREATE INDEX idx_watchlist_items_watchlist_id ON public.watchlist_items(watchlist_id);
+CREATE INDEX IF NOT EXISTS idx_watchlist_items_watchlist_id ON public.watchlist_items(watchlist_id);
 
 ALTER TABLE public.watchlist_items ENABLE ROW LEVEL SECURITY;
 
--- Need to join with watchlists to check user_id
+DROP POLICY IF EXISTS "Users can view own watchlist items" ON public.watchlist_items;
 CREATE POLICY "Users can view own watchlist items"
   ON public.watchlist_items FOR SELECT
   USING (
@@ -212,6 +230,7 @@ CREATE POLICY "Users can view own watchlist items"
     )
   );
 
+DROP POLICY IF EXISTS "Users can create own watchlist items" ON public.watchlist_items;
 CREATE POLICY "Users can create own watchlist items"
   ON public.watchlist_items FOR INSERT
   WITH CHECK (
@@ -222,6 +241,7 @@ CREATE POLICY "Users can create own watchlist items"
     )
   );
 
+DROP POLICY IF EXISTS "Users can update own watchlist items" ON public.watchlist_items;
 CREATE POLICY "Users can update own watchlist items"
   ON public.watchlist_items FOR UPDATE
   USING (
@@ -232,6 +252,7 @@ CREATE POLICY "Users can update own watchlist items"
     )
   );
 
+DROP POLICY IF EXISTS "Users can delete own watchlist items" ON public.watchlist_items;
 CREATE POLICY "Users can delete own watchlist items"
   ON public.watchlist_items FOR DELETE
   USING (
@@ -245,7 +266,7 @@ CREATE POLICY "Users can delete own watchlist items"
 -- ═══════════════════════════════════════════
 -- 6. PRICE ALERTS
 -- ═══════════════════════════════════════════
-CREATE TABLE public.price_alerts (
+CREATE TABLE IF NOT EXISTS public.price_alerts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   symbol TEXT NOT NULL,
@@ -258,23 +279,27 @@ CREATE TABLE public.price_alerts (
   triggered_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_price_alerts_user_id ON public.price_alerts(user_id);
-CREATE INDEX idx_price_alerts_active ON public.price_alerts(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_price_alerts_user_id ON public.price_alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_price_alerts_active ON public.price_alerts(is_active) WHERE is_active = true;
 
 ALTER TABLE public.price_alerts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own alerts" ON public.price_alerts;
 CREATE POLICY "Users can view own alerts"
   ON public.price_alerts FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create own alerts" ON public.price_alerts;
 CREATE POLICY "Users can create own alerts"
   ON public.price_alerts FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own alerts" ON public.price_alerts;
 CREATE POLICY "Users can update own alerts"
   ON public.price_alerts FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own alerts" ON public.price_alerts;
 CREATE POLICY "Users can delete own alerts"
   ON public.price_alerts FOR DELETE
   USING (auth.uid() = user_id);
@@ -282,25 +307,28 @@ CREATE POLICY "Users can delete own alerts"
 -- ═══════════════════════════════════════════
 -- 7. AI CONVERSATIONS
 -- ═══════════════════════════════════════════
-CREATE TABLE public.ai_conversations (
+CREATE TABLE IF NOT EXISTS public.ai_conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   title TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_ai_conversations_user_id ON public.ai_conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_user_id ON public.ai_conversations(user_id);
 
 ALTER TABLE public.ai_conversations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own conversations" ON public.ai_conversations;
 CREATE POLICY "Users can view own conversations"
   ON public.ai_conversations FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create own conversations" ON public.ai_conversations;
 CREATE POLICY "Users can create own conversations"
   ON public.ai_conversations FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own conversations" ON public.ai_conversations;
 CREATE POLICY "Users can delete own conversations"
   ON public.ai_conversations FOR DELETE
   USING (auth.uid() = user_id);
@@ -308,7 +336,7 @@ CREATE POLICY "Users can delete own conversations"
 -- ═══════════════════════════════════════════
 -- 8. AI MESSAGES
 -- ═══════════════════════════════════════════
-CREATE TABLE public.ai_messages (
+CREATE TABLE IF NOT EXISTS public.ai_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES public.ai_conversations(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
@@ -316,10 +344,11 @@ CREATE TABLE public.ai_messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_ai_messages_conversation_id ON public.ai_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation_id ON public.ai_messages(conversation_id);
 
 ALTER TABLE public.ai_messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own messages" ON public.ai_messages;
 CREATE POLICY "Users can view own messages"
   ON public.ai_messages FOR SELECT
   USING (
@@ -330,6 +359,7 @@ CREATE POLICY "Users can view own messages"
     )
   );
 
+DROP POLICY IF EXISTS "Users can create own messages" ON public.ai_messages;
 CREATE POLICY "Users can create own messages"
   ON public.ai_messages FOR INSERT
   WITH CHECK (
@@ -350,6 +380,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE OR REPLACE TRIGGER on_profile_created_watchlist
+DROP TRIGGER IF EXISTS on_profile_created_watchlist ON public.profiles;
+CREATE TRIGGER on_profile_created_watchlist
   AFTER INSERT ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_profile_watchlist();
