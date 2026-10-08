@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockMind — Oturum Temizleme</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0f;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .card {
+      background: rgba(15, 15, 25, 0.9);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: 1rem;
+      padding: 2rem;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 0.75rem; color: #c4b5fd; }
+    p { font-size: 0.875rem; color: #94a3b8; margin-bottom: 1.25rem; line-height: 1.5; }
+    .status {
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+    }
+    .status.success { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .status.info { background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
+    .btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; }
+    .btn-secondary { background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); margin-top: 0.5rem; }
+    .count { font-weight: 700; color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🧹 Oturum Temizleme</h1>
+    <p>Tarayıcınızdaki oturum verileri (cookie) çok büyüdüğü için siteye erişilemez durumda. Bu sayfa sorunu çözecektir.</p>
+    <div id="status" class="status info">Çerezler temizleniyor…</div>
+    <div id="actions" style="display:none">
+      <a href="/login" class="btn btn-primary">Giriş Sayfasına Git</a>
+      <br />
+      <a href="/dashboard" class="btn btn-secondary">Ana Sayfaya Git</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var cleared = 0;
+      // Get all cookies for this domain
+      var cookies = document.cookie.split(';');
+      for (var i = 0; i < cookies.length; i++) {
+        var cookie = cookies[i].trim();
+        var name = cookie.split('=')[0];
+        if (!name) continue;
+        // Clear Supabase auth cookies (sb-*-auth-token*)
+        // Also clear any other suspiciously large cookies
+        var value = cookie.substring(name.length + 1);
+        if (/^sb-.+-auth-token/.test(name) || value.length > 4000) {
+          document.cookie = name + '=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          document.cookie = name + '=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; domain=' + window.location.hostname;
+          // Also try with leading dot for subdomains
+          document.cookie = name + '=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; domain=.' + window.location.hostname;
+          cleared++;
+        }
+      }
+
+      var statusEl = document.getElementById('status');
+      var actionsEl = document.getElementById('actions');
+
+      if (cleared > 0) {
+        statusEl.className = 'status success';
+        statusEl.innerHTML = '✅ <span class="count">' + cleared + '</span> adet sorunlu çerez temizlendi. Artık giriş yapabilirsiniz.';
+      } else {
+        statusEl.className = 'status success';
+        statusEl.innerHTML = '✅ Temizlenecek sorunlu çerez bulunamadı. Zaten temiz!';
+      }
+      actionsEl.style.display = 'block';
+    })();
+  </script>
+</body>
+</html>

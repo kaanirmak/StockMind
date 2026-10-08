@@ -63,6 +63,31 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* Cookie size guard: clear bloated Supabase auth cookies before they cause 494 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var raw = document.cookie;
+                  var size = new Blob([raw]).size;
+                  if (size > 12288) {
+                    var cookies = raw.split(';');
+                    for (var i = 0; i < cookies.length; i++) {
+                      var name = cookies[i].trim().split('=')[0];
+                      if (name && /^sb-.+-auth-token/.test(name)) {
+                        document.cookie = name + '=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+                      }
+                    }
+                    if (window.location.pathname !== '/login' && window.location.pathname !== '/clear-session.html') {
+                      window.location.href = '/login?reason=session_too_large';
+                    }
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body className="antialiased">
         <ThemeProvider>
