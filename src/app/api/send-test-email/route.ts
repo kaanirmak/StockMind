@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
     const result = await sendTestEmail({
       to,
-      userName: userName || 'Kaan Irmak',
+      userName: userName || 'Yatırımcı',
       subject,
       portfolioSummary,
       customSmtp,

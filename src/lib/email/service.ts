@@ -31,7 +31,7 @@ export interface EmailPayload {
   };
 }
 
-export function generateStockMindEmailHtml(userName: string = 'Kaan Irmak', payload?: Partial<EmailPayload>): string {
+export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırımcı', payload?: Partial<EmailPayload>): string {
   const dateStr = new Date().toLocaleDateString('tr-TR', {
     day: 'numeric',
     month: 'long',
@@ -137,7 +137,7 @@ export function generateStockMindEmailHtml(userName: string = 'Kaan Irmak', payl
       </div>
 
       <div style="text-align: center;">
-        <a href="http://localhost:3000/dashboard" class="btn">StockMind Paneline Git &rarr;</a>
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://stock-mind-bay.vercel.app'}/dashboard" class="btn">StockMind Paneline Git &rarr;</a>
       </div>
 
       <div class="footer">
@@ -161,7 +161,7 @@ export interface SendEmailResult {
 }
 
 export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailResult> {
-  const { to, userName = 'Kaan Irmak' } = payload;
+  const { to, userName = 'Değerli Yatırımcı' } = payload;
 
   if (!to || !to.includes('@')) {
     return { success: false, message: 'Geçersiz e-posta adresi' };

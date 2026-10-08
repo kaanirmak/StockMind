@@ -12,6 +12,27 @@ export async function POST(request: Request) {
 
 async function handleDailyReport(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const authHeader = request.headers.get('authorization') || '';
+    const cronSecretHeader = request.headers.get('x-cron-secret') || '';
+    const secretQuery = searchParams.get('secret') || '';
+
+    const expectedSecret = process.env.CRON_SECRET;
+
+    // Security Check: CRON_SECRET is strictly mandatory
+    const isAuthorized =
+      Boolean(expectedSecret) &&
+      (authHeader === `Bearer ${expectedSecret}` ||
+        cronSecretHeader === expectedSecret ||
+        secretQuery === expectedSecret);
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Valid CRON_SECRET is required' },
+        { status: 401 }
+      );
+    }
+
     let targetEmail = '';
     let targetName = '';
     let customSmtp: any = undefined;
@@ -26,9 +47,19 @@ async function handleDailyReport(request: Request) {
     }
 
     if (!targetEmail) {
-      const { searchParams } = new URL(request.url);
-      targetEmail = searchParams.get('email') || process.env.SMTP_USER || 'support@stockmind.app';
-      targetName = searchParams.get('name') || 'Kaan Irmak';
+      targetEmail =
+        searchParams.get('email') ||
+        process.env.DAILY_REPORT_RECIPIENT_EMAIL ||
+        process.env.SMTP_USER ||
+        '';
+      targetName = searchParams.get('name') || 'Değerli Yatırımcı';
+    }
+
+    if (!targetEmail) {
+      return NextResponse.json(
+        { success: false, error: 'Alıcı e-posta adresi belirtilmelidir.' },
+        { status: 400 }
+      );
     }
 
     // Fetch live market closing prices for the report

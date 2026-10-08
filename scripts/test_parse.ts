@@ -3,10 +3,15 @@
  * Specifically trace PHE and THF transactions
  */
 import * as fs from 'fs';
+import * as path from 'path';
 import { parseCleanNumber } from '../src/lib/portfolio/excelParser';
 import { cleanSymbol } from '../src/lib/utils/symbol';
 
-const csvPath = './sample_portfolio.csv';
+const csvPath = process.argv[2] || path.join(process.cwd(), 'sample_portfolio.csv');
+if (!fs.existsSync(csvPath)) {
+  console.log(`[test_parse] CSV file not found at: ${csvPath}\nUsage: npx tsx scripts/test_parse.ts <path-to-csv>`);
+  process.exit(0);
+}
 const text = fs.readFileSync(csvPath, 'utf-8');
 
 // Parse with the same logic as parseCsvSmart

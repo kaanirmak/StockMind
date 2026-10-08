@@ -20,19 +20,18 @@ async function handleSync(request: Request) {
 
     const expectedSecret = process.env.CRON_SECRET;
 
-    // Security Check
-    if (expectedSecret) {
-      const isAuthorized =
-        authHeader === `Bearer ${expectedSecret}` ||
+    // Security Check: CRON_SECRET is strictly mandatory
+    const isAuthorized =
+      Boolean(expectedSecret) &&
+      (authHeader === `Bearer ${expectedSecret}` ||
         cronSecretHeader === expectedSecret ||
-        secretQuery === expectedSecret;
+        secretQuery === expectedSecret);
 
-      if (!isAuthorized) {
-        return NextResponse.json(
-          { success: false, error: 'Unauthorized: Invalid CRON_SECRET' },
-          { status: 401 }
-        );
-      }
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Valid CRON_SECRET is required' },
+        { status: 401 }
+      );
     }
 
     const code = searchParams.get('code') || undefined;

@@ -9,15 +9,17 @@ ALTER TABLE IF EXISTS public.funds ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can view funds" ON public.funds;
 DROP POLICY IF EXISTS "Public can manage funds" ON public.funds;
 DROP POLICY IF EXISTS "Service role can manage funds" ON public.funds;
+DROP POLICY IF EXISTS "Public and service can upsert funds" ON public.funds;
 
 -- Allow public read access
 CREATE POLICY "Public can view funds"
   ON public.funds FOR SELECT
   USING (true);
 
--- Allow server sync / anonymous cache / authenticated users to upsert fund market data
-CREATE POLICY "Public and service can upsert funds"
+-- Allow ONLY service role (backend cron jobs & admin client) to upsert fund market data
+CREATE POLICY "Service role can manage funds"
   ON public.funds FOR ALL
+  TO service_role
   USING (true)
   WITH CHECK (true);
 
@@ -28,14 +30,16 @@ ALTER TABLE IF EXISTS public.fund_daily_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can view fund history" ON public.fund_daily_history;
 DROP POLICY IF EXISTS "Public can manage fund history" ON public.fund_daily_history;
 DROP POLICY IF EXISTS "Service role can manage fund history" ON public.fund_daily_history;
+DROP POLICY IF EXISTS "Public and service can upsert fund history" ON public.fund_daily_history;
 
 -- Allow public read access
 CREATE POLICY "Public can view fund history"
   ON public.fund_daily_history FOR SELECT
   USING (true);
 
--- Allow server sync / anonymous cache / authenticated users to upsert historical fund prices
-CREATE POLICY "Public and service can upsert fund history"
+-- Allow ONLY service role (backend cron jobs & admin client) to upsert historical fund prices
+CREATE POLICY "Service role can manage fund history"
   ON public.fund_daily_history FOR ALL
+  TO service_role
   USING (true)
   WITH CHECK (true);
