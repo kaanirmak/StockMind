@@ -19,6 +19,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -43,8 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "StockMindPrefs";
     private static final String KEY_SERVER_URL = "server_url";
     
-    // Default URL: user's Mac IP address, with emulator fallback
-    private static final String DEFAULT_LAN_URL = "http://192.168.1.105:3000";
+    // Production server URL and local emulator fallback
+    private static final String PRODUCTION_URL = "https://stock-mind-bay.vercel.app";
     private static final String DEFAULT_EMULATOR_URL = "http://10.0.2.2:3000";
 
     private WebView webView;
@@ -73,6 +74,12 @@ public class MainActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         currentServerUrl = prefs.getString(KEY_SERVER_URL, getDefaultUrl());
+
+        // Auto-migrate if previously stuck on local development IP or invalid URL
+        if (currentServerUrl == null || currentServerUrl.contains("192.168.1.") || currentServerUrl.isEmpty()) {
+            currentServerUrl = getDefaultUrl();
+            prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
+        }
 
         initViews();
         setupFileChooser();
@@ -112,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                 || Build.MODEL.contains("Android SDK built for x86")) {
             return DEFAULT_EMULATOR_URL;
         }
-        return DEFAULT_LAN_URL;
+        return PRODUCTION_URL;
     }
 
     private void initViews() {
@@ -135,7 +142,12 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        btnRetry.setOnClickListener(v -> loadAppUrl());
+        btnRetry.setOnClickListener(v -> {
+            CookieManager.getInstance().removeAllCookies(success -> {
+                CookieManager.getInstance().flush();
+                loadAppUrl();
+            });
+        });
         btnChangeUrl.setOnClickListener(v -> showChangeUrlDialog());
     }
 
@@ -262,10 +274,39 @@ public class MainActivity extends AppCompatActivity {
                     showErrorState(error != null ? error.getDescription().toString() : "Bağlantı hatası");
                 }
             }
+
+            @Override
+            public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+                super.onReceivedHttpError(view, request, errorResponse);
+                if (request != null && request.isForMainFrame()) {
+                    int statusCode = errorResponse != null ? errorResponse.getStatusCode() : 0;
+                    // Auto-heal HTTP 494 (Request Header Too Large), 431, and 400
+                    if (statusCode == 494 || statusCode == 431 || statusCode == 400) {
+                        CookieManager.getInstance().removeAllCookies(success -> {
+                            CookieManager.getInstance().flush();
+                            view.post(() -> {
+                                Toast.makeText(MainActivity.this, "Oturum çerezleri otomatik temizlendi, yeniden yükleniyor...", Toast.LENGTH_SHORT).show();
+                                loadAppUrl();
+                            });
+                        });
+                    }
+                }
+            }
         });
     }
 
+    private void sanitizeCookiesIfBloated(String url) {
+        try {
+            CookieManager cm = CookieManager.getInstance();
+            String cookies = cm.getCookie(url);
+            if (cookies != null && cookies.length() > 6144) {
+                cm.removeAllCookies(value -> cm.flush());
+            }
+        } catch (Exception ignored) {}
+    }
+
     private void loadAppUrl() {
+        sanitizeCookiesIfBloated(currentServerUrl);
         errorView.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         swipeRefreshLayout.setRefreshing(true);

@@ -3,9 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * Maximum total cookie size (bytes) before we consider headers dangerously large.
- * Vercel Edge enforces ~16 KB; we use 14 KB as a safe threshold.
+ * Normal Supabase session is ~2-3 KB. If it exceeds 8 KB, it's bloated and close
+ * to triggering Vercel 494.
  */
-const MAX_COOKIE_BYTES = 14 * 1024;
+const MAX_COOKIE_BYTES = 8 * 1024;
 
 /**
  * Detect if a cookie belongs to the Supabase auth token family.
@@ -77,7 +78,10 @@ export async function updateSession(request: NextRequest) {
       ? NextResponse.next({ request })
       : NextResponse.redirect(url);
 
-    // Expire every Supabase auth cookie
+    // Send Clear-Site-Data header to instruct the browser to purge all cookies for this origin
+    response.headers.set('Clear-Site-Data', '"cookies"');
+
+    // Expire every Supabase auth cookie individually with explicit path
     for (const cookie of request.cookies.getAll()) {
       if (isSupabaseAuthCookie(cookie.name)) {
         response.cookies.set(cookie.name, '', {
