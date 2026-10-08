@@ -278,38 +278,39 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
                 super.onReceivedHttpError(view, request, errorResponse);
-                if (request != null && request.isForMainFrame()) {
-                    int statusCode = errorResponse != null ? errorResponse.getStatusCode() : 0;
-                    // Auto-heal HTTP 494 (Request Header Too Large), 431, and 400
-                    if (statusCode == 494 || statusCode == 431 || statusCode == 400) {
-                        CookieManager.getInstance().removeAllCookies(success -> {
-                            CookieManager.getInstance().flush();
-                            view.post(() -> {
-                                Toast.makeText(MainActivity.this, "Oturum çerezleri otomatik temizlendi, yeniden yükleniyor...", Toast.LENGTH_SHORT).show();
-                                loadAppUrl();
-                            });
+                int statusCode = errorResponse != null ? errorResponse.getStatusCode() : 0;
+                // Auto-heal HTTP 494 (Request Header Too Large), 431, and 400
+                if (statusCode == 494 || statusCode == 431 || statusCode == 400) {
+                    CookieManager.getInstance().removeAllCookies(success -> {
+                        CookieManager.getInstance().flush();
+                        view.post(() -> {
+                            Toast.makeText(MainActivity.this, "Oturum çerezleri temizlendi, yeniden bağlanılıyor...", Toast.LENGTH_SHORT).show();
+                            view.loadUrl(currentServerUrl);
                         });
-                    }
+                    });
                 }
             }
         });
     }
 
-    private void sanitizeCookiesIfBloated(String url) {
-        try {
-            CookieManager cm = CookieManager.getInstance();
-            String cookies = cm.getCookie(url);
-            if (cookies != null && cookies.length() > 6144) {
-                cm.removeAllCookies(value -> cm.flush());
-            }
-        } catch (Exception ignored) {}
-    }
-
     private void loadAppUrl() {
-        sanitizeCookiesIfBloated(currentServerUrl);
         errorView.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         swipeRefreshLayout.setRefreshing(true);
+
+        try {
+            CookieManager cm = CookieManager.getInstance();
+            String cookies = cm.getCookie(currentServerUrl);
+            if (cookies != null && cookies.length() > 4096) {
+                // Cookies bloated! Clear BEFORE loading URL
+                cm.removeAllCookies(success -> {
+                    cm.flush();
+                    webView.post(() -> webView.loadUrl(currentServerUrl));
+                });
+                return;
+            }
+        } catch (Exception ignored) {}
+
         webView.loadUrl(currentServerUrl);
     }
 
