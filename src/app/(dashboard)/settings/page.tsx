@@ -398,6 +398,9 @@ export default function SettingsPage() {
           message: 'Profil fotoğrafınız ve tercihleriniz bu tarayıcı için kaydedildi.',
         });
       }
+      if (openRouterKey) {
+        saveStoredOpenRouterKey(openRouterKey, user?.id, defaultModel);
+      }
     } catch (err: any) {
       showToast({
         type: 'danger',
@@ -1597,15 +1600,48 @@ export default function SettingsPage() {
             type="password"
             placeholder="sk-or-v1-xxxxxxxx..."
             value={openRouterKey}
-            onChange={(e) => setOpenRouterKey(e.target.value)}
-            helperText="Boş bırakılırsa sistemin yerleşik analiz motoru kullanılır."
+            onChange={(e) => {
+              const val = e.target.value;
+              setOpenRouterKey(val);
+              saveStoredOpenRouterKey(val, user?.id, defaultModel);
+            }}
+            onBlur={() => {
+              saveStoredOpenRouterKey(openRouterKey, user?.id, defaultModel);
+            }}
+            helperText="Yazdığınız anda anında tüm cihazlarınıza ve asistanlara kaydedilir. Boş bırakılırsa yerleşik analiz kullanılır."
           />
+
+          {openRouterKey.trim() && (
+            <div className="text-xs p-2.5 rounded-xl border">
+              {openRouterKey.trim().startsWith('sk-or-') ? (
+                <p className="text-emerald-400 flex items-center gap-1.5 font-medium">
+                  <span>✅</span>
+                  <span>Geçerli OpenRouter anahtar formatı aktif ({openRouterKey.slice(0, 8)}...{openRouterKey.slice(-4)}). Canlı Quant ve AI Asistan hazır!</span>
+                </p>
+              ) : (
+                <p className="text-amber-400 flex items-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>
+                    Girdiğiniz anahtar OpenRouter formatında (sk-or-v1-...) değil. Eğer OpenAI doğrudan anahtarı girdiyseniz, sistem OpenRouter altyapısını kullandığı için lütfen{' '}
+                    <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline font-bold text-accent">
+                      openrouter.ai/keys
+                    </a>{' '}
+                    adresinden ücretsiz anahtar oluşturup yapıştırın.
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-text-secondary mb-1.5">Varsayılan AI Modeli</label>
             <select
               value={defaultModel}
-              onChange={(e) => setDefaultModel(e.target.value)}
+              onChange={(e) => {
+                const newM = e.target.value;
+                setDefaultModel(newM);
+                saveStoredOpenRouterKey(openRouterKey, user?.id, newM);
+              }}
               className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
             >
               {AVAILABLE_MODELS.map((m) => (
@@ -1616,7 +1652,15 @@ export default function SettingsPage() {
             </select>
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex items-center justify-between pt-2">
+            <a
+              href="https://openrouter.ai/keys"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
+            >
+              <span>🔑 Ücretsiz OpenRouter API Key Al</span>
+            </a>
             <Button type="submit" variant="primary">
               AI Ayarlarını Kaydet
             </Button>

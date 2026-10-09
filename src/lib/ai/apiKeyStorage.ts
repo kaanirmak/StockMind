@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
+import { createClient } from '@/lib/supabase/client';
+
 const GLOBAL_KEY_STORAGE = 'stockmind_openrouter_api_key';
 const GLOBAL_MODEL_STORAGE = 'stockmind_openrouter_model';
 
@@ -54,7 +56,7 @@ export function getStoredOpenRouterKey(userId?: string | null): string {
       if (!raw) continue;
 
       // If the raw item value itself is directly an API key
-      if (raw.trim().startsWith('sk-or-')) {
+      if (raw.trim().startsWith('sk-or-') || (raw.trim().startsWith('sk-') && raw.trim().length > 20)) {
         return raw.trim();
       }
 
@@ -146,6 +148,16 @@ export function saveStoredOpenRouterKey(
       })
     );
     window.dispatchEvent(new Event('storage'));
+
+    // 4. Background cloud sync to Supabase auth metadata so the key is available across all user devices
+    if (userId && userId !== 'guest') {
+      try {
+        const supabase = createClient();
+        supabase.auth.updateUser({
+          data: { openrouter_api_key: cleanKey },
+        }).catch((e: any) => console.warn('Supabase key sync warning:', e));
+      } catch (_) {}
+    }
   } catch (err) {
     console.warn('Error saving OpenRouter API key:', err);
   }

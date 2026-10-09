@@ -219,6 +219,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnRetry.setOnClickListener(v -> {
+            currentServerUrl = PRODUCTION_URL;
+            prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
             CookieManager.getInstance().removeAllCookies(success -> {
                 CookieManager.getInstance().flush();
                 loadAppUrl();
@@ -362,7 +364,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame()) {
+                if (request != null && request.isForMainFrame()) {
+                    String failingUrl = request.getUrl() != null ? request.getUrl().toString() : "";
+                    if (failingUrl.endsWith(".apk") || failingUrl.contains("download/apk") || failingUrl.contains("StockMind.apk")) {
+                        startApkDownload(failingUrl);
+                        view.post(() -> view.loadUrl(currentServerUrl));
+                        return;
+                    }
                     showErrorState(error != null ? error.getDescription().toString() : "Bağlantı hatası");
                 }
             }
@@ -394,7 +402,7 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("target_route")) {
             String route = intent.getStringExtra("target_route");
-            if (route != null && !route.isEmpty()) {
+            if (route != null && !route.isEmpty() && !route.contains(".apk") && !route.contains("download/apk")) {
                 targetUrl = currentServerUrl.replaceAll("/$", "") + (route.startsWith("/") ? route : "/" + route);
             }
         }
@@ -413,6 +421,7 @@ public class MainActivity extends AppCompatActivity {
             }
         } catch (Exception ignored) {}
 
+        currentUrlText.setText(targetUrl);
         webView.loadUrl(targetUrl);
     }
 
@@ -423,8 +432,13 @@ public class MainActivity extends AppCompatActivity {
         if (intent != null && intent.hasExtra("target_route") && webView != null) {
             String route = intent.getStringExtra("target_route");
             if (route != null && !route.isEmpty()) {
-                String fullUrl = currentServerUrl.replaceAll("/$", "") + (route.startsWith("/") ? route : "/" + route);
-                webView.loadUrl(fullUrl);
+                if (route.contains(".apk") || route.contains("download/apk")) {
+                    startApkDownload(currentServerUrl.replaceAll("/$", "") + (route.startsWith("/") ? route : "/" + route));
+                    webView.loadUrl(currentServerUrl);
+                } else {
+                    String fullUrl = currentServerUrl.replaceAll("/$", "") + (route.startsWith("/") ? route : "/" + route);
+                    webView.loadUrl(fullUrl);
+                }
             }
         }
     }

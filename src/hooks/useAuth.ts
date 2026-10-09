@@ -205,6 +205,11 @@ export function useAuth() {
           setUser(currentUser);
           if (currentUser) {
             cleanupBloatedMetadata(currentUser);
+            const metaKey = currentUser.user_metadata?.openrouter_api_key;
+            if (metaKey && typeof window !== 'undefined' && !localStorage.getItem('stockmind_openrouter_api_key')) {
+              localStorage.setItem('stockmind_openrouter_api_key', metaKey);
+              window.dispatchEvent(new CustomEvent('stockmind_ai_key_updated', { detail: { key: metaKey } }));
+            }
             await fetchProfile(currentUser.id, currentUser);
             useWatchlistStore.getState().loadUserWatchlist(currentUser.id);
           } else {
@@ -229,6 +234,11 @@ export function useAuth() {
           setUser(authUser);
           if (authUser) {
             cleanupBloatedMetadata(authUser);
+            const metaKey = authUser.user_metadata?.openrouter_api_key;
+            if (metaKey && typeof window !== 'undefined' && !localStorage.getItem('stockmind_openrouter_api_key')) {
+              localStorage.setItem('stockmind_openrouter_api_key', metaKey);
+              window.dispatchEvent(new CustomEvent('stockmind_ai_key_updated', { detail: { key: metaKey } }));
+            }
             await fetchProfile(authUser.id, authUser);
             useWatchlistStore.getState().loadUserWatchlist(authUser.id);
           } else {
