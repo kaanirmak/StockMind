@@ -137,7 +137,7 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
       </div>
 
       <div style="text-align: center;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://stock-mind-bay.vercel.app'}/dashboard" class="btn">StockMind Paneline Git &rarr;</a>
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind-finora.vercel.app'}/dashboard" class="btn">StockMind Paneline Git &rarr;</a>
       </div>
 
       <div class="footer">

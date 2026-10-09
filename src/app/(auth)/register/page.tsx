@@ -48,7 +48,7 @@ export default function RegisterPage() {
 
     const siteOrigin = typeof window !== 'undefined' && window.location.origin
       ? window.location.origin
-      : (process.env.NEXT_PUBLIC_APP_URL || 'https://stock-mind-bay.vercel.app');
+      : (process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind-finora.vercel.app');
 
     const emailRedirectTo = `${siteOrigin.replace(/\/$/, '')}/auth/callback?next=/dashboard`;
 

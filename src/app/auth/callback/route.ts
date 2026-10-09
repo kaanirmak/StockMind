@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   // Guard against internal/localhost origins in production environments
   if (appOrigin.includes('localhost') && process.env.NODE_ENV === 'production') {
-    appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'https://stock-mind-bay.vercel.app';
+    appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind-finora.vercel.app';
   }
 
   // Ensure no trailing slash on origin

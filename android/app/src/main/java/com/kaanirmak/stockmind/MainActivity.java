@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String KEY_SERVER_URL = "server_url";
     
     // Production server URL and local emulator fallback
-    private static final String PRODUCTION_URL = "https://stock-mind-bay.vercel.app";
+    private static final String PRODUCTION_URL = "https://stockmind-finora.vercel.app";
     private static final String DEFAULT_EMULATOR_URL = "http://10.0.2.2:3000";
 
     private WebView webView;
@@ -75,8 +75,8 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         currentServerUrl = prefs.getString(KEY_SERVER_URL, getDefaultUrl());
 
-        // Auto-migrate if previously stuck on local development IP or invalid URL
-        if (currentServerUrl == null || currentServerUrl.contains("192.168.1.") || currentServerUrl.isEmpty()) {
+        // Auto-migrate if previously stuck on local development IP, old domain or invalid URL
+        if (currentServerUrl == null || currentServerUrl.contains("192.168.1.") || currentServerUrl.contains("stock-mind-bay") || currentServerUrl.isEmpty()) {
             currentServerUrl = getDefaultUrl();
             prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
         }
