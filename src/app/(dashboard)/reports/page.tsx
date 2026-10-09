@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { Button, Badge, useToast } from '@/components/ui';
+import { Button, Badge, useToast, InstrumentLogo } from '@/components/ui';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
@@ -405,11 +405,7 @@ export default function ReportsPage() {
                   {/* Card header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-                        <span className="text-sm font-black text-accent">
-                          {h.symbol.substring(0, 2)}
-                        </span>
-                      </div>
+                      <InstrumentLogo symbol={h.symbol} size="md" />
                       <div>
                         <span className="text-sm font-bold text-text-primary block">{h.symbol}</span>
                         <span className="text-[11px] text-text-muted">

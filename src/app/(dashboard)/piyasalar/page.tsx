@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
 import { TefasFundInfo } from '@/lib/data/funds';
-import { Badge, Button, Input, TableSkeleton, useToast } from '@/components/ui';
+import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 
 type MarketId = 'BIST' | 'TEFAS' | 'NASDAQ' | 'NYSE';
@@ -246,9 +246,7 @@ function PiyasalarContent() {
                         <tr key={stock.symbol} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
                           <td className="py-2 sm:py-3 px-2 sm:px-4">
                             <Link href={`/stocks/${stock.symbol}`} className="flex items-center gap-2 sm:gap-2.5">
-                              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-bg-tertiary flex items-center justify-center font-bold text-[11px] sm:text-xs text-text-primary group-hover:bg-accent group-hover:text-white transition-colors shrink-0">
-                                {stock.symbol.substring(0, 2)}
-                              </div>
+                              <InstrumentLogo symbol={stock.symbol} name={stock.name} size="sm" />
                               <div>
                                 <span className="font-bold text-text-primary block group-hover:text-accent transition-colors text-xs sm:text-sm">{stock.symbol}</span>
                                 <span className="text-[11px] text-text-muted line-clamp-1 hidden sm:block">{stock.name}</span>
@@ -307,10 +305,8 @@ function PiyasalarContent() {
                 return (
                   <div key={stock.symbol} className="glass-card p-4 hover:border-accent/40 hover:shadow-lg transition-all duration-300 group relative">
                     <div className="flex items-start justify-between mb-3">
-                      <Link href={`/stocks/${stock.symbol}`} className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-bg-tertiary flex items-center justify-center font-bold text-xs text-text-primary group-hover:bg-accent group-hover:text-white transition-colors shrink-0">
-                          {stock.symbol.substring(0, 2)}
-                        </div>
+                      <Link href={`/stocks/${stock.symbol}`} className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <InstrumentLogo symbol={stock.symbol} name={stock.name} size="md" />
                         <div className="min-w-0">
                           <h4 className="font-bold text-text-primary group-hover:text-accent transition-colors text-sm truncate">{stock.symbol}</h4>
                           <span className={`font-mono text-xs font-semibold ${isPositive ? 'text-success' : 'text-danger'}`}>{isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%</span>
@@ -414,9 +410,7 @@ function PiyasalarContent() {
                         <tr key={fund.code} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
                           <td className="py-2 sm:py-3 px-2 sm:px-4">
                             <Link href={`/funds/${fund.code}`} className="flex items-center gap-2 sm:gap-2.5">
-                              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-accent/15 border border-accent/30 text-accent font-bold text-[11px] sm:text-xs flex items-center justify-center shrink-0 leading-none text-center p-0.5 sm:p-1">
-                                {fund.code}
-                              </div>
+                              <InstrumentLogo symbol={fund.code} name={fund.name} size="sm" />
                               <div>
                                 <span className="font-bold text-text-primary block group-hover:text-accent transition-colors text-xs sm:text-sm">{fund.code}</span>
                                 <span className="text-[11px] text-text-muted line-clamp-1 max-w-[140px] sm:max-w-xs hidden sm:block">{fund.name}</span>
@@ -478,10 +472,8 @@ function PiyasalarContent() {
                 return (
                   <div key={fund.code} className="glass-card p-4 hover:border-accent/40 hover:shadow-xl transition-all duration-300 group relative">
                     <div className="flex items-start justify-between mb-3">
-                      <Link href={`/funds/${fund.code}`} className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-accent/15 border border-accent/30 text-accent font-bold text-xs flex items-center justify-center shrink-0 text-center p-1 leading-tight">
-                          {fund.code}
-                        </div>
+                      <Link href={`/funds/${fund.code}`} className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <InstrumentLogo symbol={fund.code} name={fund.name} size="md" />
                         <div className="min-w-0">
                           <h3 className="font-bold text-text-primary group-hover:text-accent transition-colors text-sm truncate">{fund.code}</h3>
                           <span className="text-[10px] text-text-muted truncate block">{fund.category?.split(' ')[0]}</span>

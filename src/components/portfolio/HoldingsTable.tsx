@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Holding } from '@/types/portfolio';
-import { Badge, Button } from '@/components/ui';
+import { Badge, Button, InstrumentLogo } from '@/components/ui';
 
 export interface HoldingsTableProps {
   holdings: Holding[];
@@ -137,9 +137,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
               {/* Top Row: Symbol, Exchange & Weight */}
               <div className="flex items-center justify-between mb-3">
                 <Link href={link} className="flex items-center gap-2.5">
-                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-xs ${badgeInfo.bg}`}>
-                    {h.symbol.substring(0, 2)}
-                  </div>
+                  <InstrumentLogo symbol={h.symbol} size="md" />
                   <div>
                     <div className="flex items-center gap-1.5">
                       <span className="font-bold text-sm text-text-primary">{h.symbol}</span>
@@ -300,9 +298,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                     {/* Symbol & Name with Asset Badge */}
                     <td className="py-3.5 px-3">
                       <Link href={link} className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-lg border flex items-center justify-center font-bold text-xs ${badgeInfo.bg}`}>
-                          {h.symbol.substring(0, 2)}
-                        </div>
+                        <InstrumentLogo symbol={h.symbol} size="sm" />
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-text-primary block group-hover:text-accent transition-colors">

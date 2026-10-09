@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useStocks } from '@/hooks/useStockData';
 import { getPnLColor, getPnLSign } from '@/lib/utils/format';
+import { InstrumentLogo } from '@/components/ui';
 
 export default function TopMovers() {
   const { stocks, loading } = useStocks();
@@ -43,9 +44,12 @@ export default function TopMovers() {
               href={`/stocks/${stock.symbol}`}
               className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-bg-hover transition-colors cursor-pointer block"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-text-primary">{stock.symbol}</span>
-                <span className="text-xs text-text-muted hidden sm:inline truncate max-w-[100px]">{stock.name}</span>
+              <div className="flex items-center gap-2.5">
+                <InstrumentLogo symbol={stock.symbol} name={stock.name} size="xs" />
+                <div>
+                  <span className="text-sm font-semibold text-text-primary block leading-tight">{stock.symbol}</span>
+                  <span className="text-[10px] text-text-muted hidden sm:inline truncate max-w-[100px] block">{stock.name}</span>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-text-secondary">
@@ -75,9 +79,12 @@ export default function TopMovers() {
               href={`/stocks/${stock.symbol}`}
               className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-bg-hover transition-colors cursor-pointer block"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-text-primary">{stock.symbol}</span>
-                <span className="text-xs text-text-muted hidden sm:inline truncate max-w-[100px]">{stock.name}</span>
+              <div className="flex items-center gap-2.5">
+                <InstrumentLogo symbol={stock.symbol} name={stock.name} size="xs" />
+                <div>
+                  <span className="text-sm font-semibold text-text-primary block leading-tight">{stock.symbol}</span>
+                  <span className="text-[10px] text-text-muted hidden sm:inline truncate max-w-[100px] block">{stock.name}</span>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-text-secondary">

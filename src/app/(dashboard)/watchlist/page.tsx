@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useWatchlistStore, WatchlistItem } from '@/store/useWatchlistStore';
-import { Badge, Button, Input, Modal, useToast } from '@/components/ui';
+import { Badge, Button, Input, Modal, useToast, InstrumentLogo } from '@/components/ui';
 import { POPULAR_STOCKS } from '@/lib/data/stocks';
 import { TEFAS_FUNDS } from '@/lib/data/funds';
 import { sendPushNotification } from '@/lib/notifications/pushNotification';
@@ -192,9 +192,7 @@ export default function WatchlistPage() {
                     <tr key={item.id} className="hover:bg-bg-hover/60 transition-colors group">
                       <td className="py-3.5 px-4">
                         <Link href={link} className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-bg-tertiary flex items-center justify-center font-bold text-xs text-text-primary group-hover:bg-accent group-hover:text-white transition-colors">
-                            {item.symbol.substring(0, 2)}
-                          </div>
+                          <InstrumentLogo symbol={item.symbol} name={item.name} size="md" />
                           <div>
                             <span className="font-bold text-text-primary block group-hover:text-accent transition-colors">
                               {item.symbol}

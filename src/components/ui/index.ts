@@ -10,3 +10,4 @@ export * from './Toast';
 export * from './BrainLogoLoader';
 export { default as ApkDownloadModal } from './ApkDownloadModal';
 export * from './AppUpdateNotifier';
+export * from './InstrumentLogo';

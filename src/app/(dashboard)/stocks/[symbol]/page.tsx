@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useStockDetail, useStockHistory, useStockIndicators } from '@/hooks/useStockData';
 import { CandlestickChart } from '@/components/stocks/CandlestickChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
-import { Badge, Button, Modal, Input, useToast } from '@/components/ui';
+import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 
 export default function StockDetailPage({
@@ -85,9 +85,7 @@ export default function StockDetailPage({
       {/* Stock Main Header */}
       <div className="glass-card p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent/20 to-accent-secondary/20 border border-accent/30 flex items-center justify-center font-bold text-xl text-accent">
-            {symbol.substring(0, 2)}
-          </div>
+          <InstrumentLogo symbol={symbol} name={stock?.name} size="xl" rounded="2xl" />
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-black tracking-tight text-text-primary">{symbol}</h1>

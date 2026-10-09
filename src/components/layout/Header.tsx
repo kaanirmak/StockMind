@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
-import { ApkDownloadModal } from '@/components/ui';
+import { ApkDownloadModal, InstrumentLogo } from '@/components/ui';
 
 export interface NotificationItem {
   id: string;
@@ -391,9 +391,7 @@ export default function Header() {
                             className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-bg-hover transition-colors group cursor-pointer"
                           >
                             <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-lg bg-bg-tertiary group-hover:bg-accent group-hover:text-white transition-colors flex items-center justify-center font-bold text-xs text-text-primary">
-                                {stock.symbol.substring(0, 2)}
-                              </div>
+                              <InstrumentLogo symbol={stock.symbol} name={stock.name} size="xs" />
                               <div>
                                 <span className="font-bold text-xs text-text-primary group-hover:text-accent transition-colors block">
                                   {stock.symbol}

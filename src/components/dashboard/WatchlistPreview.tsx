@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { getPnLColor, getPnLSign } from '@/lib/utils/format';
+import { InstrumentLogo } from '@/components/ui';
 
 export default function WatchlistPreview() {
   const { items } = useWatchlistStore();
@@ -38,9 +39,12 @@ export default function WatchlistPreview() {
                 href={link}
                 className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-bg-hover transition-colors cursor-pointer"
               >
-                <div>
-                  <p className="text-sm font-semibold text-text-primary">{item.symbol}</p>
-                  <p className="text-xs text-text-muted truncate max-w-[120px]">{item.name}</p>
+                <div className="flex items-center gap-2.5">
+                  <InstrumentLogo symbol={item.symbol} name={item.name} size="xs" />
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary leading-tight">{item.symbol}</p>
+                    <p className="text-[11px] text-text-muted truncate max-w-[120px]">{item.name}</p>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-text-primary">₺{item.price.toFixed(2)}</p>
