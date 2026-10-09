@@ -48,10 +48,23 @@ function loadLocalWatchlist(userId?: string | null): WatchlistItem[] {
   return [];
 }
 
+function syncNativeWatchlist(items: WatchlistItem[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    const bridge = (window as any).StockMindAndroid;
+    if (bridge && typeof bridge.syncWatchlistAlerts === 'function') {
+      bridge.syncWatchlistAlerts(JSON.stringify(items));
+    }
+  } catch (err) {
+    console.warn('Native watchlist sync failed:', err);
+  }
+}
+
 function saveLocalWatchlist(userId: string | null | undefined, items: WatchlistItem[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(getWatchlistKey(userId), JSON.stringify(items));
+    syncNativeWatchlist(items);
   } catch (e) {
     console.warn('Failed to save watchlist:', e);
   }
@@ -65,6 +78,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
     loadUserWatchlist: (userId) => {
       const loaded = loadLocalWatchlist(userId);
       set({ items: loaded, currentUserId: userId || null });
+      syncNativeWatchlist(loaded);
     },
 
     resetWatchlist: () => {

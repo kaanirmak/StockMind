@@ -69,10 +69,28 @@ export default function SettingsPage() {
   const [isAndroid, setIsAndroid] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
 
+  // App Version & Update State
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+  const [appVersionCode, setAppVersionCode] = useState<number>(3);
+  const [appVersionName, setAppVersionName] = useState<string>('1.0.2');
+
   useEffect(() => {
     setPushSettings(loadPushPreferences());
     setIsPermitted(hasNotificationPermission());
-    setIsAndroid(isAndroidApp());
+    const isAnd = isAndroidApp();
+    setIsAndroid(isAnd);
+    if (isAnd && typeof window !== 'undefined') {
+      const bridge = (window as any).StockMindAndroid;
+      if (bridge) {
+        if (typeof bridge.getAppVersion === 'function') {
+          setAppVersionName(bridge.getAppVersion() || '1.0.2');
+        }
+        if (typeof bridge.getAppVersionCode === 'function') {
+          setAppVersionCode(Number(bridge.getAppVersionCode()) || 3);
+        }
+      }
+    }
   }, []);
 
   const handleRequestPushPermission = async () => {
@@ -117,6 +135,26 @@ export default function SettingsPage() {
         message: 'Telefonunuzun bildirim çubuğunu veya kilit ekranını kontrol edin.',
       });
     }, 350);
+  };
+
+  const handleCheckAppUpdate = async () => {
+    setCheckingUpdate(true);
+    setUpdateStatus(null);
+    try {
+      const res = await fetch('/api/app/version');
+      const data = await res.json();
+      if (data && data.versionCode) {
+        if (appVersionCode < data.versionCode) {
+          setUpdateStatus(`🚀 Yeni sürüm mevcut: v${data.version} (Build ${data.versionCode}). Güncellemek için aşağıdaki APK İndir butonuna dokunun.`);
+        } else {
+          setUpdateStatus(`✅ Uygulamanız tamamen güncel! En son sürümü kullanıyorsunuz (v${appVersionName}).`);
+        }
+      }
+    } catch {
+      setUpdateStatus('Güncelleme sunucusuna bağlanılamadı. Lütfen internet bağlantınızı kontrol edin.');
+    } finally {
+      setCheckingUpdate(false);
+    }
   };
 
   const userKey = user?.id ? `user_${user.id}` : 'guest';
@@ -1051,6 +1089,17 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Background Service Status Info */}
+        <div className="p-3.5 rounded-xl bg-accent/5 border border-accent/20 flex items-start gap-2.5 text-xs">
+          <span className="text-base shrink-0">⚡</span>
+          <div className="space-y-0.5">
+            <span className="font-bold text-accent">Uygulama Kapalıyken Arka Plan Fiyat Denetimi</span>
+            <p className="text-text-muted leading-relaxed">
+              Android WorkManager altyapısı sayesinde, StockMind uygulamasını arka plandan tamamen kapatsanız dahi sistem her 15 dakikada bir hedef fiyatlarınızı kontrol eder. Fiyat hedefe ulaştığında telefonunuzun kilit ekranına sesli ve titreşimli push uyarısı gönderilir.
+            </p>
+          </div>
+        </div>
+
         {/* Footer Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
           <Button
@@ -1077,6 +1126,90 @@ export default function SettingsPage() {
           >
             Mobil Tercihleri Kaydet
           </Button>
+        </div>
+      </div>
+
+      {/* APK Version & In-App Update Management Card */}
+      <div className="glass-card p-6 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🚀</span>
+              <h3 className="text-base font-bold text-text-primary">StockMind APK Sürümü & Güncelleme Merkezi</h3>
+            </div>
+            <p className="text-xs text-text-muted mt-1">
+              Yüklü Android uygulamanızın sürümünü kontrol edin ve yeni çıkan özellikleri tek dokunuşla güncelleyin.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge variant="purple" size="sm">
+              v{appVersionName} (Build {appVersionCode})
+            </Badge>
+            <Badge variant="success" size="sm">
+              Güncel: v1.0.2
+            </Badge>
+          </div>
+        </div>
+
+        {/* Update Status Banner if checked */}
+        {updateStatus && (
+          <div className="p-3.5 rounded-xl bg-accent/10 border border-accent/30 text-xs text-text-primary flex items-start gap-2.5 animate-in fade-in duration-200">
+            <span className="text-base shrink-0">ℹ️</span>
+            <p className="leading-relaxed font-medium">{updateStatus}</p>
+          </div>
+        )}
+
+        {/* How updates work guide */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+          <div className="p-4 rounded-xl bg-bg-tertiary/40 border border-border/50 space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-text-primary">
+              <span className="text-emerald-400">🛡️</span>
+              <span>Eski APK'yı Silmeli miyim?</span>
+            </div>
+            <p className="text-text-muted leading-relaxed">
+              <strong className="text-emerald-400">Hayır, kesinlikle silmeyin!</strong> Yeni APK dosyasını indirip doğrudan çalıştırdığınızda Android sistemi eski uygulamanın üzerine günceller. Oturumunuz, izleme listeniz, portföyünüz ve ayarlarınız <strong className="text-text-primary">%100 korunur</strong>.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-bg-tertiary/40 border border-border/50 space-y-1.5">
+            <div className="flex items-center gap-2 font-bold text-text-primary">
+              <span className="text-accent">🔔</span>
+              <span>Uygulama Kapalıyken Bildirim Gelir mi?</span>
+            </div>
+            <p className="text-text-muted leading-relaxed">
+              <strong className="text-accent">Evet!</strong> Yeni v1.0.2 sürümü ile gelen yerel Android arka plan servisi (WorkManager), uygulama tamamen kapalı olsa bile her 15 dakikada bir hedef fiyatlarınızı denetler ve kilit ekranına bildirim gönderir.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCheckAppUpdate}
+            disabled={checkingUpdate}
+            className="cursor-pointer"
+            leftIcon={
+              <svg className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            }
+          >
+            {checkingUpdate ? 'Denetleniyor...' : 'Güncellemeleri Denetle'}
+          </Button>
+
+          <a
+            href="/api/download/apk"
+            download="StockMind.apk"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-accent to-purple-600 hover:from-accent-hover hover:to-purple-700 active:scale-95 transition-all shadow-md cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>StockMind v1.0.2 APK İndir / Güncelle</span>
+          </a>
         </div>
       </div>
 

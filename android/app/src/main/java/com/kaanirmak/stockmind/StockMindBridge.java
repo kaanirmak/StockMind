@@ -76,4 +76,37 @@ public class StockMindBridge {
         SharedPreferences prefs = context.getSharedPreferences("StockMindPushPrefs", Context.MODE_PRIVATE);
         return prefs.getString("push_settings", "{}");
     }
+
+    @JavascriptInterface
+    public void syncWatchlistAlerts(String alertsJson) {
+        if (context == null) return;
+        SharedPreferences prefs = context.getSharedPreferences("StockMindAlertsPrefs", Context.MODE_PRIVATE);
+        prefs.edit().putString("watchlist_items", alertsJson).apply();
+    }
+
+    @JavascriptInterface
+    public String getAppVersion() {
+        if (context == null) return "1.0.2";
+        try {
+            android.content.pm.PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            return pInfo.versionName != null ? pInfo.versionName : "1.0.2";
+        } catch (Exception e) {
+            return "1.0.2";
+        }
+    }
+
+    @JavascriptInterface
+    public int getAppVersionCode() {
+        if (context == null) return 3;
+        try {
+            android.content.pm.PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return (int) pInfo.getLongVersionCode();
+            } else {
+                return pInfo.versionCode;
+            }
+        } catch (Exception e) {
+            return 3;
+        }
+    }
 }
