@@ -109,4 +109,11 @@ public class StockMindBridge {
             return 3;
         }
     }
+
+    @JavascriptInterface
+    public void downloadAndInstallUpdate(String downloadUrl) {
+        if (context instanceof MainActivity) {
+            ((MainActivity) context).startApkDownload(downloadUrl);
+        }
+    }
 }

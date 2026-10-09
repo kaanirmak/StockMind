@@ -45,6 +45,12 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
+import androidx.core.content.FileProvider;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
+import android.os.Environment;
+import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
@@ -277,6 +283,11 @@ public class MainActivity extends AppCompatActivity {
         // Register Android Bridge for Home Screen Widgets synchronization
         webView.addJavascriptInterface(new StockMindBridge(this), "StockMindAndroid");
 
+        // DownloadListener for in-app APK and file downloads
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
+            startApkDownload(url);
+        });
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
@@ -318,6 +329,14 @@ public class MainActivity extends AppCompatActivity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
                 String scheme = uri.getScheme();
+                String urlStr = uri.toString();
+
+                // Intercept direct APK downloads and start system download manager with auto-installer
+                if (urlStr.endsWith(".apk") || urlStr.contains("/download/apk") || urlStr.contains("StockMind.apk")) {
+                    startApkDownload(urlStr);
+                    return true;
+                }
+
                 if (scheme != null && (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp"))) {
                     try {
                         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
@@ -482,6 +501,87 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
         if (webView != null) {
             webView.onPause();
+        }
+    }
+
+    public void startApkDownload(String downloadUrl) {
+        runOnUiThread(() -> {
+            try {
+                Toast.makeText(this, "StockMind güncellemesi indiriliyor... Tamamlandığında kurulum başlayacak.", Toast.LENGTH_LONG).show();
+
+                String fullUrl = downloadUrl;
+                if (!fullUrl.startsWith("http://") && !fullUrl.startsWith("https://")) {
+                    fullUrl = currentServerUrl.replaceAll("/$", "") + (fullUrl.startsWith("/") ? fullUrl : "/" + fullUrl);
+                }
+
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fullUrl));
+                request.setTitle("StockMind v1.0.2 Güncellemesi");
+                request.setDescription("Yeni StockMind sürümü indiriliyor...");
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+
+                File downloadDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if (downloadDir == null) {
+                    downloadDir = getFilesDir();
+                }
+                File destinationFile = new File(downloadDir, "StockMind_update.apk");
+                if (destinationFile.exists()) {
+                    destinationFile.delete();
+                }
+                request.setDestinationUri(Uri.fromFile(destinationFile));
+                request.setMimeType("application/vnd.android.package-archive");
+
+                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                if (dm != null) {
+                    long downloadId = dm.enqueue(request);
+
+                    BroadcastReceiver receiver = new BroadcastReceiver() {
+                        @Override
+                        public void onReceive(Context context, Intent intent) {
+                            long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                            if (id == downloadId) {
+                                try {
+                                    unregisterReceiver(this);
+                                } catch (Exception ignored) {}
+                                promptInstallApk(destinationFile);
+                            }
+                        }
+                    };
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        registerReceiver(receiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED);
+                    } else {
+                        registerReceiver(receiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+                    }
+                } else {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl));
+                    startActivity(browserIntent);
+                }
+            } catch (Exception e) {
+                try {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
+                    startActivity(browserIntent);
+                } catch (Exception ex) {
+                    Toast.makeText(this, "İndirme hatası: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void promptInstallApk(File apkFile) {
+        if (!apkFile.exists()) return;
+        try {
+            Uri contentUri = FileProvider.getUriForFile(
+                    this,
+                    getApplicationContext().getPackageName() + ".fileprovider",
+                    apkFile
+            );
+
+            Intent installIntent = new Intent(Intent.ACTION_VIEW);
+            installIntent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+            installIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(installIntent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Yükleyici açılamadı: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 

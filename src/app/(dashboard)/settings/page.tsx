@@ -1201,6 +1201,13 @@ export default function SettingsPage() {
           <a
             href="/api/download/apk"
             download="StockMind.apk"
+            onClick={(e) => {
+              const bridge = typeof window !== 'undefined' ? (window as any).StockMindAndroid : null;
+              if (bridge && typeof bridge.downloadAndInstallUpdate === 'function') {
+                e.preventDefault();
+                bridge.downloadAndInstallUpdate('/api/download/apk');
+              }
+            }}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-accent to-purple-600 hover:from-accent-hover hover:to-purple-700 active:scale-95 transition-all shadow-md cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
