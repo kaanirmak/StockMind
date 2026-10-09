@@ -6,6 +6,7 @@ import { useWatchlistStore, WatchlistItem } from '@/store/useWatchlistStore';
 import { Badge, Button, Input, Modal, useToast } from '@/components/ui';
 import { POPULAR_STOCKS } from '@/lib/data/stocks';
 import { TEFAS_FUNDS } from '@/lib/data/funds';
+import { sendPushNotification } from '@/lib/notifications/pushNotification';
 
 export default function WatchlistPage() {
   const { items, addItem, removeItem, setTargetPrice } = useWatchlistStore();
@@ -108,6 +109,13 @@ export default function WatchlistPage() {
     if (!selectedItemForAlert || !alertTargetPrice) return;
 
     setTargetPrice(selectedItemForAlert.id, Number(alertTargetPrice));
+
+    // Send push notification confirmation to phone
+    sendPushNotification(
+      `🎯 Fiyat Alarmı: ${selectedItemForAlert.symbol}`,
+      `${selectedItemForAlert.symbol} fiyatı ₺${alertTargetPrice} seviyesine ulaştığında telefonunuza anlık bildirim gelecektir.`,
+      '/watchlist'
+    );
 
     showToast({
       type: 'success',

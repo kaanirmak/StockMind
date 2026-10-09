@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private String currentServerUrl;
     private ValueCallback<Uri[]> filePathCallback;
     private ActivityResultLauncher<Intent> fileChooserLauncher;
+    private ActivityResultLauncher<String> notificationPermissionLauncher;
     private long backPressedTime = 0;
 
     @Override
@@ -85,10 +86,37 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
         setupFileChooser();
+        setupNotificationPermission();
         setupWebView();
         setupBackNavigation();
 
         loadAppUrl();
+    }
+
+    private void setupNotificationPermission() {
+        notificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (isGranted) {
+                        NotificationHelper.createNotificationChannel(this);
+                    }
+                }
+        );
+        NotificationHelper.createNotificationChannel(this);
+    }
+
+    public void requestNotificationPermissionExplicit() {
+        runOnUiThread(() -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
+                } else {
+                    Toast.makeText(this, "Bildirim izni zaten etkin! 🔔", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                Toast.makeText(this, "Bildirimler aktif! 🔔", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void hideBottomNavigation() {

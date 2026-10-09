@@ -6,6 +6,16 @@ import { Button, Input, Badge, useToast } from '@/components/ui';
 import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
+import {
+  loadPushPreferences,
+  savePushPreferences,
+  sendPushNotification,
+  hasNotificationPermission,
+  requestNotificationPermission,
+  isAndroidApp,
+  PushNotificationPreferences,
+  DEFAULT_PUSH_PREFERENCES,
+} from '@/lib/notifications/pushNotification';
 
 const AVATAR_PRESETS: Array<{ label: string; icon: string; colors: [string, string] }> = [
   { label: 'Boğa (Bull)', icon: '🐂', colors: ['#059669', '#10b981'] },
@@ -52,6 +62,62 @@ export default function SettingsPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingDailyReport, setSendingDailyReport] = useState(false);
   const [emailPreviewUrl, setEmailPreviewUrl] = useState<string | null>(null);
+
+  // Push & Mobile Notifications State
+  const [pushSettings, setPushSettings] = useState<PushNotificationPreferences>(DEFAULT_PUSH_PREFERENCES);
+  const [isPermitted, setIsPermitted] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const [isSendingTestPush, setIsSendingTestPush] = useState(false);
+
+  useEffect(() => {
+    setPushSettings(loadPushPreferences());
+    setIsPermitted(hasNotificationPermission());
+    setIsAndroid(isAndroidApp());
+  }, []);
+
+  const handleRequestPushPermission = async () => {
+    const granted = await requestNotificationPermission();
+    setIsPermitted(hasNotificationPermission() || granted);
+    if (granted) {
+      showToast({
+        type: 'success',
+        title: 'Bildirim İzni Verildi 🔔',
+        message: 'Telefon push bildirimleri başarıyla aktif edildi.',
+      });
+    } else {
+      showToast({
+        type: 'info',
+        title: 'Bildirim İzni',
+        message: 'Lütfen cihazınızın uygulama ayarlarından StockMind bildirimlerine izin verin.',
+      });
+    }
+  };
+
+  const handleSavePushSettings = () => {
+    savePushPreferences(pushSettings);
+    showToast({
+      type: 'success',
+      title: 'Mobil Bildirim Ayarları Kaydedildi',
+      message: 'Telefon push bildirim tercihleriniz başarıyla güncellendi.',
+    });
+  };
+
+  const handleSendTestPush = () => {
+    setIsSendingTestPush(true);
+    sendPushNotification(
+      'StockMind: Bildirim Servisi Aktif! 🚀',
+      'Fiyat alarmları ve portföy bildirimleriniz başarıyla telefonunuza iletilecektir.',
+      '/settings'
+    );
+    setTimeout(() => {
+      setIsSendingTestPush(false);
+      showToast({
+        type: 'success',
+        title: 'Test Bildirimi Gönderildi 📱',
+        message: 'Telefonunuzun bildirim çubuğunu veya kilit ekranını kontrol edin.',
+      });
+    }, 350);
+  };
 
   const userKey = user?.id ? `user_${user.id}` : 'guest';
 
@@ -863,6 +929,155 @@ export default function SettingsPage() {
             </Button>
           </div>
         </form>
+      </div>
+
+      {/* ═══════════════════════════════════════════
+          MOBILE PHONE & PUSH NOTIFICATIONS CARD
+          ═══════════════════════════════════════════ */}
+      <div className="glass-card p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border/60 gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📱</span>
+              <h3 className="text-base font-bold text-text-primary">Telefon & Push Bildirimleri (Mobil Anlık Bildirim)</h3>
+            </div>
+            <p className="text-xs text-text-muted mt-1">
+              Telefonunuzun kilit ekranına ve üst bildirim çubuğuna sesli/titreşimli anlık fiyat alarmları ve portföy uyarıları gönderilmesini yapılandırın.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge variant={isAndroid ? 'success' : 'purple'} size="sm">
+              {isAndroid ? '🤖 Android Uygulama' : '🌐 Web / Tarayıcı'}
+            </Badge>
+            <Badge variant={isPermitted ? 'success' : 'warning'} size="sm">
+              {isPermitted ? '● İzin Verildi' : '⚠️ İzin Gerekli'}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Permission Request Alert Banner if not permitted */}
+        {!isPermitted && (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="space-y-0.5">
+              <p className="font-bold text-amber-400">Bildirim İzni Henüz Verilmedi</p>
+              <p className="text-text-muted">
+                Telefonunuzun kilit ekranında anlık fiyat uyarılarını görebilmek için bildirim iznini onaylamanız gerekir.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRequestPushPermission}
+              className="border-amber-500/40 text-amber-400 hover:bg-amber-500/20 shrink-0"
+            >
+              🔔 İzin İste / Etkinleştir
+            </Button>
+          </div>
+        )}
+
+        {/* Toggles */}
+        <div className="space-y-2.5">
+          {/* Master Toggle */}
+          <label className="flex items-center justify-between p-3.5 rounded-xl bg-accent/10 border border-accent/30 cursor-pointer transition-colors">
+            <div className="pr-4">
+              <span className="text-sm font-bold text-text-primary block">
+                🔔 Telefon Push Bildirimlerini Etkinleştir
+              </span>
+              <span className="text-xs text-text-muted">
+                Fiyat alarmları, portföy hareketleri ve kapanış bülteninin telefon bildirim çubuğuna düşmesini sağlar.
+              </span>
+            </div>
+            <input
+              type="checkbox"
+              checked={pushSettings.enabled}
+              onChange={(e) => setPushSettings({ ...pushSettings, enabled: e.target.checked })}
+              className="w-5 h-5 accent-accent rounded cursor-pointer"
+            />
+          </label>
+
+          {/* Sub Toggles */}
+          <div className={`space-y-2 pl-1 sm:pl-3 transition-opacity ${pushSettings.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
+              <div className="pr-4">
+                <span className="text-sm font-semibold text-text-primary block">🎯 Anlık Hedef Fiyat Alarmları</span>
+                <span className="text-xs text-text-muted">İzleme listenizdeki veya portföyünüzdeki hisse/fon belirlediğiniz fiyata ulaştığında doğrudan kilit ekranına bildirim gelir.</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={pushSettings.priceAlerts}
+                onChange={(e) => setPushSettings({ ...pushSettings, priceAlerts: e.target.checked })}
+                className="w-4 h-4 accent-accent rounded cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
+              <div className="pr-4">
+                <span className="text-sm font-semibold text-text-primary block">⏰ Günlük 18:30 Kapanış Bildirimi</span>
+                <span className="text-xs text-text-muted">Piyasa kapandığında günün kâr/zararını ve BIST 100 durumunu telefonun bildirim çubuğunda gösterir.</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={pushSettings.dailyReport}
+                onChange={(e) => setPushSettings({ ...pushSettings, dailyReport: e.target.checked })}
+                className="w-4 h-4 accent-accent rounded cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
+              <div className="pr-4">
+                <span className="text-sm font-semibold text-text-primary block">⚡ Kritik Portföy Değişimleri (±%3)</span>
+                <span className="text-xs text-text-muted">Portföyünüzde gün içinde %3 veya üzeri sert hareket olduğunda anında push uyarısı gönderir.</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={pushSettings.portfolioMoves}
+                onChange={(e) => setPushSettings({ ...pushSettings, portfolioMoves: e.target.checked })}
+                className="w-4 h-4 accent-accent rounded cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
+              <div className="pr-4">
+                <span className="text-sm font-semibold text-text-primary block">📢 Önemli KAP & Piyasa Gelişmeleri</span>
+                <span className="text-xs text-text-muted">Sahip olduğunuz hisselerle ilgili kritik KAP bildirimleri ve flaş haberleri bildir.</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={pushSettings.marketNews}
+                onChange={(e) => setPushSettings({ ...pushSettings, marketNews: e.target.checked })}
+                className="w-4 h-4 accent-accent rounded cursor-pointer"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleSendTestPush}
+            disabled={isSendingTestPush}
+            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 cursor-pointer"
+            leftIcon={
+              <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            }
+          >
+            {isSendingTestPush ? 'Bildirim Gönderiliyor...' : '📱 Telefona Test Bildirimi Gönder'}
+          </Button>
+
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={handleSavePushSettings}
+          >
+            Mobil Tercihleri Kaydet
+          </Button>
+        </div>
       </div>
 
       {/* Email & Notification Settings Card */}
