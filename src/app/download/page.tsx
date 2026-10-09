@@ -198,9 +198,9 @@ export default function DownloadPage() {
                 <div className="w-7 h-7 rounded-lg bg-violet-500/20 text-violet-400 font-bold text-xs flex items-center justify-center">
                   3
                 </div>
-                <p className="text-sm font-bold text-white">Uygulamayı Açın</p>
+                <p className="text-sm font-bold text-white">Yükleyin veya Güncelleyin</p>
                 <p className="text-xs text-text-muted">
-                  İndirilen dosyaya dokunun ve "Yükle" butonuna basın. StockMind kullanıma hazır!
+                  İndirilen dosyaya dokunun ve "Güncelle" veya "Yükle"ye basın. Eski sürümü silmenize gerek yoktur; oturumunuz ve verileriniz kaybolmadan anında güncellenir!
                 </p>
               </div>
             </div>

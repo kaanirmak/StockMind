@@ -56,7 +56,7 @@ export default function ApkDownloadModal({ isOpen, onClose }: ApkDownloadModalPr
               <div className="flex items-center gap-2">
                 <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">StockMind Android</h3>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  v1.0.0 APK
+                  v1.0.1 APK (Güncel)
                 </span>
               </div>
               <p className="text-xs text-text-muted mt-0.5">
@@ -176,9 +176,9 @@ export default function ApkDownloadModal({ isOpen, onClose }: ApkDownloadModalPr
                 <span className="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 text-xs font-bold flex items-center justify-center">
                   3
                 </span>
-                <p className="text-xs font-bold text-text-primary">Kurun ve Açın</p>
+                <p className="text-xs font-bold text-text-primary">Yükleyin veya Güncelleyin</p>
                 <p className="text-[11px] text-text-muted leading-tight">
-                  İndirilen dosyayı açıp "Yükle"ye dokunun. Hesabınızla giriş yapın.
+                  İndirilen dosyayı açıp "Güncelle" veya "Yükle"ye dokunun. Eski sürümü silmenize gerek yoktur; verileriniz korunur.
                 </p>
               </div>
             </div>
