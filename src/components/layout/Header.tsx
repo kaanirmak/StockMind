@@ -319,7 +319,7 @@ export default function Header() {
               if (searchQuery.trim()) setShowSearchDropdown(true);
             }}
             onKeyDown={handleSearchSubmit}
-            placeholder="Hisse veya fon ara... (örn: THYAO)"
+            placeholder="Hisse veya fon ara..."
             className="w-full pl-9 sm:pl-10 pr-4 sm:pr-12 py-2 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-text-muted bg-bg-tertiary border border-border">
@@ -329,7 +329,12 @@ export default function Header() {
 
         {/* Live Search Autocomplete Dropdown */}
         {showSearchDropdown && searchQuery.trim().length > 0 && (
-          <div className="absolute left-0 right-0 top-full mt-2 glass-card rounded-2xl border border-border shadow-2xl p-2 z-50 max-h-[420px] overflow-y-auto space-y-3 animate-fade-in">
+          <>
+            <div
+              className="sm:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs animate-fade-in"
+              onClick={() => setShowSearchDropdown(false)}
+            />
+            <div className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-0 top-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:top-full mt-1 sm:mt-2 glass-card rounded-2xl border border-border shadow-2xl p-2.5 z-50 max-h-[70vh] sm:max-h-[420px] overflow-y-auto space-y-3 animate-fade-in">
             {searchResults.loading ? (
               <div className="p-4 text-center text-xs text-text-muted flex items-center justify-center gap-2">
                 <svg className="animate-spin h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24">
@@ -459,6 +464,7 @@ export default function Header() {
               </>
             )}
           </div>
+          </>
         )}
       </div>
       </div>
@@ -531,7 +537,13 @@ export default function Header() {
 
           {/* Notification Panel Dropdown */}
           {showNotifications && (
-            <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] max-w-[calc(100vw-1.5rem)] glass-card rounded-2xl border border-border shadow-elevated py-2 animate-scale-in origin-top-right z-50 overflow-hidden">
+            <>
+              {/* Mobile backdrop overlay */}
+              <div
+                className="sm:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-fade-in"
+                onClick={() => setShowNotifications(false)}
+              />
+              <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:top-full mt-1 sm:mt-2 w-auto sm:w-[380px] max-w-none sm:max-w-[400px] glass-card rounded-2xl border border-border shadow-2xl py-2 animate-scale-in origin-top-right z-50 overflow-hidden">
               {/* Panel Header */}
               <div className="px-4 py-3 border-b border-border/80 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -663,6 +675,7 @@ export default function Header() {
                 </Link>
               </div>
             </div>
+          </>
           )}
         </div>
 
@@ -711,7 +724,12 @@ export default function Header() {
 
           {/* Dropdown */}
           {showUserMenu && (
-            <div className="absolute right-0 top-full mt-2 w-64 glass-card rounded-xl border border-border shadow-elevated py-1 animate-scale-in origin-top-right z-50">
+            <>
+              <div
+                className="sm:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs animate-fade-in"
+                onClick={() => setShowUserMenu(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-1.5rem)] glass-card rounded-xl border border-border shadow-elevated py-1 animate-scale-in origin-top-right z-50">
               <div className="px-4 py-3 border-b border-border flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-base font-semibold shadow-sm overflow-hidden flex-shrink-0 ${
                   profile ? 'gradient-accent' : 'bg-amber-500/80'
@@ -820,7 +838,8 @@ export default function Header() {
                 </button>
               )}
             </div>
-          )}
+          </>
+        )}
         </div>
       </div>
 

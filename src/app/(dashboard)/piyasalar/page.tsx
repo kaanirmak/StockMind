@@ -157,7 +157,7 @@ function PiyasalarContent() {
             <button
               key={m.id}
               onClick={() => handleMarketChange(m.id)}
-              className={`flex-1 min-w-[100px] sm:min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex-1 min-w-[68px] sm:min-w-[110px] flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 isActive
                   ? 'bg-accent text-white shadow-lg shadow-accent/25'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -182,10 +182,10 @@ function PiyasalarContent() {
               {/* Search */}
               <div className="flex-1">
                 <Input
-                  placeholder={`${activeMarket} sembol veya şirket ara (örn: ${
-                    activeMarket === 'BIST' ? 'THYAO, ASELS, GARAN' :
-                    activeMarket === 'NASDAQ' ? 'NVDA, AAPL, MSFT' : 'BRK.B, JPM, WMT'
-                  })...`}
+                  placeholder={`${activeMarket} sembol ara... (örn: ${
+                    activeMarket === 'BIST' ? 'THYAO, ASELS' :
+                    activeMarket === 'NASDAQ' ? 'NVDA, AAPL' : 'BRK.B, JPM'
+                  })`}
                   value={stockSearch}
                   onChange={(e) => setStockSearch(e.target.value)}
                   leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
@@ -222,20 +222,20 @@ function PiyasalarContent() {
             <div className="glass-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-bg-secondary/80 text-text-muted text-xs uppercase tracking-wider border-b border-border/80">
+                  <thead className="bg-bg-secondary/80 text-text-muted text-[11px] sm:text-xs uppercase tracking-wider border-b border-border/80">
                     <tr>
-                      <th className="py-3 px-3 sm:px-4 font-semibold">Sembol</th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold hidden sm:table-cell">Borsa</th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('price')}>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold">Sembol</th>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold hidden sm:table-cell">Borsa</th>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('price')}>
                         Fiyat {stockSortBy === 'price' && (stockSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('changePercent')}>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('changePercent')}>
                         Değişim {stockSortBy === 'changePercent' && (stockSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden md:table-cell" onClick={() => toggleStockSort('volume')}>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden md:table-cell" onClick={() => toggleStockSort('volume')}>
                         Hacim {stockSortBy === 'volume' && (stockSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 text-center">İşlem</th>
+                      <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-center">İşlem</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
@@ -244,9 +244,9 @@ function PiyasalarContent() {
                       const curr = stock.currency === 'TRY' ? '₺' : '$';
                       return (
                         <tr key={stock.symbol} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
-                          <td className="py-3 px-3 sm:px-4">
-                            <Link href={`/stocks/${stock.symbol}`} className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center font-bold text-xs text-text-primary group-hover:bg-accent group-hover:text-white transition-colors shrink-0">
+                          <td className="py-2 sm:py-3 px-2 sm:px-4">
+                            <Link href={`/stocks/${stock.symbol}`} className="flex items-center gap-2 sm:gap-2.5">
+                              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-bg-tertiary flex items-center justify-center font-bold text-[11px] sm:text-xs text-text-primary group-hover:bg-accent group-hover:text-white transition-colors shrink-0">
                                 {stock.symbol.substring(0, 2)}
                               </div>
                               <div>
@@ -255,21 +255,21 @@ function PiyasalarContent() {
                               </div>
                             </Link>
                           </td>
-                          <td className="py-3 px-3 sm:px-4 hidden sm:table-cell">
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">
                             <Badge variant={stock.exchange === 'BIST' ? 'purple' : 'info'} size="sm">{stock.exchange}</Badge>
                           </td>
-                          <td className="py-3 px-3 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm">
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
                             {curr}{stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                           </td>
-                          <td className="py-3 px-3 sm:px-4 text-right font-mono">
+                          <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-right font-mono whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg ${isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
                               {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
                             </span>
                           </td>
-                          <td className="py-3 px-3 sm:px-4 text-right font-mono text-text-secondary text-xs hidden md:table-cell">
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden md:table-cell">
                             {stock.volume ? (stock.volume > 1e6 ? `${(stock.volume / 1e6).toFixed(1)}M` : `${(stock.volume / 1e3).toFixed(0)}K`) : '-'}
                           </td>
-                          <td className="py-3 px-3 sm:px-4 text-center">
+                          <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 onClick={(e) => {
@@ -277,15 +277,17 @@ function PiyasalarContent() {
                                   const added = toggleWatchlist({ symbol: stock.symbol, name: stock.name, assetType: 'stock', price: stock.price, changePercent: stock.changePercent, exchange: stock.exchange });
                                   showToast({ type: 'success', title: added ? 'Takip Listesine Eklendi ⭐' : 'Listeden Çıkarıldı', message: `${stock.symbol} ${added ? 'eklendi' : 'çıkarıldı'}.` });
                                 }}
-                                className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(stock.symbol) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
+                                className={`p-1 sm:p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(stock.symbol) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
                               >
                                 <svg className={`w-3.5 h-3.5 ${checkWatchlisted(stock.symbol) ? 'fill-warning text-warning' : 'fill-none stroke-current'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                                 </svg>
                               </button>
-                              <Link href={`/stocks/${stock.symbol}`}>
-                                <Button variant="ghost" size="sm">→</Button>
-                              </Link>
+                              <div className="hidden sm:inline-flex">
+                                <Link href={`/stocks/${stock.symbol}`}>
+                                  <Button variant="ghost" size="sm">→</Button>
+                                </Link>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -384,25 +386,25 @@ function PiyasalarContent() {
             <div className="glass-card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-bg-secondary/80 text-text-muted text-xs uppercase tracking-wider border-b border-border/80">
+                  <thead className="bg-bg-secondary/80 text-text-muted text-[11px] sm:text-xs uppercase tracking-wider border-b border-border/80">
                     <tr>
-                      <th className="py-3 px-3 sm:px-4 font-semibold whitespace-nowrap">Fon</th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary whitespace-nowrap" onClick={() => toggleFundSort('price')}>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold whitespace-nowrap">Fon</th>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary whitespace-nowrap" onClick={() => toggleFundSort('price')}>
                         Fiyat {fundSortBy === 'price' && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary whitespace-nowrap" onClick={() => toggleFundSort('dailyReturn')}>
+                      <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary whitespace-nowrap" onClick={() => toggleFundSort('dailyReturn')}>
                         Günlük {fundSortBy === 'dailyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary font-bold text-accent whitespace-nowrap hidden sm:table-cell" onClick={() => toggleFundSort('yearlyReturn')}>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary font-bold text-accent whitespace-nowrap hidden sm:table-cell" onClick={() => toggleFundSort('yearlyReturn')}>
                         1 Yıl {fundSortBy === 'yearlyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary whitespace-nowrap hidden md:table-cell" onClick={() => toggleFundSort('return3y')}>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary whitespace-nowrap hidden md:table-cell" onClick={() => toggleFundSort('return3y')}>
                         3 Yıl {fundSortBy === 'return3y' && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 font-semibold text-center cursor-pointer hover:text-text-primary whitespace-nowrap hidden sm:table-cell" onClick={() => toggleFundSort('riskValue')}>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-center cursor-pointer hover:text-text-primary whitespace-nowrap hidden sm:table-cell" onClick={() => toggleFundSort('riskValue')}>
                         Risk {fundSortBy === 'riskValue' && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-3 px-3 sm:px-4 text-center whitespace-nowrap">İşlem</th>
+                      <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-center whitespace-nowrap">İşlem</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
@@ -410,9 +412,9 @@ function PiyasalarContent() {
                       const isDailyPos = fund.dailyReturn >= 0;
                       return (
                         <tr key={fund.code} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
-                          <td className="py-3 px-3 sm:px-4">
-                            <Link href={`/funds/${fund.code}`} className="flex items-center gap-2.5">
-                              <div className="w-9 h-9 rounded-xl bg-accent/15 border border-accent/30 text-accent font-bold text-xs flex items-center justify-center shrink-0 leading-none text-center p-1">
+                          <td className="py-2 sm:py-3 px-2 sm:px-4">
+                            <Link href={`/funds/${fund.code}`} className="flex items-center gap-2 sm:gap-2.5">
+                              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-accent/15 border border-accent/30 text-accent font-bold text-[11px] sm:text-xs flex items-center justify-center shrink-0 leading-none text-center p-0.5 sm:p-1">
                                 {fund.code}
                               </div>
                               <div>
@@ -421,16 +423,16 @@ function PiyasalarContent() {
                               </div>
                             </Link>
                           </td>
-                          <td className="py-3 px-3 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm">₺{fund.price.toFixed(4)}</td>
-                          <td className="py-3 px-3 sm:px-4 text-right font-mono">
-                            <span className={`font-semibold text-xs px-1.5 py-0.5 rounded ${isDailyPos ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">₺{fund.price.toFixed(4)}</td>
+                          <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-right font-mono whitespace-nowrap">
+                            <span className={`font-semibold text-[11px] sm:text-xs px-1.5 py-0.5 rounded ${isDailyPos ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
                               {isDailyPos ? '+' : ''}{fund.dailyReturn.toFixed(2)}%
                             </span>
                           </td>
-                          <td className="py-3 px-3 sm:px-4 text-right font-mono font-bold text-success text-xs sm:text-sm hidden sm:table-cell">+{fund.yearlyReturn.toFixed(1)}%</td>
-                          <td className="py-3 px-3 sm:px-4 text-right font-mono text-accent text-xs hidden md:table-cell">+{fund.return3y.toFixed(0)}%</td>
-                          <td className="py-3 px-3 sm:px-4 text-center hidden sm:table-cell">{getRiskBadge(fund.riskValue)}</td>
-                          <td className="py-3 px-3 sm:px-4 text-center">
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-bold text-success text-xs sm:text-sm hidden sm:table-cell whitespace-nowrap">+{fund.yearlyReturn.toFixed(1)}%</td>
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-accent text-xs hidden md:table-cell whitespace-nowrap">+{fund.return3y.toFixed(0)}%</td>
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-center hidden sm:table-cell">{getRiskBadge(fund.riskValue)}</td>
+                          <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 onClick={(e) => {
@@ -438,15 +440,17 @@ function PiyasalarContent() {
                                   const added = toggleWatchlist({ symbol: fund.code, name: fund.name, assetType: 'fund', price: fund.price, changePercent: fund.dailyReturn, exchange: 'TEFAS' });
                                   showToast({ type: 'success', title: added ? 'Takip Listesine Eklendi ⭐' : 'Listeden Çıkarıldı', message: `${fund.code} ${added ? 'eklendi' : 'çıkarıldı'}.` });
                                 }}
-                                className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(fund.code) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
+                                className={`p-1 sm:p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(fund.code) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
                               >
                                 <svg className={`w-3.5 h-3.5 ${checkWatchlisted(fund.code) ? 'fill-warning text-warning' : 'fill-none stroke-current'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                                 </svg>
                               </button>
-                              <Link href={`/funds/${fund.code}`}>
-                                <Button variant="ghost" size="sm">→</Button>
-                              </Link>
+                              <div className="hidden sm:inline-flex">
+                                <Link href={`/funds/${fund.code}`}>
+                                  <Button variant="ghost" size="sm">→</Button>
+                                </Link>
+                              </div>
                             </div>
                           </td>
                         </tr>
