@@ -69,8 +69,6 @@ export default function SettingsPage() {
   const [isPermitted, setIsPermitted] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState('test');
-  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
 
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -138,46 +136,6 @@ export default function SettingsPage() {
         message: 'Telefonunuzun bildirim çubuğunu veya kilit ekranını kontrol edin.',
       });
     }, 350);
-  };
-
-  const handleSendBroadcastPush = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanMsg = broadcastMessage.trim();
-    if (!cleanMsg) return;
-
-    setIsSendingBroadcast(true);
-    try {
-      const res = await fetch('/api/notifications/broadcast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'StockMind 📢',
-          message: cleanMsg,
-          route: '/dashboard',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        // Also trigger immediately on current device
-        sendPushNotification('StockMind 📢', cleanMsg, '/dashboard');
-
-        showToast({
-          type: 'success',
-          title: 'Tüm Cihazlara Yayınlandı 🚀',
-          message: `"${cleanMsg}" bildirimi sunucuya kaydedildi. Tüm cihazlara anında ve arka plan servisleriyle ulaştırılacaktır.`,
-        });
-      } else {
-        throw new Error(data.error);
-      }
-    } catch (err: any) {
-      showToast({
-        type: 'danger',
-        title: 'Yayın Hatası',
-        message: err?.message || 'Bildirim gönderilemedi.',
-      });
-    } finally {
-      setIsSendingBroadcast(false);
-    }
   };
 
   const handleCheckAppUpdate = async () => {
@@ -1171,42 +1129,6 @@ export default function SettingsPage() {
           </Button>
         </div>
 
-        {/* Broadcast to All Devices Card */}
-        <div className="mt-4 pt-4 border-t border-border/40 space-y-3">
-          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/25 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🌐</span>
-                <div>
-                  <h4 className="text-xs font-bold text-text-primary">Tüm Cihazlara Bildirim Gönder (Genel Yayın)</h4>
-                  <p className="text-[11px] text-text-muted">
-                    Yazdığınız mesaj, StockMind yüklü olan tüm telefonların ve web kullanıcılarının bildirim çubuğuna doğrudan iletilir.
-                  </p>
-                </div>
-              </div>
-              <Badge variant="purple" size="sm" className="shrink-0">Tüm Cihazlar</Badge>
-            </div>
-
-            <form onSubmit={handleSendBroadcastPush} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-              <input
-                type="text"
-                value={broadcastMessage}
-                onChange={(e) => setBroadcastMessage(e.target.value)}
-                placeholder="Bildirim mesajı (örn: test)..."
-                className="flex-1 px-3.5 py-2 text-xs rounded-xl bg-bg-input border border-border text-text-primary focus:border-accent focus:outline-none"
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                isLoading={isSendingBroadcast}
-                className="bg-purple-600 hover:bg-purple-700 text-white shrink-0 font-bold cursor-pointer shadow-md"
-              >
-                🚀 Tüm Cihazlara Gönder
-              </Button>
-            </form>
-          </div>
-        </div>
       </div>
 
       {/* APK Version & In-App Update Management Card */}
