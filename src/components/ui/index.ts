@@ -8,3 +8,4 @@ export * from './Tabs';
 export * from './Skeleton';
 export * from './Toast';
 export * from './BrainLogoLoader';
+export { default as ApkDownloadModal } from './ApkDownloadModal';

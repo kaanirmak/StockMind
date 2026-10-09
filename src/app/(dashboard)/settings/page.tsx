@@ -637,6 +637,51 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Mobile App & APK Card */}
+      <div className="glass-card p-6 space-y-4 border border-emerald-500/25">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993s-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.152-.5684.417.417 0 00-.569.152l-2.0223 3.503C15.583 8.359 13.856 8 12 8s-3.583.359-5.1352.949L4.8425 5.446a.417.417 0 00-.569-.152.416.416 0 00-.152.5684l1.997 3.459C2.688 11.086 0 14.887 0 19.341h24c0-4.454-2.688-8.255-6.1185-10.0196" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-text-primary">Mobil Uygulama (Android APK)</h3>
+              <p className="text-xs text-text-muted">StockMind'ı Android cihazınızda tam ekran yerel uygulama olarak kullanın.</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 self-start sm:self-auto">
+            v1.0.0 Güncel (5.9 MB)
+          </span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+          <div className="space-y-1">
+            <div className="font-bold text-sm text-text-primary">StockMind.apk Paketini İndirin</div>
+            <p className="text-xs text-text-muted">
+              Doğrudan APK dosyasını indirerek Android 7.0+ telefon veya tabletinize saniyeler içinde kurabilirsiniz.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <a
+              href="/api/download/apk"
+              download="StockMind.apk"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 hover:opacity-95 transition-all cursor-pointer"
+            >
+              <span>Hemen İndir (5.9 MB)</span>
+            </a>
+            <Link
+              href="/download"
+              className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold text-xs border border-white/10 transition-all text-center"
+            >
+              QR & Rehber
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Profile Card */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">

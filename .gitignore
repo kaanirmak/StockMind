@@ -47,4 +47,5 @@ android/local.properties
 android/*/build/
 android/build/
 *.apk
+!public/StockMind.apk
 

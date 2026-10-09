@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "sync:funds": "node scripts/sync-tefas-funds.mjs",
-    "build:apk": "export JAVA_HOME=\"${JAVA_HOME:-/opt/homebrew/opt/openjdk@21}\" && export PATH=\"$JAVA_HOME/bin:$PATH\" && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../StockMind.apk",
+    "build:apk": "export JAVA_HOME=\"${JAVA_HOME:-/opt/homebrew/opt/openjdk@21}\" && export PATH=\"$JAVA_HOME/bin:$PATH\" && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../StockMind.apk && cp app/build/outputs/apk/debug/app-debug.apk ../public/StockMind.apk",
     "lint": "eslint"
   },
   "dependencies": {

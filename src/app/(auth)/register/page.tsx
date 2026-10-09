@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successEmail, setSuccessEmail] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const passwordStrength = (() => {
@@ -45,13 +46,20 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const siteOrigin = typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : (process.env.NEXT_PUBLIC_APP_URL || 'https://stock-mind-bay.vercel.app');
+
+    const emailRedirectTo = `${siteOrigin.replace(/\/$/, '')}/auth/callback?next=/dashboard`;
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
         },
+        emailRedirectTo,
       },
     });
 
@@ -61,7 +69,12 @@ export default function RegisterPage() {
       return;
     }
 
-    window.location.href = '/dashboard';
+    if (data?.session) {
+      window.location.href = '/dashboard';
+    } else {
+      setSuccessEmail(email);
+      setLoading(false);
+    }
   }
 
   async function handleGoogleSignUp() {
@@ -107,14 +120,49 @@ export default function RegisterPage() {
       </Link>
 
       <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-text-primary mb-2 tracking-tight">
-        Hesap Oluşturun
+        {successEmail ? 'Doğrulama E-postası Gönderildi' : 'Hesap Oluşturun'}
       </h2>
       <p className="text-slate-600 dark:text-text-secondary mb-7 text-sm">
-        Yatırım yolculuğunuza başlayın
+        {successEmail
+          ? 'Lütfen e-posta adresinizi onaylayarak giriş yapın'
+          : 'Yatırım yolculuğunuza başlayın'}
       </p>
 
-      {/* Social Register: Google & GitHub */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+      {successEmail ? (
+        <div className="p-6 sm:p-7 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-4 text-center animate-fade-in">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-emerald-500/10">
+            📬
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-white">Son Bir Adım Kaldı!</h3>
+            <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
+              <strong className="text-emerald-400 font-semibold">{successEmail}</strong> adresinize bir aktivasyon bağlantısı ilettik.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-xl bg-black/30 border border-white/5 text-xs text-text-muted text-left space-y-2">
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold">1.</span>
+              <span>Gelen kutunuzdaki (ve gerekiyorsa <strong>Spam / Gereksiz</strong> klasöründeki) doğrulama butonuna tıklayın.</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold">2.</span>
+              <span>Bağlantıya tıkladığınızda hesabınız onaylanacak ve doğrudan StockMind paneline aktarılacaksınız.</span>
+            </div>
+          </div>
+          <div className="pt-2">
+            <Link
+              href="/login"
+              className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/20"
+            >
+              <span>Giriş Yap Sayfasına Git</span>
+              <span>&rarr;</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Social Register: Google & GitHub */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
         {/* Google Sign Up */}
         <button
           onClick={handleGoogleSignUp}
@@ -288,6 +336,8 @@ export default function RegisterPage() {
           Giriş Yapın
         </Link>
       </p>
+        </>
+      )}
     </>
   );
 }

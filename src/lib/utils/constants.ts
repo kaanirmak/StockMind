@@ -57,6 +57,7 @@ export const NAV_ITEMS = [
   { href: '/portfolio', label: 'Portföy', labelEn: 'Portfolio', icon: 'Briefcase' },
   { href: '/piyasalar', label: 'Piyasalar', labelEn: 'Markets', icon: 'TrendingUp' },
   { href: '/watchlist', label: 'Takip Listesi', labelEn: 'Watchlist', icon: 'Star' },
+  { href: '/widgets', label: 'Widget\'lar', labelEn: 'Widgets', icon: 'LayoutGrid' },
   { href: '/reports', label: 'Raporlar', labelEn: 'Reports', icon: 'BarChart3' },
   { href: '/quant-lab', label: 'Quant Lab', labelEn: 'Quant Lab', icon: 'Cpu' },
   { href: '/ai-assistant', label: 'AI Asistan', labelEn: 'AI Assistant', icon: 'Bot' },
