@@ -1,7 +1,16 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ToastProvider } from '@/components/ui';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#0A0E1A',
+};
 
 export const metadata: Metadata = {
   title: 'StockMind — Akıllı Borsa & Fon Takip Platformu',

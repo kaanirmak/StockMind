@@ -261,7 +261,7 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 glass border-b border-border flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
+    <header className="glass border-b border-border flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30 min-h-16 pt-[env(safe-area-inset-top,0px)]">
       {/* Mobile Brand Logo + Search Container */}
       <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0 mr-2 sm:mr-4">
         <Link
@@ -319,8 +319,8 @@ export default function Header() {
               if (searchQuery.trim()) setShowSearchDropdown(true);
             }}
             onKeyDown={handleSearchSubmit}
-            placeholder="Tüm hisse veya fonları ara... (örn: KONTR, TI2, ASTOR, AFT)"
-            className="w-full pl-10 pr-12 py-2 rounded-xl bg-bg-input border border-border text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
+            placeholder="Hisse veya fon ara... (örn: THYAO)"
+            className="w-full pl-9 sm:pl-10 pr-4 sm:pr-12 py-2 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-text-muted bg-bg-tertiary border border-border">
             ⌘K
@@ -479,7 +479,7 @@ export default function Header() {
         <button
           type="button"
           onClick={() => setShowApkModal(true)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 shrink-0"
+          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 shrink-0"
           title="StockMind Android Uygulamasını İndir (v1.0.0 APK)"
         >
           <svg className="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">

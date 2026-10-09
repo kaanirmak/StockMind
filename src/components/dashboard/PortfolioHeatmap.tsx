@@ -19,17 +19,25 @@ interface TreemapNode {
   weightPercent: number;
 }
 
+interface TreemapItem {
+  holding: Holding;
+  value: number;
+  metricValue: number;
+  weightPercent: number;
+}
+
 /**
- * Recursive binary partition treemap algorithm
+ * Robust Squarified Treemap layout algorithm (Bruls, Huizing, van Wijk)
+ * Optimizes rectangle aspect ratios toward 1:1, preventing thin slivers.
  */
 function computeTreemap(
-  items: { holding: Holding; value: number; metricValue: number; weightPercent: number }[],
+  items: TreemapItem[],
   x: number,
   y: number,
   w: number,
   h: number
 ): TreemapNode[] {
-  if (items.length === 0) return [];
+  if (items.length === 0 || w <= 0 || h <= 0) return [];
   if (items.length === 1) {
     return [
       {
@@ -47,40 +55,114 @@ function computeTreemap(
   const total = items.reduce((acc, it) => acc + it.value, 0);
   if (total <= 0) return [];
 
-  const half = total / 2;
-  let running = 0;
-  let splitIndex = 0;
-  let bestDiff = Infinity;
+  // Normalize areas so sum(areas) = w * h
+  const totalArea = w * h;
+  type AreaItem = TreemapItem & { area: number };
+  const normalized: AreaItem[] = items.map((it) => ({
+    ...it,
+    area: (it.value / total) * totalArea,
+  }));
 
-  for (let i = 0; i < items.length - 1; i++) {
-    running += items[i].value;
-    const diff = Math.abs(running - half);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      splitIndex = i;
+  const result: TreemapNode[] = [];
+
+  function worst(row: AreaItem[], length: number): number {
+    const s = row.reduce((acc, it) => acc + it.area, 0);
+    if (s <= 0 || length <= 0) return Infinity;
+    const s2 = s * s;
+    const length2 = length * length;
+    let maxRatio = 0;
+    for (const it of row) {
+      const a = it.area;
+      if (a <= 0) continue;
+      const ratio = Math.max((length2 * a) / s2, s2 / (length2 * a));
+      if (ratio > maxRatio) maxRatio = ratio;
+    }
+    return maxRatio;
+  }
+
+  function layoutRow(
+    row: AreaItem[],
+    rx: number,
+    ry: number,
+    rw: number,
+    rh: number
+  ): { x: number; y: number; w: number; h: number } {
+    const s = row.reduce((acc, it) => acc + it.area, 0);
+    const isHorizontal = rw >= rh;
+    const rowThickness = isHorizontal ? s / rh : s / rw;
+
+    let offset = 0;
+    for (const it of row) {
+      const itemLength = it.area / rowThickness;
+      if (isHorizontal) {
+        result.push({
+          holding: it.holding,
+          x: rx,
+          y: ry + offset,
+          width: rowThickness,
+          height: itemLength,
+          metricValue: it.metricValue,
+          weightPercent: it.weightPercent,
+        });
+        offset += itemLength;
+      } else {
+        result.push({
+          holding: it.holding,
+          x: rx + offset,
+          y: ry,
+          width: itemLength,
+          height: rowThickness,
+          metricValue: it.metricValue,
+          weightPercent: it.weightPercent,
+        });
+        offset += itemLength;
+      }
+    }
+
+    if (isHorizontal) {
+      return { x: rx + rowThickness, y: ry, w: rw - rowThickness, h: rh };
+    } else {
+      return { x: rx, y: ry + rowThickness, w: rw, h: rh - rowThickness };
     }
   }
 
-  const leftItems = items.slice(0, splitIndex + 1);
-  const rightItems = items.slice(splitIndex + 1);
-  const leftSum = leftItems.reduce((acc, it) => acc + it.value, 0);
-  const leftRatio = leftSum / total;
+  function squarify(
+    children: AreaItem[],
+    row: AreaItem[],
+    rx: number,
+    ry: number,
+    rw: number,
+    rh: number
+  ) {
+    if (rw <= 0 || rh <= 0) return;
+    const shortSide = Math.min(rw, rh);
 
-  if (w >= h) {
-    const leftWidth = w * leftRatio;
-    const rightWidth = w - leftWidth;
-    return [
-      ...computeTreemap(leftItems, x, y, leftWidth, h),
-      ...computeTreemap(rightItems, x + leftWidth, y, rightWidth, h),
-    ];
-  } else {
-    const topHeight = h * leftRatio;
-    const bottomHeight = h - topHeight;
-    return [
-      ...computeTreemap(leftItems, x, y, w, topHeight),
-      ...computeTreemap(rightItems, x, y + topHeight, w, bottomHeight),
-    ];
+    if (children.length === 0) {
+      if (row.length > 0) {
+        layoutRow(row, rx, ry, rw, rh);
+      }
+      return;
+    }
+
+    const next = children[0];
+    if (row.length === 0) {
+      squarify(children.slice(1), [next], rx, ry, rw, rh);
+      return;
+    }
+
+    const curWorst = worst(row, shortSide);
+    const newWorst = worst([...row, next], shortSide);
+
+    if (newWorst <= curWorst) {
+      squarify(children.slice(1), [...row, next], rx, ry, rw, rh);
+    } else {
+      const remaining = layoutRow(row, rx, ry, rw, rh);
+      squarify(children, [], remaining.x, remaining.y, remaining.w, remaining.h);
+    }
   }
+
+  squarify(normalized, [], x, y, w, h);
+  return result;
 }
 
 /**
@@ -166,8 +248,8 @@ export default function PortfolioHeatmap() {
     const updateDim = () => {
       if (containerRef.current) {
         const w = containerRef.current.clientWidth || 360;
-        // On mobile, keep an ergonomic aspect ratio suited for touch
-        const h = w < 640 ? Math.max(280, Math.min(360, Math.round(w * 0.9))) : 390;
+        // On mobile, keep an ergonomic height suited for screen fit
+        const h = w < 640 ? Math.max(220, Math.min(270, Math.round(w * 0.70))) : 380;
         setDimensions({ width: w, height: h });
       }
     };
@@ -337,13 +419,16 @@ export default function PortfolioHeatmap() {
             const tileW = Math.max(8, width - gap * 2);
             const tileH = Math.max(8, height - gap * 2);
 
-            // Responsive size categorization
-            const isTiny = tileW < 52 || tileH < 38;
-            const isSmall = !isTiny && (tileW < 80 || tileH < 52);
-            const isMedium = !isTiny && !isSmall && (tileW < 130 || tileH < 80);
-            const isLarge = !isTiny && !isSmall && !isMedium;
+            // Responsive size categorization with micro-tile protection
+            const isUltraMicro = tileW < 40 || tileH < 28;
+            const isMicro = !isUltraMicro && (tileW < 58 || tileH < 40);
+            const isSmall = !isUltraMicro && !isMicro && (tileW < 85 || tileH < 56);
+            const isMedium = !isUltraMicro && !isMicro && !isSmall && (tileW < 130 || tileH < 85);
+            const isLarge = !isUltraMicro && !isMicro && !isSmall && !isMedium;
 
             const isSelected = activeNode?.holding.symbol === holding.symbol;
+            const sign = metricValue > 0 ? '+' : metricValue < 0 ? '-' : '';
+            const absMetric = Math.abs(metricValue);
 
             return (
               <div
@@ -362,15 +447,24 @@ export default function PortfolioHeatmap() {
                   isSelected ? 'border-white/90 ring-2 ring-white/80 z-20 scale-[1.015] shadow-xl' : style.border
                 } ${style.glow} p-1 sm:p-2 flex flex-col justify-between overflow-hidden cursor-pointer transition-all duration-150 active:scale-95 select-none`}
               >
-                {/* Micro Layout (Very small tiles) */}
-                {isTiny ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center leading-none gap-0.5">
+                {/* Ultra-Micro Layout (Thin/small slivers) */}
+                {isUltraMicro ? (
+                  <div className="h-full w-full flex items-center justify-center text-center overflow-hidden leading-none select-none">
+                    <span className="font-black text-[9px] text-white truncate max-w-full">
+                      {holding.symbol.slice(0, 4)}
+                    </span>
+                  </div>
+                ) : isMicro ? (
+                  /* Micro Layout */
+                  <div className="h-full w-full flex flex-col items-center justify-center text-center leading-none gap-0.5 overflow-hidden select-none">
                     <span className="font-black text-[10px] text-white truncate max-w-full">
                       {holding.symbol}
                     </span>
-                    <span className={`font-bold text-[9px] tabular-nums ${style.text}`}>
-                      {getPnLSign(metricValue)}%{Math.abs(metricValue).toFixed(1)}
-                    </span>
+                    {tileH >= 34 && (
+                      <span className={`font-bold text-[9px] tabular-nums ${style.text} truncate max-w-full`}>
+                        {sign}%{absMetric.toFixed(0)}
+                      </span>
+                    )}
                   </div>
                 ) : isSmall ? (
                   /* Small Layout */
@@ -380,12 +474,12 @@ export default function PortfolioHeatmap() {
                         {holding.symbol}
                       </span>
                     </div>
-                    <div className="my-auto leading-none">
-                      <span className={`font-black text-xs sm:text-[13px] tabular-nums ${style.text} drop-shadow-sm`}>
-                        {getPnLSign(metricValue)}%{Math.abs(metricValue).toFixed(1)}
+                    <div className="my-auto leading-none overflow-hidden">
+                      <span className={`font-black text-xs sm:text-[13px] tabular-nums ${style.text} drop-shadow-sm truncate block`}>
+                        {sign}%{absMetric.toFixed(1)}
                       </span>
                     </div>
-                    {tileH >= 46 && (
+                    {tileH >= 52 && (
                       <div className="text-[9px] text-white/60 font-medium tabular-nums pt-0.5 border-t border-white/[0.08] truncate">
                         %{weightPercent.toFixed(0)}
                       </div>
@@ -404,9 +498,9 @@ export default function PortfolioHeatmap() {
                         </span>
                       )}
                     </div>
-                    <div className="my-auto leading-none">
-                      <div className={`font-black text-xs sm:text-sm tabular-nums ${style.text} drop-shadow-sm`}>
-                        {getPnLSign(metricValue)}%{Math.abs(metricValue).toFixed(2)}
+                    <div className="my-auto leading-none overflow-hidden">
+                      <div className={`font-black text-xs sm:text-sm tabular-nums ${style.text} drop-shadow-sm truncate`}>
+                        {sign}%{absMetric.toFixed(2)}
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-white/70 font-medium pt-0.5 border-t border-white/[0.08] truncate tabular-nums">
@@ -417,7 +511,7 @@ export default function PortfolioHeatmap() {
                 ) : (
                   /* Large Layout */
                   <>
-                    <div className="flex items-start justify-between gap-1 leading-tight">
+                    <div className="flex items-start justify-between gap-1 leading-tight overflow-hidden">
                       <span className="font-black text-sm sm:text-base text-white truncate drop-shadow-sm">
                         {holding.symbol}
                       </span>
@@ -425,9 +519,9 @@ export default function PortfolioHeatmap() {
                         {isStock ? 'Hisse' : 'Fon'}
                       </span>
                     </div>
-                    <div className="my-auto leading-none">
-                      <div className={`font-black text-base sm:text-lg tabular-nums ${style.text} drop-shadow-sm`}>
-                        {getPnLSign(metricValue)}%{Math.abs(metricValue).toFixed(2)}
+                    <div className="my-auto leading-none overflow-hidden">
+                      <div className={`font-black text-base sm:text-lg tabular-nums ${style.text} drop-shadow-sm truncate`}>
+                        {sign}%{absMetric.toFixed(2)}
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-xs text-white/70 font-medium pt-1 border-t border-white/[0.08] truncate tabular-nums">
