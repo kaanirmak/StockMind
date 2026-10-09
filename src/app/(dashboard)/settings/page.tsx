@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
 import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
+import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import {
@@ -177,13 +178,17 @@ export default function SettingsPage() {
 
     // Load AI & notification preferences per user
     try {
+      const storedAiKey = getStoredOpenRouterKey(user?.id);
+      if (storedAiKey) setOpenRouterKey(storedAiKey);
+      const storedModel = getStoredDefaultModel(user?.id);
+      if (storedModel) setDefaultModel(storedModel);
+
       const rawSettings = localStorage.getItem(`stockmind_settings_${userKey}`);
       if (rawSettings) {
         const parsed = JSON.parse(rawSettings);
         if (parsed.notificationEmail) setNotificationEmail(parsed.notificationEmail);
         else if (user?.email) setNotificationEmail(user.email);
 
-        if (parsed.openRouterKey !== undefined) setOpenRouterKey(parsed.openRouterKey);
         if (parsed.defaultModel) setDefaultModel(parsed.defaultModel);
         if (parsed.emailAlerts !== undefined) setEmailAlerts(parsed.emailAlerts);
         if (parsed.priceAlerts !== undefined) setPriceAlerts(parsed.priceAlerts);
@@ -411,19 +416,12 @@ export default function SettingsPage() {
   const handleSaveAIConfig = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
-      const parsed = existing ? JSON.parse(existing) : {};
-      const updated = {
-        ...parsed,
-        openRouterKey: openRouterKey.trim(),
-        defaultModel,
-      };
-      localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
+      saveStoredOpenRouterKey(openRouterKey, user?.id, defaultModel);
 
       showToast({
         type: 'success',
         title: 'AI Ayarları Kaydedildi',
-        message: 'OpenRouter API anahtarınız ve tercih ettiğiniz model hesabınıza kaydedildi.',
+        message: 'OpenRouter API anahtarınız ve tercih ettiğiniz model tüm sistemde başarıyla aktif edildi.',
       });
     } catch (e) {
       showToast({

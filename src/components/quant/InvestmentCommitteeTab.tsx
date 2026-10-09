@@ -19,6 +19,7 @@ import {
 } from '@/lib/ai/investment-committee';
 import { useAuth } from '@/hooks/useAuth';
 import { Holding } from '@/types/portfolio';
+import { getStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 
 const POPULAR_SYMBOLS = [
   { symbol: 'THYAO', name: 'Türk Hava Yolları' },
@@ -60,20 +61,24 @@ export default function InvestmentCommitteeTab({
     'Yatırım Komitesi Konsensüs Raporu sentezleniyor...',
   ];
 
-  // Load API key from settings
+  // Load API key from settings and listen to updates
   useEffect(() => {
-    try {
-      const userKey = user?.id || 'guest';
-      const stored =
-        localStorage.getItem(`stockmind_settings_${userKey}`) ||
-        localStorage.getItem('stockmind_settings_guest');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.openRouterApiKey) {
-          setCustomApiKey(parsed.openRouterApiKey);
-        }
-      }
-    } catch (_) {}
+    const key = getStoredOpenRouterKey(user?.id);
+    if (key) {
+      setCustomApiKey(key);
+    }
+
+    const handleSync = () => {
+      const refreshed = getStoredOpenRouterKey(user?.id);
+      setCustomApiKey(refreshed);
+    };
+
+    window.addEventListener('stockmind_ai_key_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('stockmind_ai_key_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [user]);
 
   // Sync external selectedSymbol changes
@@ -95,6 +100,12 @@ export default function InvestmentCommitteeTab({
 
     setIsLoading(true);
     setDeliberationStep(0);
+
+    // Synchronously resolve key from memory or storage
+    const activeKey = (customApiKey || getStoredOpenRouterKey(user?.id) || '').trim() || undefined;
+    if (activeKey && !customApiKey) {
+      setCustomApiKey(activeKey);
+    }
 
     // Simulate deliberation progress steps for UI feedback
     const interval = setInterval(() => {
@@ -118,7 +129,7 @@ export default function InvestmentCommitteeTab({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           symbol: cleanSym,
-          apiKey: customApiKey || undefined,
+          apiKey: activeKey,
           quote: quotePayload,
         }),
       });
@@ -128,12 +139,12 @@ export default function InvestmentCommitteeTab({
         setReport(data.report);
       } else {
         // Fallback directly to client logic
-        const fallback = await runInvestmentCommittee(cleanSym, undefined, customApiKey || undefined);
+        const fallback = await runInvestmentCommittee(cleanSym, undefined, activeKey);
         setReport(fallback);
       }
     } catch (e) {
       console.warn('API route failed, using local runner:', e);
-      const fallback = await runInvestmentCommittee(cleanSym, undefined, customApiKey || undefined);
+      const fallback = await runInvestmentCommittee(cleanSym, undefined, activeKey);
       setReport(fallback);
     } finally {
       clearInterval(interval);
@@ -280,7 +291,23 @@ export default function InvestmentCommitteeTab({
         </div>
 
         {/* API Key Status Notice */}
-        {!customApiKey && (
+        {customApiKey ? (
+          <div className="mt-3 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-emerald-400">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>
+                <strong>Canlı LLM Münazarası Aktif:</strong> OpenRouter AI anahtarınız devrede ({customApiKey.slice(0, 6)}...{customApiKey.slice(-4)}). Komite üyeleri canlı yapay zeka ile tartışıyor.
+              </span>
+            </div>
+            <a
+              href="/settings"
+              className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold text-[11px] shrink-0 transition-colors flex items-center gap-1"
+            >
+              <span>Yönet</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        ) : (
           <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-amber-500">
               <Key className="w-4 h-4 shrink-0" />

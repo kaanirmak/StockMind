@@ -7,6 +7,11 @@ import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
 import { Button, Badge } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import {
+  getStoredOpenRouterKey,
+  saveStoredOpenRouterKey,
+  getStoredDefaultModel,
+} from '@/lib/ai/apiKeyStorage';
 
 interface Message {
   id: string;
@@ -41,7 +46,6 @@ const PROMPT_SUGGESTIONS = [
 function AIAssistantContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const userKey = user?.id ? `user_${user.id}` : 'guest';
 
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
@@ -53,43 +57,39 @@ function AIAssistantContent() {
   const [inlineKeyInputs, setInlineKeyInputs] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load custom API key and default model from local settings
+  // Load custom API key and default model from unified storage and sync automatically
   useEffect(() => {
-    try {
-      const savedSettings =
-        localStorage.getItem(`stockmind_settings_${userKey}`) ||
-        localStorage.getItem('stockmind_settings_guest');
-
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        if (parsed.openRouterKey) {
-          setCustomApiKey(parsed.openRouterKey);
-          setTempKeyInput(parsed.openRouterKey);
-        }
-        if (parsed.defaultModel) {
-          setSelectedModel(parsed.defaultModel);
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load local AI settings in assistant:', e);
+    const key = getStoredOpenRouterKey(user?.id);
+    if (key) {
+      setCustomApiKey(key);
+      setTempKeyInput(key);
     }
-  }, [userKey]);
+    const model = getStoredDefaultModel(user?.id);
+    if (model) {
+      setSelectedModel(model);
+    }
+
+    const handleSync = () => {
+      const refreshedKey = getStoredOpenRouterKey(user?.id);
+      setCustomApiKey(refreshedKey);
+      setTempKeyInput(refreshedKey);
+      const refreshedModel = getStoredDefaultModel(user?.id);
+      if (refreshedModel) setSelectedModel(refreshedModel);
+    };
+
+    window.addEventListener('stockmind_ai_key_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('stockmind_ai_key_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [user]);
 
   const saveCustomKey = (key: string) => {
     const trimmed = key.trim();
     setCustomApiKey(trimmed);
-    try {
-      const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
-      const parsed = existing ? JSON.parse(existing) : {};
-      const updated = {
-        ...parsed,
-        openRouterKey: trimmed,
-        defaultModel: selectedModel,
-      };
-      localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
-    } catch (e) {
-      console.warn('Could not persist key to localStorage:', e);
-    }
+    setTempKeyInput(trimmed);
+    saveStoredOpenRouterKey(trimmed, user?.id, selectedModel);
     setShowKeyModal(false);
   };
 
@@ -110,7 +110,16 @@ function AIAssistantContent() {
   }, [searchParams]);
 
   const handleSendMessage = async (userText: string, overrideKey?: string) => {
-    const activeKey = (overrideKey !== undefined ? overrideKey : customApiKey).trim();
+    const activeKey = (
+      overrideKey !== undefined
+        ? overrideKey
+        : (customApiKey || getStoredOpenRouterKey(user?.id) || '')
+    ).trim();
+
+    if (activeKey && !customApiKey) {
+      setCustomApiKey(activeKey);
+      setTempKeyInput(activeKey);
+    }
 
     if (!userText.trim() || loading) return;
 
@@ -293,14 +302,7 @@ function AIAssistantContent() {
               value={selectedModel}
               onChange={(e) => {
                 setSelectedModel(e.target.value);
-                try {
-                  const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
-                  const parsed = existing ? JSON.parse(existing) : {};
-                  localStorage.setItem(
-                    `stockmind_settings_${userKey}`,
-                    JSON.stringify({ ...parsed, defaultModel: e.target.value })
-                  );
-                } catch (_) {}
+                saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value);
               }}
               className="bg-bg-input text-text-primary text-[11px] rounded-lg border border-border px-2 py-1.5 focus:border-accent focus:outline-none max-w-[130px] truncate cursor-pointer font-medium"
             >
@@ -374,14 +376,7 @@ function AIAssistantContent() {
               value={selectedModel}
               onChange={(e) => {
                 setSelectedModel(e.target.value);
-                try {
-                  const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
-                  const parsed = existing ? JSON.parse(existing) : {};
-                  localStorage.setItem(
-                    `stockmind_settings_${userKey}`,
-                    JSON.stringify({ ...parsed, defaultModel: e.target.value })
-                  );
-                } catch (_) {}
+                saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value);
               }}
               className="bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3 py-2 focus:border-accent focus:outline-none max-w-[240px] truncate cursor-pointer font-medium"
             >
