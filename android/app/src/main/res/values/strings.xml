@@ -4,4 +4,8 @@
     <string name="error_message">StockMind sunucusuna erişilemiyor. Lütfen internet bağlantınızı veya sunucu adresini kontrol edin.</string>
     <string name="retry">Tekrar Dene</string>
     <string name="change_url">Sunucu Adresini Değiştir</string>
+    <string name="widget_portfolio_name">Portföy Durumu (StockMind)</string>
+    <string name="widget_portfolio_desc">Canlı portföy değerinizi ve günlük kâr/zarar durumunuzu ana ekranda takip edin.</string>
+    <string name="widget_heatmap_name">Portföy Isı Haritası (StockMind)</string>
+    <string name="widget_heatmap_desc">Portföy varlıklarınızın günlük getiri ısı haritasını ana ekranda takip edin.</string>
 </resources>

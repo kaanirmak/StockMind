@@ -88,6 +88,27 @@ export default function PortfolioSummary() {
 
   const isPositive = periodData.pnl >= 0;
 
+  // Sync to Android Home Screen Widget if running inside APK
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).StockMindAndroid && summary.totalValue > 0) {
+      try {
+        const sign = periodData.pnl >= 0 ? '↗ +' : '↘ ';
+        const pnlStr = `${sign}${formatCurrency(Math.abs(periodData.pnl))}`;
+        const pnlPctStr = `(%${periodData.pnlPercent >= 0 ? '+' : ''}${periodData.pnlPercent.toFixed(2)})`;
+        const costStr = `Maliyet: ${formatCurrency(summary.totalCost)} • $${Math.round(summary.totalValue / usdTry)}`;
+        (window as any).StockMindAndroid.updatePortfolio(
+          formatCurrency(summary.totalValue),
+          pnlStr,
+          pnlPctStr,
+          costStr,
+          `● ${currentPeriodObj.label}`
+        );
+      } catch (e) {
+        console.error('Android widget sync error:', e);
+      }
+    }
+  }, [summary, periodData, usdTry, currentPeriodObj]);
+
   return (
     <div>
       {/* ═══════════════════════════════════════════════════════

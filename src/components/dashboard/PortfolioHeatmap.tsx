@@ -300,6 +300,31 @@ export default function PortfolioHeatmap() {
     }
   }, [nodes, selectedSymbol]);
 
+  // Sync to Android Home Screen Heatmap Widget if running inside APK
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).StockMindAndroid && filteredHoldings.length > 0) {
+      try {
+        const totalVal = summary.totalValue || 1;
+        const topHoldings = filteredHoldings.slice(0, 4).map((h) => {
+          let dailyPct = h.dailyChangePercent;
+          if (dailyPct == null) {
+            const quote = livePrices[h.symbol] || livePrices[h.symbol.toUpperCase()];
+            dailyPct = quote && typeof quote === 'object' ? quote.changePercent || 0 : 0;
+          }
+          const pay = (h.currentValue / totalVal) * 100;
+          return {
+            symbol: h.symbol,
+            percent: dailyPct,
+            pay: pay,
+          };
+        });
+        (window as any).StockMindAndroid.updateHeatmap(JSON.stringify(topHoldings));
+      } catch (e) {
+        console.error('Android heatmap widget sync error:', e);
+      }
+    }
+  }, [filteredHoldings, summary.totalValue, livePrices]);
+
   // Active display node (hover takes precedence on desktop, otherwise selected)
   const activeNode = useMemo(() => {
     if (hoveredNode) return hoveredNode;

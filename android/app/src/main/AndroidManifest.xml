@@ -26,6 +26,32 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- StockMind Portfolio Status Widget -->
+        <receiver
+            android:name=".PortfolioWidgetProvider"
+            android:label="@string/widget_portfolio_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_portfolio_info" />
+        </receiver>
+
+        <!-- StockMind Portfolio Heatmap Widget -->
+        <receiver
+            android:name=".HeatmapWidgetProvider"
+            android:label="@string/widget_heatmap_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_heatmap_info" />
+        </receiver>
     </application>
 
 </manifest>

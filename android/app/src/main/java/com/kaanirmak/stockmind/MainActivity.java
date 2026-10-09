@@ -216,6 +216,9 @@ public class MainActivity extends AppCompatActivity {
         String cleanUa = defaultUa.replace("; wv", "").replaceAll("Version\\/\\d+\\.\\d+\\s*", "");
         settings.setUserAgentString(cleanUa);
 
+        // Register Android Bridge for Home Screen Widgets synchronization
+        webView.addJavascriptInterface(new StockMindBridge(this), "StockMindAndroid");
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
@@ -310,20 +313,43 @@ public class MainActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         swipeRefreshLayout.setRefreshing(true);
 
+        String targetUrl = currentServerUrl;
+        Intent intent = getIntent();
+        if (intent != null && intent.hasExtra("target_route")) {
+            String route = intent.getStringExtra("target_route");
+            if (route != null && !route.isEmpty()) {
+                targetUrl = currentServerUrl.replaceAll("/$", "") + (route.startsWith("/") ? route : "/" + route);
+            }
+        }
+
         try {
             CookieManager cm = CookieManager.getInstance();
             String cookies = cm.getCookie(currentServerUrl);
             if (cookies != null && cookies.length() > 4096) {
                 // Cookies bloated! Clear BEFORE loading URL
+                final String finalUrl = targetUrl;
                 cm.removeAllCookies(success -> {
                     cm.flush();
-                    webView.post(() -> webView.loadUrl(currentServerUrl));
+                    webView.post(() -> webView.loadUrl(finalUrl));
                 });
                 return;
             }
         } catch (Exception ignored) {}
 
-        webView.loadUrl(currentServerUrl);
+        webView.loadUrl(targetUrl);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null && intent.hasExtra("target_route") && webView != null) {
+            String route = intent.getStringExtra("target_route");
+            if (route != null && !route.isEmpty()) {
+                String fullUrl = currentServerUrl.replaceAll("/$", "") + (route.startsWith("/") ? route : "/" + route);
+                webView.loadUrl(fullUrl);
+            }
+        }
     }
 
     private void showErrorState(String description) {
