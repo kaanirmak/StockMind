@@ -106,8 +106,13 @@ export function AppUpdateNotifier() {
       } catch (err) {
         console.warn('Native download bridge error:', err);
       }
+    } else if (isAndroidApp()) {
+      // In older Android APK build without the new bridge:
+      // DO NOT navigate link inside WebView (causes "This page couldn't load" crash).
+      // Automatically copy direct download URL to clipboard!
+      handleCopyDownloadUrl();
     } else {
-      // Trigger browser location
+      // Standard desktop/mobile browser: Trigger normal browser download
       try {
         const link = document.createElement('a');
         link.href = versionInfo?.downloadUrl || '/api/download/apk';
@@ -261,13 +266,13 @@ export function AppUpdateNotifier() {
                 )}
               </button>
 
-              <a
-                href="/StockMind.apk"
-                download="StockMind.apk"
-                className="w-full py-2 px-3 rounded-xl bg-bg-secondary border border-border text-text-primary text-center block text-xs font-medium hover:bg-bg-hover transition-colors"
+              <button
+                type="button"
+                onClick={handleCopyDownloadUrl}
+                className="w-full py-2 px-3 rounded-xl bg-bg-secondary border border-border text-text-primary text-center block text-xs font-medium hover:bg-bg-hover transition-colors cursor-pointer"
               >
-                Tarayıcıda Doğrudan Aç & İndir (/StockMind.apk)
-              </a>
+                🌐 İndirme Bağlantısını Panoya Kopyala
+              </button>
             </div>
 
             {/* Step-by-Step Info */}

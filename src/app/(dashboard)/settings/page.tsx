@@ -1285,6 +1285,15 @@ export default function SettingsPage() {
               if (bridge && typeof bridge.downloadAndInstallUpdate === 'function') {
                 e.preventDefault();
                 bridge.downloadAndInstallUpdate('/api/download/apk');
+              } else if (isAndroid) {
+                e.preventDefault();
+                const fullUrl = `${window.location.origin}/StockMind.apk`;
+                navigator.clipboard.writeText(fullUrl);
+                showToast({
+                  type: 'success',
+                  title: 'Güncelleme Bağlantısı Kopyalandı! 📋',
+                  message: 'Adres panonuza kopyalandı. Telefonunuzun Chrome tarayıcısını açıp yapıştırarak saniyeler içinde güncelleyebilirsiniz.',
+                });
               }
             }}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-accent to-purple-600 hover:from-accent-hover hover:to-purple-700 active:scale-95 transition-all shadow-md cursor-pointer"
