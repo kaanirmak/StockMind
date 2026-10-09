@@ -14,7 +14,7 @@
 
 **BIST · NYSE · NASDAQ · TEFAS** — Tek platformda, gerçek zamanlı.
 
-[Canlı Demo →](https://stock-mind-bay.vercel.app) · [Hata Bildir](https://github.com/kaanirmak/StockMind/issues) · [Özellik İste](https://github.com/kaanirmak/StockMind/issues/new)
+[Canlı Demo →](https://stockmind-finora.vercel.app/) · [Hata Bildir](https://github.com/kaanirmak/StockMind/issues) · [Özellik İste](https://github.com/kaanirmak/StockMind/issues/new)
 
 </div>
 
