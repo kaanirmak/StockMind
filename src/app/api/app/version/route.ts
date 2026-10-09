@@ -1,27 +1,25 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 declare global {
   var __stockmind_latest_broadcast: any;
 }
-
-const TMP_BROADCAST_FILE = path.join(os.tmpdir(), 'stockmind_latest_broadcast.json');
 
 export async function GET() {
   let broadcast = globalThis.__stockmind_latest_broadcast || null;
 
   if (!broadcast) {
     try {
-      if (fs.existsSync(TMP_BROADCAST_FILE)) {
-        broadcast = JSON.parse(fs.readFileSync(TMP_BROADCAST_FILE, 'utf-8'));
+      const supabase = createAdminClient();
+      const { data } = await supabase
+        .from('funds')
+        .select('asset_allocation')
+        .eq('code', 'SYS_BROADCAST')
+        .single();
+
+      if (data?.asset_allocation) {
+        broadcast = data.asset_allocation;
         globalThis.__stockmind_latest_broadcast = broadcast;
-      } else {
-        const fallbackPublic = path.join(process.cwd(), 'public', 'latest_broadcast.json');
-        if (fs.existsSync(fallbackPublic)) {
-          broadcast = JSON.parse(fs.readFileSync(fallbackPublic, 'utf-8'));
-        }
       }
     } catch (_) {}
   }

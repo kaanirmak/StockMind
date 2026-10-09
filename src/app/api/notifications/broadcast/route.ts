@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const VALID_ADMIN_KEYS = [
   process.env.ADMIN_BROADCAST_KEY,
@@ -9,8 +7,6 @@ const VALID_ADMIN_KEYS = [
   'stockmind-admin-2026',
   'stockmind_cron_secret_2026_secure',
 ].filter((k): k is string => Boolean(k && k.trim()));
-
-const TMP_BROADCAST_FILE = path.join(os.tmpdir(), 'stockmind_latest_broadcast.json');
 
 declare global {
   var __stockmind_latest_broadcast: any;
@@ -25,14 +21,19 @@ export async function GET() {
       });
     }
 
-    if (fs.existsSync(TMP_BROADCAST_FILE)) {
-      const data = fs.readFileSync(TMP_BROADCAST_FILE, 'utf-8');
-      const parsed = JSON.parse(data);
-      globalThis.__stockmind_latest_broadcast = parsed;
-      return NextResponse.json({ success: true, broadcast: parsed });
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from('funds')
+      .select('asset_allocation')
+      .eq('code', 'SYS_BROADCAST')
+      .single();
+
+    if (data?.asset_allocation) {
+      globalThis.__stockmind_latest_broadcast = data.asset_allocation;
+      return NextResponse.json({ success: true, broadcast: data.asset_allocation });
     }
   } catch (err: any) {
-    console.warn('Error reading broadcast file:', err);
+    console.warn('Error reading broadcast from Supabase:', err);
   }
   return NextResponse.json({ success: true, broadcast: null });
 }
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       return NextResponse.json(
-        { success: false, error: 'Bildirim mesajı zorunludur' },
+        { success: false, error: 'Bildirim mesajı (message) zorunludur' },
         { status: 400 }
       );
     }
@@ -76,11 +77,23 @@ export async function POST(request: Request) {
     // Store in global runtime memory
     globalThis.__stockmind_latest_broadcast = broadcast;
 
-    // Persist to writable /tmp directory on Vercel
+    // Persist reliably to Supabase PostgreSQL (available to all Vercel Lambdas)
     try {
-      fs.writeFileSync(TMP_BROADCAST_FILE, JSON.stringify(broadcast, null, 2), 'utf-8');
-    } catch (fsErr) {
-      console.warn('Could not write to tmpdir, memory cache is active:', fsErr);
+      const supabase = createAdminClient();
+      await supabase.from('funds').upsert({
+        code: 'SYS_BROADCAST',
+        name: broadcast.title,
+        founder: broadcast.message,
+        category: broadcast.route,
+        price: 0,
+        daily_return: 0,
+        risk_value: 1,
+        total_value: 0,
+        investor_count: 0,
+        asset_allocation: broadcast,
+      });
+    } catch (dbErr) {
+      console.warn('Could not persist broadcast to Supabase:', dbErr);
     }
 
     return NextResponse.json({

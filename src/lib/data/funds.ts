@@ -78,7 +78,7 @@ export async function getFundsFromDatabase(filter?: {
   limit?: number;
 }): Promise<TefasFundInfo[]> {
   const supabase = createAdminClient();
-  let query = supabase.from('funds').select('*');
+  let query = supabase.from('funds').select('*').neq('code', 'SYS_BROADCAST');
 
   if (filter?.category && filter.category !== 'ALL') {
     query = query.eq('category', filter.category);
