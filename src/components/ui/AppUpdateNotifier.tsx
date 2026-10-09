@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { isAndroidApp } from '@/lib/notifications/pushNotification';
+import { isAndroidApp, sendPushNotification } from '@/lib/notifications/pushNotification';
 
 interface VersionInfo {
   version: string;
@@ -38,21 +38,34 @@ export function AppUpdateNotifier() {
         }
         setCurrentVersion(localVersionName);
 
-        // Check if dismissed recently
-        const dismissedUntil = localStorage.getItem('stockmind_update_dismissed_until');
-        if (dismissedUntil && Number(dismissedUntil) > Date.now()) {
-          return;
-        }
-
         const res = await fetch('/api/app/version');
         if (!res.ok) return;
         const data = await res.json();
 
         if (data && data.versionCode) {
           setVersionInfo(data);
-          // If running inside Android app and installed version code is less than server
+
+          // ONLY trigger update notification if this device is outdated!
           if (isAndroid && localVersionCode < data.versionCode) {
-            setUpdateAvailable(true);
+            // Check if dismissed recently for the visual banner
+            const dismissedUntil = localStorage.getItem('stockmind_update_dismissed_until');
+            if (!dismissedUntil || Number(dismissedUntil) <= Date.now()) {
+              setUpdateAvailable(true);
+            }
+
+            // Send native push notification to status bar/lock screen once per new release
+            const notifSentKey = `stockmind_update_push_sent_${data.versionCode}`;
+            if (!localStorage.getItem(notifSentKey)) {
+              localStorage.setItem(notifSentKey, 'true');
+              sendPushNotification(
+                `🚀 Yeni StockMind Güncellemesi Mevcut (v${data.version})`,
+                'StockMind yeni sürümü hazır! Performans, logolar ve kapalıyken fiyat alarmları için hemen güncelleyin.',
+                '/settings'
+              );
+            }
+          } else {
+            // Up to date! Never show update banner or notification
+            setUpdateAvailable(false);
           }
         }
       } catch (err) {

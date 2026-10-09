@@ -73,6 +73,9 @@ public class StockPriceWorker extends Worker {
                 checkWatchlistAlerts(context, serverUrl);
             }
 
+            // 3. Check for new app version updates (only notifies outdated devices)
+            checkAppUpdate(context, serverUrl);
+
             return Result.success();
         } catch (Throwable t) {
             Log.e(TAG, "StockPriceWorker failed", t);
@@ -219,6 +222,47 @@ public class StockPriceWorker extends Worker {
             if (conn != null) {
                 conn.disconnect();
             }
+        }
+    }
+
+    private void checkAppUpdate(Context context, String serverUrl) {
+        try {
+            int currentVersionCode = 1;
+            try {
+                android.content.pm.PackageInfo pInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    currentVersionCode = (int) pInfo.getLongVersionCode();
+                } else {
+                    currentVersionCode = pInfo.versionCode;
+                }
+            } catch (Exception ignored) {}
+
+            String versionApiUrl = serverUrl + "/api/app/version";
+            String jsonResponse = fetchJson(versionApiUrl);
+            if (jsonResponse == null || jsonResponse.isEmpty()) return;
+
+            JSONObject vObj = new JSONObject(jsonResponse);
+            int remoteVersionCode = vObj.optInt("versionCode", 0);
+            String remoteVersionName = vObj.optString("version", "1.0.2");
+
+            // ONLY notify if this device is outdated!
+            if (remoteVersionCode > currentVersionCode) {
+                SharedPreferences alertPrefs = context.getSharedPreferences("StockMindAlertsPrefs", Context.MODE_PRIVATE);
+                String updateNotifiedKey = "update_notif_sent_" + remoteVersionCode;
+                boolean alreadyNotified = alertPrefs.getBoolean(updateNotifiedKey, false);
+
+                if (!alreadyNotified) {
+                    alertPrefs.edit().putBoolean(updateNotifiedKey, true).apply();
+                    NotificationHelper.showNotification(
+                            context,
+                            "🚀 Yeni StockMind Güncellemesi Mevcut (v" + remoteVersionName + ")",
+                            "StockMind'ın yeni sürümü hazır! Performans ve kapalıyken fiyat alarmlarını almak için hemen güncelleyin.",
+                            "/settings"
+                    );
+                }
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "Error checking app update in worker", t);
         }
     }
 }
