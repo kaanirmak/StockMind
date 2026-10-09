@@ -261,6 +261,26 @@ public class StockPriceWorker extends Worker {
                     );
                 }
             }
+
+            // Check for broadcast announcements/test notifications
+            if (vObj.has("broadcast") && !vObj.isNull("broadcast")) {
+                JSONObject bObj = vObj.optJSONObject("broadcast");
+                if (bObj != null) {
+                    String bId = bObj.optString("id");
+                    String bTitle = bObj.optString("title", "StockMind 📢");
+                    String bMsg = bObj.optString("message", "");
+                    String bRoute = bObj.optString("route", "/dashboard");
+
+                    if (!bId.isEmpty() && !bMsg.isEmpty()) {
+                        SharedPreferences alertPrefs = context.getSharedPreferences("StockMindAlertsPrefs", Context.MODE_PRIVATE);
+                        String bcNotifiedKey = "broadcast_sent_" + bId;
+                        if (!alertPrefs.getBoolean(bcNotifiedKey, false)) {
+                            alertPrefs.edit().putBoolean(bcNotifiedKey, true).apply();
+                            NotificationHelper.showNotification(context, bTitle, bMsg, bRoute);
+                        }
+                    }
+                }
+            }
         } catch (Throwable t) {
             Log.e(TAG, "Error checking app update in worker", t);
         }

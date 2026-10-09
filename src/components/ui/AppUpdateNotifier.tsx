@@ -67,6 +67,19 @@ export function AppUpdateNotifier() {
             // Up to date! Never show update banner or notification
             setUpdateAvailable(false);
           }
+
+          // Check for global broadcast message (e.g. test notification sent to all devices)
+          if (data && data.broadcast && data.broadcast.id && data.broadcast.message) {
+            const bcKey = `stockmind_broadcast_seen_${data.broadcast.id}`;
+            if (!localStorage.getItem(bcKey)) {
+              localStorage.setItem(bcKey, 'true');
+              sendPushNotification(
+                data.broadcast.title || 'StockMind 📢',
+                data.broadcast.message,
+                data.broadcast.route || '/dashboard'
+              );
+            }
+          }
         }
       } catch (err) {
         console.warn('App version check failed:', err);
