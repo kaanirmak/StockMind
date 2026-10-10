@@ -518,16 +518,7 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* GitHub-Style Daily PnL Activity Calendar Heatmap */}
-      <div id="daily-calendar" className="scroll-mt-20">
-        <DailyPnLCalendarHeatmap
-          portfolioId={activePortfolioId}
-          summary={summary}
-          transactions={activeTransactions}
-        />
-      </div>
-
-      {/* Tabs: Holdings vs Transaction History */}
+      {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
       <div className="space-y-4">
         {/* Navigation Tabs & Secondary Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
@@ -550,7 +541,7 @@ export default function PortfolioPage() {
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
               }`}
             >
-              <span>Isı Haritası</span>
+              <span>🔥 Isı & Aktivite Haritası</span>
             </button>
             <button
               onClick={() => setActiveTab('transactions')}
@@ -597,8 +588,17 @@ export default function PortfolioPage() {
             onAddTransaction={() => setIsTradeModalOpen(true)}
           />
         ) : activeTab === 'heatmap' ? (
-          <div className="animate-fade-in">
-            <PortfolioHeatmap />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-fade-in items-start">
+            <div className="min-w-0">
+              <PortfolioHeatmap />
+            </div>
+            <div id="daily-calendar" className="min-w-0 scroll-mt-24">
+              <DailyPnLCalendarHeatmap
+                portfolioId={activePortfolioId}
+                summary={summary}
+                transactions={activeTransactions}
+              />
+            </div>
           </div>
         ) : (
           /* Transaction History Section (Mobile Card View + Desktop Table View) */
