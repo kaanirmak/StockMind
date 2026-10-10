@@ -78,6 +78,8 @@ export default function SettingsPage() {
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [appVersionCode, setAppVersionCode] = useState<number>(4);
   const [appVersionName, setAppVersionName] = useState<string>('1.0.3');
+  const [remoteVersionCode, setRemoteVersionCode] = useState<number>(5);
+  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.0.4');
 
   useEffect(() => {
     setPushSettings(loadPushPreferences());
@@ -88,13 +90,24 @@ export default function SettingsPage() {
       const bridge = (window as any).StockMindAndroid;
       if (bridge) {
         if (typeof bridge.getAppVersion === 'function') {
-          setAppVersionName(bridge.getAppVersion() || '1.0.2');
+          setAppVersionName(bridge.getAppVersion() || '1.0.3');
         }
         if (typeof bridge.getAppVersionCode === 'function') {
-          setAppVersionCode(Number(bridge.getAppVersionCode()) || 3);
+          setAppVersionCode(Number(bridge.getAppVersionCode()) || 4);
         }
       }
     }
+
+    // Fetch latest remote version info
+    fetch('/api/app/version')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.version) {
+          setRemoteVersionName(data.version);
+          setRemoteVersionCode(data.versionCode || 5);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleRequestPushPermission = async () => {
@@ -148,8 +161,10 @@ export default function SettingsPage() {
       const res = await fetch('/api/app/version');
       const data = await res.json();
       if (data && data.versionCode) {
+        setRemoteVersionName(data.version);
+        setRemoteVersionCode(data.versionCode);
         if (appVersionCode < data.versionCode) {
-          setUpdateStatus(`🚀 Yeni sürüm mevcut: v${data.version} (Build ${data.versionCode}). Güncellemek için aşağıdaki APK İndir butonuna dokunun.`);
+          setUpdateStatus(`🚀 Yeni sürüm mevcut: v${data.version} (Build ${data.versionCode}). En güncel performansı ve kesintisiz arka plan fiyat bildirimlerini almak için aşağıdaki butona dokunarak güncelleyin.`);
         } else {
           setUpdateStatus(`✅ Uygulamanız tamamen güncel! En son sürümü kullanıyorsunuz (v${appVersionName}).`);
         }
@@ -1187,11 +1202,17 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Badge variant="purple" size="sm">
-              v{appVersionName} (Build {appVersionCode})
+              Yüklü: v{appVersionName} (Build {appVersionCode})
             </Badge>
-            <Badge variant="success" size="sm">
-              Güncel: v1.0.2
-            </Badge>
+            {appVersionCode < remoteVersionCode ? (
+              <Badge variant="warning" size="sm">
+                Yeni: v{remoteVersionName}
+              </Badge>
+            ) : (
+              <Badge variant="success" size="sm">
+                En Güncel: v{remoteVersionName}
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -1221,7 +1242,7 @@ export default function SettingsPage() {
               <span>Uygulama Kapalıyken Bildirim Gelir mi?</span>
             </div>
             <p className="text-text-muted leading-relaxed">
-              <strong className="text-accent">Evet!</strong> Yeni v1.0.2 sürümü ile gelen yerel Android arka plan servisi (WorkManager), uygulama tamamen kapalı olsa bile her 15 dakikada bir hedef fiyatlarınızı denetler ve kilit ekranına bildirim gönderir.
+              <strong className="text-accent">Evet!</strong> Güncel sürüm ile gelen yerel Android arka plan servisi (WorkManager) ve pil muafiyeti, uygulama tamamen kapalı olsa bile her 15 dakikada bir hedef fiyatlarınızı denetler ve kilit ekranına bildirim gönderir.
             </p>
           </div>
         </div>
@@ -1268,7 +1289,7 @@ export default function SettingsPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            <span>StockMind v1.0.2 APK İndir / Güncelle</span>
+            <span>StockMind v{remoteVersionName} APK İndir / Güncelle</span>
           </a>
         </div>
       </div>

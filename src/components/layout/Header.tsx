@@ -261,7 +261,7 @@ export default function Header() {
   };
 
   return (
-    <header className="h-14 sm:h-16 glass border-b border-border flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
+    <header className="h-14 sm:h-16 bg-white/98 dark:bg-[#0f1021]/98 backdrop-blur-xl border-b border-border shadow-xs flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
       {/* Mobile Brand Logo + Search Container */}
       <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0 mr-2 sm:mr-4">
         <Link

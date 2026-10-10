@@ -251,7 +251,7 @@ export default function MobileNav() {
 
       {/* Bottom Navigation Bar */}
       <nav
-        className={`md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/98 dark:bg-[#0f1021]/98 backdrop-blur-xl border-t border-border shadow-lg transition-transform duration-300 ease-in-out ${
           shouldHide ? 'translate-y-full pointer-events-none' : 'translate-y-0'
         }`}
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
