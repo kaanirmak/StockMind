@@ -12,6 +12,7 @@ import {
   saveStoredOpenRouterKey,
   getStoredDefaultModel,
 } from '@/lib/ai/apiKeyStorage';
+import { ChatMessageContent } from '@/components/ai/ChatMessageContent';
 
 interface Message {
   id: string;
@@ -265,7 +266,7 @@ function AIAssistantContent() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-10.5rem-env(safe-area-inset-bottom,0px))] md:h-[calc(100vh-130px)] overflow-hidden animate-fade-in relative">
+    <div className="flex flex-col h-[calc(100dvh-3.5rem-4.5rem-0.75rem-env(safe-area-inset-bottom,0px))] md:h-[calc(100vh-4rem-2.5rem)] -mb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:mb-0 pb-1.5 md:pb-0 overflow-hidden animate-fade-in relative">
       {/* Top Header - Compact for Mobile, Detailed for Desktop */}
       <div className="glass-card p-2.5 sm:p-4 mb-2 sm:mb-3 shrink-0 rounded-2xl border border-border">
         {/* Mobile Header (Single Compact Row) */}
@@ -451,8 +452,8 @@ function AIAssistantContent() {
                     : 'glass-card border border-border/80 text-text-primary rounded-tl-xs space-y-2'
                 }`}
               >
-                <div className="whitespace-pre-line prose prose-sm dark:prose-invert max-w-none break-words">
-                  {msg.content}
+                <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+                  <ChatMessageContent content={msg.content} isUser={isUser} />
                 </div>
 
                 {/* Interactive Key Input Prompt (Inside Bubble) */}
