@@ -156,8 +156,112 @@ export default function WatchlistPage() {
         </Button>
       </div>
 
-      {/* Watchlist Table */}
-      <div className="glass-card overflow-hidden">
+      {/* Watchlist Mobile Card View (md:hidden) */}
+      <div className="md:hidden space-y-3">
+        {items.length === 0 ? (
+          <div className="glass-card p-8 text-center text-text-muted space-y-3">
+            <p className="text-sm font-medium text-text-secondary">İzleme listenizde henüz varlık bulunmuyor.</p>
+            <p className="text-xs">Takip etmek istediğiniz hisse veya fonları ekleyebilirsiniz.</p>
+            <Button variant="secondary" size="sm" onClick={() => setIsAddModalOpen(true)}>
+              + İlk Varlığı Ekle
+            </Button>
+          </div>
+        ) : (
+          items.map((item) => {
+            const isPositive = item.changePercent >= 0;
+            const link = item.assetType === 'stock' ? `/stocks/${item.symbol}` : `/funds/${item.symbol}`;
+            const curr = item.exchange === 'NASDAQ' || item.exchange === 'NYSE' ? '$' : '₺';
+
+            return (
+              <div
+                key={`m-wl-${item.id}`}
+                className="glass-card p-4 rounded-2xl border border-border/80 shadow-xs hover:border-accent/40 transition-all flex flex-col gap-3"
+              >
+                {/* Header: Logo, Symbol, Name & Market Badge */}
+                <div className="flex items-center justify-between">
+                  <Link href={link} className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <InstrumentLogo symbol={item.symbol} name={item.name} size="md" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-text-primary hover:text-accent transition-colors">
+                          {item.symbol}
+                        </span>
+                        <Badge variant={item.assetType === 'stock' ? 'purple' : 'info'} size="sm">
+                          {item.exchange || item.assetType}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-text-muted truncate block">
+                        {item.name}
+                      </span>
+                    </div>
+                  </Link>
+
+                  {/* Remove Button */}
+                  <button
+                    onClick={() => handleRemoveItem(item.id, item.symbol)}
+                    className="p-1.5 text-text-muted hover:text-danger rounded-lg transition-colors cursor-pointer shrink-0"
+                    title="Listeden Çıkar"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Price & Change Row */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                  <div>
+                    <span className="text-[10px] text-text-muted block">Anlık Fiyat</span>
+                    <span className="text-base font-bold font-mono text-text-primary">
+                      {curr}{item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: item.assetType === 'fund' ? 4 : 2 })}
+                    </span>
+                  </div>
+
+                  <span
+                    className={`font-semibold text-xs px-2.5 py-1 rounded-lg font-mono ${
+                      isPositive ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
+                    }`}
+                  >
+                    {isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%
+                  </span>
+                </div>
+
+                {/* Footer: Target Price / Alarm & Quick Actions */}
+                <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+                  <div>
+                    {item.targetPrice ? (
+                      <span className="inline-flex items-center gap-1.5 text-warning bg-warning/10 px-2 py-1 rounded-lg text-xs font-mono font-semibold">
+                        🔔 ₺{item.targetPrice.toFixed(2)}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setSelectedItemForAlert(item);
+                          setAlertTargetPrice(item.price.toString());
+                          setIsAlertModalOpen(true);
+                        }}
+                        className="text-xs text-text-muted hover:text-accent font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <span>🔔</span>
+                        <span>Alarm Kur</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <Link href={link}>
+                    <Button variant="ghost" size="sm" className="text-xs font-semibold">
+                      Grafik & Detay &rarr;
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Watchlist Desktop Table (hidden md:block) */}
+      <div className="hidden md:block glass-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-bg-secondary/80 text-text-muted text-xs uppercase tracking-wider border-b border-border/80">

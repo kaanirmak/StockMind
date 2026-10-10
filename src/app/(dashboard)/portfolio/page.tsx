@@ -211,23 +211,24 @@ export default function PortfolioPage() {
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       {/* Header & Portfolio Selector */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Portföy Yönetimi</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Varlıklarınızı, maliyetlerinizi, anlık kar/zararınızı ve toplam işlem hacminizi yönetin.
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Portföy Yönetimi</h1>
+          <p className="text-text-secondary text-xs sm:text-sm mt-0.5">
+            Varlıklarınızı, maliyetlerinizi, anlık kâr/zararınızı ve toplam işlem hacminizi yönetin.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Portfolio Switcher */}
-          <div className="flex items-center gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border">
+        {/* Action Toolbar on mobile & desktop */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          {/* Portfolio Switcher - Swipeable on mobile */}
+          <div className="flex items-center gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border overflow-x-auto scrollbar-none w-full sm:w-auto">
             {portfolios.map((p) => {
               const isActive = activePortfolioId === p.id;
               return (
                 <div
                   key={p.id}
-                  className={`group relative flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`group relative flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
                     isActive
                       ? 'bg-accent text-white shadow'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -260,7 +261,7 @@ export default function PortfolioPage() {
             })}
             <button
               onClick={() => setIsNewPortModalOpen(true)}
-              className="p-1.5 text-text-muted hover:text-accent rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-text-muted hover:text-accent rounded-lg transition-colors cursor-pointer shrink-0"
               title="Yeni Portföy Oluştur"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -269,151 +270,176 @@ export default function PortfolioPage() {
             </button>
           </div>
 
-          {/* Delete Active Portfolio Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleOpenDeletePortfolio(activePortfolio)}
-            className="border-red-500/30 text-rose-400 hover:bg-red-500/10 hover:border-red-500"
-            title={`"${activePortfolio?.name}" portföyünü sil`}
-            leftIcon={
-              <svg className="w-3.5 h-3.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            }
-          >
-            Portföyü Sil
-          </Button>
+          {/* Action Buttons: Responsive Swipeable Toolbar on Mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 sm:pb-0">
+            {/* Primary Action Button */}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsTradeModalOpen(true)}
+              className="whitespace-nowrap shrink-0 shadow-xs"
+              leftIcon={
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              }
+            >
+              İşlem Ekle
+            </Button>
 
-          {/* Live Price Refresh Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefreshPrices}
-            disabled={isRefreshingPrices}
-            title="Anlık Canlı Fiyatları Yenile"
-            leftIcon={
-              <svg
-                className={`w-3.5 h-3.5 text-accent ${isRefreshingPrices ? 'animate-spin' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            }
-          >
-            {isRefreshingPrices ? 'Güncelleniyor...' : 'Fiyatları Yenile'}
-          </Button>
+            {/* Live Price Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshPrices}
+              disabled={isRefreshingPrices}
+              className="whitespace-nowrap shrink-0 text-xs"
+              title="Anlık Canlı Fiyatları Yenile"
+              leftIcon={
+                <svg
+                  className={`w-3.5 h-3.5 text-accent ${isRefreshingPrices ? 'animate-spin' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              }
+            >
+              {isRefreshingPrices ? 'Yenileniyor...' : 'Fiyat Yenile'}
+            </Button>
 
-          {/* Excel Upload Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsExcelModalOpen(true)}
-            className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500"
-            leftIcon={
-              <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            }
-          >
-            Excel Yükle
-          </Button>
+            {/* Excel Upload Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsExcelModalOpen(true)}
+              className="whitespace-nowrap shrink-0 text-xs border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500"
+              leftIcon={
+                <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              }
+            >
+              Excel Yükle
+            </Button>
 
-          {/* Export Options */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={activeTab === 'transactions' ? handleExportExcel : handleExportCSV}
-            leftIcon={
-              <svg className="w-3.5 h-3.5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            }
-          >
-            {activeTab === 'transactions' ? 'Excel İndir' : 'CSV İndir'}
-          </Button>
+            {/* Export Options */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={activeTab === 'transactions' ? handleExportExcel : handleExportCSV}
+              className="whitespace-nowrap shrink-0 text-xs"
+              leftIcon={
+                <svg className="w-3.5 h-3.5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              }
+            >
+              {activeTab === 'transactions' ? 'Excel İndir' : 'CSV İndir'}
+            </Button>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsTradeModalOpen(true)}
-            leftIcon={
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            }
-          >
-            İşlem Ekle
-          </Button>
+            {/* Delete Active Portfolio Button (visible on desktop; mobile uses the X on pill) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenDeletePortfolio(activePortfolio)}
+              className="hidden sm:inline-flex whitespace-nowrap shrink-0 text-xs border-red-500/30 text-rose-400 hover:bg-red-500/10 hover:border-red-500"
+              title={`"${activePortfolio?.name}" portföyünü sil`}
+              leftIcon={
+                <svg className="w-3.5 h-3.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              }
+            >
+              Portföyü Sil
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Summary KPI Cards - 2x2 Grid on Mobile, 4 Cols on Desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Value */}
-        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Toplam Portföy Değeri</p>
-          <h3 className="text-2xl font-black text-text-primary mt-1 font-mono">
-            ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-          </h3>
-          <div className="flex items-center gap-1.5 mt-2 text-xs text-text-muted">
-            <span>Toplam Maliyet:</span>
-            <span className="font-semibold text-text-secondary">₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              <span>Portföy Değeri</span>
+              <span className="text-base sm:text-lg">💼</span>
+            </div>
+            <h3 className="text-lg sm:text-2xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">
+              ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1 mt-2 text-[10px] sm:text-xs text-text-muted truncate">
+            <span>Maliyet:</span>
+            <span className="font-semibold text-text-secondary font-mono truncate">
+              ₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </span>
           </div>
         </div>
 
         {/* Total PnL */}
-        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Toplam Kar / Zarar</p>
-          <h3 className={`text-2xl font-black mt-1 font-mono flex items-center gap-1 ${isProfit ? 'text-success' : 'text-danger'}`}>
-            <span>{isProfit ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-          </h3>
-          <div className="flex items-center gap-1.5 mt-2 text-xs">
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              <span>Toplam Kâr/Zarar</span>
+              <span className="text-base sm:text-lg">{isProfit ? '📈' : '📉'}</span>
+            </div>
+            <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${isProfit ? 'text-success' : 'text-danger'}`}>
+              {isProfit ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1.5 mt-2 text-[10px] sm:text-xs">
             <Badge variant={isProfit ? 'success' : 'danger'} size="sm">
               {isProfit ? '+' : ''}{summary.totalPnLPercent.toFixed(2)}%
             </Badge>
-            <span className="text-text-muted">tüm zamanlar</span>
+            <span className="text-text-muted hidden sm:inline">tüm zamanlar</span>
           </div>
         </div>
 
         {/* Total Turnover / Volume */}
-        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
-          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Toplam İşlem Hacmi</p>
-          <h3 className="text-2xl font-black text-text-primary mt-1 font-mono">
-            ₺{summary.totalVolume.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-          </h3>
-          <div className="flex items-center gap-2 mt-2 text-xs text-text-muted">
-            <span className="text-emerald-400 font-medium">
-              Alış: ₺{summary.buyVolume.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              <span>İşlem Hacmi</span>
+              <span className="text-base sm:text-lg">🔄</span>
+            </div>
+            <h3 className="text-lg sm:text-2xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">
+              ₺{summary.totalVolume.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1.5 mt-2 text-[10px] sm:text-xs text-text-muted truncate">
+            <span className="text-emerald-400 font-semibold font-mono truncate">
+              A: ₺{summary.buyVolume.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
             <span>•</span>
-            <span className="text-rose-400 font-medium">
-              Satış: ₺{summary.sellVolume.toLocaleString('tr-TR', { minimumFractionDigits: 0 })}
+            <span className="text-rose-400 font-semibold font-mono truncate">
+              S: ₺{summary.sellVolume.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
           </div>
         </div>
 
         {/* Daily PnL & Position Count */}
-        <div className="p-5 rounded-2xl bg-bg-card border border-border shadow-sm">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">Günlük Değişim</p>
-            <span className="text-[11px] font-semibold text-text-muted">{summary.holdings.length} Pozisyon</span>
-          </div>
-          <h3 className={`text-2xl font-black mt-1 font-mono ${summary.dailyPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-            {summary.dailyPnL >= 0 ? '+' : ''}₺{summary.dailyPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-          </h3>
-          <div className="flex items-center justify-between gap-1.5 mt-2 text-xs">
-            <div className="flex items-center gap-1.5">
-              <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
-                {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
-              </Badge>
-              <span className="text-text-muted">bugün</span>
+        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              <span>Günlük Getiri</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-bg-secondary text-text-muted border border-border/50">
+                {summary.holdings.length} Poz.
+              </span>
             </div>
+            <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${summary.dailyPnL >= 0 ? 'text-success' : 'text-danger'}`}>
+              {summary.dailyPnL >= 0 ? '+' : ''}₺{summary.dailyPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className="flex items-center justify-between gap-1 mt-2 text-[10px] sm:text-xs">
+            <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
+              {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
+            </Badge>
             <a
               href="#daily-calendar"
-              className="text-[11px] font-bold text-accent hover:underline flex items-center gap-1 transition-colors"
+              className="text-[10px] sm:text-[11px] font-bold text-accent hover:underline flex items-center gap-0.5 transition-colors shrink-0"
               title="GitHub Stili Günlük Kâr Takvimine Git"
             >
               <span>📅 Takvim</span>
@@ -424,52 +450,52 @@ export default function PortfolioPage() {
       </div>
 
       {/* Main Grid: Allocation Chart & Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         <div className="lg:col-span-5">
           <PortfolioAllocationChart allocation={summary.allocation} totalValue={summary.totalValue} />
         </div>
 
-        <div className="lg:col-span-7 flex flex-col justify-between p-6 rounded-2xl bg-bg-card border border-border shadow-sm">
+        <div className="lg:col-span-7 flex flex-col justify-between p-4 sm:p-6 rounded-2xl bg-bg-card border border-border shadow-xs">
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-text-primary">Portföy Varlık Özeti</h3>
-              <span className="text-xs text-text-muted">{summary.holdings.length} Aktif Varlık</span>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 className="text-sm sm:text-base font-bold text-text-primary">Portföy Varlık Özeti</h3>
+              <span className="text-xs text-text-muted font-medium">{summary.holdings.length} Aktif Varlık</span>
             </div>
-            <p className="text-sm text-text-secondary leading-relaxed mb-6">
+            <p className="text-xs sm:text-sm text-text-secondary leading-relaxed mb-4 sm:mb-6">
               Portföyünüzdeki hisse senetleri ve TEFAS yatırım fonları otomatik olarak güncel piyasa fiyatları üzerinden değerlenmektedir.
               Excel yükleme özelliği sayesinde geçmiş ekstrelerinizi tek tıkla aktarabilirsiniz.
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-bg-secondary/60 border border-border/50">
-                <span className="text-xs text-text-muted">Hisse Senetleri</span>
-                <p className="text-lg font-bold text-text-primary mt-1">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              <div className="p-3 sm:p-4 rounded-xl bg-bg-secondary/60 border border-border/50 text-center sm:text-left">
+                <span className="text-[10px] sm:text-xs text-text-muted block">Hisse Senetleri</span>
+                <p className="text-base sm:text-lg font-bold text-text-primary mt-0.5">
                   {summary.holdings.filter((h) => h.assetType === 'stock').length} Adet
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-bg-secondary/60 border border-border/50">
-                <span className="text-xs text-text-muted">Yatırım Fonları</span>
-                <p className="text-lg font-bold text-text-primary mt-1">
+              <div className="p-3 sm:p-4 rounded-xl bg-bg-secondary/60 border border-border/50 text-center sm:text-left">
+                <span className="text-[10px] sm:text-xs text-text-muted block">Yatırım Fonları</span>
+                <p className="text-base sm:text-lg font-bold text-text-primary mt-0.5">
                   {summary.holdings.filter((h) => h.assetType === 'fund').length} Adet
                 </p>
               </div>
-              <div className="p-4 rounded-xl bg-bg-secondary/60 border border-border/50 col-span-2 sm:col-span-1">
-                <span className="text-xs text-text-muted">En Büyük Pozisyon</span>
-                <p className="text-lg font-bold text-accent mt-1 truncate">
+              <div className="p-3 sm:p-4 rounded-xl bg-bg-secondary/60 border border-border/50 text-center sm:text-left">
+                <span className="text-[10px] sm:text-xs text-text-muted block">En Büyük Pay</span>
+                <p className="text-base sm:text-lg font-bold text-accent mt-0.5 truncate font-mono">
                   {summary.holdings.length > 0 ? summary.holdings[0].symbol : '-'}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-border mt-6 flex items-center justify-between flex-wrap gap-3">
+          <div className="pt-4 sm:pt-6 border-t border-border mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <span className="text-xs text-text-muted">Midas, İşCep, Garanti vb. ekstrelerinizi yükleyin</span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={downloadExcelTemplate}
-                className="text-xs"
+                className="text-xs flex-1 sm:flex-none justify-center"
               >
                 Şablon İndir
               </Button>
@@ -477,7 +503,7 @@ export default function PortfolioPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => setIsExcelModalOpen(true)}
-                className="text-xs bg-emerald-600 hover:bg-emerald-500 border-none"
+                className="text-xs bg-emerald-600 hover:bg-emerald-500 border-none flex-1 sm:flex-none justify-center"
               >
                 Excel Yükle
               </Button>

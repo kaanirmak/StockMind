@@ -26,11 +26,11 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    version: '1.0.2',
-    versionCode: 3,
+    version: '1.0.3',
+    versionCode: 4,
     downloadUrl: '/api/download/apk',
     directApkUrl: '/StockMind.apk',
-    releaseNotes: 'Uygulama kapalıyken arka plan hedef fiyat alarmları, BIST seans kapanış bildirimi, portföy widget ve tam ekran UI iyileştirmeleri.',
+    releaseNotes: 'Tam ekran mobil optimizasyonları, responsive kart görünümleri, özel StockMind bildirim sesi ve status bar boşluk düzeltmeleri.',
     publishedAt: '2026-10-10',
     minAndroidVersion: '7.0 (Nougat) ve üzeri',
     broadcast,

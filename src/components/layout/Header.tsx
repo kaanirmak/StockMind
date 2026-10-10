@@ -261,7 +261,7 @@ export default function Header() {
   };
 
   return (
-    <header className="glass border-b border-border flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30 min-h-16 pt-[env(safe-area-inset-top,0px)]">
+    <header className="h-14 sm:h-16 glass border-b border-border flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
       {/* Mobile Brand Logo + Search Container */}
       <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0 mr-2 sm:mr-4">
         <Link
@@ -334,7 +334,7 @@ export default function Header() {
               className="sm:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs animate-fade-in"
               onClick={() => setShowSearchDropdown(false)}
             />
-            <div className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-0 top-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:top-full mt-1 sm:mt-2 glass-card rounded-2xl border border-border shadow-2xl p-2.5 z-50 max-h-[70vh] sm:max-h-[420px] overflow-y-auto space-y-3 animate-fade-in">
+            <div className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-0 top-14 sm:top-full mt-1.5 sm:mt-2 glass-card rounded-2xl border border-border shadow-2xl p-2.5 z-50 max-h-[70vh] sm:max-h-[420px] overflow-y-auto space-y-3 animate-fade-in">
             {searchResults.loading ? (
               <div className="p-4 text-center text-xs text-text-muted flex items-center justify-center gap-2">
                 <svg className="animate-spin h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24">
@@ -541,7 +541,7 @@ export default function Header() {
                 className="sm:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-fade-in"
                 onClick={() => setShowNotifications(false)}
               />
-              <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-[calc(4.25rem+env(safe-area-inset-top,0px))] sm:top-full mt-1 sm:mt-2 w-auto sm:w-[380px] max-w-none sm:max-w-[400px] glass-card rounded-2xl border border-border shadow-2xl py-2 animate-scale-in origin-top-right z-50 overflow-hidden">
+              <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-14 sm:top-full mt-1.5 sm:mt-2 w-auto sm:w-[380px] max-w-none sm:max-w-[400px] glass-card rounded-2xl border border-border shadow-2xl py-2 animate-scale-in origin-top-right z-50 overflow-hidden">
               {/* Panel Header */}
               <div className="px-4 py-3 border-b border-border/80 flex items-center justify-between">
                 <div className="flex items-center gap-2">

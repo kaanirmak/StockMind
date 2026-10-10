@@ -84,6 +84,32 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 /**
+ * Plays the custom StockMind notification sound (native bridge or HTML5 Audio)
+ */
+export function playNotificationSound(): void {
+  if (typeof window === 'undefined') return;
+
+  const bridge = (window as any).StockMindAndroid;
+  if (bridge && typeof bridge.playNotificationSound === 'function') {
+    try {
+      bridge.playNotificationSound();
+      return;
+    } catch (e) {
+      console.warn('Native sound playback error:', e);
+    }
+  }
+
+  try {
+    const audio = new Audio('/sounds/notification.mp3');
+    audio.play().catch(() => {
+      // Audio playback might be restricted by browser until user gesture
+    });
+  } catch (e) {
+    console.warn('Web audio playback error:', e);
+  }
+}
+
+/**
  * Sends a native phone notification (or web notification if on browser)
  */
 export function sendPushNotification(title: string, message: string, route: string = '/dashboard'): boolean {
@@ -120,6 +146,7 @@ export function sendPushNotification(title: string, message: string, route: stri
         window.focus();
         if (route) window.location.href = route;
       };
+      playNotificationSound();
       sent = true;
     } catch (e) {
       console.warn('Browser notification error:', e);

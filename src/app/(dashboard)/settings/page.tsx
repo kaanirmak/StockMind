@@ -11,6 +11,7 @@ import {
   loadPushPreferences,
   savePushPreferences,
   sendPushNotification,
+  playNotificationSound,
   hasNotificationPermission,
   requestNotificationPermission,
   isAndroidApp,
@@ -73,8 +74,8 @@ export default function SettingsPage() {
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
-  const [appVersionCode, setAppVersionCode] = useState<number>(3);
-  const [appVersionName, setAppVersionName] = useState<string>('1.0.2');
+  const [appVersionCode, setAppVersionCode] = useState<number>(4);
+  const [appVersionName, setAppVersionName] = useState<string>('1.0.3');
 
   useEffect(() => {
     setPushSettings(loadPushPreferences());
@@ -1103,21 +1104,45 @@ export default function SettingsPage() {
 
         {/* Footer Actions */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleSendTestPush}
-            disabled={isSendingTestPush}
-            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 cursor-pointer"
-            leftIcon={
-              <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            }
-          >
-            {isSendingTestPush ? 'Bildirim Gönderiliyor...' : '📱 Telefona Test Bildirimi Gönder'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSendTestPush}
+              disabled={isSendingTestPush}
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 cursor-pointer"
+              leftIcon={
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              }
+            >
+              {isSendingTestPush ? 'Bildirim Gönderiliyor...' : '📱 Telefona Test Bildirimi Gönder'}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                playNotificationSound();
+                showToast({
+                  type: 'info',
+                  title: 'Özel Bildirim Sesi Çalındı 🔔',
+                  message: 'StockMind özel bildirim sesi çalındı.',
+                });
+              }}
+              className="border-primary/30 text-primary-400 hover:bg-primary-500/10 cursor-pointer"
+              leftIcon={
+                <svg className="w-4 h-4 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+              }
+            >
+              🔔 Sesi Dinle
+            </Button>
+          </div>
 
           <Button
             type="button"

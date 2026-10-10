@@ -50,7 +50,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity animate-fade-in"
@@ -59,19 +59,19 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Dialog Body */}
       <div
-        className={`relative w-full ${sizeClasses[size]} bg-bg-card border border-border/80 rounded-2xl shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-scale-in my-8 max-h-[90vh] flex flex-col`}
+        className={`relative w-full ${sizeClasses[size]} bg-bg-card border border-border/80 rounded-2xl shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-scale-in my-auto sm:my-8 max-h-[92vh] sm:max-h-[90vh] flex flex-col`}
       >
         {/* Modal Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border/60 shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-border/60 shrink-0">
             <div>
-              {title && <h3 className="text-lg font-bold text-text-primary">{title}</h3>}
+              {title && <h3 className="text-base sm:text-lg font-bold text-text-primary">{title}</h3>}
               {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
             </div>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+                className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -82,7 +82,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Modal Content */}
-        <div className="px-6 py-5 overflow-y-auto flex-1">{children}</div>
+        <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );

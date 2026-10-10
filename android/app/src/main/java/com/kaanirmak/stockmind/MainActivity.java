@@ -82,10 +82,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Hide bottom navigation bar (system router) when entering app
-        hideBottomNavigation();
-
         setContentView(R.layout.activity_main);
+
+        // Hide bottom navigation bar (system router) and set window insets
+        hideBottomNavigation();
 
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         currentServerUrl = prefs.getString(KEY_SERVER_URL, getDefaultUrl());

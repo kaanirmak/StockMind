@@ -11,12 +11,16 @@ import WatchlistPreview from '@/components/dashboard/WatchlistPreview';
 import { ApkDownloadModal } from '@/components/ui';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
+import { isAndroidApp } from '@/lib/notifications/pushNotification';
+
 export default function DashboardPage() {
   const { fetchPortfoliosAndTransactions } = usePortfolioStore();
   const [showApkModal, setShowApkModal] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
   useEffect(() => {
     fetchPortfoliosAndTransactions();
+    setIsAndroid(isAndroidApp());
   }, [fetchPortfoliosAndTransactions]);
 
   return (
@@ -50,13 +54,15 @@ export default function DashboardPage() {
           >
             Widget Merkezi &rarr;
           </Link>
-          <button
-            type="button"
-            onClick={() => setShowApkModal(true)}
-            className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-bold text-xs transition-all cursor-pointer text-center"
-          >
-            📱 APK İndir
-          </button>
+          {!isAndroid && (
+            <button
+              type="button"
+              onClick={() => setShowApkModal(true)}
+              className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-bold text-xs transition-all cursor-pointer text-center"
+            >
+              📱 APK İndir
+            </button>
+          )}
         </div>
       </div>
 

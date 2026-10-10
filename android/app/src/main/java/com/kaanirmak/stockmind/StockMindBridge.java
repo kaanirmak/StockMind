@@ -48,6 +48,20 @@ public class StockMindBridge {
     }
 
     @JavascriptInterface
+    public void playNotificationSound() {
+        if (context == null) return;
+        try {
+            android.media.MediaPlayer mediaPlayer = android.media.MediaPlayer.create(context, R.raw.notification);
+            if (mediaPlayer != null) {
+                mediaPlayer.setOnCompletionListener(android.media.MediaPlayer::release);
+                mediaPlayer.start();
+            }
+        } catch (Throwable t) {
+            android.util.Log.e("StockMindBridge", "Failed to play notification sound", t);
+        }
+    }
+
+    @JavascriptInterface
     public boolean hasNotificationPermission() {
         if (context == null) return false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

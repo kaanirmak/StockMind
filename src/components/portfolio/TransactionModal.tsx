@@ -558,7 +558,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Price, FX Rate & Quantity */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
           <Input
             label={`Birim Fiyat (${currency === 'USD' ? '$' : '₺'})`}
             type="number"
@@ -595,7 +595,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
         )}
 
         {/* Date & Commission */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
           <Input
             label="İşlem Tarihi"
             type="date"
@@ -639,11 +639,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-3">
-          <Button type="button" variant="secondary" onClick={onClose}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3">
+          <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto justify-center">
             İptal
           </Button>
-          <Button type="submit" variant="primary">
+          <Button type="submit" variant="primary" className="w-full sm:w-auto justify-center">
             İşlemi Kaydet
           </Button>
         </div>

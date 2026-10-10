@@ -54,18 +54,6 @@ export default async function LandingPage() {
         </Link>
         <div className="flex items-center gap-3 sm:gap-4">
           <Link
-            href="/download"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all"
-          >
-            <span>📱 APK İndir</span>
-          </Link>
-          <Link
-            href="/widgets"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-accent/10 border border-accent/30 text-accent text-xs font-bold hover:bg-accent/20 transition-all"
-          >
-            <span>🧩 Widget'lar</span>
-          </Link>
-          <Link
             href="/login"
             className="text-sm text-text-secondary hover:text-text-primary transition-colors font-medium"
           >
@@ -131,77 +119,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Mobile App & Widgets Showcase Section */}
-      <section className="relative z-10 px-6 lg:px-12 pb-16">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* APK Card */}
-          <div className="glass-card rounded-3xl border border-emerald-500/30 p-7 sm:p-8 relative overflow-hidden bg-gradient-to-br from-[#0c1c1a] via-[#09151c] to-bg-primary">
-            <div className="flex items-center justify-between mb-4">
-              <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                RESMİ ANDROID APK
-              </span>
-              <span className="text-xs text-text-muted font-mono">v1.0.0 • 5.9 MB</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
-              StockMind Android Uygulaması
-            </h3>
-            <p className="text-xs sm:text-sm text-text-secondary leading-relaxed mb-6">
-              Hisse ve fon yatırımlarınızı akıcı tam ekran arayüzle telefonunuzdan takip edin.
-              Doğrudan APK dosyasını indirip saniyeler içinde kurun.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <a
-                href="/api/download/apk"
-                download="StockMind.apk"
-                className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold flex items-center gap-2 hover:opacity-90 shadow-lg shadow-emerald-500/25 transition-all"
-              >
-                <span>Hemen APK İndir (5.9 MB)</span>
-                <span>↓</span>
-              </a>
-              <Link
-                href="/download"
-                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all"
-              >
-                QR Kod & Detaylar →
-              </Link>
-            </div>
-          </div>
 
-          {/* Widgets Card */}
-          <div className="glass-card rounded-3xl border border-accent/30 p-7 sm:p-8 relative overflow-hidden bg-gradient-to-br from-[#1a0f30] via-[#100d25] to-bg-primary">
-            <div className="flex items-center justify-between mb-4">
-              <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-accent/20 text-accent border border-accent/30 flex items-center gap-1.5">
-                <span>✨</span> CANLI WIDGET SİSTEMİ
-              </span>
-              <span className="text-xs text-text-muted">Notion & Masaüstü</span>
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
-              Portföy & Isı Haritası Widget'ları
-            </h3>
-            <p className="text-xs sm:text-sm text-text-secondary leading-relaxed mb-6">
-              Portföy durumunuzu ve piyasa ısı haritasını Notion sayfalarınıza gömün,
-              veya ekranınızın köşesinde bağımsız yüzen mini masaüstü penceresi olarak izleyin.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href="/widgets"
-                className="px-5 py-3 rounded-xl bg-accent text-white text-xs font-bold flex items-center gap-2 hover:opacity-90 shadow-lg shadow-accent/25 transition-all"
-              >
-                <span>Widget Merkezini Aç</span>
-                <span>→</span>
-              </Link>
-              <Link
-                href="/widgets/portfolio"
-                target="_blank"
-                className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 transition-all"
-              >
-                Canlı Mini Önizleme →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Features */}
       <section className="relative z-10 px-6 lg:px-12 pb-24">
