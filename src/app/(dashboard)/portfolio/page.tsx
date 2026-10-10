@@ -437,14 +437,20 @@ export default function PortfolioPage() {
             <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
               {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
             </Badge>
-            <a
-              href="#daily-calendar"
-              className="text-[10px] sm:text-[11px] font-bold text-accent hover:underline flex items-center gap-0.5 transition-colors shrink-0"
-              title="GitHub Stili Günlük Kâr Takvimine Git"
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('heatmap');
+                setTimeout(() => {
+                  document.getElementById('daily-calendar')?.scrollIntoView({ behavior: 'smooth' });
+                }, 50);
+              }}
+              className="text-[10px] sm:text-[11px] font-bold text-accent hover:underline flex items-center gap-0.5 transition-colors shrink-0 cursor-pointer"
+              title="Günlük Kâr Aktivite Haritasına Git"
             >
-              <span>📅 Takvim</span>
+              <span>📅 Aktivite</span>
               <span>↓</span>
-            </a>
+            </button>
           </div>
         </div>
       </div>
