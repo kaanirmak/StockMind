@@ -14,6 +14,8 @@ import {
   playNotificationSound,
   hasNotificationPermission,
   requestNotificationPermission,
+  isBatteryOptimizationIgnored,
+  requestBatteryOptimizationExemption,
   isAndroidApp,
   PushNotificationPreferences,
   DEFAULT_PUSH_PREFERENCES,
@@ -1092,14 +1094,29 @@ export default function SettingsPage() {
         </div>
 
         {/* Background Service Status Info */}
-        <div className="p-3.5 rounded-xl bg-accent/5 border border-accent/20 flex items-start gap-2.5 text-xs">
-          <span className="text-base shrink-0">⚡</span>
-          <div className="space-y-0.5">
-            <span className="font-bold text-accent">Uygulama Kapalıyken Arka Plan Fiyat Denetimi</span>
-            <p className="text-text-muted leading-relaxed">
-              Android WorkManager altyapısı sayesinde, StockMind uygulamasını arka plandan tamamen kapatsanız dahi sistem her 15 dakikada bir hedef fiyatlarınızı kontrol eder. Fiyat hedefe ulaştığında telefonunuzun kilit ekranına sesli ve titreşimli push uyarısı gönderilir.
-            </p>
+        <div className="p-3.5 rounded-xl bg-accent/5 border border-accent/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <span className="text-base shrink-0">⚡</span>
+            <div className="space-y-0.5">
+              <span className="font-bold text-accent">Uygulama Kapalıyken Arka Plan Fiyat Denetimi</span>
+              <p className="text-text-muted leading-relaxed">
+                Android WorkManager her 15 dakikada bir fiyatları denetler. Xiaomi, Samsung veya Huawei cihazlarda uygulamanın kapalıyken sistem tarafından dondurulmaması için pil tasarrufunun <strong>Kısıtlama Yok</strong> olması gerekir.
+              </p>
+            </div>
           </div>
+          {isAndroidApp() && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                requestBatteryOptimizationExemption();
+              }}
+              className="border-accent/40 text-accent hover:bg-accent/10 whitespace-nowrap shrink-0 self-start sm:self-center cursor-pointer"
+            >
+              🔋 Pil Kısıtlamasını Kaldır
+            </Button>
+          )}
         </div>
 
         {/* Footer Actions */}

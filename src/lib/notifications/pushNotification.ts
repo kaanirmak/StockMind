@@ -84,6 +84,37 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 /**
+ * Checks if the Android app is exempt from OS battery optimizations (Doze mode)
+ */
+export function isBatteryOptimizationIgnored(): boolean {
+  if (typeof window === 'undefined') return true;
+  const bridge = (window as any).StockMindAndroid;
+  if (bridge && typeof bridge.isBatteryOptimizationIgnored === 'function') {
+    try {
+      return Boolean(bridge.isBatteryOptimizationIgnored());
+    } catch {
+      return true;
+    }
+  }
+  return true;
+}
+
+/**
+ * Prompts user to disable battery restrictions for StockMind so background checks work when closed
+ */
+export function requestBatteryOptimizationExemption(): void {
+  if (typeof window === 'undefined') return;
+  const bridge = (window as any).StockMindAndroid;
+  if (bridge && typeof bridge.requestBatteryOptimizationExemption === 'function') {
+    try {
+      bridge.requestBatteryOptimizationExemption();
+    } catch (e) {
+      console.warn('Native battery optimization exemption error:', e);
+    }
+  }
+}
+
+/**
  * Plays the custom StockMind notification sound (native bridge or HTML5 Audio)
  */
 export function playNotificationSound(): void {

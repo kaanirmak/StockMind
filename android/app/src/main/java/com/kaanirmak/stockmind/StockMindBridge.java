@@ -78,6 +78,21 @@ public class StockMindBridge {
     }
 
     @JavascriptInterface
+    public boolean isBatteryOptimizationIgnored() {
+        if (context instanceof MainActivity) {
+            return ((MainActivity) context).isBatteryOptimizationIgnored();
+        }
+        return true;
+    }
+
+    @JavascriptInterface
+    public void requestBatteryOptimizationExemption() {
+        if (context instanceof MainActivity) {
+            ((MainActivity) context).requestBatteryOptimizationExemption();
+        }
+    }
+
+    @JavascriptInterface
     public void savePushSettings(String settingsJson) {
         if (context == null) return;
         SharedPreferences prefs = context.getSharedPreferences("StockMindPushPrefs", Context.MODE_PRIVATE);

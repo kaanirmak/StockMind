@@ -26,11 +26,11 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    version: '1.0.3',
-    versionCode: 4,
+    version: '1.0.4',
+    versionCode: 5,
     downloadUrl: '/api/download/apk',
     directApkUrl: '/StockMind.apk',
-    releaseNotes: 'Tam ekran mobil optimizasyonları, responsive kart görünümleri, özel StockMind bildirim sesi ve status bar boşluk düzeltmeleri.',
+    releaseNotes: 'Arka plan pil optimizasyonu muafiyeti, kapalıyken kesintisiz fiyat alarmı ve telefon yeniden başlatma (BootReceiver) desteği.',
     publishedAt: '2026-10-10',
     minAndroidVersion: '7.0 (Nougat) ve üzeri',
     broadcast,

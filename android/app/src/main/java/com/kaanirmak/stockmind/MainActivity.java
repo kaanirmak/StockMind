@@ -50,6 +50,8 @@ import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 import android.os.Environment;
+import android.os.PowerManager;
+import android.provider.Settings;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
@@ -122,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
 
             WorkManager.getInstance(this).enqueueUniquePeriodicWork(
                     "StockPriceCheckWorker",
-                    ExistingPeriodicWorkPolicy.KEEP,
+                    ExistingPeriodicWorkPolicy.UPDATE,
                     workRequest
             );
         } catch (Throwable t) {
@@ -152,6 +154,38 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else {
                 Toast.makeText(this, "Bildirimler aktif! 🔔", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    public boolean isBatteryOptimizationIgnored() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            return pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
+        }
+        return true;
+    }
+
+    public void requestBatteryOptimizationExemption() {
+        runOnUiThread(() -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                            startActivity(intent);
+                        } catch (Exception ignored) {
+                            Toast.makeText(this, "Lütfen telefon ayarlarından StockMind için pil tasarrufunu 'Kısıtlama Yok' yapın.", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                } else {
+                    Toast.makeText(this, "Arka plan pil optimizasyonu zaten kısıtlamasız! Bildirimler arka planda çalışır. 🔋", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
