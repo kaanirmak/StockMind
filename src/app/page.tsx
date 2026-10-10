@@ -175,13 +175,22 @@ export default async function LandingPage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-border py-8 px-6 lg:px-12">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg gradient-accent flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg gradient-accent flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-text-secondary">StockMind</span>
             </div>
-            <span className="text-sm font-semibold text-text-secondary">StockMind</span>
+
+            <Link
+              href="/download"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/25 transition-all"
+            >
+              <span>📱</span> Android APK İndir
+            </Link>
           </div>
           <p className="text-xs text-text-muted">
             © 2026 StockMind. Tüm hakları saklıdır.

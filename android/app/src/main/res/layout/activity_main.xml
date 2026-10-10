@@ -88,6 +88,18 @@
             android:textStyle="bold" />
 
         <Button
+            android:id="@+id/btnDownloadUpdate"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#10B981"
+            android:text="🚀 En Son Sürümü İndir &amp; Güncelle (APK)"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <Button
             android:id="@+id/btnChangeUrl"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"

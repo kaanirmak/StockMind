@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView errorDetailText;
     private TextView currentUrlText;
     private Button btnRetry;
+    private Button btnDownloadUpdate;
     private Button btnChangeUrl;
 
     private SharedPreferences prefs;
@@ -206,6 +207,7 @@ public class MainActivity extends AppCompatActivity {
         errorDetailText = findViewById(R.id.errorDetailText);
         currentUrlText = findViewById(R.id.currentUrlText);
         btnRetry = findViewById(R.id.btnRetry);
+        btnDownloadUpdate = findViewById(R.id.btnDownloadUpdate);
         btnChangeUrl = findViewById(R.id.btnChangeUrl);
 
         swipeRefreshLayout.setColorSchemeColors(0xFF8B5CF6, 0xFF10B981);
@@ -226,6 +228,13 @@ public class MainActivity extends AppCompatActivity {
                 loadAppUrl();
             });
         });
+
+        if (btnDownloadUpdate != null) {
+            btnDownloadUpdate.setOnClickListener(v -> {
+                startApkDownload(PRODUCTION_URL + "/StockMind.apk");
+            });
+        }
+
         btnChangeUrl.setOnClickListener(v -> showChangeUrlDialog());
     }
 
@@ -445,11 +454,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showErrorState(String description) {
+        // Auto-heal if the error was due to an old or unreachable server URL
+        if (!PRODUCTION_URL.equals(currentServerUrl) && !currentServerUrl.contains("10.0.2.2")) {
+            currentServerUrl = PRODUCTION_URL;
+            if (prefs != null) {
+                prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
+            }
+            Toast.makeText(this, "Canlı sunucuya (Vercel) geçiş yapılıyor...", Toast.LENGTH_SHORT).show();
+            loadAppUrl();
+            return;
+        }
+
         swipeRefreshLayout.setRefreshing(false);
         progressBar.setVisibility(View.GONE);
         errorView.setVisibility(View.VISIBLE);
         currentUrlText.setText(currentServerUrl);
-        errorDetailText.setText("Hedef sunucuya erişilemedi (" + description + "). Sunucunun çalıştığından emin olun.");
+        errorDetailText.setText("Hedef sunucuya erişilemedi (" + description + "). Sunucunun çalıştığından veya internet bağlantınızdan emin olun.");
     }
 
     private void showChangeUrlDialog() {
