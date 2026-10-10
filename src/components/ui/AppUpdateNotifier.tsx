@@ -16,6 +16,8 @@ export function AppUpdateNotifier() {
   const [currentVersion, setCurrentVersion] = useState<string>('1.0.0');
   const [dismissed, setDismissed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     // Only check if inside Android APK or on mobile device
@@ -92,9 +94,6 @@ export function AppUpdateNotifier() {
   if (!updateAvailable || dismissed || !versionInfo) {
     return null;
   }
-
-  const [showModal, setShowModal] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const handleDownloadUpdate = () => {
     setIsDownloading(true);
