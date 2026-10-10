@@ -8,7 +8,7 @@ import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
-import { Badge, Button, Modal, Input, useToast } from '@/components/ui';
+import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
 import { exportTransactionsToExcel, downloadExcelTemplate } from '@/lib/portfolio/excelParser';
 
 export default function PortfolioPage() {
@@ -39,6 +39,8 @@ export default function PortfolioPage() {
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
   const [activeTab, setActiveTab] = useState<'holdings' | 'heatmap' | 'transactions'>('holdings');
+  const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
+  const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -52,6 +54,18 @@ export default function PortfolioPage() {
   if (activeTransactions.length === 0 && transactions.length > 0 && portfolios.length <= 1) {
     activeTransactions = transactions;
   }
+
+  const filteredTransactions = activeTransactions.filter((tx) => {
+    if (txTypeFilter === 'buy' && tx.transactionType !== 'buy') return false;
+    if (txTypeFilter === 'sell' && tx.transactionType !== 'sell') return false;
+    if (txSearchQuery.trim()) {
+      const q = txSearchQuery.toLowerCase();
+      const matchSymbol = tx.symbol.toLowerCase().includes(q);
+      const matchNotes = (tx.notes || '').toLowerCase().includes(q);
+      if (!matchSymbol && !matchNotes) return false;
+    }
+    return true;
+  });
 
   const isProfit = summary.totalPnL >= 0;
 
@@ -483,11 +497,12 @@ export default function PortfolioPage() {
 
       {/* Tabs: Holdings vs Transaction History */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div className="flex items-center gap-2">
+        {/* Navigation Tabs & Secondary Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+          <div className="flex items-center gap-1.5 p-1 bg-bg-card rounded-2xl border border-border w-full sm:w-fit overflow-x-auto scrollbar-none">
             <button
               onClick={() => setActiveTab('holdings')}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === 'holdings'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
@@ -497,7 +512,7 @@ export default function PortfolioPage() {
             </button>
             <button
               onClick={() => setActiveTab('heatmap')}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                 activeTab === 'heatmap'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
@@ -507,7 +522,7 @@ export default function PortfolioPage() {
             </button>
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === 'transactions'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
@@ -518,12 +533,12 @@ export default function PortfolioPage() {
           </div>
 
           {activeTab === 'transactions' && activeTransactions.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsClearTxModalOpen(true)}
-                className="text-xs border-red-500/30 text-rose-400 hover:bg-red-500/10 hover:border-red-500"
+                className="text-xs border-red-500/30 text-rose-400 hover:bg-red-500/10 hover:border-red-500 flex-1 sm:flex-none justify-center"
                 leftIcon={
                   <svg className="w-3.5 h-3.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -536,7 +551,7 @@ export default function PortfolioPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleExportExcel}
-                className="text-xs"
+                className="text-xs flex-1 sm:flex-none justify-center"
               >
                 Excel İndir (.xlsx)
               </Button>
@@ -554,89 +569,272 @@ export default function PortfolioPage() {
             <PortfolioHeatmap />
           </div>
         ) : (
-          /* Transaction History Table */
-          <div className="rounded-2xl bg-bg-card border border-border shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-bg-secondary text-text-secondary text-xs uppercase font-semibold border-b border-border">
-                  <tr>
-                    <th className="py-3.5 px-4">Tarih</th>
-                    <th className="py-3.5 px-4">Sembol</th>
-                    <th className="py-3.5 px-4">Tür</th>
-                    <th className="py-3.5 px-4 text-right">Adet</th>
-                    <th className="py-3.5 px-4 text-right">Birim Fiyat</th>
-                    <th className="py-3.5 px-4 text-right">Toplam Tutar</th>
-                    <th className="py-3.5 px-4">Notlar</th>
-                    <th className="py-3.5 px-4 text-center">İşlem</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border text-xs">
-                  {activeTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-text-muted">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <svg className="w-8 h-8 text-text-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                          </svg>
-                          <p>Bu portföyde henüz işlem kaydı bulunmuyor.</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Button size="sm" variant="outline" onClick={() => setIsExcelModalOpen(true)}>
-                              Excel / CSV İle Yükle
-                            </Button>
-                            <Button size="sm" variant="primary" onClick={() => setIsTradeModalOpen(true)}>
-                              Manuel İşlem Ekle
-                            </Button>
+          /* Transaction History Section (Mobile Card View + Desktop Table View) */
+          <div className="space-y-4">
+            {/* Filter and Search Bar for Transactions */}
+            {activeTransactions.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-bg-card border border-border shadow-xs">
+                {/* Type Filter Pills */}
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-bg-secondary/70 border border-border/60 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setTxTypeFilter('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      txTypeFilter === 'all'
+                        ? 'bg-accent text-white shadow-xs'
+                        : 'text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    Tümü ({activeTransactions.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTxTypeFilter('buy')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      txTypeFilter === 'buy'
+                        ? 'bg-emerald-500 text-white shadow-xs'
+                        : 'text-emerald-400 hover:bg-emerald-500/10'
+                    }`}
+                  >
+                    Alış ({activeTransactions.filter((t) => t.transactionType === 'buy').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTxTypeFilter('sell')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      txTypeFilter === 'sell'
+                        ? 'bg-rose-500 text-white shadow-xs'
+                        : 'text-rose-400 hover:bg-rose-500/10'
+                    }`}
+                  >
+                    Satış ({activeTransactions.filter((t) => t.transactionType === 'sell').length})
+                  </button>
+                </div>
+
+                {/* Search Input */}
+                <div className="relative flex-1 sm:max-w-xs">
+                  <svg className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={txSearchQuery}
+                    onChange={(e) => setTxSearchQuery(e.target.value)}
+                    placeholder="Sembol veya not ara..."
+                    className="w-full pl-9 pr-7 py-1.5 rounded-xl text-xs bg-bg-secondary border border-border/60 text-text-primary placeholder:text-text-muted focus:outline-hidden focus:border-accent"
+                  />
+                  {txSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setTxSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ═══════════════════════════════════════════
+                MOBILE CARD VIEW (md:hidden) — Touch-friendly, clean & compact
+                ═══════════════════════════════════════════ */}
+            <div className="md:hidden space-y-2.5">
+              {filteredTransactions.length === 0 ? (
+                <div className="p-8 text-center rounded-2xl bg-bg-card border border-border text-xs text-text-muted space-y-2">
+                  <p>
+                    {activeTransactions.length === 0
+                      ? 'Bu portföyde henüz işlem kaydı bulunmuyor.'
+                      : 'Filtreye uygun işlem bulunamadı.'}
+                  </p>
+                  {activeTransactions.length === 0 && (
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <Button size="sm" variant="outline" onClick={() => setIsExcelModalOpen(true)}>
+                        Excel / CSV İle Yükle
+                      </Button>
+                      <Button size="sm" variant="primary" onClick={() => setIsTradeModalOpen(true)}>
+                        Manuel İşlem Ekle
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                filteredTransactions.map((tx) => {
+                  const isBuy = tx.transactionType === 'buy';
+                  const total = tx.quantity * tx.price + (tx.commission || 0);
+
+                  return (
+                    <div
+                      key={`m-tx-${tx.id}`}
+                      className="p-3.5 rounded-2xl bg-bg-card border border-border/80 shadow-xs hover:border-accent/40 transition-all flex flex-col gap-2.5"
+                    >
+                      {/* Top Row: Symbol, Badge, Date & Delete */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <InstrumentLogo symbol={tx.symbol} size="sm" />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-extrabold text-sm text-text-primary font-mono tracking-tight">
+                                {tx.symbol}
+                              </span>
+                              <Badge variant={isBuy ? 'success' : 'danger'} size="sm">
+                                {isBuy ? 'ALIŞ' : 'SATIŞ'}
+                              </Badge>
+                            </div>
+                            <span className="text-[11px] text-text-muted font-mono mt-0.5 block">
+                              {tx.transactionDate}
+                            </span>
                           </div>
                         </div>
-                      </td>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteTransaction(tx.id);
+                            showToast({ type: 'info', title: 'İşlem Silindi', message: 'İşlem kaydı kaldırıldı.' });
+                          }}
+                          className="p-2 rounded-xl text-text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-colors cursor-pointer"
+                          title="İşlemi Sil"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* Middle: Details Box */}
+                      <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-bg-secondary/60 border border-border/50 text-xs font-mono">
+                        <div>
+                          <span className="text-[10px] text-text-muted font-sans block">Adet & Fiyat</span>
+                          <span className="font-semibold text-text-primary mt-0.5 block">
+                            {tx.quantity.toLocaleString('tr-TR')} adet × ₺{tx.price.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-text-muted font-sans block">Toplam Tutar</span>
+                          <span className={`font-bold mt-0.5 block ${isBuy ? 'text-text-primary' : 'text-emerald-400'}`}>
+                            ₺{total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Footer: Notes / Commission if any */}
+                      {(tx.notes || (tx.commission != null && tx.commission > 0)) && (
+                        <div className="flex items-center justify-between text-[11px] text-text-muted pt-1 border-t border-border/40">
+                          {tx.notes ? (
+                            <span className="italic truncate max-w-[200px]">
+                              💬 {tx.notes}
+                            </span>
+                          ) : <span />}
+                          {tx.commission != null && tx.commission > 0 && (
+                            <span className="font-mono text-[10px] text-text-muted shrink-0">
+                              Komisyon: ₺{tx.commission.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* ═══════════════════════════════════════════
+                DESKTOP TABLE VIEW (hidden md:block) — Comprehensive full width
+                ═══════════════════════════════════════════ */}
+            <div className="hidden md:block rounded-2xl bg-bg-card border border-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-bg-secondary text-text-secondary text-xs uppercase font-semibold border-b border-border">
+                    <tr>
+                      <th className="py-3.5 px-4">Tarih</th>
+                      <th className="py-3.5 px-4">Sembol</th>
+                      <th className="py-3.5 px-4">Tür</th>
+                      <th className="py-3.5 px-4 text-right">Adet</th>
+                      <th className="py-3.5 px-4 text-right">Birim Fiyat</th>
+                      <th className="py-3.5 px-4 text-right">Toplam Tutar</th>
+                      <th className="py-3.5 px-4">Notlar</th>
+                      <th className="py-3.5 px-4 text-center">İşlem</th>
                     </tr>
-                  ) : (
-                    activeTransactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-bg-hover transition-colors">
-                        <td className="py-3.5 px-4 font-mono text-text-secondary">
-                          {tx.transactionDate}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-text-primary">
-                          {tx.symbol}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <Badge variant={tx.transactionType === 'buy' ? 'success' : 'danger'} size="sm">
-                            {tx.transactionType === 'buy' ? 'ALIŞ' : 'SATIŞ'}
-                          </Badge>
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-text-primary">
-                          {tx.quantity.toLocaleString('tr-TR')}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
-                          ₺{tx.price.toFixed(2)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-text-primary">
-                          ₺{(tx.quantity * tx.price + (tx.commission || 0)).toLocaleString('tr-TR', {
-                            minimumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="py-3.5 px-4 text-xs text-text-muted">
-                          {tx.notes || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <button
-                            onClick={() => {
-                              deleteTransaction(tx.id);
-                              showToast({ type: 'info', title: 'İşlem Silindi', message: 'İşlem kaydı kaldırıldı.' });
-                            }}
-                            className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
-                            title="İşlemi Sil"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </thead>
+                  <tbody className="divide-y divide-border text-xs">
+                    {filteredTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-text-muted">
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <svg className="w-8 h-8 text-text-muted/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
-                          </button>
+                            <p>
+                              {activeTransactions.length === 0
+                                ? 'Bu portföyde henüz işlem kaydı bulunmuyor.'
+                                : 'Filtreye uygun işlem bulunamadı.'}
+                            </p>
+                            {activeTransactions.length === 0 && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <Button size="sm" variant="outline" onClick={() => setIsExcelModalOpen(true)}>
+                                  Excel / CSV İle Yükle
+                                </Button>
+                                <Button size="sm" variant="primary" onClick={() => setIsTradeModalOpen(true)}>
+                                  Manuel İşlem Ekle
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      filteredTransactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-bg-hover transition-colors">
+                          <td className="py-3.5 px-4 font-mono text-text-secondary">
+                            {tx.transactionDate}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-text-primary">
+                            <div className="flex items-center gap-2">
+                              <InstrumentLogo symbol={tx.symbol} size="sm" />
+                              <span>{tx.symbol}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <Badge variant={tx.transactionType === 'buy' ? 'success' : 'danger'} size="sm">
+                              {tx.transactionType === 'buy' ? 'ALIŞ' : 'SATIŞ'}
+                            </Badge>
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono text-text-primary">
+                            {tx.quantity.toLocaleString('tr-TR')}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
+                            ₺{tx.price.toFixed(2)}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-text-primary">
+                            ₺{(tx.quantity * tx.price + (tx.commission || 0)).toLocaleString('tr-TR', {
+                              minimumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className="py-3.5 px-4 text-xs text-text-muted">
+                            {tx.notes || '-'}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                deleteTransaction(tx.id);
+                                showToast({ type: 'info', title: 'İşlem Silindi', message: 'İşlem kaydı kaldırıldı.' });
+                              }}
+                              className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                              title="İşlemi Sil"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
