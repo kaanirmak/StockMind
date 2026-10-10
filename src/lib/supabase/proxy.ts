@@ -159,6 +159,13 @@ export async function updateSession(request: NextRequest) {
       url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
+
+    // Redirect logged-in users or active guests away from landing page to dashboard
+    if ((user || isGuest) && request.nextUrl.pathname === '/') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
   } catch (error) {
     // If Supabase throws an unexpected error (network or invalid key), do not crash with 500
     console.error('Supabase middleware session check error:', error);

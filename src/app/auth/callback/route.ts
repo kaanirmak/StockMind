@@ -17,8 +17,9 @@ export async function GET(request: Request) {
   let appOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : requestUrl.origin;
 
   // Guard against internal/localhost origins in production environments
-  if (appOrigin.includes('localhost') && process.env.NODE_ENV === 'production') {
-    appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind-finora.vercel.app';
+  if ((!appOrigin || appOrigin.includes('localhost')) && process.env.NODE_ENV === 'production') {
+    const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+    appOrigin = envUrl && !envUrl.includes('localhost') ? envUrl : 'https://stockmind-finora.vercel.app';
   }
 
   // Ensure no trailing slash on origin

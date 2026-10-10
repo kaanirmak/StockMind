@@ -410,7 +410,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             CookieManager cm = CookieManager.getInstance();
             String cookies = cm.getCookie(currentServerUrl);
-            if (cookies != null && cookies.length() > 4096) {
+            // Normal Supabase JWT + refresh tokens are 3-6 KB. Only clear if dangerously bloated (> 12 KB).
+            if (cookies != null && cookies.length() > 12288) {
                 // Cookies bloated! Clear BEFORE loading URL
                 final String finalUrl = targetUrl;
                 cm.removeAllCookies(success -> {
@@ -513,6 +514,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        try {
+            CookieManager.getInstance().flush();
+        } catch (Exception ignored) {}
         if (webView != null) {
             webView.onPause();
         }
@@ -601,6 +605,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        try {
+            CookieManager.getInstance().flush();
+        } catch (Exception ignored) {}
         if (webView != null) {
             webView.destroy();
         }

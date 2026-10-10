@@ -1,6 +1,35 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  let shouldRedirect = false;
+
+  try {
+    const cookieStore = await cookies();
+    const isGuest = cookieStore.get('stockmind_guest')?.value === 'true';
+
+    if (isGuest) {
+      shouldRedirect = true;
+    } else {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        shouldRedirect = true;
+      }
+    }
+  } catch {
+    // If Supabase client fails, proceed with rendering landing page
+  }
+
+  if (shouldRedirect) {
+    redirect('/dashboard');
+  }
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background Effects */}
