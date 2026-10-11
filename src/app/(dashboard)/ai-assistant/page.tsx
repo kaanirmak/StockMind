@@ -266,7 +266,7 @@ function AIAssistantContent() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-5.5rem-env(safe-area-inset-bottom,0px))] md:h-[calc(100vh-6.5rem)] min-h-0 animate-fade-in relative">
+    <div className="ai-chat-container flex flex-col h-full max-h-full min-h-0 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-2 animate-fade-in relative">
       {/* Top Header - Compact for Mobile, Detailed for Desktop */}
       <div className="glass-card p-2.5 sm:p-4 mb-2 sm:mb-3 shrink-0 rounded-2xl border border-border">
         {/* Mobile Header (Single Compact Row) */}
