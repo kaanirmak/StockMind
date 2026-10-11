@@ -8,6 +8,7 @@ import { CandlestickChart } from '@/components/stocks/CandlestickChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function StockDetailPage({
   params,
@@ -19,6 +20,7 @@ export default function StockDetailPage({
   const router = useRouter();
   const { showToast } = useToast();
   const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
+  const { addTransaction, activePortfolioId, fetchLivePrices } = usePortfolioStore();
 
   const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL'>('1Y');
   const [showSMA20, setShowSMA20] = useState(true);
@@ -73,17 +75,32 @@ export default function StockDetailPage({
     });
   };
 
-  const handleTradeSubmit = (e: React.FormEvent) => {
+  const handleTradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const tradePrice = Number(priceInput) || currentPrice;
     const total = tradePrice * shares;
 
+    await addTransaction({
+      portfolioId: activePortfolioId,
+      symbol: symbol,
+      assetType: 'stock',
+      transactionType: tradeType.toLowerCase() as 'buy' | 'sell',
+      quantity: shares,
+      price: tradePrice,
+      commission: 0,
+      currency: stock?.currency === 'USD' ? 'USD' : stock?.currency === 'EUR' ? 'EUR' : 'TRY',
+      transactionDate: new Date().toISOString().split('T')[0],
+      exchange: (stock?.exchange as any) || 'BIST',
+      notes: `${symbol} hisse detayından hızlı işlem`,
+    });
+
     showToast({
       type: 'success',
-      title: `${tradeType === 'BUY' ? 'Alım' : 'Satım'} Emri Başarılı!`,
+      title: `${tradeType === 'BUY' ? 'Alım' : 'Satım'} Emri Kaydedildi!`,
       message: `${shares} adet ${symbol} ${currSymbol}${tradePrice.toFixed(2)} fiyattan portföyünüze eklendi. Toplam: ${currSymbol}${total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`,
     });
     setIsTradeModalOpen(false);
+    fetchLivePrices();
   };
 
   const badgeVariant =

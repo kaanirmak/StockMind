@@ -51,21 +51,30 @@ export default function PortfolioPage() {
   const summary = getSummary();
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
   let activeTransactions = transactions.filter((t) => t.portfolioId === activePortfolioId);
-  if (activeTransactions.length === 0 && transactions.length > 0 && portfolios.length <= 1) {
-    activeTransactions = transactions;
+  // Fallback if transaction portfolioId is slightly mismatched or only one portfolio exists
+  if (activeTransactions.length === 0 && transactions.length > 0) {
+    if (portfolios.length <= 1 || !portfolios.some((p) => transactions.some((t) => t.portfolioId === p.id))) {
+      activeTransactions = transactions;
+    }
   }
 
-  const filteredTransactions = activeTransactions.filter((tx) => {
-    if (txTypeFilter === 'buy' && tx.transactionType !== 'buy') return false;
-    if (txTypeFilter === 'sell' && tx.transactionType !== 'sell') return false;
-    if (txSearchQuery.trim()) {
-      const q = txSearchQuery.toLowerCase();
-      const matchSymbol = tx.symbol.toLowerCase().includes(q);
-      const matchNotes = (tx.notes || '').toLowerCase().includes(q);
-      if (!matchSymbol && !matchNotes) return false;
-    }
-    return true;
-  });
+  const filteredTransactions = activeTransactions
+    .filter((tx) => {
+      if (txTypeFilter === 'buy' && tx.transactionType !== 'buy') return false;
+      if (txTypeFilter === 'sell' && tx.transactionType !== 'sell') return false;
+      if (txSearchQuery.trim()) {
+        const q = txSearchQuery.toLowerCase();
+        const matchSymbol = tx.symbol.toLowerCase().includes(q);
+        const matchNotes = (tx.notes || '').toLowerCase().includes(q);
+        if (!matchSymbol && !matchNotes) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.transactionDate || a.createdAt || 0).getTime();
+      const timeB = new Date(b.transactionDate || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
 
   const isProfit = summary.totalPnL >= 0;
 
