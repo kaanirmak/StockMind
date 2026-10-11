@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi, ColorType, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+import {
+  createChart,
+  IChartApi,
+  ColorType,
+  CandlestickSeries,
+  LineSeries,
+  HistogramSeries,
+} from 'lightweight-charts';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { Candle, BollingerBandsResult, calculateSMA, calculateBollingerBands } from '@/lib/indicators';
 
@@ -31,14 +38,65 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   showVolume = true,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+
+  const [chartType, setChartType] = useState<'candles' | 'line'>('candles');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [hoveredCandle, setHoveredCandle] = useState<Candle | null>(null);
   const { resolvedTheme } = useTheme();
+
+  // Fullscreen toggle handler
+  const toggleFullscreen = () => {
+    if (!chartWrapperRef.current) return;
+    if (!isFullscreen) {
+      if (chartWrapperRef.current.requestFullscreen) {
+        chartWrapperRef.current.requestFullscreen().catch(() => {});
+      }
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullscreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      // Trigger resize on fullscreen change
+      setTimeout(() => {
+        if (chartRef.current && chartContainerRef.current) {
+          chartRef.current.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+            height: isFullscreen ? window.innerHeight - 80 : getResponsiveHeight(),
+          });
+          chartRef.current.timeScale().fitContent();
+        }
+      }, 100);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, [isFullscreen]);
+
+  const getResponsiveHeight = () => {
+    if (typeof window === 'undefined') return height;
+    if (window.innerWidth < 640) return 330; // Mobile compact
+    if (window.innerWidth < 1024) return 380; // Tablet
+    return height;
+  };
+
+  const handleResetZoom = () => {
+    if (chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+    }
+  };
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Clean up previous chart
+    // Clean up previous chart instance
     if (chartRef.current) {
       chartRef.current.remove();
       chartRef.current = null;
@@ -51,15 +109,14 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     const borderColor = isDark ? '#1e293b' : '#e2e8f0';
     const labelBg = isDark ? '#1e293b' : '#334155';
 
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-    const effectiveHeight = isMobile ? Math.min(360, height) : height;
+    const effectiveHeight = isFullscreen ? window.innerHeight - 80 : getResponsiveHeight();
 
-    // Initialize chart
+    // Initialize chart with mobile-optimized touch scrolling
     const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
         textColor: textColor,
-        fontSize: 12,
+        fontSize: 11,
         fontFamily: 'Inter, system-ui, sans-serif',
       },
       grid: {
@@ -83,11 +140,26 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       rightPriceScale: {
         borderColor: borderColor,
         textColor: textColor,
+        scaleMargins: {
+          top: 0.1,
+          bottom: showVolume ? 0.22 : 0.08,
+        },
       },
       timeScale: {
         borderColor: borderColor,
         timeVisible: true,
         secondsVisible: false,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false, // Critical: prevent chart from locking mobile vertical page scrolling
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true, // Smooth mobile pinch to zoom
       },
       width: container.clientWidth,
       height: effectiveHeight,
@@ -104,34 +176,55 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       close: c.close,
     }));
 
-    // Add Candlestick Series (supporting lightweight-charts v4/v5)
-    let candleSeries: any;
+    let mainSeries: any;
+
     try {
-      if (typeof (chart as any).addCandlestickSeries === 'function') {
-        candleSeries = (chart as any).addCandlestickSeries({
-          upColor: '#10b981',
-          downColor: '#ef4444',
-          borderUpColor: '#10b981',
-          borderDownColor: '#ef4444',
-          wickUpColor: '#10b981',
-          wickDownColor: '#ef4444',
-        });
-      } else if (CandlestickSeries) {
-        candleSeries = (chart as any).addSeries(CandlestickSeries, {
-          upColor: '#10b981',
-          downColor: '#ef4444',
-          borderUpColor: '#10b981',
-          borderDownColor: '#ef4444',
-          wickUpColor: '#10b981',
-          wickDownColor: '#ef4444',
-        });
+      if (chartType === 'candles') {
+        // Candlestick Series
+        if (typeof (chart as any).addCandlestickSeries === 'function') {
+          mainSeries = (chart as any).addCandlestickSeries({
+            upColor: '#10b981',
+            downColor: '#ef4444',
+            borderUpColor: '#10b981',
+            borderDownColor: '#ef4444',
+            wickUpColor: '#10b981',
+            wickDownColor: '#ef4444',
+          });
+        } else if (CandlestickSeries) {
+          mainSeries = (chart as any).addSeries(CandlestickSeries, {
+            upColor: '#10b981',
+            downColor: '#ef4444',
+            borderUpColor: '#10b981',
+            borderDownColor: '#ef4444',
+            wickUpColor: '#10b981',
+            wickDownColor: '#ef4444',
+          });
+        }
+        if (mainSeries && formattedCandles.length > 0) {
+          mainSeries.setData(formattedCandles);
+        }
+      } else {
+        // Line Series for ultra-clean mobile reading
+        const lineData = formattedCandles.map((c) => ({ time: c.time, value: c.close }));
+        if (typeof (chart as any).addLineSeries === 'function') {
+          mainSeries = (chart as any).addLineSeries({
+            color: '#6366f1',
+            lineWidth: 2.5,
+            priceLineVisible: true,
+          });
+        } else if (LineSeries) {
+          mainSeries = (chart as any).addSeries(LineSeries, {
+            color: '#6366f1',
+            lineWidth: 2.5,
+            priceLineVisible: true,
+          });
+        }
+        if (mainSeries && lineData.length > 0) {
+          mainSeries.setData(lineData);
+        }
       }
     } catch (e) {
-      console.error('Error creating candlestick series:', e);
-    }
-
-    if (candleSeries && formattedCandles.length > 0) {
-      candleSeries.setData(formattedCandles);
+      console.error('Error creating main price series:', e);
     }
 
     // Volume series
@@ -159,7 +252,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         if (volumeSeries && volumeData.length > 0) {
           volumeSeries.priceScale().applyOptions({
             scaleMargins: {
-              top: 0.8,
+              top: 0.82,
               bottom: 0,
             },
           });
@@ -170,24 +263,24 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       }
     }
 
-    // SMA 20 Overlay (calculated on current candles to guarantee exact date sync)
+    // SMA 20 Overlay
     if (showSMA20 && formattedCandles.length >= 5) {
       try {
         let smaSeries: any;
         const period = Math.min(20, Math.floor(formattedCandles.length / 2) || 5);
         const calculatedSMA20 = calculateSMA(candles, period);
         const smaData = calculatedSMA20.map((s) => ({ time: String(s.time), value: s.value as number }));
-        
+
         if (typeof (chart as any).addLineSeries === 'function') {
           smaSeries = (chart as any).addLineSeries({
             color: '#f59e0b',
-            lineWidth: 2,
+            lineWidth: 1.5,
             title: `SMA ${period}`,
           });
         } else if (LineSeries) {
           smaSeries = (chart as any).addSeries(LineSeries, {
             color: '#f59e0b',
-            lineWidth: 2,
+            lineWidth: 1.5,
             title: `SMA ${period}`,
           });
         }
@@ -204,17 +297,17 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         const period = Math.min(50, Math.floor(formattedCandles.length * 0.8) || 10);
         const calculatedSMA50 = calculateSMA(candles, period);
         const smaData = calculatedSMA50.map((s) => ({ time: String(s.time), value: s.value as number }));
-        
+
         if (typeof (chart as any).addLineSeries === 'function') {
           smaSeries = (chart as any).addLineSeries({
             color: '#3b82f6',
-            lineWidth: 2,
+            lineWidth: 1.5,
             title: `SMA ${period}`,
           });
         } else if (LineSeries) {
           smaSeries = (chart as any).addSeries(LineSeries, {
             color: '#3b82f6',
-            lineWidth: 2,
+            lineWidth: 1.5,
             title: `SMA ${period}`,
           });
         }
@@ -249,7 +342,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       }
     }
 
-    // Crosshair listener for tooltip
+    // Crosshair listener for touch tooltip & HUD
     chart.subscribeCrosshairMove((param) => {
       if (
         param.point === undefined ||
@@ -257,30 +350,42 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         param.point.x < 0 ||
         param.point.x > container.clientWidth ||
         param.point.y < 0 ||
-        param.point.y > height
+        param.point.y > effectiveHeight
       ) {
         setHoveredCandle(null);
-      } else if (candleSeries) {
-        const data = param.seriesData.get(candleSeries) as any;
+      } else if (mainSeries) {
+        const data = param.seriesData.get(mainSeries) as any;
         if (data) {
-          setHoveredCandle({
-            time: String(param.time),
-            open: data.open,
-            high: data.high,
-            low: data.low,
-            close: data.close,
-          });
+          if (chartType === 'candles') {
+            setHoveredCandle({
+              time: String(param.time),
+              open: data.open,
+              high: data.high,
+              low: data.low,
+              close: data.close,
+            });
+          } else {
+            setHoveredCandle({
+              time: String(param.time),
+              open: data.value,
+              high: data.value,
+              low: data.value,
+              close: data.value,
+            });
+          }
         }
       }
     });
 
+    // Fit content smoothly on load
+    chart.timeScale().fitContent();
+
     // Resize observer
     const handleResize = () => {
       if (chartRef.current && container) {
-        const isMobileNow = window.innerWidth < 640;
         chartRef.current.applyOptions({
           width: container.clientWidth,
-          height: isMobileNow ? Math.min(360, height) : height,
+          height: isFullscreen ? window.innerHeight - 80 : getResponsiveHeight(),
         });
       }
     };
@@ -294,48 +399,139 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         chartRef.current = null;
       }
     };
-  }, [candles, height, showSMA20, showSMA50, showBB, showVolume, sma20, sma50, bollingerBands, resolvedTheme]);
+  }, [
+    candles,
+    height,
+    chartType,
+    showSMA20,
+    showSMA50,
+    showBB,
+    showVolume,
+    sma20,
+    sma50,
+    bollingerBands,
+    resolvedTheme,
+    isFullscreen,
+  ]);
 
   const latestCandle = candles[candles.length - 1];
   const activeCandle = hoveredCandle || latestCandle;
+  const candleChangePercent =
+    activeCandle && activeCandle.open
+      ? (((activeCandle.close - activeCandle.open) / activeCandle.open) * 100)
+      : 0;
 
   return (
-    <div className="relative w-full rounded-2xl bg-bg-card border border-border overflow-hidden p-4">
-      {/* Candle Header Info */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-3 pb-3 border-b border-border/40 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-sm text-text-primary">{symbol}</span>
-          <span className="text-text-muted">|</span>
+    <div
+      ref={chartWrapperRef}
+      className={`relative w-full rounded-2xl bg-bg-card border border-border overflow-hidden transition-all duration-300 ${
+        isFullscreen ? 'fixed inset-0 z-50 p-4 sm:p-6 bg-bg-primary rounded-none' : 'p-3 sm:p-4'
+      }`}
+    >
+      {/* Top Header: Mobile-Friendly OHLCV & Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2.5 pb-2.5 border-b border-border/40">
+        {/* Left: Active Candle HUD */}
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <span className="font-bold text-xs sm:text-sm text-text-primary shrink-0">{symbol}</span>
+          <span className="text-text-muted text-xs shrink-0">|</span>
+
           {activeCandle && (
-            <div className="flex items-center gap-3 font-mono">
-              <span className="text-text-muted">
-                A: <span className="text-text-primary">{activeCandle.open?.toFixed(2)}</span>
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono overflow-x-auto no-scrollbar">
+              <span className="font-bold text-text-primary">
+                {activeCandle.close?.toFixed(2)}
               </span>
-              <span className="text-text-muted">
-                Y: <span className="text-success">{activeCandle.high?.toFixed(2)}</span>
+              <span
+                className={`font-semibold px-1.5 py-0.2 rounded text-[10px] ${
+                  candleChangePercent >= 0 ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
+                }`}
+              >
+                {candleChangePercent >= 0 ? '+' : ''}
+                {candleChangePercent.toFixed(2)}%
               </span>
-              <span className="text-text-muted">
-                D: <span className="text-danger">{activeCandle.low?.toFixed(2)}</span>
-              </span>
-              <span className="text-text-muted">
-                K: <span className={activeCandle.close >= activeCandle.open ? 'text-success font-semibold' : 'text-danger font-semibold'}>
-                  {activeCandle.close?.toFixed(2)}
+
+              {chartType === 'candles' && (
+                <div className="hidden xs:flex items-center gap-2 text-text-muted text-[10px]">
+                  <span>A: <strong className="text-text-secondary">{activeCandle.open?.toFixed(2)}</strong></span>
+                  <span>Y: <strong className="text-success">{activeCandle.high?.toFixed(2)}</strong></span>
+                  <span>D: <strong className="text-danger">{activeCandle.low?.toFixed(2)}</strong></span>
+                </div>
+              )}
+
+              {activeCandle.time && (
+                <span className="text-[10px] text-text-muted ml-1 hidden md:inline">
+                  {String(activeCandle.time)}
                 </span>
-              </span>
+              )}
             </div>
           )}
         </div>
 
-        {/* Legend Indicators */}
-        <div className="flex items-center gap-3 text-[11px]">
-          {showSMA20 && <span className="text-warning flex items-center gap-1 font-medium"><span className="w-2 h-2 rounded-full bg-warning inline-block" /> SMA 20</span>}
-          {showSMA50 && <span className="text-info flex items-center gap-1 font-medium"><span className="w-2 h-2 rounded-full bg-info inline-block" /> SMA 50</span>}
-          {showBB && <span className="text-accent-secondary flex items-center gap-1 font-medium"><span className="w-2 h-2 rounded-full bg-accent-secondary inline-block" /> Bollinger</span>}
+        {/* Right: Chart Controls & Mode Toggles */}
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0">
+          {/* Chart Style Toggle (Candles vs Line) */}
+          <div className="flex items-center bg-bg-secondary p-0.5 rounded-lg border border-border">
+            <button
+              onClick={() => setChartType('candles')}
+              className={`px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                chartType === 'candles'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+              title="Mum Grafiği"
+            >
+              📊 Mum
+            </button>
+            <button
+              onClick={() => setChartType('line')}
+              className={`px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                chartType === 'line'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+              title="Çizgi Grafik"
+            >
+              📈 Çizgi
+            </button>
+          </div>
+
+          {/* Reset Zoom Button */}
+          <button
+            onClick={handleResetZoom}
+            className="p-1.5 rounded-lg bg-bg-secondary border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer text-xs"
+            title="Ölçeği Sıfırla"
+          >
+            🎯
+          </button>
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-1.5 rounded-lg bg-bg-secondary border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer text-xs"
+            title={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
+          >
+            {isFullscreen ? '✕' : '⛶'}
+          </button>
         </div>
       </div>
 
       {/* Chart Canvas */}
-      <div ref={chartContainerRef} className="w-full relative" />
+      <div
+        ref={chartContainerRef}
+        className="w-full relative touch-pan-x"
+        style={{ touchAction: 'pan-x' }}
+      />
+
+      {/* Mobile Touch Tip Indicator */}
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 text-[10px] text-text-muted">
+        <span className="flex items-center gap-1">
+          <span>👆</span>
+          <span>Yakınlaştırmak için iki parmakla sıkıştırın, fiyat görmek için basılı tutun</span>
+        </span>
+        <div className="flex items-center gap-2 font-medium">
+          {showSMA20 && <span className="text-warning flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-warning" /> SMA20</span>}
+          {showSMA50 && <span className="text-info flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-info" /> SMA50</span>}
+        </div>
+      </div>
     </div>
   );
 };
