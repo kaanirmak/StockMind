@@ -241,11 +241,6 @@ export default function StockDetailPage({
             </span>
           </div>
 
-          {/* Instrument Full Name */}
-          <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium line-clamp-1">
-            {stock?.name || symbol}
-          </p>
-
           {/* Prominent Price & Clean Percentage */}
           <div className="flex items-baseline gap-2.5 mt-2">
             <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
@@ -300,7 +295,7 @@ export default function StockDetailPage({
       {/* Chart Section - Single Unified Box */}
       <div className="space-y-3">
         {chartLoading && candles.length === 0 ? (
-          <div className="glass-card h-[320px] sm:h-[450px] flex items-center justify-center text-text-muted">
+          <div className="h-[320px] sm:h-[450px] rounded-2xl flex items-center justify-center text-text-muted bg-bg-secondary/20">
             <div className="flex flex-col items-center gap-2">
               <svg className="animate-spin h-7 w-7 text-accent" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

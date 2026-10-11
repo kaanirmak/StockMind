@@ -426,12 +426,14 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   return (
     <div
       ref={chartWrapperRef}
-      className={`relative w-full rounded-2xl bg-bg-card border border-border overflow-hidden transition-all duration-300 ${
-        isFullscreen ? 'fixed inset-0 z-50 p-4 sm:p-6 bg-bg-primary rounded-none' : 'p-3 sm:p-4'
+      className={`relative w-full transition-all duration-300 ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 p-4 sm:p-6 bg-bg-primary rounded-none overflow-hidden'
+          : 'bg-transparent p-0'
       }`}
     >
       {/* Top Header: Mobile-Friendly OHLCV & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2.5 pb-2.5 border-b border-border/40">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2 pb-2 border-b border-border/20">
         {/* Left: Active Candle HUD */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <span className="font-bold text-xs sm:text-sm text-text-primary shrink-0">{symbol}</span>
@@ -523,15 +525,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         style={{ touchAction: 'pan-x' }}
       />
 
-      {/* Embedded Bottom Controls (Timeframe & Indicators inside the same box) */}
+      {/* Embedded Bottom Controls (Timeframe & Indicators inside the chart flow) */}
       {bottomControls && (
-        <div className="mt-3 pt-3 border-t border-border/40">
+        <div className="mt-2.5 pt-2">
           {bottomControls}
         </div>
       )}
 
       {/* Mobile Touch Tip Indicator */}
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 text-[10px] text-text-muted">
+      <div className="flex items-center justify-between mt-2 pt-1 text-[10px] text-text-muted/70">
         <span className="flex items-center gap-1">
           <span>👆</span>
           <span>Yakınlaştırmak için iki parmakla sıkıştırın, fiyat görmek için basılı tutun</span>
