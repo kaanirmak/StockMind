@@ -108,6 +108,16 @@ export const POPULAR_ALIASES: Record<string, string[]> = {
   AFT: ['ak portfoy amerika', 'ak amerika', 'aft'],
   YAY: ['yapi kredi teknoloji', 'yay fonu', 'yabanci teknoloji'],
   TP2: ['tera para piyasasi', 'tera ppf', 'tp2'],
+  BTCUSDT: ['btc', 'bitcoin', 'kripto', 'kripto para'],
+  ETHUSDT: ['eth', 'ethereum', 'ether'],
+  SOLUSDT: ['sol', 'solana'],
+  XRPUSDT: ['xrp', 'ripple'],
+  XAUTRYG: ['gram altin', 'altin', 'ga', 'gramaltin', 'altin tl'],
+  CEYREK_ALTIN: ['ceyrek', 'ceyrek altin'],
+  XAUUSD: ['ons altin', 'ons', 'gold', 'xau'],
+  USDTRY: ['dolar', 'usd', 'dolar tl', 'dolar kuru'],
+  EURTRY: ['euro', 'eur', 'euro tl', 'avro'],
+  UKOIL: ['brent', 'petrol', 'brent petrol', 'oil'],
 };
 
 /**

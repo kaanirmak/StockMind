@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getStockBySymbolLive } from '@/lib/data/stocks';
 
+// Revalidate CDN cache every 30 seconds for per-symbol data
+export const revalidate = 30;
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ symbol: string }> }
@@ -16,10 +19,17 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: stock,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: stock,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=15',
+        },
+      }
+    );
   } catch (error) {
     console.error('Stock Detail API Error:', error);
     return NextResponse.json(

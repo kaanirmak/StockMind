@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { StockQuote } from '@/types/stock';
 import { calculateFuzzyScore, normalizeText, POPULAR_ALIASES } from '@/lib/utils/search';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
@@ -16,8 +17,8 @@ import {
 export interface StockMarketInfo {
   symbol: string;
   name: string;
-  exchange: 'BIST' | 'NASDAQ' | 'NYSE';
-  currency: 'TRY' | 'USD';
+  exchange: 'BIST' | 'NASDAQ' | 'NYSE' | 'CRYPTO' | 'COMMODITY' | 'FOREX' | 'INDEX';
+  currency: 'TRY' | 'USD' | 'EUR';
   sector: string;
   basePrice: number;
   price?: number;
@@ -37,8 +38,9 @@ export interface StockMarketInfo {
   timestamp?: string;
 }
 
-// Cache for live quotes (60 seconds)
-let scannerCache: {
+// In-memory fallback cache (used only within the same serverless instance invocation)
+// The real shared cache is handled by unstable_cache below.
+let inMemoryCache: {
   bist: StockMarketInfo[];
   us: StockMarketInfo[];
   lastFetched: number;
@@ -69,16 +71,14 @@ const SECTOR_TR_MAP: Record<string, string> = {
 };
 
 /**
- * Fetch ALL stocks live from TradingView Scanner API (Turkey & US)
+ * Core fetcher — called only by the unstable_cache wrapper below.
+ * Do NOT call this directly; use fetchAllTradingViewStocks() instead.
  */
-export async function fetchAllTradingViewStocks(): Promise<{ bist: StockMarketInfo[]; us: StockMarketInfo[] }> {
-  const now = Date.now();
-  if (scannerCache.lastFetched > 0 && now - scannerCache.lastFetched < 30000 && scannerCache.bist.length > 0) {
-    return scannerCache;
-  }
+async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo[]; us: StockMarketInfo[] }> {
 
   const bistStocks: StockMarketInfo[] = [];
   const usStocks: StockMarketInfo[] = [];
+  const now = Date.now();
 
   try {
     // 1. Fetch ALL BIST Stocks (~649+ stocks)
@@ -213,18 +213,411 @@ export async function fetchAllTradingViewStocks(): Promise<{ bist: StockMarketIn
     }
 
     if (bistStocks.length > 0) {
-      scannerCache = {
-        bist: bistStocks,
-        us: usStocks,
-        lastFetched: now,
-      };
+      inMemoryCache = { bist: bistStocks, us: usStocks, lastFetched: now };
     }
   } catch (error) {
     console.error('Error fetching live TradingView stocks:', error);
   }
 
-  return scannerCache;
+  // Return freshly fetched or previously in-memory cached data
+  return inMemoryCache.bist.length > 0
+    ? { bist: inMemoryCache.bist, us: inMemoryCache.us }
+    : { bist: bistStocks, us: usStocks };
 }
+
+/**
+ * Fetch ALL stocks live from TradingView Scanner API (Turkey & US).
+ * Results are cached for 60 seconds across all serverless instances via Next.js unstable_cache.
+ * This prevents every concurrent request from hitting TradingView independently.
+ */
+export const fetchAllTradingViewStocks = unstable_cache(
+  _fetchAllTradingViewStocksCore,
+  ['tradingview-all-stocks'],
+  { revalidate: 60, tags: ['tradingview-stocks'] }
+);
+
+export interface AlternativeMarketsData {
+  crypto: StockMarketInfo[];
+  commodity: StockMarketInfo[];
+  forex: StockMarketInfo[];
+  indices: StockMarketInfo[];
+}
+
+const CRYPTO_NAMES: Record<string, string> = {
+  BTCUSDT: 'Bitcoin (BTC)',
+  ETHUSDT: 'Ethereum (ETH)',
+  SOLUSDT: 'Solana (SOL)',
+  XRPUSDT: 'Ripple (XRP)',
+  BNBUSDT: 'BNB (Binance Coin)',
+  DOGEUSDT: 'Dogecoin (DOGE)',
+  AVAXUSDT: 'Avalanche (AVAX)',
+  ADAUSDT: 'Cardano (ADA)',
+  PEPEUSDT: 'Pepe (PEPE)',
+  LINKUSDT: 'Chainlink (LINK)',
+  DOTUSDT: 'Polkadot (DOT)',
+  NEARUSDT: 'NEAR Protocol (NEAR)',
+  SUIUSDT: 'Sui Network (SUI)',
+  SHIBUSDT: 'Shiba Inu (SHIB)',
+};
+
+const FOREX_NAMES: Record<string, string> = {
+  USDTRY: 'Amerikan Doları / TL',
+  EURTRY: 'Euro / TL',
+  GBPTRY: 'İngiliz Sterlini / TL',
+  CHFTRY: 'İsviçre Frangı / TL',
+  JPYTRY: 'Japon Yeni / TL',
+  EURUSD: 'Euro / Amerikan Doları',
+  GBPUSD: 'İngiliz Sterlini / Dolar',
+  USDJPY: 'Dolar / Japon Yeni',
+  USDCHF: 'Dolar / İsviçre Frangı',
+};
+
+const CFD_NAMES: Record<string, string> = {
+  XAUUSD: 'Ons Altın ($)',
+  SILVER: 'Ons Gümüş ($)',
+  UKOIL: 'Brent Petrol ($)',
+  USOIL: 'Ham Petrol WTI ($)',
+  NATGAS: 'Doğalgaz ($)',
+  COPPER: 'Bakır ($)',
+  PLATINUM: 'Platin ($)',
+  SPX: 'S&P 500 Endeksi',
+  NDX: 'NASDAQ 100 Endeksi',
+  DJI: 'Dow Jones Endeksi',
+  DAX: 'Almanya DAX 40 Endeksi',
+  DXY: 'Dolar Endeksi (DXY)',
+  VIX: 'VIX Korku Endeksi',
+};
+
+async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
+  const result: AlternativeMarketsData = {
+    crypto: [],
+    commodity: [],
+    forex: [],
+    indices: [],
+  };
+
+  try {
+    const [cryptoRes, fxRes, cfdRes] = await Promise.all([
+      fetch('https://scanner.tradingview.com/crypto/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: [
+            { left: 'exchange', operation: 'equal', right: 'BINANCE' },
+            {
+              left: 'name',
+              operation: 'in_range',
+              right: [
+                'BTCUSDT',
+                'ETHUSDT',
+                'SOLUSDT',
+                'XRPUSDT',
+                'BNBUSDT',
+                'DOGEUSDT',
+                'AVAXUSDT',
+                'ADAUSDT',
+                'PEPEUSDT',
+                'LINKUSDT',
+                'DOTUSDT',
+                'NEARUSDT',
+                'SUIUSDT',
+                'SHIBUSDT',
+              ],
+            },
+          ],
+          columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
+        }),
+        next: { revalidate: 30 },
+      }).then((r) => r.json()).catch(() => null),
+      fetch('https://scanner.tradingview.com/forex/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: [
+            { left: 'exchange', operation: 'equal', right: 'FX_IDC' },
+            {
+              left: 'name',
+              operation: 'in_range',
+              right: ['USDTRY', 'EURTRY', 'GBPTRY', 'CHFTRY', 'JPYTRY', 'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF'],
+            },
+          ],
+          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+        }),
+        next: { revalidate: 30 },
+      }).then((r) => r.json()).catch(() => null),
+      fetch('https://scanner.tradingview.com/cfd/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: [
+            {
+              left: 'name',
+              operation: 'in_range',
+              right: ['XAUUSD', 'SILVER', 'UKOIL', 'USOIL', 'NATGAS', 'COPPER', 'PLATINUM', 'SPX', 'NDX', 'DJI', 'DAX', 'DXY', 'VIX'],
+            },
+          ],
+          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+        }),
+        next: { revalidate: 30 },
+      }).then((r) => r.json()).catch(() => null),
+    ]);
+
+    // Parse Crypto
+    cryptoRes?.data?.forEach((item: any) => {
+      const [name, close, change, volume, desc, high52, low52] = item.d;
+      if (name && close !== null && close !== undefined) {
+        const currentPrice = Number(close.toFixed(close < 1 ? 4 : 2));
+        const changePercent = Number((change || 0).toFixed(2));
+        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+
+        result.crypto.push({
+          symbol: name,
+          name: CRYPTO_NAMES[name] || desc || name,
+          exchange: 'CRYPTO',
+          currency: 'USD',
+          sector: 'Kripto Varlıklar',
+          basePrice: currentPrice,
+          price: currentPrice,
+          change: changeAmt,
+          changePercent,
+          high: Number((currentPrice * 1.02).toFixed(2)),
+          low: Number((currentPrice * 0.98).toFixed(2)),
+          open: Number((currentPrice - changeAmt).toFixed(2)),
+          close: currentPrice,
+          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
+          volume: volume || 0,
+          marketCap: (volume || 0) * currentPrice,
+          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
+          timestamp: new Date().toISOString(),
+        } as any);
+      }
+    });
+
+    let liveUsdTry = 49.25;
+    let liveUsdTryChange = 0;
+
+    // Parse Forex
+    fxRes?.data?.forEach((item: any) => {
+      const [name, close, change, desc, high52, low52] = item.d;
+      if (name && close !== null && close !== undefined) {
+        const isTryPair = name.endsWith('TRY');
+        const currentPrice = Number(close.toFixed(isTryPair ? 4 : 4));
+        const changePercent = Number((change || 0).toFixed(2));
+        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(4));
+
+        if (name === 'USDTRY') {
+          liveUsdTry = currentPrice;
+          liveUsdTryChange = changePercent;
+        }
+
+        result.forex.push({
+          symbol: name,
+          name: FOREX_NAMES[name] || desc || name,
+          exchange: 'FOREX',
+          currency: isTryPair ? 'TRY' : 'USD',
+          sector: 'Döviz & Kurlar',
+          basePrice: currentPrice,
+          price: currentPrice,
+          change: changeAmt,
+          changePercent,
+          high: Number((currentPrice * 1.005).toFixed(4)),
+          low: Number((currentPrice * 0.995).toFixed(4)),
+          open: Number((currentPrice - changeAmt).toFixed(4)),
+          close: currentPrice,
+          previousClose: Number((currentPrice - changeAmt).toFixed(4)),
+          volume: 50000000,
+          marketCap: 0,
+          high52w: high52 ? Number(high52.toFixed(4)) : undefined,
+          low52w: low52 ? Number(low52.toFixed(4)) : undefined,
+          timestamp: new Date().toISOString(),
+        } as any);
+      }
+    });
+
+    let liveOnsAltin = 4195;
+    let liveOnsAltinChange = 0;
+    let liveOnsGumus = 60.8;
+    let liveOnsGumusChange = 0;
+
+    // Parse CFD (Commodities & Indices)
+    const seenCfd = new Set<string>();
+    cfdRes?.data?.forEach((item: any) => {
+      const [name, close, change, desc, high52, low52] = item.d;
+      if (name && close !== null && close !== undefined && !seenCfd.has(name)) {
+        seenCfd.add(name);
+        const currentPrice = Number(close.toFixed(2));
+        const changePercent = Number((change || 0).toFixed(2));
+        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+
+        if (name === 'XAUUSD') {
+          liveOnsAltin = currentPrice;
+          liveOnsAltinChange = changePercent;
+        } else if (name === 'SILVER') {
+          liveOnsGumus = currentPrice;
+          liveOnsGumusChange = changePercent;
+        }
+
+        const isIndex = ['SPX', 'NDX', 'DJI', 'DAX', 'DXY', 'VIX'].includes(name);
+
+        const itemObj: StockMarketInfo = {
+          symbol: name,
+          name: CFD_NAMES[name] || desc || name,
+          exchange: isIndex ? 'INDEX' : 'COMMODITY',
+          currency: name === 'DAX' ? 'EUR' : 'USD',
+          sector: isIndex ? 'Borsa Endeksleri' : 'Kıymetli Madenler & Emtia',
+          basePrice: currentPrice,
+          price: currentPrice,
+          change: changeAmt,
+          changePercent,
+          high: Number((currentPrice * 1.01).toFixed(2)),
+          low: Number((currentPrice * 0.99).toFixed(2)),
+          open: Number((currentPrice - changeAmt).toFixed(2)),
+          close: currentPrice,
+          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
+          volume: 10000000,
+          marketCap: 0,
+          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
+          timestamp: new Date().toISOString(),
+        };
+
+        if (isIndex) {
+          result.indices.push(itemObj);
+        } else {
+          result.commodity.push(itemObj);
+        }
+      }
+    });
+
+    // Add Calculated Turkish Lira Gold & Silver items
+    const gramPrice = Number(((liveOnsAltin * liveUsdTry) / 31.1034768).toFixed(2));
+    const gramChangePercent = Number((liveOnsAltinChange + liveUsdTryChange).toFixed(2));
+    const gramChangeAmt = Number(((gramPrice * gramChangePercent) / 100).toFixed(2));
+
+    const ceyrekPrice = Number((gramPrice * 1.63).toFixed(2));
+    const ceyrekChangeAmt = Number(((ceyrekPrice * gramChangePercent) / 100).toFixed(2));
+
+    const yarimPrice = Number((gramPrice * 3.26).toFixed(2));
+    const yarimChangeAmt = Number(((yarimPrice * gramChangePercent) / 100).toFixed(2));
+
+    const cumhuriyetPrice = Number((gramPrice * 6.52).toFixed(2));
+    const cumhuriyetChangeAmt = Number(((cumhuriyetPrice * gramChangePercent) / 100).toFixed(2));
+
+    const gramGumusPrice = Number(((liveOnsGumus * liveUsdTry) / 31.1034768).toFixed(2));
+    const gramGumusChangePercent = Number((liveOnsGumusChange + liveUsdTryChange).toFixed(2));
+    const gramGumusChangeAmt = Number(((gramGumusPrice * gramGumusChangePercent) / 100).toFixed(2));
+
+    // Prepend Turkish Gold/Silver at top of commodities
+    result.commodity.unshift(
+      {
+        symbol: 'XAUTRYG',
+        name: 'Gram Altın (TL)',
+        exchange: 'COMMODITY',
+        currency: 'TRY',
+        sector: 'Kıymetli Madenler & Emtia',
+        basePrice: gramPrice,
+        price: gramPrice,
+        change: gramChangeAmt,
+        changePercent: gramChangePercent,
+        high: Number((gramPrice * 1.01).toFixed(2)),
+        low: Number((gramPrice * 0.99).toFixed(2)),
+        open: Number((gramPrice - gramChangeAmt).toFixed(2)),
+        close: gramPrice,
+        previousClose: Number((gramPrice - gramChangeAmt).toFixed(2)),
+        volume: 25000000,
+        marketCap: gramPrice * 500000000,
+        timestamp: new Date().toISOString(),
+      } as any,
+      {
+        symbol: 'CEYREK_ALTIN',
+        name: 'Çeyrek Altın (TL)',
+        exchange: 'COMMODITY',
+        currency: 'TRY',
+        sector: 'Kıymetli Madenler & Emtia',
+        basePrice: ceyrekPrice,
+        price: ceyrekPrice,
+        change: ceyrekChangeAmt,
+        changePercent: gramChangePercent,
+        high: Number((ceyrekPrice * 1.01).toFixed(2)),
+        low: Number((ceyrekPrice * 0.99).toFixed(2)),
+        open: Number((ceyrekPrice - ceyrekChangeAmt).toFixed(2)),
+        close: ceyrekPrice,
+        previousClose: Number((ceyrekPrice - ceyrekChangeAmt).toFixed(2)),
+        volume: 15000000,
+        marketCap: 0,
+        timestamp: new Date().toISOString(),
+      } as any,
+      {
+        symbol: 'YARIM_ALTIN',
+        name: 'Yarım Altın (TL)',
+        exchange: 'COMMODITY',
+        currency: 'TRY',
+        sector: 'Kıymetli Madenler & Emtia',
+        basePrice: yarimPrice,
+        price: yarimPrice,
+        change: yarimChangeAmt,
+        changePercent: gramChangePercent,
+        high: Number((yarimPrice * 1.01).toFixed(2)),
+        low: Number((yarimPrice * 0.99).toFixed(2)),
+        open: Number((yarimPrice - yarimChangeAmt).toFixed(2)),
+        close: yarimPrice,
+        previousClose: Number((yarimPrice - yarimChangeAmt).toFixed(2)),
+        volume: 10000000,
+        marketCap: 0,
+        timestamp: new Date().toISOString(),
+      } as any,
+      {
+        symbol: 'CUMHURIYET_ALTINI',
+        name: 'Cumhuriyet Altını (TL)',
+        exchange: 'COMMODITY',
+        currency: 'TRY',
+        sector: 'Kıymetli Madenler & Emtia',
+        basePrice: cumhuriyetPrice,
+        price: cumhuriyetPrice,
+        change: cumhuriyetChangeAmt,
+        changePercent: gramChangePercent,
+        high: Number((cumhuriyetPrice * 1.01).toFixed(2)),
+        low: Number((cumhuriyetPrice * 0.99).toFixed(2)),
+        open: Number((cumhuriyetPrice - cumhuriyetChangeAmt).toFixed(2)),
+        close: cumhuriyetPrice,
+        previousClose: Number((cumhuriyetPrice - cumhuriyetChangeAmt).toFixed(2)),
+        volume: 8000000,
+        marketCap: 0,
+        timestamp: new Date().toISOString(),
+      } as any,
+      {
+        symbol: 'XAGTRYG',
+        name: 'Gram Gümüş (TL)',
+        exchange: 'COMMODITY',
+        currency: 'TRY',
+        sector: 'Kıymetli Madenler & Emtia',
+        basePrice: gramGumusPrice,
+        price: gramGumusPrice,
+        change: gramGumusChangeAmt,
+        changePercent: gramGumusChangePercent,
+        high: Number((gramGumusPrice * 1.015).toFixed(2)),
+        low: Number((gramGumusPrice * 0.985).toFixed(2)),
+        open: Number((gramGumusPrice - gramGumusChangeAmt).toFixed(2)),
+        close: gramGumusPrice,
+        previousClose: Number((gramGumusPrice - gramGumusChangeAmt).toFixed(2)),
+        volume: 5000000,
+        marketCap: 0,
+        timestamp: new Date().toISOString(),
+      } as any
+    );
+  } catch (error) {
+    console.error('Error fetching alternative markets:', error);
+  }
+
+  return result;
+}
+
+export const fetchAllAlternativeMarkets = unstable_cache(
+  _fetchAlternativeMarketsCore,
+  ['tradingview-alt-markets'],
+  { revalidate: 30, tags: ['tradingview-alt-markets'] }
+);
 
 /**
  * Fetch a specific symbol directly from TradingView Multi-Asset Scanner APIs (CFD, Forex, Crypto, BIST, US)
@@ -325,28 +718,69 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         console.warn('Error fetching BIST index:', e);
       }
     }
-    // 2. Gram Altın (TL) live calculation (XAUUSD * USDTRY / 31.1034768)
+    // 2. Gram Altın (TL) live calculation (TradingView Spot XAUUSD * USDTRY / 31.1034768)
     if (sym === 'XAUTRYG' || sym === 'XAUTRY' || sym === 'GRAM_ALTIN' || sym === 'ALTIN' || sym === 'GA') {
-      const [goldRes, fxRes] = await Promise.all([
-        fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d', {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          next: { revalidate: 30 },
-        }).then((r) => r.json()).catch(() => null),
-        fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          next: { revalidate: 30 },
-        }).then((r) => r.json()).catch(() => null),
-      ]);
+      let goldPrice: number | null = null;
+      let fxPrice: number | null = null;
+      let goldChange = 0;
+      let fxChange = 0;
 
-      const goldMeta = goldRes?.chart?.result?.[0]?.meta;
-      const fxMeta = fxRes?.chart?.result?.[0]?.meta;
-      const goldPrice = goldMeta?.regularMarketPrice || goldRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-      const fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-      const goldChange = goldMeta?.regularMarketChangePercent || 0;
+      // Primary: TradingView CFD & Forex scanner for true spot price
+      try {
+        const [cfdRes, fxRes] = await Promise.all([
+          fetch('https://scanner.tradingview.com/cfd/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: [{ left: 'name', operation: 'equal', right: 'XAUUSD' }],
+              columns: ['name', 'close', 'change', 'description'],
+            }),
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+          fetch('https://scanner.tradingview.com/forex/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: [{ left: 'name', operation: 'equal', right: 'USDTRY' }],
+              columns: ['name', 'close', 'change', 'description'],
+            }),
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+        ]);
+
+        if (cfdRes?.data?.[0]?.d?.[1] && fxRes?.data?.[0]?.d?.[1]) {
+          goldPrice = cfdRes.data[0].d[1];
+          goldChange = cfdRes.data[0].d[2] || 0;
+          fxPrice = fxRes.data[0].d[1];
+          fxChange = fxRes.data[0].d[2] || 0;
+        }
+      } catch (err) {
+        console.warn('Error fetching TradingView spot gold/fx:', err);
+      }
+
+      // Fallback: Yahoo Finance if TradingView is unreachable
+      if (!goldPrice || !fxPrice) {
+        const [goldRes, fxRes] = await Promise.all([
+          fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d', {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+          fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+        ]);
+
+        const goldMeta = goldRes?.chart?.result?.[0]?.meta;
+        const fxMeta = fxRes?.chart?.result?.[0]?.meta;
+        goldPrice = goldMeta?.regularMarketPrice || goldRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+        fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+        goldChange = goldMeta?.regularMarketChangePercent || 0;
+      }
 
       if (goldPrice && fxPrice) {
         const currentPrice = Number(((goldPrice * fxPrice) / 31.1034768).toFixed(2));
-        const changePercent = Number((goldChange || 0).toFixed(2));
+        const changePercent = Number((goldChange + fxChange).toFixed(2));
         const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
 
         return {
@@ -371,28 +805,69 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       }
     }
 
-    // 3. Gram Gümüş (TL) live calculation (SILVER * USDTRY / 31.1034768)
+    // 3. Gram Gümüş (TL) live calculation (TradingView Spot SILVER * USDTRY / 31.1034768)
     if (sym === 'XAGTRYG' || sym === 'XAGTRY' || sym === 'GRAM_GUMUS' || sym === 'GUMUS') {
-      const [silverRes, fxRes] = await Promise.all([
-        fetch('https://query1.finance.yahoo.com/v8/finance/chart/SI=F?interval=1d&range=1d', {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          next: { revalidate: 30 },
-        }).then((r) => r.json()).catch(() => null),
-        fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          next: { revalidate: 30 },
-        }).then((r) => r.json()).catch(() => null),
-      ]);
+      let silverPrice: number | null = null;
+      let fxPrice: number | null = null;
+      let silverChange = 0;
+      let fxChange = 0;
 
-      const silverMeta = silverRes?.chart?.result?.[0]?.meta;
-      const fxMeta = fxRes?.chart?.result?.[0]?.meta;
-      const silverPrice = silverMeta?.regularMarketPrice || silverRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-      const fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-      const silverChange = silverMeta?.regularMarketChangePercent || 0;
+      // Primary: TradingView CFD & Forex scanner for true spot price
+      try {
+        const [cfdRes, fxRes] = await Promise.all([
+          fetch('https://scanner.tradingview.com/cfd/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: [{ left: 'name', operation: 'equal', right: 'SILVER' }],
+              columns: ['name', 'close', 'change', 'description'],
+            }),
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+          fetch('https://scanner.tradingview.com/forex/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: [{ left: 'name', operation: 'equal', right: 'USDTRY' }],
+              columns: ['name', 'close', 'change', 'description'],
+            }),
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+        ]);
+
+        if (cfdRes?.data?.[0]?.d?.[1] && fxRes?.data?.[0]?.d?.[1]) {
+          silverPrice = cfdRes.data[0].d[1];
+          silverChange = cfdRes.data[0].d[2] || 0;
+          fxPrice = fxRes.data[0].d[1];
+          fxChange = fxRes.data[0].d[2] || 0;
+        }
+      } catch (err) {
+        console.warn('Error fetching TradingView spot silver/fx:', err);
+      }
+
+      // Fallback: Yahoo Finance if TradingView is unreachable
+      if (!silverPrice || !fxPrice) {
+        const [silverRes, fxRes] = await Promise.all([
+          fetch('https://query1.finance.yahoo.com/v8/finance/chart/SI=F?interval=1d&range=1d', {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+          fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+        ]);
+
+        const silverMeta = silverRes?.chart?.result?.[0]?.meta;
+        const fxMeta = fxRes?.chart?.result?.[0]?.meta;
+        silverPrice = silverMeta?.regularMarketPrice || silverRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+        fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
+        silverChange = silverMeta?.regularMarketChangePercent || 0;
+      }
 
       if (silverPrice && fxPrice) {
         const currentPrice = Number(((silverPrice * fxPrice) / 31.1034768).toFixed(2));
-        const changePercent = Number((silverChange || 0).toFixed(2));
+        const changePercent = Number((silverChange + fxChange).toFixed(2));
         const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
 
         return {
@@ -628,7 +1103,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           timestamp: new Date().toISOString(),
         } as any;
 
-        scannerCache.bist.push(stockInfo);
+        inMemoryCache.bist.push(stockInfo);
         return stockInfo;
       }
     }
@@ -688,7 +1163,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           timestamp: new Date().toISOString(),
         } as any;
 
-        scannerCache.us.push(stockInfo);
+        inMemoryCache.us.push(stockInfo);
         return stockInfo;
       }
     }
@@ -737,6 +1212,49 @@ export async function getAllStocksLive(filter?: {
   sector?: string;
   search?: string;
 }): Promise<(StockMarketInfo & StockQuote)[]> {
+  const exUpper = filter?.exchange?.toUpperCase();
+
+  // If specific alternative market requested, fetch and return directly
+  if (exUpper === 'CRYPTO') {
+    const { crypto } = await fetchAllAlternativeMarkets();
+    let res = crypto;
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+    }
+    return res as any;
+  }
+
+  if (exUpper === 'COMMODITY') {
+    const { commodity } = await fetchAllAlternativeMarkets();
+    let res = commodity;
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+    }
+    return res as any;
+  }
+
+  if (exUpper === 'FOREX') {
+    const { forex } = await fetchAllAlternativeMarkets();
+    let res = forex;
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+    }
+    return res as any;
+  }
+
+  if (exUpper === 'INDEX') {
+    const { indices } = await fetchAllAlternativeMarkets();
+    let res = indices;
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
+    }
+    return res as any;
+  }
+
   const { bist, us } = await fetchAllTradingViewStocks();
   let allStocks = [...bist, ...us];
 
@@ -745,16 +1263,23 @@ export async function getAllStocksLive(filter?: {
     allStocks = [...POPULAR_STOCKS] as any;
   }
 
-  // If specific search query provided
+  // If specific search query provided, also include alternative markets in search pool
   if (filter?.search && filter.search.trim().length > 0) {
+    try {
+      const alt = await fetchAllAlternativeMarkets();
+      allStocks = [...allStocks, ...alt.commodity, ...alt.crypto, ...alt.forex, ...alt.indices];
+    } catch (e) {
+      // Continue with stock pool
+    }
+
     const rawQ = filter.search.trim();
     const upperQ = rawQ.toUpperCase();
     const normQ = normalizeText(rawQ);
 
     // 1. Check if query matches any known alias (e.g., 'aplib' -> 'AAPL', 'thy' -> 'THYAO')
     for (const [sym, aliases] of Object.entries(POPULAR_ALIASES)) {
-      if (aliases.some(a => normalizeText(a) === normQ || a.includes(normQ) || normQ.includes(a))) {
-        const found = allStocks.find(s => s.symbol.toUpperCase() === sym);
+      if (aliases.some((a) => normalizeText(a) === normQ || a.includes(normQ) || normQ.includes(a))) {
+        const found = allStocks.find((s) => s.symbol.toUpperCase() === sym);
         if (!found) {
           const specific = await fetchSpecificSymbolLive(sym);
           if (specific) allStocks.unshift(specific as any);
@@ -764,21 +1289,19 @@ export async function getAllStocksLive(filter?: {
 
     // 2. If exact symbol not found in list, attempt live lookup
     const hasExact = allStocks.some((s) => s.symbol.toUpperCase() === upperQ);
-    if (!hasExact && upperQ.length >= 2 && upperQ.length <= 6) {
+    if (!hasExact && upperQ.length >= 2 && upperQ.length <= 10) {
       const specific = await fetchSpecificSymbolLive(upperQ);
       if (specific) {
         allStocks.unshift(specific as any);
       }
     }
 
-    // 3. Filter and score all stocks using fuzzy matching
+    // 3. Filter and score all items using fuzzy matching
     const scoredStocks: { stock: StockMarketInfo; score: number }[] = [];
 
     for (const stock of allStocks) {
       if (filter.exchange && filter.exchange !== 'ALL') {
-        if (filter.exchange === 'BIST' && stock.exchange !== 'BIST') continue;
-        if (filter.exchange === 'NASDAQ' && stock.exchange !== 'NASDAQ') continue;
-        if (filter.exchange === 'NYSE' && stock.exchange !== 'NYSE') continue;
+        if (filter.exchange !== stock.exchange) continue;
       }
       if (filter.sector && filter.sector !== 'ALL' && !stock.sector.toLowerCase().includes(filter.sector.toLowerCase())) {
         continue;
@@ -797,9 +1320,7 @@ export async function getAllStocksLive(filter?: {
 
   return (allStocks.filter((stock) => {
     if (filter?.exchange && filter.exchange !== 'ALL') {
-      if (filter.exchange === 'BIST' && stock.exchange !== 'BIST') return false;
-      if (filter.exchange === 'NASDAQ' && stock.exchange !== 'NASDAQ') return false;
-      if (filter.exchange === 'NYSE' && stock.exchange !== 'NYSE') return false;
+      if (filter.exchange !== stock.exchange) return false;
     }
     if (filter?.sector && filter.sector !== 'ALL' && !stock.sector.toLowerCase().includes(filter.sector.toLowerCase())) {
       return false;
@@ -822,7 +1343,7 @@ export async function getStockBySymbolLive(symbol: string): Promise<(StockMarket
 }
 
 export function getStockBySymbol(symbol: string): (StockMarketInfo & StockQuote) | null {
-  const { bist, us } = scannerCache;
+  const { bist, us } = inMemoryCache;
   const stock = [...bist, ...us].find((s) => s.symbol.toUpperCase() === symbol.toUpperCase());
   return (stock as any) || null;
 }

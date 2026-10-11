@@ -1,6 +1,6 @@
 // Stock & Market Types
 
-export type Exchange = 'BIST' | 'NYSE' | 'NASDAQ';
+export type Exchange = 'BIST' | 'NYSE' | 'NASDAQ' | 'CRYPTO' | 'COMMODITY' | 'FOREX' | 'INDEX';
 
 export interface StockQuote {
   symbol: string;
@@ -21,7 +21,7 @@ export interface StockQuote {
 
 export interface StockDetail extends StockQuote {
   sector: string;
-  currency: 'TRY' | 'USD';
+  currency: 'TRY' | 'USD' | 'EUR';
   peRatio?: number;
   dividendYield?: number;
   high52w: number;
@@ -32,7 +32,7 @@ export interface Stock {
   symbol: string;
   name: string;
   exchange: Exchange;
-  currency: 'TRY' | 'USD';
+  currency: 'TRY' | 'USD' | 'EUR';
   sector: string;
   price: number;
   change: number;

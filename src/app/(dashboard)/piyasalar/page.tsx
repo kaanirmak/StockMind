@@ -9,10 +9,14 @@ import { TefasFundInfo } from '@/lib/data/funds';
 import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 
-type MarketId = 'BIST' | 'TEFAS' | 'NASDAQ' | 'NYSE';
+type MarketId = 'BIST' | 'COMMODITY' | 'CRYPTO' | 'FOREX' | 'INDEX' | 'TEFAS' | 'NASDAQ' | 'NYSE';
 
 const MARKETS: Array<{ id: MarketId; label: string; icon: string; name: string }> = [
   { id: 'BIST', label: 'BIST', icon: '🇹🇷', name: 'Borsa İstanbul' },
+  { id: 'COMMODITY', label: 'Emtia & Altın', icon: '🪙', name: 'Kıymetli Madenler & Emtia' },
+  { id: 'CRYPTO', label: 'Kripto', icon: '₿', name: 'Kripto Paralar' },
+  { id: 'FOREX', label: 'Döviz', icon: '💱', name: 'Döviz Kurları' },
+  { id: 'INDEX', label: 'Endeksler', icon: '🌍', name: 'Küresel Borsa Endeksleri' },
   { id: 'TEFAS', label: 'TEFAS', icon: '📊', name: 'Yatırım Fonları' },
   { id: 'NASDAQ', label: 'NASDAQ', icon: '🇺🇸', name: 'NASDAQ' },
   { id: 'NYSE', label: 'NYSE', icon: '🏛️', name: 'NYSE' },
@@ -25,6 +29,10 @@ function PiyasalarContent() {
   const rawParam = (searchParams.get('market') || searchParams.get('tab') || searchParams.get('exchange') || 'BIST').toUpperCase();
   const initialMarket: MarketId = 
     rawParam === 'FUNDS' || rawParam === 'TEFAS' ? 'TEFAS' :
+    rawParam === 'COMMODITY' || rawParam === 'EMTIA' || rawParam === 'ALTIN' ? 'COMMODITY' :
+    rawParam === 'CRYPTO' || rawParam === 'KRIPTO' ? 'CRYPTO' :
+    rawParam === 'FOREX' || rawParam === 'DOVIZ' || rawParam === 'FX' ? 'FOREX' :
+    rawParam === 'INDEX' || rawParam === 'ENDEKS' ? 'INDEX' :
     rawParam === 'NASDAQ' ? 'NASDAQ' :
     rawParam === 'NYSE' ? 'NYSE' : 'BIST';
 
@@ -123,7 +131,7 @@ function PiyasalarContent() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Piyasalar</h1>
           <p className="text-text-secondary text-xs sm:text-sm mt-0.5">
-            BIST, TEFAS Fonları, NASDAQ ve NYSE piyasalarını anlık verilerle takip edin.
+            BIST, Emtia & Altın, Kripto, Döviz, Küresel Endeksler, TEFAS Fonları ve ABD hisselerini canlı takip edin.
           </p>
         </div>
         {/* View Mode Toggle */}
@@ -149,7 +157,7 @@ function PiyasalarContent() {
         </div>
       </div>
 
-      {/* Direct Market Tabs: BIST | TEFAS | NASDAQ | NYSE */}
+      {/* Direct Market Tabs */}
       <div className="flex items-center gap-1.5 p-1.5 bg-bg-secondary rounded-2xl border border-border w-full overflow-x-auto">
         {MARKETS.map((m) => {
           const isActive = activeMarket === m.id;
@@ -157,33 +165,34 @@ function PiyasalarContent() {
             <button
               key={m.id}
               onClick={() => handleMarketChange(m.id)}
-              className={`flex-1 min-w-[68px] sm:min-w-[110px] flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex-1 min-w-[70px] sm:min-w-[100px] flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 isActive
                   ? 'bg-accent text-white shadow-lg shadow-accent/25'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
               }`}
             >
               <span className="text-base">{m.icon}</span>
-              <span>{m.label}</span>
-              <span className="text-[10px] font-normal opacity-80 hidden md:inline">
-                ({m.name})
-              </span>
+              <span className="whitespace-nowrap">{m.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* ═══════════════════ STOCKS (BIST / NASDAQ / NYSE) ═══════════════════ */}
+      {/* ═══════════════════ STOCKS & MARKETS ═══════════════════ */}
       {isStocksMarket && (
         <div className="space-y-4">
-          {/* Stocks Filters */}
+          {/* Filters */}
           <div className="glass-card p-3 sm:p-4 space-y-3">
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
               {/* Search */}
               <div className="flex-1">
                 <Input
-                  placeholder={`${activeMarket} sembol ara... (örn: ${
+                  placeholder={`${MARKETS.find(m => m.id === activeMarket)?.name || activeMarket} ara... (örn: ${
                     activeMarket === 'BIST' ? 'THYAO, ASELS' :
+                    activeMarket === 'COMMODITY' ? 'Altın, Gümüş, Petrol' :
+                    activeMarket === 'CRYPTO' ? 'BTC, ETH, SOL' :
+                    activeMarket === 'FOREX' ? 'Dolar, Euro, GBP' :
+                    activeMarket === 'INDEX' ? 'S&P 500, DAX, BIST' :
                     activeMarket === 'NASDAQ' ? 'NVDA, AAPL' : 'BRK.B, JPM'
                   })`}
                   value={stockSearch}
@@ -192,19 +201,21 @@ function PiyasalarContent() {
                 />
               </div>
             </div>
-            {/* Sector Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              <span className="text-text-muted text-[11px] shrink-0 font-medium">Sektör:</span>
-              {sectors.map((sector) => (
-                <button
-                  key={sector}
-                  onClick={() => setSelectedSector(sector)}
-                  className={`px-2.5 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${selectedSector === sector ? 'bg-accent/20 border-accent text-accent font-semibold' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'}`}
-                >
-                  {sector === 'ALL' ? 'Tüm Sektörler' : sector}
-                </button>
-              ))}
-            </div>
+            {/* Sector Chips (Only for equities) */}
+            {['BIST', 'NASDAQ', 'NYSE'].includes(activeMarket) && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                <span className="text-text-muted text-[11px] shrink-0 font-medium">Sektör:</span>
+                {sectors.map((sector) => (
+                  <button
+                    key={sector}
+                    onClick={() => setSelectedSector(sector)}
+                    className={`px-2.5 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${selectedSector === sector ? 'bg-accent/20 border-accent text-accent font-semibold' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'}`}
+                  >
+                    {sector === 'ALL' ? 'Tüm Sektörler' : sector}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Stocks Content */}
@@ -241,7 +252,13 @@ function PiyasalarContent() {
                   <tbody className="divide-y divide-border/40">
                     {sortedStocks.map((stock) => {
                       const isPositive = stock.changePercent >= 0;
-                      const curr = stock.currency === 'TRY' ? '₺' : '$';
+                      const curr = (stock.currency as string) === 'TRY' ? '₺' : (stock.currency as string) === 'EUR' ? '€' : '$';
+                      const badgeVariant =
+                        stock.exchange === 'BIST' ? 'purple' :
+                        stock.exchange === 'CRYPTO' ? 'warning' :
+                        stock.exchange === 'COMMODITY' ? 'orange' :
+                        stock.exchange === 'FOREX' ? 'emerald' : 'info';
+
                       return (
                         <tr key={stock.symbol} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
                           <td className="py-2 sm:py-3 px-2 sm:px-4">
@@ -254,10 +271,10 @@ function PiyasalarContent() {
                             </Link>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">
-                            <Badge variant={stock.exchange === 'BIST' ? 'purple' : 'info'} size="sm">{stock.exchange}</Badge>
+                            <Badge variant={badgeVariant as any} size="sm">{stock.exchange}</Badge>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
-                            {curr}{stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                            {curr}{stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                           </td>
                           <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-right font-mono whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg ${isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
@@ -300,8 +317,14 @@ function PiyasalarContent() {
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {sortedStocks.map((stock) => {
                 const isPositive = stock.changePercent >= 0;
-                const curr = stock.currency === 'TRY' ? '₺' : '$';
+                const curr = (stock.currency as string) === 'TRY' ? '₺' : (stock.currency as string) === 'EUR' ? '€' : '$';
                 const isStarred = checkWatchlisted(stock.symbol);
+                const badgeVariant =
+                  stock.exchange === 'BIST' ? 'purple' :
+                  stock.exchange === 'CRYPTO' ? 'warning' :
+                  stock.exchange === 'COMMODITY' ? 'orange' :
+                  stock.exchange === 'FOREX' ? 'emerald' : 'info';
+
                 return (
                   <div key={stock.symbol} className="glass-card p-4 hover:border-accent/40 hover:shadow-lg transition-all duration-300 group relative">
                     <div className="flex items-start justify-between mb-3">
@@ -325,9 +348,11 @@ function PiyasalarContent() {
                       <div className="pt-2 border-t border-border/50 flex items-center justify-between">
                         <div>
                           <span className="text-[10px] text-text-muted block">Son Fiyat</span>
-                          <span className="text-sm font-bold font-mono text-text-primary">{curr}{stock.price.toFixed(2)}</span>
+                          <span className="text-sm font-bold font-mono text-text-primary">
+                            {curr}{stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          </span>
                         </div>
-                        <Badge variant={stock.exchange === 'BIST' ? 'purple' : 'info'} size="sm">{stock.exchange}</Badge>
+                        <Badge variant={badgeVariant as any} size="sm">{stock.exchange}</Badge>
                       </div>
                     </Link>
                   </div>
