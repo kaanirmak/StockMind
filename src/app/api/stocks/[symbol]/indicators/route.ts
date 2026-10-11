@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchRealHistoricalCandles, getStockTechnicalAnalysis, getStockBySymbolLive } from '@/lib/data/stocks';
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: Request,

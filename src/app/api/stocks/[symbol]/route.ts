@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getStockBySymbolLive } from '@/lib/data/stocks';
 
-// Revalidate CDN cache every 30 seconds for per-symbol data
-export const revalidate = 30;
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: Request,

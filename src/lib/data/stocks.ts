@@ -265,12 +265,69 @@ const FOREX_NAMES: Record<string, string> = {
   EURTRY: 'Euro / TL',
   GBPTRY: 'İngiliz Sterlini / TL',
   CHFTRY: 'İsviçre Frangı / TL',
-  JPYTRY: 'Japon Yeni / TL',
+  CADTRY: 'Kanada Doları / TL',
+  AUDTRY: 'Avustralya Doları / TL',
+  JPYTRY: 'Japon Yeni / TL (100)',
+  SARTRY: 'Suudi Arabistan Riyali / TL',
+  AEDTRY: 'BAE Dirhemi / TL',
+  QARTRY: 'Katar Riyali / TL',
+  KWDTRY: 'Kuveyt Dinarı / TL',
+  RUBTRY: 'Rus Rublesi / TL',
+  CNYTRY: 'Çin Yuanı / TL',
+  NOKTRY: 'Norveç Kronu / TL',
+  SEKTRY: 'İsveç Kronu / TL',
+  DKKTRY: 'Danimarka Kronu / TL',
+  AZNTRY: 'Azerbaycan Manatı / TL',
+  PLNTRY: 'Polonya Zlotisi / TL',
   EURUSD: 'Euro / Amerikan Doları',
   GBPUSD: 'İngiliz Sterlini / Dolar',
   USDJPY: 'Dolar / Japon Yeni',
   USDCHF: 'Dolar / İsviçre Frangı',
+  AUDUSD: 'Avustralya Doları / Dolar',
+  USDCAD: 'Dolar / Kanada Doları',
+  NZDUSD: 'Yeni Zelanda Doları / Dolar',
+  EURGBP: 'Euro / İngiliz Sterlini',
+  EURJPY: 'Euro / Japon Yeni',
+  GBPJPY: 'İngiliz Sterlini / Japon Yeni',
+  EURCHF: 'Euro / İsviçre Frangı',
+  AUDJPY: 'Avustralya Doları / Japon Yeni',
+  CADJPY: 'Kanada Doları / Japon Yeni',
+  CHFJPY: 'İsviçre Frangı / Japon Yeni',
 };
+
+const MAJOR_INDEX_DEFINITIONS = [
+  { ticker: 'XU100.IS', symbol: 'XU100', name: 'Borsa İstanbul 100 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 12265.98 },
+  { ticker: 'XU030.IS', symbol: 'XU030', name: 'Borsa İstanbul 30 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15145.27 },
+  { ticker: 'XBANK.IS', symbol: 'XBANK', name: 'BIST Bankacılık Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15870.84 },
+  { ticker: 'XUSIN.IS', symbol: 'XUSIN', name: 'BIST Sınai Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 16011.48 },
+  { ticker: 'XUTEK.IS', symbol: 'XUTEK', name: 'BIST Teknoloji Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 37934.21 },
+  { ticker: 'XULAS.IS', symbol: 'XULAS', name: 'BIST Ulaştırma Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 33163.41 },
+  { ticker: 'XUHIZ.IS', symbol: 'XUHIZ', name: 'BIST Hizmetler Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10795.61 },
+  { ticker: 'XHOLD.IS', symbol: 'XHOLD', name: 'BIST Holding & Yatırım', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10495.89 },
+  { ticker: 'XELKT.IS', symbol: 'XELKT', name: 'BIST Elektrik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 613.31 },
+  { ticker: 'XGMYO.IS', symbol: 'XGMYO', name: 'BIST Gayrimenkul YO', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 5113.42 },
+  { ticker: 'XTRZM.IS', symbol: 'XTRZM', name: 'BIST Turizm Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 1420.5 },
+  { ticker: 'XMADN.IS', symbol: 'XMADN', name: 'BIST Madencilik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 7850.2 },
+  { ticker: 'XKMYA.IS', symbol: 'XKMYA', name: 'BIST Kimya Petrol Plastik', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 18400.0 },
+  { ticker: 'XGIDA.IS', symbol: 'XGIDA', name: 'BIST Gıda İçecek Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 14200.0 },
+  { ticker: 'XBLSM.IS', symbol: 'XBLSM', name: 'BIST Bilişim Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 8900.0 },
+  { ticker: 'XTCRT.IS', symbol: 'XTCRT', name: 'BIST Ticaret Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 38200.0 },
+  { ticker: 'XSGRT.IS', symbol: 'XSGRT', name: 'BIST Sigorta Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 98500.0 },
+  { ticker: '^GSPC', symbol: 'SPX', name: 'S&P 500 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 7811.54 },
+  { ticker: '^IXIC', symbol: 'NDX', name: 'NASDAQ 100 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 27366.17 },
+  { ticker: '^DJI', symbol: 'DJI', name: 'Dow Jones Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 51654.95 },
+  { ticker: '^GDAXI', symbol: 'DAX', name: 'Almanya DAX 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 25087.27 },
+  { ticker: '^FTSE', symbol: 'FTSE', name: 'İngiltere FTSE 100 Endeksi', currency: 'GBP', sector: 'Küresel Endeksler', basePrice: 10552.05 },
+  { ticker: '^N225', symbol: 'N225', name: 'Japonya Nikkei 225 Endeksi', currency: 'JPY', sector: 'Küresel Endeksler', basePrice: 69030.92 },
+  { ticker: '^STOXX50E', symbol: 'STOXX50', name: 'Euro Stoxx 50 Endeksi (Avrupa)', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 5420.0 },
+  { ticker: '^FCHI', symbol: 'CAC40', name: 'Fransa CAC 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 8120.0 },
+  { ticker: '^HSI', symbol: 'HSI', name: 'Hong Kong Hang Seng Endeksi', currency: 'HKD', sector: 'Küresel Endeksler', basePrice: 26400.0 },
+  { ticker: '^AORD', symbol: 'AORD', name: 'Avustralya All Ordinaries', currency: 'AUD', sector: 'Küresel Endeksler', basePrice: 9480.0 },
+  { ticker: '^KS11', symbol: 'KOSPI', name: 'Güney Kore KOSPI Endeksi', currency: 'KRW', sector: 'Küresel Endeksler', basePrice: 2950.0 },
+  { ticker: '^BVSP', symbol: 'BVSP', name: 'Brezilya Bovespa Endeksi', currency: 'BRL', sector: 'Küresel Endeksler', basePrice: 138000.0 },
+  { ticker: 'DX-Y.NYB', symbol: 'DXY', name: 'Dolar Endeksi (DXY)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 104.5 },
+  { ticker: '^VIX', symbol: 'VIX', name: 'VIX Volatilite (Korku) Endeksi', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 17.2 },
+];
 
 const CFD_NAMES: Record<string, string> = {
   XAUUSD: 'Ons Altın ($)',
@@ -280,6 +337,14 @@ const CFD_NAMES: Record<string, string> = {
   NATGAS: 'Doğalgaz ($)',
   COPPER: 'Bakır ($)',
   PLATINUM: 'Platin ($)',
+  PALLADIUM: 'Paladyum ($)',
+  WHEAT: 'Buğday ($)',
+  CORN: 'Mısır ($)',
+  COFFEE: 'Kahve ($)',
+  SUGAR: 'Şeker ($)',
+  SOYBEAN: 'Soya Fasulyesi ($)',
+  COTTON: 'Pamuk ($)',
+  COCOA: 'Kakao ($)',
   SPX: 'S&P 500 Endeksi',
   NDX: 'NASDAQ 100 Endeksi',
   DJI: 'Dow Jones Endeksi',
@@ -297,7 +362,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   };
 
   try {
-    const [cryptoRes, fxRes, cfdRes, bistIndexRes] = await Promise.all([
+    const [cryptoRes, tryFxRes, allFxRes, cfdRes, cfdIndexRes, yahooIndicesRes] = await Promise.all([
       // 1. Top 80 Cryptocurrencies by volume from Binance
       fetch('https://scanner.tradingview.com/crypto/scan', {
         method: 'POST',
@@ -314,22 +379,32 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
 
-      // 2. 80+ Forex Currencies & Cross Pairs
+      // 2. All Turkish Lira (TRY) currency pairs
       fetch('https://scanner.tradingview.com/forex/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filter: [
-            { left: 'exchange', operation: 'equal', right: 'FX_IDC' },
-          ],
+          filter: [{ left: 'name', operation: 'match', right: '.*TRY$' }],
           columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
-          sort: { sortBy: 'name', sortOrder: 'asc' },
+          sort: { sortBy: 'volume', sortOrder: 'desc' },
+          range: [0, 40],
+        }),
+        next: { revalidate: 30 },
+      }).then((r) => r.json()).catch(() => null),
+
+      // 3. Top 100 Global Forex Pairs
+      fetch('https://scanner.tradingview.com/forex/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+          sort: { sortBy: 'volume', sortOrder: 'desc' },
           range: [0, 100],
         }),
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
 
-      // 3. 80+ Global Commodities, Precious Metals & Major World Indices
+      // 4. Top 80 Global Commodities & Precious Metals
       fetch('https://scanner.tradingview.com/cfd/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -341,18 +416,51 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
 
-      // 4. BIST Sector & Main Indices (XU100, XU030, XBANK, XUSIN, etc.)
-      fetch('https://scanner.tradingview.com/turkey/scan', {
+      // 5. Global CFD Indices (60+ Major World & Sector Indices)
+      fetch('https://scanner.tradingview.com/cfd/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filter: [{ left: 'type', operation: 'equal', right: 'index' }],
-          columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
-          sort: { sortBy: 'volume', sortOrder: 'desc' },
-          range: [0, 40],
+          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+          range: [0, 60],
         }),
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
+
+      // 6. Live Major BIST & World Indices from Yahoo Finance
+      Promise.all(
+        MAJOR_INDEX_DEFINITIONS.map(async (item) => {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const r = await fetch(
+              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.ticker)}?interval=1d&range=1d`,
+              {
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: controller.signal,
+                next: { revalidate: 30 },
+              }
+            ).then((x) => x.json());
+            clearTimeout(timeoutId);
+
+            const meta = r?.chart?.result?.[0]?.meta;
+            const livePrice = meta?.regularMarketPrice || item.basePrice;
+            const liveChange = meta?.regularMarketChangePercent ?? 0;
+            return {
+              ...item,
+              price: Number(livePrice.toFixed(2)),
+              changePercent: Number(liveChange.toFixed(2)),
+            };
+          } catch {
+            return {
+              ...item,
+              price: item.basePrice,
+              changePercent: 0,
+            };
+          }
+        })
+      ),
     ]);
 
     // Parse Crypto
@@ -390,50 +498,58 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
     let liveUsdTry = 49.25;
     let liveUsdTryChange = 0;
 
-    // Parse Forex
-    fxRes?.data?.forEach((item: any) => {
+    // Parse Forex: 1. Priority Turkish Lira pairs, 2. Global Pairs
+    const seenForex = new Set<string>();
+
+    const parseForexItem = (item: any) => {
       const [name, close, change, desc, high52, low52] = item.d;
-      if (name && close !== null && close !== undefined) {
-        const isTryPair = name.endsWith('TRY');
-        const currentPrice = Number(close.toFixed(isTryPair ? 4 : 4));
-        const changePercent = Number((change || 0).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(4));
+      if (!name || close === null || close === undefined || seenForex.has(name)) return;
+      seenForex.add(name);
 
-        if (name === 'USDTRY') {
-          liveUsdTry = currentPrice;
-          liveUsdTryChange = changePercent;
-        }
+      const isTryPair = name.endsWith('TRY');
+      const currentPrice = Number(close.toFixed(isTryPair ? 4 : 4));
+      const changePercent = Number((change || 0).toFixed(2));
+      const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(4));
 
-        result.forex.push({
-          symbol: name,
-          name: FOREX_NAMES[name] || desc || name,
-          exchange: 'FOREX',
-          currency: isTryPair ? 'TRY' : 'USD',
-          sector: 'Döviz & Kurlar',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: Number((currentPrice * 1.005).toFixed(4)),
-          low: Number((currentPrice * 0.995).toFixed(4)),
-          open: Number((currentPrice - changeAmt).toFixed(4)),
-          close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(4)),
-          volume: 50000000,
-          marketCap: 0,
-          high52w: high52 ? Number(high52.toFixed(4)) : undefined,
-          low52w: low52 ? Number(low52.toFixed(4)) : undefined,
-          timestamp: new Date().toISOString(),
-        } as any);
+      if (name === 'USDTRY') {
+        liveUsdTry = currentPrice;
+        liveUsdTryChange = changePercent;
       }
-    });
+
+      result.forex.push({
+        symbol: name,
+        name: FOREX_NAMES[name] || desc || name,
+        exchange: 'FOREX',
+        currency: isTryPair ? 'TRY' : 'USD',
+        sector: 'Döviz & Kurlar',
+        basePrice: currentPrice,
+        price: currentPrice,
+        change: changeAmt,
+        changePercent,
+        high: Number((currentPrice * 1.005).toFixed(4)),
+        low: Number((currentPrice * 0.995).toFixed(4)),
+        open: Number((currentPrice - changeAmt).toFixed(4)),
+        close: currentPrice,
+        previousClose: Number((currentPrice - changeAmt).toFixed(4)),
+        volume: 50000000,
+        marketCap: 0,
+        high52w: high52 ? Number(high52.toFixed(4)) : undefined,
+        low52w: low52 ? Number(low52.toFixed(4)) : undefined,
+        timestamp: new Date().toISOString(),
+      } as any);
+    };
+
+    // First add all Turkish Lira pairs
+    tryFxRes?.data?.forEach(parseForexItem);
+    // Then add all global currency pairs
+    allFxRes?.data?.forEach(parseForexItem);
 
     let liveOnsAltin = 4195;
     let liveOnsAltinChange = 0;
     let liveOnsGumus = 60.8;
     let liveOnsGumusChange = 0;
 
-    // Parse CFD (Commodities & Indices)
+    // Parse CFD Commodities
     const seenCfd = new Set<string>();
     cfdRes?.data?.forEach((item: any) => {
       const [name, close, change, desc, high52, low52] = item.d;
@@ -483,19 +599,48 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       }
     });
 
-    // Parse BIST Indices from Turkey Scanner (XU100, XU030, XBANK, XUSIN, etc.)
-    bistIndexRes?.data?.forEach((item: any) => {
-      const [name, close, change, volume, desc, high52, low52] = item.d;
-      if (name && close !== null && close !== undefined) {
+    // Parse Major BIST & World Indices (Priority at top)
+    const seenIndices = new Set<string>();
+    yahooIndicesRes?.forEach((item: any) => {
+      if (!item || seenIndices.has(item.symbol)) return;
+      seenIndices.add(item.symbol);
+
+      const changeAmt = Number(((item.price * item.changePercent) / 100).toFixed(2));
+      result.indices.push({
+        symbol: item.symbol,
+        name: item.name,
+        exchange: 'INDEX',
+        currency: item.currency,
+        sector: item.sector,
+        basePrice: item.price,
+        price: item.price,
+        change: changeAmt,
+        changePercent: item.changePercent,
+        high: Number((item.price * 1.01).toFixed(2)),
+        low: Number((item.price * 0.99).toFixed(2)),
+        open: Number((item.price - changeAmt).toFixed(2)),
+        close: item.price,
+        previousClose: Number((item.price - changeAmt).toFixed(2)),
+        volume: 100000000,
+        marketCap: 0,
+        timestamp: new Date().toISOString(),
+      } as any);
+    });
+
+    // Parse CFD Indices from TradingView
+    cfdIndexRes?.data?.forEach((item: any) => {
+      const [name, close, change, desc, high52, low52] = item.d;
+      if (name && close !== null && close !== undefined && !seenIndices.has(name)) {
+        seenIndices.add(name);
         const currentPrice = Number(close.toFixed(2));
         const changePercent = Number((change || 0).toFixed(2));
         const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
-        result.indices.unshift({
+        result.indices.push({
           symbol: name,
-          name: desc || name,
+          name: CFD_NAMES[name] || desc || name,
           exchange: 'INDEX',
-          currency: 'TRY',
-          sector: 'BIST Endeksleri',
+          currency: 'USD',
+          sector: 'Küresel Endeksler',
           basePrice: currentPrice,
           price: currentPrice,
           change: changeAmt,
@@ -505,7 +650,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
           open: Number((currentPrice - changeAmt).toFixed(2)),
           close: currentPrice,
           previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: volume || 50000000,
+          volume: 50000000,
           marketCap: 0,
           high52w: high52 ? Number(high52.toFixed(2)) : undefined,
           low52w: low52 ? Number(low52.toFixed(2)) : undefined,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getFundsFromDatabase, getAllFunds } from '@/lib/data/funds';
 import { fetchTefasLiveDetail } from '@/lib/api/tefas';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -13,8 +14,8 @@ export async function GET(request: Request) {
     const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
     const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
 
-    // 1. Try fetching from Supabase Database (100% Real Synchronized Data)
-    let funds = await getFundsFromDatabase({
+    // 1. Fetch from Supabase Database
+    const dbFunds = await getFundsFromDatabase({
       category,
       search,
       minRisk,
@@ -24,34 +25,43 @@ export async function GET(request: Request) {
       limit,
     });
 
-    // 2. If DB has not been populated yet or returns empty, fallback to directory + live enrichment
-    if (!funds || funds.length === 0) {
-      funds = getAllFunds({ category, search, minRisk, maxRisk });
+    // 2. Base directory of all registered TEFAS funds (1051+ funds)
+    const allDirectoryFunds = getAllFunds({ category, search, minRisk, maxRisk });
 
-      // If searching, enrich top candidates with live TEFAS API
-      if (search && search.trim().length > 0 && funds.length > 0) {
-        const topCandidates = funds.slice(0, 8);
-        const liveUpdates = await Promise.all(
-          topCandidates.map(async (f) => {
-            try {
-              const live = await fetchTefasLiveDetail(f.code);
-              return live ? { code: f.code, live } : null;
-            } catch {
-              return null;
-            }
-          })
-        );
+    // 3. Merge: Directory provides the complete registry, DB funds override with live synced metrics
+    const fundMap = new Map();
+    for (const f of allDirectoryFunds) {
+      fundMap.set(f.code.toUpperCase(), f);
+    }
+    for (const f of dbFunds) {
+      fundMap.set(f.code.toUpperCase(), f);
+    }
 
-        const liveMap = new Map();
-        for (const update of liveUpdates) {
-          if (update?.live) {
-            liveMap.set(update.code, update.live);
+    let funds = Array.from(fundMap.values());
+
+    // If searching, enrich top candidates with live TEFAS API
+    if (search && search.trim().length > 0 && funds.length > 0) {
+      const topCandidates = funds.slice(0, 8);
+      const liveUpdates = await Promise.all(
+        topCandidates.map(async (f) => {
+          try {
+            const live = await fetchTefasLiveDetail(f.code);
+            return live ? { code: f.code, live } : null;
+          } catch {
+            return null;
           }
-        }
+        })
+      );
 
-        if (liveMap.size > 0) {
-          funds = funds.map((f) => liveMap.get(f.code) || f);
+      const liveMap = new Map();
+      for (const update of liveUpdates) {
+        if (update?.live) {
+          liveMap.set(update.code, update.live);
         }
+      }
+
+      if (liveMap.size > 0) {
+        funds = funds.map((f) => liveMap.get(f.code) || f);
       }
     }
 

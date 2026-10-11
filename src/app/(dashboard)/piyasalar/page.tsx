@@ -57,7 +57,7 @@ function PiyasalarContent() {
   // Stocks state
   const [selectedSector, setSelectedSector] = useState<string>('ALL');
   const [stockSearch, setStockSearch] = useState<string>('');
-  const [stockSortBy, setStockSortBy] = useState<'changePercent' | 'price' | 'volume' | 'marketCap'>('changePercent');
+  const [stockSortBy, setStockSortBy] = useState<'changePercent' | 'price' | 'volume' | 'marketCap'>('marketCap');
   const [stockSortOrder, setStockSortOrder] = useState<'asc' | 'desc'>('desc');
   
   // Infinite scroll / lazy loading for stocks (loads in chunks of 30)
@@ -136,9 +136,15 @@ function PiyasalarContent() {
   const { stocks: bistStocks } = useStocks(activeMarket === 'ALL' ? { exchange: 'BIST' } : undefined);
 
   const sortedStocks = [...stocks].sort((a, b) => {
-    const valA = a[stockSortBy] || 0;
-    const valB = b[stockSortBy] || 0;
-    return stockSortOrder === 'desc' ? Number(valB) - Number(valA) : Number(valA) - Number(valB);
+    const valA = Number(a[stockSortBy]) || 0;
+    const valB = Number(b[stockSortBy]) || 0;
+    if (valB !== valA) {
+      return stockSortOrder === 'desc' ? valB - valA : valA - valB;
+    }
+    // Secondary fallback sorting
+    const secA = Number(a.volume || a.price || 0);
+    const secB = Number(b.volume || b.price || 0);
+    return secB - secA;
   });
 
   const visibleStocks = sortedStocks.slice(0, stockLimit);
@@ -475,8 +481,8 @@ function PiyasalarContent() {
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                    {bistStocks
-                      .filter((s) => s.changePercent !== undefined)
+                    {[...bistStocks]
+                      .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))
                       .slice(0, 6)
                       .map((item) => renderMiniAssetCard(item, 'bist-trend'))}
                   </div>
@@ -508,6 +514,51 @@ function PiyasalarContent() {
                   onChange={(e) => setStockSearch(e.target.value)}
                   leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
                 />
+              </div>
+
+              {/* Quick Sort Options */}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 bg-bg-tertiary/50 p-1 rounded-xl border border-border/60">
+                <span className="text-[11px] text-text-muted px-2 font-medium shrink-0">Sırala:</span>
+                <button
+                  onClick={() => toggleStockSort('marketCap')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                    stockSortBy === 'marketCap'
+                      ? 'bg-accent text-white shadow-xs'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  Piyasa Değeri {stockSortBy === 'marketCap' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                </button>
+                <button
+                  onClick={() => toggleStockSort('changePercent')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                    stockSortBy === 'changePercent'
+                      ? 'bg-accent text-white shadow-xs'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  Değişim {stockSortBy === 'changePercent' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                </button>
+                <button
+                  onClick={() => toggleStockSort('volume')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                    stockSortBy === 'volume'
+                      ? 'bg-accent text-white shadow-xs'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  Hacim {stockSortBy === 'volume' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                </button>
+                <button
+                  onClick={() => toggleStockSort('price')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                    stockSortBy === 'price'
+                      ? 'bg-accent text-white shadow-xs'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  Fiyat {stockSortBy === 'price' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                </button>
               </div>
             </div>
             {/* Sector Chips (Only for equities) */}
@@ -555,6 +606,9 @@ function PiyasalarContent() {
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden md:table-cell" onClick={() => toggleStockSort('volume')}>
                         Hacim {stockSortBy === 'volume' && (stockSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
+                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden lg:table-cell" onClick={() => toggleStockSort('marketCap')}>
+                        Piyasa Değeri {stockSortBy === 'marketCap' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                      </th>
                       <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-center">İşlem</th>
                     </tr>
                   </thead>
@@ -588,6 +642,17 @@ function PiyasalarContent() {
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden md:table-cell">
                             {stock.volume ? (stock.volume > 1e6 ? `${(stock.volume / 1e6).toFixed(1)}M` : `${(stock.volume / 1e3).toFixed(0)}K`) : '-'}
+                          </td>
+                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden lg:table-cell">
+                            {stock.marketCap
+                              ? stock.marketCap >= 1e12
+                                ? `${curr}${(stock.marketCap / 1e12).toFixed(2)} Tr`
+                                : stock.marketCap >= 1e9
+                                ? `${curr}${(stock.marketCap / 1e9).toFixed(1)} Mr`
+                                : stock.marketCap >= 1e6
+                                ? `${curr}${(stock.marketCap / 1e6).toFixed(0)} M`
+                                : '-'
+                              : '-'}
                           </td>
                           <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
@@ -653,7 +718,18 @@ function PiyasalarContent() {
                             {curr}{stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                           </span>
                         </div>
-                        <Badge variant={badgeVariant as any} size="sm">{stock.exchange}</Badge>
+                        <div className="text-right">
+                          <span className="text-[10px] text-text-muted block">Piyasa Değeri</span>
+                          <span className="text-xs font-semibold font-mono text-text-secondary">
+                            {stock.marketCap
+                              ? stock.marketCap >= 1e12
+                                ? `${curr}${(stock.marketCap / 1e12).toFixed(1)} Tr`
+                                : stock.marketCap >= 1e9
+                                ? `${curr}${(stock.marketCap / 1e9).toFixed(1)} Mr`
+                                : `${curr}${(stock.marketCap / 1e6).toFixed(0)} M`
+                              : '-'}
+                          </span>
+                        </div>
                       </div>
                     </Link>
                   </div>

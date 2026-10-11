@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { sendTestEmail } from '@/lib/email/service';
 import { fetchSpecificSymbolLive } from '@/lib/data/stocks';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   return handleDailyReport(request);
 }

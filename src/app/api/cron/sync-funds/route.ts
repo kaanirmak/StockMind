@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { syncTefasFundsToDatabase } from '@/lib/cron/syncTefasFunds';
 
+export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // Allow 5 minutes on Vercel Pro/Enterprise or standard node
 
 export async function GET(request: Request) {
