@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useStockDetail, useStockHistory, useStockIndicators } from '@/hooks/useStockData';
 import { CandlestickChart } from '@/components/stocks/CandlestickChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
+import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -401,25 +402,15 @@ export default function StockDetailPage({
         )}
       </div>
 
-      {/* Midas-Style AI / Market Intelligence Snapshot Banner */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-bg-card/80 border border-border/80 flex flex-col gap-1.5 hover:border-accent/40 transition-colors shadow-xs">
-        <div className="flex items-center gap-2 text-[11px] text-text-muted">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          <span>StockMind AI Bülteni • 3 saat önce</span>
-        </div>
-        <p className="text-xs sm:text-sm text-text-primary leading-relaxed font-medium">
-          {symbol}'da son dönem fiyat hareketi, teknik destek-direnç seviyeleri ve güncel piyasa momentumu analiz edildi.
-        </p>
-        <Link
-          href={`/ai-assistant?prompt=${encodeURIComponent(
-            `${symbol} için teknik ve temel analiz yap, destek-direnç ve risk durumunu özetle.`
-          )}`}
-          className="text-xs font-bold text-accent hover:text-accent-hover inline-flex items-center gap-1 mt-0.5 group w-fit"
-        >
-          <span>Analizi gör</span>
-          <span className="group-hover:translate-x-0.5 transition-transform">&rsaquo;</span>
-        </Link>
-      </div>
+      {/* StockMind AI Bülteni - Teknik Analizler & Haberler */}
+      <AIBulletinCard
+        symbol={symbol}
+        stockName={stock?.name}
+        currentPrice={currentPrice}
+        currSymbol={currSymbol}
+        changePercent={stock?.changePercent}
+        indicators={indicators}
+      />
 
       {/* Technical Indicators Panel */}
       <TechnicalIndicatorsPanel indicators={indicators} currentPrice={currentPrice} />

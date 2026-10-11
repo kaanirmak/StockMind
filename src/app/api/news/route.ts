@@ -213,6 +213,17 @@ export async function GET(request: Request) {
         const macroNews = await fetchLiveNews('Altin fiyati gram altin OR Merkez Bankasi OR Enflasyon', 'MACRO', portfolioSymbols);
         allNews.push(...macroNews);
       }
+
+      // If a specific symbol is requested, fetch targeted news directly
+      if (symbol) {
+        const cleanSym = symbol.replace('_', ' ').trim();
+        const specificNews = await fetchLiveNews(
+          `"${cleanSym}" OR "${symbol}" (hisse OR piyasa OR ekonomi OR borsa OR altin OR fon)`,
+          'BIST',
+          [symbol.toUpperCase()]
+        );
+        allNews.unshift(...specificNews);
+      }
     }
 
     // Sort by publication date newest first
@@ -221,12 +232,18 @@ export async function GET(request: Request) {
     // Filter by single symbol if explicitly requested
     if (symbol) {
       const symUpper = symbol.toUpperCase();
-      allNews = allNews.filter(
+      const symClean = symbol.replace('_', ' ').toUpperCase();
+      const matched = allNews.filter(
         (n) =>
           n.relatedSymbols?.includes(symUpper) ||
           n.title.toUpperCase().includes(symUpper) ||
-          n.summary.toUpperCase().includes(symUpper)
+          n.title.toUpperCase().includes(symClean) ||
+          n.summary.toUpperCase().includes(symUpper) ||
+          n.summary.toUpperCase().includes(symClean)
       );
+      if (matched.length > 0) {
+        allNews = matched;
+      }
     }
 
     // Deduplicate by normalized title and unique id

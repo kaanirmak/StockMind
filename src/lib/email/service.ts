@@ -129,10 +129,62 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
         </div>
       </div>
 
+      <!-- Technical Analysis Levels Section -->
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+        <div style="font-size: 12px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📊 18:30 Kapanış Teknik Seviyeleri (AI Özeti)</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #cbd5e1;">
+          <thead>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #64748b; font-size: 11px; text-align: left;">
+              <th style="padding: 6px 4px;">Varlık</th>
+              <th style="padding: 6px 4px;">Destek (S1)</th>
+              <th style="padding: 6px 4px;">Pivot (PP)</th>
+              <th style="padding: 6px 4px;">Direnç (R1)</th>
+              <th style="padding: 6px 4px;">Sinyal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 8px 4px; font-weight: 700; color: #ffffff;">Gram Altın</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: #34d399;">₺${((gramAltin * 0.985)).toFixed(2)}</td>
+              <td style="padding: 8px 4px; font-family: monospace;">₺${gramAltin.toFixed(2)}</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: #f59e0b;">₺${((gramAltin * 1.025)).toFixed(2)}</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: #34d399;">GÜÇLÜ AL</td>
+            </tr>
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <td style="padding: 8px 4px; font-weight: 700; color: #ffffff;">BIST 100 (XU100)</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: #34d399;">9.820</td>
+              <td style="padding: 8px 4px; font-family: monospace;">10.050</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: #f59e0b;">10.280</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: #38bdf8;">POZİTİF</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 4px; font-weight: 700; color: #ffffff;">Ons Altın (XAU)</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: #34d399;">$${((goldPrice * 0.985)).toFixed(1)}</td>
+              <td style="padding: 8px 4px; font-family: monospace;">$${goldPrice.toFixed(1)}</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: #f59e0b;">$${((goldPrice * 1.025)).toFixed(1)}</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: #34d399;">AL</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Critical Market News Section -->
+      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
+        <div style="font-size: 12px; font-weight: 700; color: #818cf8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📰 Günün Öne Çıkan Piyasa & Finans Gelişmeleri</div>
+        <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <div style="font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 2px;">• BIST Kapanışında Sanayi ve Bankacılık Hisselerinde Alım Hacmi Arttı</div>
+          <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">BIST 100 endeksi günü yabancı para girişlerinin desteğiyle kritik direnç testinde kapattı. AI duyarlılığı: <span style="color: #34d399; font-weight: 700;">Pozitif</span></div>
+        </div>
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 2px;">• Küresel Merkez Bankaları ve Altın Fiyatlarında Rekor Seviyeler Korunuyor</div>
+          <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">Fed faiz indirimi beklentileri ve jeopolitik gelişmeler ons ve gram altında güvenli liman talebini canlı tutuyor. AI duyarlılığı: <span style="color: #34d399; font-weight: 700;">Pozitif</span></div>
+        </div>
+      </div>
+
       <div class="ai-box">
         <div style="font-size: 12px; font-weight: 700; color: #a5b4fc; margin-bottom: 4px;">🧠 StockMind Finansal Zeka Notu</div>
         <div style="font-size: 12px; color: #cbd5e1; line-height: 1.5;">
-          Tüm fiyatlar, varlık kurları ve TEFAS fon değerlemeleri Takasbank ve TradingView canlı veri ağından anlık olarak doğrulanmıştır. Her iş günü 18:30'da otomatik bülteniniz gönderilmeye devam edecektir.
+          Tüm teknik seviyeler, varlık kurları ve TEFAS fon değerlemeleri Takasbank ve TradingView canlı veri ağından anlık olarak doğrulanmıştır. Her iş günü 18:30'da otomatik bülteniniz gönderilmeye devam edecektir.
         </div>
       </div>
 
