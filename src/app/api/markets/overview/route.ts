@@ -17,7 +17,7 @@ export async function GET() {
     const spx = altMarkets.indices.find((i) => i.symbol === 'SPX');
     const brent = altMarkets.commodity.find((c) => c.symbol === 'UKOIL');
 
-    const overview = [
+    const topIndices = [
       {
         symbol: 'XU100',
         name: 'BIST 100',
@@ -77,7 +77,16 @@ export async function GET() {
     ];
 
     return NextResponse.json(
-      { success: true, data: overview },
+      {
+        success: true,
+        data: topIndices,
+        sections: {
+          commodity: altMarkets.commodity.slice(0, 5),
+          forex: altMarkets.forex.slice(0, 5),
+          crypto: altMarkets.crypto.slice(0, 5),
+          indices: altMarkets.indices.slice(0, 5),
+        },
+      },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=15',

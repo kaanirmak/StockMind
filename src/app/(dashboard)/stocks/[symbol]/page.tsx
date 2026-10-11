@@ -26,11 +26,26 @@ export default function StockDetailPage({
   const [showBB, setShowBB] = useState(false);
   const [showVolume, setShowVolume] = useState(true);
 
-  // Buy/Sell Quick Modal
+  // Buy/Sell Quick Modal & Broker Redirection
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [tradeModalTab, setTradeModalTab] = useState<'broker' | 'virtual'>('broker');
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
   const [shares, setShares] = useState<number>(10);
   const [priceInput, setPriceInput] = useState<string>('');
+
+  const handleOpenBroker = (brokerName: 'Midas' | 'Piapiri') => {
+    const urls = {
+      Midas: 'https://www.getmidas.com',
+      Piapiri: 'https://www.piapiri.com',
+    };
+    showToast({
+      type: 'info',
+      title: `${brokerName}'a Yönlendiriliyorsunuz`,
+      message: `${symbol} işlemi için ${brokerName} açılıyor...`,
+    });
+    window.open(urls[brokerName], '_blank', 'noopener,noreferrer');
+    setIsTradeModalOpen(false);
+  };
 
   const { stock, loading: stockLoading } = useStockDetail(symbol);
   const { candles, loading: chartLoading } = useStockHistory(symbol, timeframe);
@@ -389,84 +404,225 @@ export default function StockDetailPage({
         </div>
       </div>
 
-      {/* Quick Trade Modal */}
+      {/* Quick Trade & Brokerage Modal */}
       <Modal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
-        title={`${symbol} — Hızlı İşlem`}
-        description="Portföyünüze alım veya satım işlemi ekleyin."
+        title={`${symbol} — İşlem Yap`}
+        description="Güvenli alım-satım için aracı kurumunuzu seçin veya sanal portföye ekleyin."
       >
-        <form onSubmit={handleTradeSubmit} className="space-y-4">
+        <div className="space-y-4">
+          {/* Symbol Quick Info */}
+          <div className="p-3 bg-bg-secondary rounded-xl border border-border flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center font-black font-mono text-accent text-sm">
+                {symbol.slice(0, 3)}
+              </div>
+              <div>
+                <div className="font-mono font-bold text-sm text-text-primary">{symbol}</div>
+                <div className="text-[11px] text-text-secondary truncate max-w-[160px] sm:max-w-[220px]">
+                  {stock?.name || symbol}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-mono font-bold text-sm text-text-primary">
+                {currSymbol}{currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              </div>
+              <div className={`text-[11px] font-mono font-bold ${isPositive ? 'text-success' : 'text-danger'}`}>
+                {isPositive ? '+' : ''}{stock?.changePercent ? stock.changePercent.toFixed(2) : '0.00'}%
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Selector */}
           <div className="grid grid-cols-2 gap-2 p-1 bg-bg-secondary rounded-xl border border-border">
             <button
               type="button"
-              onClick={() => setTradeType('BUY')}
-              className={`py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                tradeType === 'BUY'
-                  ? 'bg-success text-white shadow-md shadow-success/20'
+              onClick={() => setTradeModalTab('broker')}
+              className={`py-2 px-3 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                tradeModalTab === 'broker'
+                  ? 'bg-accent text-white shadow-md shadow-accent/20'
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              AL (BUY)
+              <span>🏛️</span>
+              <span>Aracı Kurumlar</span>
             </button>
             <button
               type="button"
-              onClick={() => setTradeType('SELL')}
-              className={`py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                tradeType === 'SELL'
-                  ? 'bg-danger text-white shadow-md shadow-danger/20'
+              onClick={() => setTradeModalTab('virtual')}
+              className={`py-2 px-3 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                tradeModalTab === 'virtual'
+                  ? 'bg-bg-tertiary text-text-primary border border-border shadow-sm'
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              SAT (SELL)
+              <span>📝</span>
+              <span>Sanal Portföy</span>
             </button>
           </div>
 
-          <Input
-            label="Birim Fiyat"
-            type="number"
-            step="0.01"
-            value={priceInput}
-            onChange={(e) => setPriceInput(e.target.value)}
-            required
-            helperText={`Anlık Fiyat: ${currSymbol}${currentPrice.toFixed(2)}`}
-          />
+          {/* Brokerage Tab Content */}
+          {tradeModalTab === 'broker' ? (
+            <div className="space-y-3 pt-1">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                İşlem yapmak istediğiniz SPK lisanslı aracı kurumu seçin:
+              </p>
 
-          <Input
-            label="Adet / Lot"
-            type="number"
-            min="1"
-            value={shares}
-            onChange={(e) => setShares(Number(e.target.value))}
-            required
-          />
+              {/* Midas Card */}
+              <div
+                onClick={() => handleOpenBroker('Midas')}
+                className="group relative p-4 rounded-2xl border border-border/80 bg-gradient-to-r from-bg-card via-bg-secondary to-bg-card hover:border-indigo-500/50 hover:shadow-lg hover:shadow-indigo-500/10 transition-all cursor-pointer overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all pointer-events-none" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-indigo-500/20 shrink-0">
+                      M
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-text-primary group-hover:text-indigo-400 transition-colors">
+                          Midas
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/20">
+                          BIST & ABD Borsaları
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-muted mt-1 leading-snug">
+                        Düşük komisyon, anlık canlı veri ve hızlı emir iletimi ile işlem yapın.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-bg-tertiary group-hover:bg-indigo-500 group-hover:text-white text-text-muted transition-all">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-          <div className="bg-bg-tertiary p-3 rounded-xl border border-border flex justify-between items-center text-sm">
-            <span className="text-text-secondary">Tahmini Toplam:</span>
-            <span className="font-bold font-mono text-text-primary">
-              {currSymbol}
-              {((Number(priceInput) || currentPrice) * shares).toLocaleString('tr-TR', {
-                minimumFractionDigits: 2,
-              })}
-            </span>
-          </div>
+              {/* Piapiri Card */}
+              <div
+                onClick={() => handleOpenBroker('Piapiri')}
+                className="group relative p-4 rounded-2xl border border-border/80 bg-gradient-to-r from-bg-card via-bg-secondary to-bg-card hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10 transition-all cursor-pointer overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-all pointer-events-none" />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-rose-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-orange-500/20 shrink-0">
+                      P
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-text-primary group-hover:text-orange-400 transition-colors">
+                          Piapiri
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/20">
+                          Ünlü & Co
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-text-muted mt-1 leading-snug">
+                        Model portföyler, uzman analist önerileri ve robotik alım-satım sinyalleri.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-bg-tertiary group-hover:bg-orange-500 group-hover:text-white text-text-muted transition-all">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsTradeModalOpen(false)}
-            >
-              İptal
-            </Button>
-            <Button
-              type="submit"
-              variant={tradeType === 'BUY' ? 'success' : 'danger'}
-            >
-              {tradeType === 'BUY' ? 'Alış Emrini Onayla' : 'Satış Emrini Onayla'}
-            </Button>
-          </div>
-        </form>
+              {/* Disclaimer */}
+              <div className="p-3 bg-bg-tertiary/60 rounded-xl border border-border/50 text-[11px] text-text-muted leading-relaxed flex items-start gap-2">
+                <span className="text-sm shrink-0">🛡️</span>
+                <span>
+                  <strong>Yasal Bilgilendirme:</strong> StockMind doğrudan emir iletimi veya aracılık yapmaz. Tüm işlemler seçtiğiniz SPK lisanslı yetkili aracı kurumun kendi resmi arayüzü üzerinden gerçekleştirilir.
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* Virtual Portfolio Tab Content */
+            <form onSubmit={handleTradeSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 p-1 bg-bg-secondary rounded-xl border border-border">
+                <button
+                  type="button"
+                  onClick={() => setTradeType('BUY')}
+                  className={`py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                    tradeType === 'BUY'
+                      ? 'bg-success text-white shadow-md shadow-success/20'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  AL (BUY)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTradeType('SELL')}
+                  className={`py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                    tradeType === 'SELL'
+                      ? 'bg-danger text-white shadow-md shadow-danger/20'
+                      : 'text-text-muted hover:text-text-primary'
+                  }`}
+                >
+                  SAT (SELL)
+                </button>
+              </div>
+
+              <Input
+                label="Birim Fiyat"
+                type="number"
+                step="0.01"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+                required
+                helperText={`Anlık Fiyat: ${currSymbol}${currentPrice.toFixed(2)}`}
+              />
+
+              <Input
+                label="Adet / Lot"
+                type="number"
+                min="1"
+                value={shares}
+                onChange={(e) => setShares(Number(e.target.value))}
+                required
+              />
+
+              <div className="bg-bg-tertiary p-3 rounded-xl border border-border flex justify-between items-center text-sm">
+                <span className="text-text-secondary">Tahmini Toplam:</span>
+                <span className="font-bold font-mono text-text-primary">
+                  {currSymbol}
+                  {((Number(priceInput) || currentPrice) * shares).toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setIsTradeModalOpen(false)}
+                >
+                  Kapat
+                </Button>
+                <Button
+                  type="submit"
+                  variant={tradeType === 'BUY' ? 'success' : 'danger'}
+                >
+                  {tradeType === 'BUY' ? 'Sanal Portföye Alış Ekle' : 'Sanal Portföye Satış Ekle'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
       </Modal>
     </div>
   );
