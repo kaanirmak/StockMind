@@ -243,21 +243,143 @@ export interface AlternativeMarketsData {
   indices: StockMarketInfo[];
 }
 
+const TOP_CRYPTO_RANKED_SYMBOLS = [
+  'BTCUSDT',
+  'ETHUSDT',
+  'SOLUSDT',
+  'BNBUSDT',
+  'XRPUSDT',
+  'DOGEUSDT',
+  'ADAUSDT',
+  'AVAXUSDT',
+  'LINKUSDT',
+  'SUIUSDT',
+  'NEARUSDT',
+  'DOTUSDT',
+  'LTCUSDT',
+  'BCHUSDT',
+  'UNIUSDT',
+  'PEPEUSDT',
+  'SHIBUSDT',
+  'APTUSDT',
+  'ARBUSDT',
+  'OPUSDT',
+  'RENDERUSDT',
+  'FETUSDT',
+  'ATOMUSDT',
+  'TIAUSDT',
+  'ICPUSDT',
+  'FILUSDT',
+  'INJUSDT',
+  'SEIUSDT',
+  'AAVEUSDT',
+  'TRXUSDT',
+  'POLUSDT',
+  'FTMUSDT',
+  'RUNEUSDT',
+  'KASUSDT',
+  'XLMUSDT',
+  'HBARUSDT',
+  'STXUSDT',
+  'ALGOUSDT',
+  'MANAUSDT',
+  'SANDUSDT',
+  'AXSUSDT',
+  'GALAUSDT',
+  'CRVUSDT',
+  'MKRUSDT',
+  'LDOUSDT',
+  'QNTUSDT',
+  'GRTUSDT',
+  'THETAUSDT',
+  'FLOWUSDT',
+  'EGLDUSDT',
+];
+
+const CRYPTO_CIRCULATING_SUPPLY: Record<string, number> = {
+  BTCUSDT: 19_800_000,
+  ETHUSDT: 120_400_000,
+  SOLUSDT: 470_000_000,
+  BNBUSDT: 145_000_000,
+  XRPUSDT: 57_000_000_000,
+  DOGEUSDT: 147_000_000_000,
+  ADAUSDT: 35_700_000_000,
+  AVAXUSDT: 410_000_000,
+  LINKUSDT: 626_000_000,
+  SUIUSDT: 2_800_000_000,
+  NEARUSDT: 1_200_000_000,
+  DOTUSDT: 1_400_000_000,
+  LTCUSDT: 75_000_000,
+  BCHUSDT: 19_700_000,
+  UNIUSDT: 600_000_000,
+  PEPEUSDT: 420_000_000_000_000,
+  SHIBUSDT: 589_000_000_000_000,
+  APTUSDT: 520_000_000,
+  ARBUSDT: 4_100_000_000,
+  OPUSDT: 1_300_000_000,
+  RENDERUSDT: 518_000_000,
+  FETUSDT: 2_600_000_000,
+  ATOMUSDT: 390_000_000,
+  TIAUSDT: 220_000_000,
+  ICPUSDT: 470_000_000,
+  FILUSDT: 600_000_000,
+  INJUSDT: 100_000_000,
+  SEIUSDT: 3_500_000_000,
+  AAVEUSDT: 15_000_000,
+  TRXUSDT: 86_000_000_000,
+};
+
 const CRYPTO_NAMES: Record<string, string> = {
   BTCUSDT: 'Bitcoin (BTC)',
   ETHUSDT: 'Ethereum (ETH)',
   SOLUSDT: 'Solana (SOL)',
-  XRPUSDT: 'Ripple (XRP)',
   BNBUSDT: 'BNB (Binance Coin)',
+  XRPUSDT: 'Ripple (XRP)',
   DOGEUSDT: 'Dogecoin (DOGE)',
-  AVAXUSDT: 'Avalanche (AVAX)',
   ADAUSDT: 'Cardano (ADA)',
-  PEPEUSDT: 'Pepe (PEPE)',
+  AVAXUSDT: 'Avalanche (AVAX)',
   LINKUSDT: 'Chainlink (LINK)',
-  DOTUSDT: 'Polkadot (DOT)',
-  NEARUSDT: 'NEAR Protocol (NEAR)',
   SUIUSDT: 'Sui Network (SUI)',
+  NEARUSDT: 'NEAR Protocol (NEAR)',
+  DOTUSDT: 'Polkadot (DOT)',
+  LTCUSDT: 'Litecoin (LTC)',
+  BCHUSDT: 'Bitcoin Cash (BCH)',
+  UNIUSDT: 'Uniswap (UNI)',
+  PEPEUSDT: 'Pepe (PEPE)',
   SHIBUSDT: 'Shiba Inu (SHIB)',
+  APTUSDT: 'Aptos (APT)',
+  ARBUSDT: 'Arbitrum (ARB)',
+  OPUSDT: 'Optimism (OP)',
+  RENDERUSDT: 'Render (RENDER)',
+  FETUSDT: 'Artificial Superintelligence (FET)',
+  ATOMUSDT: 'Cosmos (ATOM)',
+  TIAUSDT: 'Celestia (TIA)',
+  ICPUSDT: 'Internet Computer (ICP)',
+  FILUSDT: 'Filecoin (FIL)',
+  INJUSDT: 'Injective (INJ)',
+  SEIUSDT: 'Sei Network (SEI)',
+  AAVEUSDT: 'Aave (AAVE)',
+  TRXUSDT: 'TRON (TRX)',
+  POLUSDT: 'Polygon (POL)',
+  FTMUSDT: 'Fantom (FTM)',
+  RUNEUSDT: 'THORChain (RUNE)',
+  KASUSDT: 'Kaspa (KAS)',
+  XLMUSDT: 'Stellar (XLM)',
+  HBARUSDT: 'Hedera (HBAR)',
+  STXUSDT: 'Stacks (STX)',
+  ALGOUSDT: 'Algorand (ALGO)',
+  MANAUSDT: 'Decentraland (MANA)',
+  SANDUSDT: 'The Sandbox (SAND)',
+  AXSUSDT: 'Axie Infinity (AXS)',
+  GALAUSDT: 'Gala (GALA)',
+  CRVUSDT: 'Curve DAO (CRV)',
+  MKRUSDT: 'Maker (MKR)',
+  LDOUSDT: 'Lido DAO (LDO)',
+  QNTUSDT: 'Quant (QNT)',
+  GRTUSDT: 'The Graph (GRT)',
+  THETAUSDT: 'Theta Network (THETA)',
+  FLOWUSDT: 'Flow (FLOW)',
+  EGLDUSDT: 'MultiversX (EGLD)',
 };
 
 const FOREX_NAMES: Record<string, string> = {
@@ -296,37 +418,40 @@ const FOREX_NAMES: Record<string, string> = {
 };
 
 const MAJOR_INDEX_DEFINITIONS = [
-  { ticker: 'XU100.IS', symbol: 'XU100', name: 'Borsa İstanbul 100 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 12265.98 },
-  { ticker: 'XU030.IS', symbol: 'XU030', name: 'Borsa İstanbul 30 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15145.27 },
-  { ticker: 'XBANK.IS', symbol: 'XBANK', name: 'BIST Bankacılık Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15870.84 },
-  { ticker: 'XUSIN.IS', symbol: 'XUSIN', name: 'BIST Sınai Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 16011.48 },
-  { ticker: 'XUTEK.IS', symbol: 'XUTEK', name: 'BIST Teknoloji Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 37934.21 },
-  { ticker: 'XULAS.IS', symbol: 'XULAS', name: 'BIST Ulaştırma Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 33163.41 },
-  { ticker: 'XUHIZ.IS', symbol: 'XUHIZ', name: 'BIST Hizmetler Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10795.61 },
-  { ticker: 'XHOLD.IS', symbol: 'XHOLD', name: 'BIST Holding & Yatırım', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10495.89 },
-  { ticker: 'XELKT.IS', symbol: 'XELKT', name: 'BIST Elektrik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 613.31 },
-  { ticker: 'XGMYO.IS', symbol: 'XGMYO', name: 'BIST Gayrimenkul YO', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 5113.42 },
-  { ticker: 'XTRZM.IS', symbol: 'XTRZM', name: 'BIST Turizm Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 1420.5 },
-  { ticker: 'XMADN.IS', symbol: 'XMADN', name: 'BIST Madencilik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 7850.2 },
-  { ticker: 'XKMYA.IS', symbol: 'XKMYA', name: 'BIST Kimya Petrol Plastik', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 18400.0 },
-  { ticker: 'XGIDA.IS', symbol: 'XGIDA', name: 'BIST Gıda İçecek Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 14200.0 },
-  { ticker: 'XBLSM.IS', symbol: 'XBLSM', name: 'BIST Bilişim Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 8900.0 },
-  { ticker: 'XTCRT.IS', symbol: 'XTCRT', name: 'BIST Ticaret Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 38200.0 },
-  { ticker: 'XSGRT.IS', symbol: 'XSGRT', name: 'BIST Sigorta Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 98500.0 },
-  { ticker: '^GSPC', symbol: 'SPX', name: 'S&P 500 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 7811.54 },
-  { ticker: '^IXIC', symbol: 'NDX', name: 'NASDAQ 100 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 27366.17 },
-  { ticker: '^DJI', symbol: 'DJI', name: 'Dow Jones Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 51654.95 },
-  { ticker: '^GDAXI', symbol: 'DAX', name: 'Almanya DAX 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 25087.27 },
-  { ticker: '^FTSE', symbol: 'FTSE', name: 'İngiltere FTSE 100 Endeksi', currency: 'GBP', sector: 'Küresel Endeksler', basePrice: 10552.05 },
-  { ticker: '^N225', symbol: 'N225', name: 'Japonya Nikkei 225 Endeksi', currency: 'JPY', sector: 'Küresel Endeksler', basePrice: 69030.92 },
-  { ticker: '^STOXX50E', symbol: 'STOXX50', name: 'Euro Stoxx 50 Endeksi (Avrupa)', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 5420.0 },
-  { ticker: '^FCHI', symbol: 'CAC40', name: 'Fransa CAC 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 8120.0 },
-  { ticker: '^HSI', symbol: 'HSI', name: 'Hong Kong Hang Seng Endeksi', currency: 'HKD', sector: 'Küresel Endeksler', basePrice: 26400.0 },
-  { ticker: '^AORD', symbol: 'AORD', name: 'Avustralya All Ordinaries', currency: 'AUD', sector: 'Küresel Endeksler', basePrice: 9480.0 },
-  { ticker: '^KS11', symbol: 'KOSPI', name: 'Güney Kore KOSPI Endeksi', currency: 'KRW', sector: 'Küresel Endeksler', basePrice: 2950.0 },
-  { ticker: '^BVSP', symbol: 'BVSP', name: 'Brezilya Bovespa Endeksi', currency: 'BRL', sector: 'Küresel Endeksler', basePrice: 138000.0 },
-  { ticker: 'DX-Y.NYB', symbol: 'DXY', name: 'Dolar Endeksi (DXY)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 104.5 },
-  { ticker: '^VIX', symbol: 'VIX', name: 'VIX Volatilite (Korku) Endeksi', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 17.2 },
+  // BIST Ana & Sektör Endeksleri
+  { ticker: 'XU100.IS', symbol: 'XU100', name: 'Borsa İstanbul 100 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 12265.98, marketCap: 50_000_000_000_000 },
+  { ticker: 'XU030.IS', symbol: 'XU030', name: 'Borsa İstanbul 30 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15145.27, marketCap: 48_000_000_000_000 },
+  { ticker: 'XU050.IS', symbol: 'XU050', name: 'Borsa İstanbul 50 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 13800.50, marketCap: 46_000_000_000_000 },
+  { ticker: '^GSPC', symbol: 'SPX', name: 'S&P 500 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 7811.54, marketCap: 45_000_000_000_000 },
+  { ticker: '^IXIC', symbol: 'NDX', name: 'NASDAQ 100 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 27366.17, marketCap: 22_000_000_000_000 },
+  { ticker: '^DJI', symbol: 'DJI', name: 'Dow Jones Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 51654.95, marketCap: 15_000_000_000_000 },
+  { ticker: '^GDAXI', symbol: 'DAX', name: 'Almanya DAX 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 25087.27, marketCap: 5_000_000_000_000 },
+  { ticker: '^FTSE', symbol: 'FTSE', name: 'İngiltere FTSE 100 Endeksi', currency: 'GBP', sector: 'Küresel Endeksler', basePrice: 10552.05, marketCap: 4_800_000_000_000 },
+  { ticker: '^N225', symbol: 'N225', name: 'Japonya Nikkei 225 Endeksi', currency: 'JPY', sector: 'Küresel Endeksler', basePrice: 69030.92, marketCap: 4_500_000_000_000 },
+  { ticker: 'XBANK.IS', symbol: 'XBANK', name: 'BIST Bankacılık Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15870.84, marketCap: 4_000_000_000_000 },
+  { ticker: 'XUSIN.IS', symbol: 'XUSIN', name: 'BIST Sınai Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 16011.48, marketCap: 3_900_000_000_000 },
+  { ticker: '^STOXX50E', symbol: 'STOXX50', name: 'Euro Stoxx 50 Endeksi (Avrupa)', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 5420.0, marketCap: 3_800_000_000_000 },
+  { ticker: '^HSI', symbol: 'HSI', name: 'Hong Kong Hang Seng Endeksi', currency: 'HKD', sector: 'Küresel Endeksler', basePrice: 26400.0, marketCap: 3_200_000_000_000 },
+  { ticker: '^RUT', symbol: 'RUT', name: 'Russell 2000 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 2150.0, marketCap: 3_000_000_000_000 },
+  { ticker: '^FCHI', symbol: 'CAC40', name: 'Fransa CAC 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 8120.0, marketCap: 2_400_000_000_000 },
+  { ticker: 'XUTEK.IS', symbol: 'XUTEK', name: 'BIST Teknoloji Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 37934.21, marketCap: 2_000_000_000_000 },
+  { ticker: 'XULAS.IS', symbol: 'XULAS', name: 'BIST Ulaştırma Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 33163.41, marketCap: 1_900_000_000_000 },
+  { ticker: 'XUHIZ.IS', symbol: 'XUHIZ', name: 'BIST Hizmetler Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10795.61, marketCap: 1_800_000_000_000 },
+  { ticker: 'XHOLD.IS', symbol: 'XHOLD', name: 'BIST Holding & Yatırım', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10495.89, marketCap: 1_700_000_000_000 },
+  { ticker: 'XELKT.IS', symbol: 'XELKT', name: 'BIST Elektrik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 613.31, marketCap: 1_600_000_000_000 },
+  { ticker: 'XGMYO.IS', symbol: 'XGMYO', name: 'BIST Gayrimenkul YO', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 5113.42, marketCap: 1_500_000_000_000 },
+  { ticker: 'XTRZM.IS', symbol: 'XTRZM', name: 'BIST Turizm Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 1420.5, marketCap: 1_400_000_000_000 },
+  { ticker: 'XMADN.IS', symbol: 'XMADN', name: 'BIST Madencilik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 7850.2, marketCap: 1_300_000_000_000 },
+  { ticker: 'XKMYA.IS', symbol: 'XKMYA', name: 'BIST Kimya Petrol Plastik', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 18400.0, marketCap: 1_200_000_000_000 },
+  { ticker: 'XGIDA.IS', symbol: 'XGIDA', name: 'BIST Gıda İçecek Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 14200.0, marketCap: 1_100_000_000_000 },
+  { ticker: 'XBLSM.IS', symbol: 'XBLSM', name: 'BIST Bilişim Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 8900.0, marketCap: 1_000_000_000_000 },
+  { ticker: 'XTCRT.IS', symbol: 'XTCRT', name: 'BIST Ticaret Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 38200.0, marketCap: 950_000_000_000 },
+  { ticker: 'XSGRT.IS', symbol: 'XSGRT', name: 'BIST Sigorta Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 98500.0, marketCap: 900_000_000_000 },
+  { ticker: 'DX-Y.NYB', symbol: 'DXY', name: 'Dolar Endeksi (DXY)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 104.5, marketCap: 850_000_000_000 },
+  { ticker: '^AORD', symbol: 'AORD', name: 'Avustralya All Ordinaries', currency: 'AUD', sector: 'Küresel Endeksler', basePrice: 9480.0, marketCap: 800_000_000_000 },
+  { ticker: '^KS11', symbol: 'KOSPI', name: 'Güney Kore KOSPI Endeksi', currency: 'KRW', sector: 'Küresel Endeksler', basePrice: 2950.0, marketCap: 750_000_000_000 },
+  { ticker: '^BVSP', symbol: 'BVSP', name: 'Brezilya Bovespa Endeksi', currency: 'BRL', sector: 'Küresel Endeksler', basePrice: 138000.0, marketCap: 700_000_000_000 },
+  { ticker: '^VIX', symbol: 'VIX', name: 'VIX Volatilite (Korku) Endeksi', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 17.2, marketCap: 500_000_000_000 },
 ];
 
 const CFD_NAMES: Record<string, string> = {
@@ -362,8 +487,19 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   };
 
   try {
-    const [cryptoRes, tryFxRes, allFxRes, cfdRes, cfdIndexRes, yahooIndicesRes] = await Promise.all([
-      // 1. Top 80 Cryptocurrencies by volume from Binance
+    const [majorCryptoRes, additionalCryptoRes, tryFxRes, allFxRes, cfdRes, yahooIndicesRes] = await Promise.all([
+      // 1. Top Ranked Major Cryptocurrencies (BTC, ETH, SOL, BNB, XRP...) from Binance
+      fetch('https://scanner.tradingview.com/crypto/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbols: { tickers: TOP_CRYPTO_RANKED_SYMBOLS.map((s) => `BINANCE:${s}`) },
+          columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
+        }),
+        next: { revalidate: 30 },
+      }).then((r) => r.json()).catch(() => null),
+
+      // 1.5 Additional high volume cryptocurrencies from Binance
       fetch('https://scanner.tradingview.com/crypto/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -416,19 +552,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
 
-      // 5. Global CFD Indices (60+ Major World & Sector Indices)
-      fetch('https://scanner.tradingview.com/cfd/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filter: [{ left: 'type', operation: 'equal', right: 'index' }],
-          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
-          range: [0, 60],
-        }),
-        next: { revalidate: 30 },
-      }).then((r) => r.json()).catch(() => null),
-
-      // 6. Live Major BIST & World Indices from Yahoo Finance
+      // 5. Live Major BIST & World Indices from Yahoo Finance
       Promise.all(
         MAJOR_INDEX_DEFINITIONS.map(async (item) => {
           try {
@@ -463,37 +587,55 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       ),
     ]);
 
-    // Parse Crypto
-    cryptoRes?.data?.forEach((item: any) => {
-      const [name, close, change, volume, desc, high52, low52] = item.d;
-      if (name && close !== null && close !== undefined) {
-        const currentPrice = Number(close.toFixed(close < 1 ? 4 : 2));
-        const changePercent = Number((change || 0).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+    // Parse Crypto: Guarantee BTC, ETH, SOL, BNB, XRP, DOGE, ADA are at the top!
+    const seenCrypto = new Set<string>();
 
-        result.crypto.push({
-          symbol: name,
-          name: CRYPTO_NAMES[name] || desc || name,
-          exchange: 'CRYPTO',
-          currency: 'USD',
-          sector: 'Kripto Varlıklar',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: Number((currentPrice * 1.02).toFixed(2)),
-          low: Number((currentPrice * 0.98).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
-          close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: volume || 0,
-          marketCap: (volume || 0) * currentPrice,
-          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
-          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
-          timestamp: new Date().toISOString(),
-        } as any);
-      }
+    const parseCryptoItem = (item: any) => {
+      const [name, close, change, volume, desc, high52, low52] = item.d;
+      if (!name || close === null || close === undefined || seenCrypto.has(name)) return;
+      seenCrypto.add(name);
+
+      const currentPrice = Number(close.toFixed(close < 1 ? (close < 0.001 ? 6 : 4) : 2));
+      const changePercent = Number((change || 0).toFixed(2));
+      const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(currentPrice < 1 ? 4 : 2));
+      const supply = CRYPTO_CIRCULATING_SUPPLY[name] || (volume > 0 ? volume : 100_000_000);
+      const marketCap = Number((currentPrice * supply).toFixed(0));
+
+      result.crypto.push({
+        symbol: name,
+        name: CRYPTO_NAMES[name] || desc || name,
+        exchange: 'CRYPTO',
+        currency: 'USD',
+        sector: 'Kripto Varlıklar',
+        basePrice: currentPrice,
+        price: currentPrice,
+        change: changeAmt,
+        changePercent,
+        high: Number((currentPrice * 1.02).toFixed(currentPrice < 1 ? 4 : 2)),
+        low: Number((currentPrice * 0.98).toFixed(currentPrice < 1 ? 4 : 2)),
+        open: Number((currentPrice - changeAmt).toFixed(currentPrice < 1 ? 4 : 2)),
+        close: currentPrice,
+        previousClose: Number((currentPrice - changeAmt).toFixed(currentPrice < 1 ? 4 : 2)),
+        volume: volume || 0,
+        marketCap,
+        high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+        low52w: low52 ? Number(low52.toFixed(2)) : undefined,
+        timestamp: new Date().toISOString(),
+      } as any);
+    };
+
+    // 1. Add all Top Ranked Major Cryptos in exact order (BTC, ETH, SOL, BNB, XRP...)
+    const majorMap = new Map();
+    majorCryptoRes?.data?.forEach((item: any) => {
+      if (item?.d?.[0]) majorMap.set(item.d[0], item);
     });
+    TOP_CRYPTO_RANKED_SYMBOLS.forEach((sym) => {
+      const found = majorMap.get(sym);
+      if (found) parseCryptoItem(found);
+    });
+
+    // 2. Append additional high-volume Binance crypto pairs
+    additionalCryptoRes?.data?.forEach((item: any) => parseCryptoItem(item));
 
     let liveUsdTry = 49.25;
     let liveUsdTryChange = 0;
@@ -572,9 +714,9 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         const itemObj: StockMarketInfo = {
           symbol: name,
           name: CFD_NAMES[name] || desc || name,
-          exchange: isIndex ? 'INDEX' : 'COMMODITY',
-          currency: name === 'DAX' ? 'EUR' : 'USD',
-          sector: isIndex ? 'Borsa Endeksleri' : 'Kıymetli Madenler & Emtia',
+          exchange: 'COMMODITY',
+          currency: 'USD',
+          sector: 'Kıymetli Madenler & Emtia',
           basePrice: currentPrice,
           price: currentPrice,
           change: changeAmt,
@@ -591,15 +733,13 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
           timestamp: new Date().toISOString(),
         };
 
-        if (isIndex) {
-          result.indices.push(itemObj);
-        } else {
+        if (!isIndex) {
           result.commodity.push(itemObj);
         }
       }
     });
 
-    // Parse Major BIST & World Indices (Priority at top)
+    // Parse Major BIST & World Indices (Authoritative stock indices)
     const seenIndices = new Set<string>();
     yahooIndicesRes?.forEach((item: any) => {
       if (!item || seenIndices.has(item.symbol)) return;
@@ -622,41 +762,23 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: item.price,
         previousClose: Number((item.price - changeAmt).toFixed(2)),
         volume: 100000000,
-        marketCap: 0,
+        marketCap: item.marketCap || 10_000_000_000,
         timestamp: new Date().toISOString(),
       } as any);
     });
 
-    // Parse CFD Indices from TradingView
-    cfdIndexRes?.data?.forEach((item: any) => {
-      const [name, close, change, desc, high52, low52] = item.d;
-      if (name && close !== null && close !== undefined && !seenIndices.has(name)) {
-        seenIndices.add(name);
-        const currentPrice = Number(close.toFixed(2));
-        const changePercent = Number((change || 0).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
-        result.indices.push({
-          symbol: name,
-          name: CFD_NAMES[name] || desc || name,
-          exchange: 'INDEX',
-          currency: 'USD',
-          sector: 'Küresel Endeksler',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: Number((currentPrice * 1.01).toFixed(2)),
-          low: Number((currentPrice * 0.99).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
-          close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: 50000000,
-          marketCap: 0,
-          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
-          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
-          timestamp: new Date().toISOString(),
-        } as any);
-      }
+    // Strict filter: Exclude any cryptocurrency, dominance tickers (.D), or market cap tokens from indices!
+    const CRYPTO_DISQUALIFIERS = new Set([
+      'BTC', 'ETH', 'SOL', 'AVAX', 'VELVET', 'CVX', 'KCS', 'QI', 'ETC', 'NIL',
+      'CAKE', 'DOT', 'MAGIC', 'ZANO', 'TRX', 'ZEN', 'XRP', 'ILV', 'WLDW', 'LYN',
+      'POND', 'MOVR', 'ALICE', 'USDD', 'DOGE', 'ADA', 'BNB', 'SHIB', 'PEPE', 'NEAR', 'SUI'
+    ]);
+    result.indices = result.indices.filter((idx) => {
+      const sym = idx.symbol.toUpperCase();
+      const name = idx.name.toUpperCase();
+      if (sym.includes('.D') || sym.includes('.C') || name.includes('DOMINANCE') || name.includes('MARKET CAP')) return false;
+      if (CRYPTO_DISQUALIFIERS.has(sym)) return false;
+      return true;
     });
 
     // Add Calculated Turkish Lira Gold & Silver items
