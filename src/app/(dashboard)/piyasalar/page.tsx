@@ -67,8 +67,8 @@ function PiyasalarContent() {
   // Funds state
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [fundSearch, setFundSearch] = useState<string>('');
-  const [fundPage, setFundPage] = useState<number>(1);
-  const fundPageSize = 40;
+  const [fundLimit, setFundLimit] = useState<number>(30);
+  const loadMoreFundsRef = useRef<HTMLDivElement>(null);
   const [fundSortBy, setFundSortBy] = useState<'dailyReturn' | 'monthlyReturn' | 'return3m' | 'yearlyReturn' | 'return3y' | 'return5y' | 'price' | 'riskValue'>('yearlyReturn');
   const [fundSortOrder, setFundSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -81,6 +81,7 @@ function PiyasalarContent() {
   const handleMarketChange = (market: MarketId) => {
     setActiveMarket(market);
     setStockLimit(30);
+    setFundLimit(30);
     router.replace(`/piyasalar?market=${market.toLowerCase()}`, { scroll: false });
   };
 
@@ -88,6 +89,10 @@ function PiyasalarContent() {
   useEffect(() => {
     setStockLimit(30);
   }, [activeMarket, selectedSector, stockSearch, stockSortBy, stockSortOrder]);
+
+  useEffect(() => {
+    setFundLimit(30);
+  }, [activeMarket, selectedCategory, fundSearch, fundSortBy, fundSortOrder]);
 
   // Fetch overview data when activeMarket is 'ALL'
   useEffect(() => {
@@ -138,7 +143,7 @@ function PiyasalarContent() {
 
   const visibleStocks = sortedStocks.slice(0, stockLimit);
 
-  // IntersectionObserver for smooth infinite scroll
+  // IntersectionObserver for smooth infinite scroll on stocks
   useEffect(() => {
     if (!loadMoreRef.current || !isStocksMarket) return;
     const observer = new IntersectionObserver(
@@ -169,13 +174,27 @@ function PiyasalarContent() {
     const valB = b[fundSortBy] || 0;
     return stockSortOrder === 'desc' ? Number(valB) - Number(valA) : Number(valA) - Number(valB);
   });
-  const totalFundPages = Math.ceil(sortedFunds.length / fundPageSize);
-  const paginatedFunds = sortedFunds.slice((fundPage - 1) * fundPageSize, fundPage * fundPageSize);
+  const visibleFunds = sortedFunds.slice(0, fundLimit);
+
+  // IntersectionObserver for smooth infinite scroll on TEFAS funds
+  useEffect(() => {
+    if (!loadMoreFundsRef.current || activeMarket !== 'TEFAS') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && fundLimit < sortedFunds.length) {
+          setFundLimit((prev) => Math.min(prev + 30, sortedFunds.length));
+        }
+      },
+      { rootMargin: '300px' }
+    );
+    observer.observe(loadMoreFundsRef.current);
+    return () => observer.disconnect();
+  }, [fundLimit, sortedFunds.length, activeMarket]);
 
   const toggleFundSort = (column: typeof fundSortBy) => {
     if (fundSortBy === column) setFundSortOrder(fundSortOrder === 'desc' ? 'asc' : 'desc');
     else { setFundSortBy(column); setFundSortOrder('desc'); }
-    setFundPage(1);
+    setFundLimit(30);
   };
 
   const sectors = ['ALL', 'Bankacılık', 'Havacılık', 'Savunma', 'Sanayi', 'Perakende', 'Teknoloji', 'Enerji', 'Holding'];
@@ -672,7 +691,7 @@ function PiyasalarContent() {
                 <Input
                   placeholder="Fon kodu veya kurucu ara (örn: TI2, MAC)..."
                   value={fundSearch}
-                  onChange={(e) => { setFundSearch(e.target.value); setFundPage(1); }}
+                  onChange={(e) => { setFundSearch(e.target.value); setFundLimit(30); }}
                   leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
                 />
               </div>
@@ -682,7 +701,7 @@ function PiyasalarContent() {
               {fundCategories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => { setSelectedCategory(cat.id); setFundPage(1); }}
+                  onClick={() => { setSelectedCategory(cat.id); setFundLimit(30); }}
                   className={`px-3 py-1.5 rounded-full border transition-all cursor-pointer shrink-0 text-xs ${selectedCategory === cat.id ? 'bg-accent/20 border-accent text-accent font-semibold' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'}`}
                 >
                   {cat.label}
@@ -728,7 +747,7 @@ function PiyasalarContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {paginatedFunds.map((fund) => {
+                    {visibleFunds.map((fund) => {
                       const dailyPos = (fund.dailyReturn || 0) >= 0;
                       const yearlyPos = (fund.yearlyReturn || 0) >= 0;
                       return (
@@ -794,7 +813,7 @@ function PiyasalarContent() {
           ) : (
             /* Funds Grid */
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {paginatedFunds.map((fund) => {
+              {visibleFunds.map((fund) => {
                 const dailyPos = (fund.dailyReturn || 0) >= 0;
                 const yearlyPos = (fund.yearlyReturn || 0) >= 0;
                 const isStarred = checkWatchlisted(fund.code);
@@ -834,30 +853,19 @@ function PiyasalarContent() {
             </div>
           )}
 
-          {/* Funds Pagination */}
-          {totalFundPages > 1 && (
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <span className="text-xs text-text-muted">
-                Sayfa {fundPage} / {totalFundPages} ({sortedFunds.length} Fon)
+          {/* TEFAS Infinite Scroll Indicator & Load More Button */}
+          {visibleFunds.length < sortedFunds.length && (
+            <div ref={loadMoreFundsRef} className="py-6 flex flex-col items-center justify-center gap-2 text-center">
+              <span className="text-xs text-text-muted font-medium">
+                {visibleFunds.length} / {sortedFunds.length} TEFAS fonu gösteriliyor
               </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={fundPage <= 1}
-                  onClick={() => setFundPage((p) => Math.max(1, p - 1))}
-                >
-                  &larr; Önceki
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={fundPage >= totalFundPages}
-                  onClick={() => setFundPage((p) => Math.min(totalFundPages, p + 1))}
-                >
-                  Sonraki &rarr;
-                </Button>
-              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setFundLimit((prev) => Math.min(prev + 30, sortedFunds.length))}
+              >
+                Daha Fazla Fon Yükle (+30)
+              </Button>
             </div>
           )}
         </div>

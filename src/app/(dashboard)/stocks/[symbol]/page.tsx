@@ -283,86 +283,8 @@ export default function StockDetailPage({
         </div>
       </div>
 
-      {/* Chart Section */}
+      {/* Chart Section - Single Unified Box */}
       <div className="space-y-3">
-        {/* Controls Bar: Timeframe & Indicators in a smooth horizontal touch-scroller */}
-        <div className="glass-card p-2 sm:p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2">
-          {/* Timeframe Selector with Midas-style capsule pills */}
-          <div className="flex items-center gap-1 bg-bg-secondary/70 p-1 rounded-full border border-border/80 overflow-x-auto no-scrollbar scroll-smooth">
-            {[
-              { id: '1D', label: '1G' },
-              { id: '1W', label: '1H' },
-              { id: '1M', label: '1A' },
-              { id: '3M', label: '3A' },
-              { id: '6M', label: '6A' },
-              { id: '1Y', label: '1Y' },
-              { id: '5Y', label: '5Y' },
-              { id: 'ALL', label: 'Tümü' },
-            ].map((tf) => (
-              <button
-                key={tf.id}
-                onClick={() => setTimeframe(tf.id as any)}
-                className={`flex-1 min-w-[36px] py-1 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer text-center ${
-                  timeframe === tf.id
-                    ? 'bg-accent text-white shadow-sm shadow-accent/20 font-bold'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                }`}
-              >
-                {tf.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Indicator toggles */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs pb-0.5">
-            <button
-              onClick={() => setShowSMA20(!showSMA20)}
-              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
-                showSMA20
-                  ? 'bg-warning/20 border-warning text-warning'
-                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${showSMA20 ? 'bg-warning' : 'bg-text-muted'}`} />
-              SMA 20
-            </button>
-            <button
-              onClick={() => setShowSMA50(!showSMA50)}
-              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
-                showSMA50
-                  ? 'bg-info/20 border-info text-info'
-                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${showSMA50 ? 'bg-info' : 'bg-text-muted'}`} />
-              SMA 50
-            </button>
-            <button
-              onClick={() => setShowBB(!showBB)}
-              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
-                showBB
-                  ? 'bg-accent-secondary/20 border-accent-secondary text-accent-secondary'
-                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${showBB ? 'bg-accent-secondary' : 'bg-text-muted'}`} />
-              Bollinger
-            </button>
-            <button
-              onClick={() => setShowVolume(!showVolume)}
-              className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
-                showVolume
-                  ? 'bg-accent/20 border-accent text-accent'
-                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${showVolume ? 'bg-accent' : 'bg-text-muted'}`} />
-              Hacim
-            </button>
-          </div>
-        </div>
-
-        {/* Unified Native Candlestick Chart */}
         {chartLoading && candles.length === 0 ? (
           <div className="glass-card h-[320px] sm:h-[450px] flex items-center justify-center text-text-muted">
             <div className="flex flex-col items-center gap-2">
@@ -385,6 +307,83 @@ export default function StockDetailPage({
             sma20={indicators?.indicators?.sma20 || []}
             sma50={indicators?.indicators?.sma50 || []}
             bollingerBands={indicators?.indicators?.bollingerBands || []}
+            bottomControls={
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+                {/* Timeframe Selector with Midas-style capsule pills */}
+                <div className="flex items-center gap-1 bg-bg-secondary/70 p-1 rounded-full border border-border/80 overflow-x-auto no-scrollbar scroll-smooth">
+                  {[
+                    { id: '1D', label: '1G' },
+                    { id: '1W', label: '1H' },
+                    { id: '1M', label: '1A' },
+                    { id: '3M', label: '3A' },
+                    { id: '6M', label: '6A' },
+                    { id: '1Y', label: '1Y' },
+                    { id: '5Y', label: '5Y' },
+                    { id: 'ALL', label: 'Tümü' },
+                  ].map((tf) => (
+                    <button
+                      key={tf.id}
+                      onClick={() => setTimeframe(tf.id as any)}
+                      className={`flex-1 min-w-[36px] py-1 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer text-center ${
+                        timeframe === tf.id
+                          ? 'bg-accent text-white shadow-sm shadow-accent/20 font-bold'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                      }`}
+                    >
+                      {tf.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Indicator toggles */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+                  <button
+                    onClick={() => setShowSMA20(!showSMA20)}
+                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                      showSMA20
+                        ? 'bg-warning/20 border-warning text-warning'
+                        : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${showSMA20 ? 'bg-warning' : 'bg-text-muted'}`} />
+                    SMA 20
+                  </button>
+                  <button
+                    onClick={() => setShowSMA50(!showSMA50)}
+                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                      showSMA50
+                        ? 'bg-info/20 border-info text-info'
+                        : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${showSMA50 ? 'bg-info' : 'bg-text-muted'}`} />
+                    SMA 50
+                  </button>
+                  <button
+                    onClick={() => setShowBB(!showBB)}
+                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                      showBB
+                        ? 'bg-accent-secondary/20 border-accent-secondary text-accent-secondary'
+                        : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${showBB ? 'bg-accent-secondary' : 'bg-text-muted'}`} />
+                    Bollinger
+                  </button>
+                  <button
+                    onClick={() => setShowVolume(!showVolume)}
+                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                      showVolume
+                        ? 'bg-accent/20 border-accent text-accent'
+                        : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${showVolume ? 'bg-accent' : 'bg-text-muted'}`} />
+                    Hacim
+                  </button>
+                </div>
+              </div>
+            }
           />
         )}
       </div>

@@ -266,7 +266,7 @@ function AIAssistantContent() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-3.5rem-4.5rem-0.75rem-env(safe-area-inset-bottom,0px))] md:h-[calc(100vh-4rem-2.5rem)] -mb-[calc(7rem+env(safe-area-inset-bottom,0px))] md:mb-0 pb-1.5 md:pb-0 overflow-hidden animate-fade-in relative">
+    <div className="flex flex-col h-[calc(100dvh-5.5rem-env(safe-area-inset-bottom,0px))] md:h-[calc(100vh-6.5rem)] min-h-0 animate-fade-in relative">
       {/* Top Header - Compact for Mobile, Detailed for Desktop */}
       <div className="glass-card p-2.5 sm:p-4 mb-2 sm:mb-3 shrink-0 rounded-2xl border border-border">
         {/* Mobile Header (Single Compact Row) */}
@@ -425,7 +425,7 @@ function AIAssistantContent() {
       )}
 
       {/* Chat Messages Body */}
-      <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar touch-pan-y overscroll-contain">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
           return (

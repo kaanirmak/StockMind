@@ -23,6 +23,7 @@ export interface CandlestickChartProps {
   showSMA50?: boolean;
   showBB?: boolean;
   showVolume?: boolean;
+  bottomControls?: React.ReactNode;
 }
 
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
@@ -36,6 +37,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   showSMA50 = false,
   showBB = false,
   showVolume = true,
+  bottomControls,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartWrapperRef = useRef<HTMLDivElement>(null);
@@ -520,6 +522,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         className="w-full relative touch-pan-x"
         style={{ touchAction: 'pan-x' }}
       />
+
+      {/* Embedded Bottom Controls (Timeframe & Indicators inside the same box) */}
+      {bottomControls && (
+        <div className="mt-3 pt-3 border-t border-border/40">
+          {bottomControls}
+        </div>
+      )}
 
       {/* Mobile Touch Tip Indicator */}
       <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30 text-[10px] text-text-muted">

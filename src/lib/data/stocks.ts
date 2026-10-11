@@ -297,66 +297,59 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   };
 
   try {
-    const [cryptoRes, fxRes, cfdRes] = await Promise.all([
+    const [cryptoRes, fxRes, cfdRes, bistIndexRes] = await Promise.all([
+      // 1. Top 80 Cryptocurrencies by volume from Binance
       fetch('https://scanner.tradingview.com/crypto/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filter: [
             { left: 'exchange', operation: 'equal', right: 'BINANCE' },
-            {
-              left: 'name',
-              operation: 'in_range',
-              right: [
-                'BTCUSDT',
-                'ETHUSDT',
-                'SOLUSDT',
-                'XRPUSDT',
-                'BNBUSDT',
-                'DOGEUSDT',
-                'AVAXUSDT',
-                'ADAUSDT',
-                'PEPEUSDT',
-                'LINKUSDT',
-                'DOTUSDT',
-                'NEARUSDT',
-                'SUIUSDT',
-                'SHIBUSDT',
-              ],
-            },
+            { left: 'name', operation: 'match', right: '.*USDT$' },
           ],
           columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
+          sort: { sortBy: 'volume', sortOrder: 'desc' },
+          range: [0, 80],
         }),
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
+
+      // 2. 80+ Forex Currencies & Cross Pairs
       fetch('https://scanner.tradingview.com/forex/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filter: [
             { left: 'exchange', operation: 'equal', right: 'FX_IDC' },
-            {
-              left: 'name',
-              operation: 'in_range',
-              right: ['USDTRY', 'EURTRY', 'GBPTRY', 'CHFTRY', 'JPYTRY', 'EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF'],
-            },
           ],
           columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+          sort: { sortBy: 'name', sortOrder: 'asc' },
+          range: [0, 100],
         }),
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
+
+      // 3. 80+ Global Commodities, Precious Metals & Major World Indices
       fetch('https://scanner.tradingview.com/cfd/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filter: [
-            {
-              left: 'name',
-              operation: 'in_range',
-              right: ['XAUUSD', 'SILVER', 'UKOIL', 'USOIL', 'NATGAS', 'COPPER', 'PLATINUM', 'SPX', 'NDX', 'DJI', 'DAX', 'DXY', 'VIX'],
-            },
-          ],
           columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+          sort: { sortBy: 'volume', sortOrder: 'desc' },
+          range: [0, 80],
+        }),
+        next: { revalidate: 30 },
+      }).then((r) => r.json()).catch(() => null),
+
+      // 4. BIST Sector & Main Indices (XU100, XU030, XBANK, XUSIN, etc.)
+      fetch('https://scanner.tradingview.com/turkey/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filter: [{ left: 'type', operation: 'equal', right: 'index' }],
+          columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
+          sort: { sortBy: 'volume', sortOrder: 'desc' },
+          range: [0, 40],
         }),
         next: { revalidate: 30 },
       }).then((r) => r.json()).catch(() => null),
@@ -458,7 +451,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
           liveOnsGumusChange = changePercent;
         }
 
-        const isIndex = ['SPX', 'NDX', 'DJI', 'DAX', 'DXY', 'VIX'].includes(name);
+        const isIndex = ['SPX', 'NDX', 'DJI', 'DAX', 'DXY', 'VIX', 'UK100', 'CAC40', 'NI225', 'HSI', 'SX5E', 'NIFTY', 'FTSE'].some((idx) => name.includes(idx));
 
         const itemObj: StockMarketInfo = {
           symbol: name,
@@ -487,6 +480,37 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         } else {
           result.commodity.push(itemObj);
         }
+      }
+    });
+
+    // Parse BIST Indices from Turkey Scanner (XU100, XU030, XBANK, XUSIN, etc.)
+    bistIndexRes?.data?.forEach((item: any) => {
+      const [name, close, change, volume, desc, high52, low52] = item.d;
+      if (name && close !== null && close !== undefined) {
+        const currentPrice = Number(close.toFixed(2));
+        const changePercent = Number((change || 0).toFixed(2));
+        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+        result.indices.unshift({
+          symbol: name,
+          name: desc || name,
+          exchange: 'INDEX',
+          currency: 'TRY',
+          sector: 'BIST Endeksleri',
+          basePrice: currentPrice,
+          price: currentPrice,
+          change: changeAmt,
+          changePercent,
+          high: Number((currentPrice * 1.01).toFixed(2)),
+          low: Number((currentPrice * 0.99).toFixed(2)),
+          open: Number((currentPrice - changeAmt).toFixed(2)),
+          close: currentPrice,
+          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
+          volume: volume || 50000000,
+          marketCap: 0,
+          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
+          timestamp: new Date().toISOString(),
+        } as any);
       }
     });
 
