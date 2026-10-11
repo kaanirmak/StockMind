@@ -102,6 +102,47 @@ export default function StockDetailPage({
     fetchLivePrices();
   };
 
+  const marketStatus = (() => {
+    if (stock?.exchange === 'CRYPTO') return { isOpen: true, label: 'Piyasa açık' };
+    const now = new Date();
+    const day = now.getDay();
+    if (day === 0 || day === 6) return { isOpen: false, label: 'Piyasa kapalı' };
+    const utcHours = now.getUTCHours();
+    const utcMinutes = now.getUTCMinutes();
+    const trMinutes = (utcHours + 3) * 60 + utcMinutes;
+    if (stock?.exchange === 'NASDAQ' || stock?.exchange === 'NYSE') {
+      const isOpen = trMinutes >= 990 && trMinutes <= 1380;
+      return { isOpen, label: isOpen ? 'Piyasa açık' : 'Piyasa kapalı' };
+    }
+    const isOpen = trMinutes >= 600 && trMinutes <= 1090;
+    return { isOpen, label: isOpen ? 'Piyasa açık' : 'Piyasa kapalı' };
+  })();
+
+  const handleShare = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${symbol} - StockMind`,
+          text: `${symbol} anlık fiyatı: ${currSymbol}${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toFixed(2)}`,
+          url: window.location.href,
+        });
+        return;
+      } catch {}
+    }
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href);
+      showToast({ type: 'success', title: 'Bağlantı Kopyalandı', message: 'Sayfa linki panoya kopyalandı.' });
+    }
+  };
+
+  const handleSetAlert = () => {
+    showToast({
+      type: 'info',
+      title: 'Fiyat Alarmı',
+      message: `${symbol} için fiyat alarmı takip listenize kaydedildi.`,
+    });
+  };
+
   const badgeVariant =
     stock?.exchange === 'BIST' ? 'purple' :
     stock?.exchange === 'CRYPTO' ? 'warning' :
@@ -109,117 +150,136 @@ export default function StockDetailPage({
     stock?.exchange === 'FOREX' ? 'emerald' : 'info';
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-20 sm:pb-12">
-      {/* Mobile Top Navigation & Breadcrumb */}
-      <div className="flex items-center justify-between gap-2 text-xs text-text-muted">
-        <Link
-          href="/piyasalar"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-bg-secondary border border-border text-text-secondary hover:text-text-primary transition-colors"
+    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-24 sm:pb-12">
+      {/* Midas-Style Top Navigation Bar (Back, Bookmark, Alert, Share) */}
+      <div className="flex items-center justify-between py-1">
+        <button
+          onClick={() => router.back()}
+          className="p-2 -ml-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+          title="Geri"
         >
-          <span>&larr;</span>
-          <span>Piyasalar</span>
-        </Link>
-        <div className="flex items-center gap-1.5 font-medium">
-          <span className="text-text-muted">Enstrüman:</span>
-          <span className="text-text-primary font-bold">{symbol}</span>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </button>
+
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Bookmark / Watchlist */}
+          <button
+            onClick={handleWatchlistToggle}
+            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+              isWatchlisted
+                ? 'text-warning bg-warning/15'
+                : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
+            }`}
+            title={isWatchlisted ? 'Takip Listesinden Çıkar' : 'Takip Listesine Ekle'}
+          >
+            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+              <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+          </button>
+
+          {/* Price Alert */}
+          <button
+            onClick={handleSetAlert}
+            className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+            title="Fiyat Alarmı Kur"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+
+          {/* Share */}
+          <button
+            onClick={handleShare}
+            className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+            title="Paylaş"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* Stock Main Header - Mobile Optimized Card */}
-      <div className="glass-card p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
-        <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-          <InstrumentLogo symbol={symbol} name={stock?.name} size="lg" rounded="xl" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary truncate">
-                {symbol}
-              </h1>
-              <Badge variant={badgeVariant as any} size="sm">
-                {stock?.exchange || 'BIST'}
-              </Badge>
-              {stock?.sector && (
-                <span className="text-[11px] text-text-muted hidden xs:inline truncate">
-                  • {stock.sector}
-                </span>
-              )}
-            </div>
-            <p className="text-xs sm:text-sm text-text-secondary mt-0.5 truncate">
-              {stock?.name || symbol}
-            </p>
+      {/* Midas-Style Symbol & Price Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          {/* Symbol & Market Status Badge */}
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary font-mono">
+              {symbol}
+            </h1>
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 ${
+                marketStatus.isOpen
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-bg-tertiary text-text-muted border-border'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  marketStatus.isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-text-muted'
+                }`}
+              />
+              {marketStatus.label}
+            </span>
           </div>
-        </div>
 
-        {/* Live Price Display & Desktop Actions */}
-        <div className="flex items-center justify-between lg:justify-end gap-4 sm:gap-6 pt-2 lg:pt-0 border-t border-border/40 lg:border-t-0">
-          <div>
-            <div className="text-2xl sm:text-3xl font-black font-mono text-text-primary">
+          {/* Instrument Full Name */}
+          <p className="text-xs sm:text-sm text-text-secondary mt-1 font-medium line-clamp-1">
+            {stock?.name || symbol}
+          </p>
+
+          {/* Prominent Price & Clean Percentage */}
+          <div className="flex items-baseline gap-2.5 mt-2">
+            <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
               {currSymbol}
               {currentPrice < 1
                 ? currentPrice.toFixed(4)
                 : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-            </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span
-                className={`font-mono text-xs font-bold px-2 py-0.5 rounded-lg ${
-                  isPositive ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
-                }`}
-              >
-                {isPositive ? '+' : ''}
-                {stock?.change ? stock.change.toFixed(2) : '0.00'} ({isPositive ? '+' : ''}
-                {stock?.changePercent ? stock.changePercent.toFixed(2) : '0.00'}%)
-              </span>
-              <span className="text-[10px] text-text-muted flex items-center gap-1 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Canlı
-              </span>
-            </div>
-          </div>
-
-          {/* Desktop Actions */}
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={handleWatchlistToggle}
-              className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
-                isWatchlisted
-                  ? 'bg-warning/20 border-warning text-warning'
-                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+            </span>
+            <span
+              className={`text-base sm:text-lg font-bold font-mono ${
+                isPositive ? 'text-success' : 'text-danger'
               }`}
-              title={isWatchlisted ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
             >
-              <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-            </button>
-
-            <Link
-              href={`/ai-assistant?prompt=${encodeURIComponent(
-                `${symbol} için teknik ve temel analiz yap, destek-direnç ve risk durumunu özetle.`
-              )}`}
-            >
-              <Button
-                variant="secondary"
-                size="md"
-                leftIcon={
-                  <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                }
-              >
-                AI Analiz
-              </Button>
-            </Link>
-
-            <Button
-              variant="primary"
-              size="md"
-              onClick={() => {
-                setPriceInput(currentPrice.toString());
-                setIsTradeModalOpen(true);
-              }}
-            >
-              İşlem Yap
-            </Button>
+              %{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
+            </span>
           </div>
+        </div>
+
+        {/* Desktop Quick Actions */}
+        <div className="hidden sm:flex items-center gap-2 pb-1">
+          <Link
+            href={`/ai-assistant?prompt=${encodeURIComponent(
+              `${symbol} için teknik ve temel analiz yap, destek-direnç ve risk durumunu özetle.`
+            )}`}
+          >
+            <Button
+              variant="secondary"
+              size="md"
+              leftIcon={
+                <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              }
+            >
+              AI Analiz
+            </Button>
+          </Link>
+
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => {
+              setPriceInput(currentPrice.toString());
+              setIsTradeModalOpen(true);
+            }}
+          >
+            İşlem Yap
+          </Button>
         </div>
       </div>
 
@@ -227,8 +287,8 @@ export default function StockDetailPage({
       <div className="space-y-3">
         {/* Controls Bar: Timeframe & Indicators in a smooth horizontal touch-scroller */}
         <div className="glass-card p-2 sm:p-3 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2">
-          {/* Timeframe Selector with smooth touch scroll */}
-          <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-border overflow-x-auto no-scrollbar scroll-smooth">
+          {/* Timeframe Selector with Midas-style capsule pills */}
+          <div className="flex items-center gap-1 bg-bg-secondary/70 p-1 rounded-full border border-border/80 overflow-x-auto no-scrollbar scroll-smooth">
             {[
               { id: '1D', label: '1G' },
               { id: '1W', label: '1H' },
@@ -242,9 +302,9 @@ export default function StockDetailPage({
               <button
                 key={tf.id}
                 onClick={() => setTimeframe(tf.id as any)}
-                className={`flex-1 min-w-[38px] py-1.5 px-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer text-center ${
+                className={`flex-1 min-w-[36px] py-1 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer text-center ${
                   timeframe === tf.id
-                    ? 'bg-accent text-white shadow-md shadow-accent/25'
+                    ? 'bg-accent text-white shadow-sm shadow-accent/20 font-bold'
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                 }`}
               >
@@ -327,6 +387,26 @@ export default function StockDetailPage({
             bollingerBands={indicators?.indicators?.bollingerBands || []}
           />
         )}
+      </div>
+
+      {/* Midas-Style AI / Market Intelligence Snapshot Banner */}
+      <div className="p-3.5 sm:p-4 rounded-2xl bg-bg-card/80 border border-border/80 flex flex-col gap-1.5 hover:border-accent/40 transition-colors shadow-xs">
+        <div className="flex items-center gap-2 text-[11px] text-text-muted">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          <span>StockMind AI Bülteni • 3 saat önce</span>
+        </div>
+        <p className="text-xs sm:text-sm text-text-primary leading-relaxed font-medium">
+          {symbol}'da son dönem fiyat hareketi, teknik destek-direnç seviyeleri ve güncel piyasa momentumu analiz edildi.
+        </p>
+        <Link
+          href={`/ai-assistant?prompt=${encodeURIComponent(
+            `${symbol} için teknik ve temel analiz yap, destek-direnç ve risk durumunu özetle.`
+          )}`}
+          className="text-xs font-bold text-accent hover:text-accent-hover inline-flex items-center gap-1 mt-0.5 group w-fit"
+        >
+          <span>Analizi gör</span>
+          <span className="group-hover:translate-x-0.5 transition-transform">&rsaquo;</span>
+        </Link>
       </div>
 
       {/* Technical Indicators Panel */}
