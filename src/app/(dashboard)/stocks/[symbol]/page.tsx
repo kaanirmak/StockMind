@@ -433,7 +433,13 @@ export default function StockDetailPage({
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-text-muted block">Piyasa Değeri</span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
-            {stock?.marketCap ? `${currSymbol}${((stock.marketCap) / 1e9).toFixed(1)} Mr` : '-'}
+            {stock?.marketCap
+              ? stock.marketCap >= 1e12
+                ? `${currSymbol}${(stock.marketCap / 1e12).toFixed(2)} Tr`
+                : stock.marketCap >= 1e9
+                ? `${currSymbol}${(stock.marketCap / 1e9).toFixed(1)} Mr`
+                : `${currSymbol}${(stock.marketCap / 1e6).toFixed(0)} M`
+              : '-'}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">

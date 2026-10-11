@@ -662,8 +662,8 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       const currentPrice = Number(close.toFixed(close < 1 ? (close < 0.001 ? 6 : 4) : 2));
       const changePercent = Number((change || 0).toFixed(2));
       const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(currentPrice < 1 ? 4 : 2));
-      const supply = CRYPTO_CIRCULATING_SUPPLY[name] || (volume > 0 ? volume : 100_000_000);
-      const marketCap = Number((currentPrice * supply).toFixed(0));
+      const supply = CRYPTO_CIRCULATING_SUPPLY[name] || 0;
+      const marketCap = supply > 0 ? Number((currentPrice * supply).toFixed(0)) : 0;
 
       result.crypto.push({
         symbol: name,
@@ -688,7 +688,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       } as any);
     };
 
-    // 1. Add all Top Ranked Major Cryptos in exact order (BTC, ETH, SOL, BNB, XRP...)
+    // 1. Add all Top Ranked Major Cryptos in exact order (BTC, ETH, BNB, XRP, SOL...)
     const majorMap = new Map();
     majorCryptoRes?.data?.forEach((item: any) => {
       if (item?.d?.[0]) majorMap.set(item.d[0], item);
@@ -700,6 +700,9 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
 
     // 2. Append additional high-volume Binance crypto pairs
     additionalCryptoRes?.data?.forEach((item: any) => parseCryptoItem(item));
+
+    // Sort cryptos strictly by real market cap descending
+    result.crypto.sort((a, b) => (Number(b.marketCap) || 0) - (Number(a.marketCap) || 0));
 
     let liveUsdTry = 49.25;
     let liveUsdTryChange = 0;
@@ -738,7 +741,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: currentPrice,
         previousClose: Number((currentPrice - changeAmt).toFixed(4)),
         volume: 50000000,
-        marketCap: 0,
+        marketCap: FOREX_MARKET_CAPS[name] || 0,
         high52w: high52 ? Number(high52.toFixed(4)) : undefined,
         low52w: low52 ? Number(low52.toFixed(4)) : undefined,
         timestamp: new Date().toISOString(),
@@ -749,6 +752,9 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
     tryFxRes?.data?.forEach(parseForexItem);
     // Then add all global currency pairs
     allFxRes?.data?.forEach(parseForexItem);
+
+    // Sort forex pairs by global market size / turnover descending
+    result.forex.sort((a, b) => (Number(b.marketCap) || 0) - (Number(a.marketCap) || 0));
 
     let liveOnsAltin = 4195;
     let liveOnsAltinChange = 0;
@@ -791,7 +797,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
           close: currentPrice,
           previousClose: Number((currentPrice - changeAmt).toFixed(2)),
           volume: 10000000,
-          marketCap: 0,
+          marketCap: COMMODITY_MARKET_CAPS[name] || 0,
           high52w: high52 ? Number(high52.toFixed(2)) : undefined,
           low52w: low52 ? Number(low52.toFixed(2)) : undefined,
           timestamp: new Date().toISOString(),
@@ -826,7 +832,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: item.price,
         previousClose: Number((item.price - changeAmt).toFixed(2)),
         volume: 100000000,
-        marketCap: item.marketCap || 10_000_000_000,
+        marketCap: item.marketCap || 0,
         timestamp: new Date().toISOString(),
       } as any);
     });
@@ -844,6 +850,23 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       if (CRYPTO_DISQUALIFIERS.has(sym)) return false;
       return true;
     });
+
+    // Sort indices by USD-equivalent market cap descending
+    const getIndexUSD = (idx: any) => {
+      const cap = Number(idx.marketCap) || 0;
+      if (cap <= 0) return 0;
+      const curr = String(idx.currency || 'USD').toUpperCase();
+      if (curr === 'TRY') return cap / liveUsdTry;
+      if (curr === 'EUR') return cap * 1.09;
+      if (curr === 'GBP') return cap * 1.30;
+      if (curr === 'JPY') return cap / 152;
+      if (curr === 'HKD') return cap / 7.78;
+      if (curr === 'AUD') return cap * 0.65;
+      if (curr === 'BRL') return cap * 0.17;
+      if (curr === 'KRW') return cap / 1400;
+      return cap;
+    };
+    result.indices.sort((a, b) => getIndexUSD(b) - getIndexUSD(a));
 
     // Add Calculated Turkish Lira Gold & Silver items
     const gramPrice = Number(((liveOnsAltin * liveUsdTry) / 31.1034768).toFixed(2));
@@ -881,7 +904,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: gramPrice,
         previousClose: Number((gramPrice - gramChangeAmt).toFixed(2)),
         volume: 25000000,
-        marketCap: gramPrice * 500000000,
+        marketCap: 26_400_000_000_000, // ~4,000 ton yastıkaltı Türk altın rezerv değeri
         timestamp: new Date().toISOString(),
       } as any,
       {
@@ -900,7 +923,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: ceyrekPrice,
         previousClose: Number((ceyrekPrice - ceyrekChangeAmt).toFixed(2)),
         volume: 15000000,
-        marketCap: 0,
+        marketCap: 6_000_000_000_000,
         timestamp: new Date().toISOString(),
       } as any,
       {
@@ -919,7 +942,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: yarimPrice,
         previousClose: Number((yarimPrice - yarimChangeAmt).toFixed(2)),
         volume: 10000000,
-        marketCap: 0,
+        marketCap: 3_000_000_000_000,
         timestamp: new Date().toISOString(),
       } as any,
       {
@@ -938,7 +961,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: cumhuriyetPrice,
         previousClose: Number((cumhuriyetPrice - cumhuriyetChangeAmt).toFixed(2)),
         volume: 8000000,
-        marketCap: 0,
+        marketCap: 4_500_000_000_000,
         timestamp: new Date().toISOString(),
       } as any,
       {
@@ -957,10 +980,18 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         close: gramGumusPrice,
         previousClose: Number((gramGumusPrice - gramGumusChangeAmt).toFixed(2)),
         volume: 5000000,
-        marketCap: 0,
+        marketCap: 1_700_000_000_000,
         timestamp: new Date().toISOString(),
       } as any
     );
+
+    // Sort commodities by USD-equivalent market valuation descending
+    const getCommodityUSD = (c: any) => {
+      const cap = Number(c.marketCap) || 0;
+      if (cap <= 0) return 0;
+      return c.currency === 'TRY' ? cap / liveUsdTry : cap;
+    };
+    result.commodity.sort((a, b) => getCommodityUSD(b) - getCommodityUSD(a));
   } catch (error) {
     console.error('Error fetching alternative markets:', error);
   }

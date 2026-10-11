@@ -135,15 +135,52 @@ function PiyasalarContent() {
   // If in 'ALL' tab, also fetch BIST top stocks
   const { stocks: bistStocks } = useStocks(activeMarket === 'ALL' ? { exchange: 'BIST' } : undefined);
 
+  const getNormalizedValue = (item: StockWithQuote, key: 'changePercent' | 'price' | 'volume' | 'marketCap') => {
+    if (key === 'marketCap') {
+      const cap = Number(item.marketCap) || 0;
+      if (cap <= 0) return 0;
+      const curr = String(item.currency || 'USD').toUpperCase();
+      if (curr === 'TRY') return cap / 49.25;
+      if (curr === 'EUR') return cap * 1.09;
+      if (curr === 'GBP') return cap * 1.30;
+      if (curr === 'JPY') return cap / 152;
+      if (curr === 'HKD') return cap / 7.78;
+      if (curr === 'AUD') return cap * 0.65;
+      if (curr === 'BRL') return cap * 0.17;
+      if (curr === 'KRW') return cap / 1400;
+      if (curr === 'CHF') return cap * 1.12;
+      if (curr === 'CAD') return cap * 0.72;
+      return cap;
+    }
+    if (key === 'price') {
+      const p = Number(item.price) || 0;
+      if (p <= 0) return 0;
+      const curr = String(item.currency || 'USD').toUpperCase();
+      if (curr === 'TRY') return p / 49.25;
+      if (curr === 'EUR') return p * 1.09;
+      if (curr === 'GBP') return p * 1.30;
+      if (curr === 'JPY') return p / 152;
+      return p;
+    }
+    return Number(item[key]) || 0;
+  };
+
   const sortedStocks = [...stocks].sort((a, b) => {
-    const valA = Number(a[stockSortBy]) || 0;
-    const valB = Number(b[stockSortBy]) || 0;
+    const valA = getNormalizedValue(a, stockSortBy);
+    const valB = getNormalizedValue(b, stockSortBy);
+
+    // When sorting by marketCap or volume, items with 0/null values always go to the bottom
+    if (stockSortBy === 'marketCap' || stockSortBy === 'volume') {
+      if (valA <= 0 && valB > 0) return 1;
+      if (valB <= 0 && valA > 0) return -1;
+    }
+
     if (valB !== valA) {
       return stockSortOrder === 'desc' ? valB - valA : valA - valB;
     }
-    // Secondary fallback sorting
-    const secA = Number(a.volume || a.price || 0);
-    const secB = Number(b.volume || b.price || 0);
+    // Secondary fallback sorting: prioritize highest volume or price
+    const secA = getNormalizedValue(a, 'volume') || Number(a.price) || 0;
+    const secB = getNormalizedValue(b, 'volume') || Number(b.price) || 0;
     return secB - secA;
   });
 
@@ -482,6 +519,7 @@ function PiyasalarContent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {[...bistStocks]
+                      .filter((s) => (s.volume || 0) > 1_000_000)
                       .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0))
                       .slice(0, 6)
                       .map((item) => renderMiniAssetCard(item, 'bist-trend'))}
