@@ -741,21 +741,51 @@ html.dark .glass-purple {
 }
 
 /* ═══════════════════════════════════════════
-   AI Assistant Viewport & Chat Lock
+   AI Assistant Viewport & Ergonomics
    ═══════════════════════════════════════════ */
 main:has(.ai-chat-container) {
   padding: 0.5rem !important;
-  padding-bottom: 0 !important;
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)) !important;
   overflow: hidden !important;
   height: calc(100dvh - 3.5rem) !important;
   max-height: calc(100dvh - 3.5rem) !important;
+  box-sizing: border-box !important;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 640px) and (max-width: 767px) {
   main:has(.ai-chat-container) {
     padding: 0.75rem !important;
-    padding-bottom: 0 !important;
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)) !important;
     height: calc(100dvh - 4rem) !important;
     max-height: calc(100dvh - 4rem) !important;
   }
+}
+
+@media (min-width: 768px) {
+  main:has(.ai-chat-container) {
+    padding: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+    height: calc(100dvh - 4rem) !important;
+    max-height: calc(100dvh - 4rem) !important;
+  }
+}
+
+/* Custom Scrollbar for Chat & Flyouts */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }

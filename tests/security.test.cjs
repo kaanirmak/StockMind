@@ -132,6 +132,13 @@ test('test mail uses confirmed account address and fixed test content', async ()
   assert.equal(calls.mailArgs.isDailyReport, false);
   assert.equal(calls.mailArgs.subject, undefined);
 });
+test('test mail dispatches daily report for authenticated user', async () => {
+  const { load, calls } = fixture();
+  const res = await load(routes[2]).POST(request({ to: 'OWNER@example.com', isDailyReport: true }));
+  assert.equal(res.status, 200);
+  assert.equal(calls.mailArgs.to, 'owner@example.com');
+  assert.equal(calls.mailArgs.isDailyReport, true);
+});
 for (const [options, body, status] of [
   [{ unverified: true }, {}, 403], [{}, { to: 'victim@example.com' }, 403],
   [{}, { customSmtp: { host: '127.0.0.1', user: 'x', pass: 'x' } }, 400],

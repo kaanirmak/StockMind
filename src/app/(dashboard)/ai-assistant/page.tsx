@@ -208,20 +208,45 @@ function AIAssistantContent() {
     }
   };
 
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState<boolean>(false);
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior,
+    });
+  };
+
   // 7. Track User Scroll Position in Chat Container (Fix for auto-scroll yanking)
   const handleContainerScroll = () => {
-    if (!messagesContainerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-    // User is considered near bottom if within 90px of the bottom
-    isNearBottomRef.current = scrollHeight - (scrollTop + clientHeight) < 90;
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+    const isAtBottom = distanceFromBottom < 80;
+    isNearBottomRef.current = isAtBottom;
+    setShowScrollBottomBtn(!isAtBottom && scrollHeight > clientHeight + 100);
   };
 
   // Auto scroll only when user is near bottom
   useEffect(() => {
     if (isNearBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const raf = requestAnimationFrame(() => {
+        scrollToBottom('smooth');
+      });
+      return () => cancelAnimationFrame(raf);
     }
   }, [messages, loading]);
+
+  // Initial session switch scroll to bottom
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      scrollToBottom('instant');
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [currentSessionId]);
 
   // Handle URL prompt query param
   useEffect(() => {
@@ -345,7 +370,7 @@ function AIAssistantContent() {
   };
 
   return (
-    <div className="ai-chat-container flex flex-col h-[calc(100dvh-7.5rem)] md:h-[calc(100dvh-5.5rem)] max-h-[calc(100dvh-7.5rem)] md:max-h-[calc(100dvh-5.5rem)] min-h-0 animate-fade-in relative">
+    <div className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative">
       {/* Top Header - Compact for Mobile, Detailed for Desktop */}
       <div className="glass-card p-2 sm:p-3 mb-2 shrink-0 rounded-2xl border border-border">
         {/* Mobile Header (Single Compact Row) */}
@@ -466,11 +491,11 @@ function AIAssistantContent() {
         </div>
       </div>
 
-      {/* Chat Messages Body - Scroll Fixed */}
+      {/* Chat Messages Body */}
       <div
         ref={messagesContainerRef}
         onScroll={handleContainerScroll}
-        className="flex-1 min-h-0 overflow-y-auto space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar touch-pan-y overscroll-contain"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar overscroll-y-contain"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {messages.map((msg) => {
@@ -551,6 +576,21 @@ function AIAssistantContent() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Floating Scroll to Bottom Button */}
+      {showScrollBottomBtn && (
+        <button
+          type="button"
+          onClick={() => {
+            isNearBottomRef.current = true;
+            scrollToBottom('smooth');
+          }}
+          className="absolute bottom-16 right-4 z-20 px-3 py-1.5 rounded-full bg-accent text-white shadow-lg shadow-accent/30 text-xs font-semibold flex items-center gap-1.5 hover:bg-accent-hover active:scale-95 transition-all cursor-pointer animate-fade-in"
+          title="En alta kaydır"
+        >
+          <span>↓ En Yeni Mesaj</span>
+        </button>
+      )}
 
       {/* Preset Prompt Suggestions */}
       {messages.length <= 2 && (

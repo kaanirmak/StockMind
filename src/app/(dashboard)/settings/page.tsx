@@ -471,24 +471,24 @@ export default function SettingsPage() {
   };
 
   const handleTriggerDailyReport = async () => {
-    const targetEmail = notificationEmail || email || user?.email;
+    const targetEmail = user?.email || notificationEmail || email;
     if (!targetEmail || !targetEmail.includes('@')) {
       showToast({
         type: 'danger',
         title: 'Geçersiz E-posta',
-        message: 'Lütfen geçerli bir bildirim e-posta adresi girin.',
+        message: 'Bülten gönderimi için lütfen doğrulanmış hesabınızla giriş yapın.',
       });
       return;
     }
 
     setSendingDailyReport(true);
     try {
-      const res = await fetch('/api/cron/daily-report', {
+      const res = await fetch('/api/send-test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: targetEmail,
-          name: fullName || 'Yatırımcı',
+          to: user?.email || targetEmail,
+          isDailyReport: true,
         }),
       });
       const data = await res.json();
@@ -496,16 +496,16 @@ export default function SettingsPage() {
         showToast({
           type: 'success',
           title: '18:30 Bülteni Gönderildi! 📬',
-          message: `Günlük piyasa kapanış ve portföy bülteni ${targetEmail} (${fullName || 'Yatırımcı'}) adresine gönderildi.`,
+          message: data.message || `Günlük piyasa kapanış ve portföy bülteni ${user?.email || targetEmail} adresine gönderildi.`,
         });
-        if (data.emailResult?.previewUrl) {
-          setEmailPreviewUrl(data.emailResult.previewUrl);
+        if (data.previewUrl) {
+          setEmailPreviewUrl(data.previewUrl);
         }
       } else {
         showToast({
           type: 'danger',
           title: 'Bülten Gönderilemedi',
-          message: data.error || data.emailResult?.message || 'Günlük bülten iletilemedi.',
+          message: data.message || data.error || 'Günlük bülten iletilemedi.',
         });
       }
     } catch (err: any) {

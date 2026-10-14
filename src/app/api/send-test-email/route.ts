@@ -16,9 +16,17 @@ export async function POST(request: Request) {
     if (body.customSmtp !== undefined && body.customSmtp !== null) {
       throw new ApiError(400, 'SMTP ayarları sunucuda yönetilir; istek üzerinden değiştirilemez.');
     }
-    const result = await sendTestEmail({ to: user.email, userName: 'StockMind Kullanıcısı', isDailyReport: false });
-    if (!result.success) throw new ApiError(503, 'Test e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.');
-    return NextResponse.json({ success: true, message: 'Test e-postası doğrulanmış adresinize gönderildi.' });
+    const isDaily = Boolean(body.isDailyReport);
+    const result = await sendTestEmail({ to: user.email, userName: 'StockMind Kullanıcısı', isDailyReport: isDaily });
+    if (!result.success) throw new ApiError(503, result.message || 'E-posta gönderilemedi. Lütfen daha sonra tekrar deneyin.');
+    return NextResponse.json({
+      success: true,
+      message: isDaily
+        ? '18:30 bülteni doğrulanmış e-posta adresinize gönderildi.'
+        : (result.message || 'Test e-postası doğrulanmış adresinize gönderildi.'),
+      previewUrl: result.previewUrl,
+      method: result.method,
+    });
   } catch (error) {
     return apiErrorResponse(error);
   }
