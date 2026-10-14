@@ -7,6 +7,7 @@ import {
   ColorType,
   CandlestickSeries,
   LineSeries,
+  AreaSeries,
   HistogramSeries,
 } from 'lightweight-charts';
 import { useTheme } from '@/components/theme/ThemeProvider';
@@ -43,10 +44,37 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const chartWrapperRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
-  const [chartType, setChartType] = useState<'candles' | 'line'>('candles');
+  const [chartType, setChartType] = useState<'candles' | 'line'>('line');
+  const [touchInspectMode, setTouchInspectMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hoveredCandle, setHoveredCandle] = useState<Candle | null>(null);
   const { resolvedTheme } = useTheme();
+
+  // Load user default chart type preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedType = localStorage.getItem('stockmind_default_chart_type');
+      if (savedType === 'candles' || savedType === 'line') {
+        setChartType(savedType);
+      }
+    }
+
+    const handleSync = () => {
+      const savedType = localStorage.getItem('stockmind_default_chart_type');
+      if (savedType === 'candles' || savedType === 'line') {
+        setChartType(savedType);
+      }
+    };
+    window.addEventListener('stockmind_chart_type_updated', handleSync);
+    return () => window.removeEventListener('stockmind_chart_type_updated', handleSync);
+  }, []);
+
+  const handleChartTypeSwitch = (type: 'candles' | 'line') => {
+    setChartType(type);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stockmind_default_chart_type', type);
+    }
+  };
 
   // Fullscreen toggle handler
   const toggleFullscreen = () => {
@@ -155,13 +183,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       handleScroll: {
         mouseWheel: true,
         pressedMouseMove: true,
-        horzTouchDrag: true,
+        horzTouchDrag: touchInspectMode,
         vertTouchDrag: false, // Critical: prevent chart from locking mobile vertical page scrolling
       },
       handleScale: {
         axisPressedMouseMove: true,
         mouseWheel: true,
-        pinch: true, // Smooth mobile pinch to zoom
+        pinch: true, // Smooth mobile pinch with two fingers to zoom
       },
       width: container.clientWidth,
       height: effectiveHeight,
@@ -206,23 +234,27 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           mainSeries.setData(formattedCandles);
         }
       } else {
-        // Line Series for ultra-clean mobile reading
-        const lineData = formattedCandles.map((c) => ({ time: c.time, value: c.close }));
-        if (typeof (chart as any).addLineSeries === 'function') {
-          mainSeries = (chart as any).addLineSeries({
-            color: '#6366f1',
-            lineWidth: 2.5,
-            priceLineVisible: true,
-          });
+        // Area Series for ultra-clean mobile reading with futuristic glowing gradient
+        const areaData = formattedCandles.map((c) => ({ time: c.time, value: c.close }));
+        const areaOptions = {
+          lineColor: '#8b5cf6',
+          topColor: 'rgba(139, 92, 246, 0.35)',
+          bottomColor: 'rgba(139, 92, 246, 0.00)',
+          lineWidth: 2.5,
+          priceLineVisible: true,
+        };
+
+        if (typeof (chart as any).addAreaSeries === 'function') {
+          mainSeries = (chart as any).addAreaSeries(areaOptions);
+        } else if (AreaSeries) {
+          mainSeries = (chart as any).addSeries(AreaSeries, areaOptions);
+        } else if (typeof (chart as any).addLineSeries === 'function') {
+          mainSeries = (chart as any).addLineSeries({ color: '#8b5cf6', lineWidth: 2.5 });
         } else if (LineSeries) {
-          mainSeries = (chart as any).addSeries(LineSeries, {
-            color: '#6366f1',
-            lineWidth: 2.5,
-            priceLineVisible: true,
-          });
+          mainSeries = (chart as any).addSeries(LineSeries, { color: '#8b5cf6', lineWidth: 2.5 });
         }
-        if (mainSeries && lineData.length > 0) {
-          mainSeries.setData(lineData);
+        if (mainSeries && areaData.length > 0) {
+          mainSeries.setData(areaData);
         }
       }
     } catch (e) {
@@ -414,6 +446,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     bollingerBands,
     resolvedTheme,
     isFullscreen,
+    touchInspectMode,
   ]);
 
   const latestCandle = candles[candles.length - 1];
@@ -471,11 +504,36 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         </div>
 
         {/* Right: Chart Controls & Mode Toggles */}
-        <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0">
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0 flex-wrap">
+          {/* Mobile Scroll / Inspect Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => setTouchInspectMode((prev) => !prev)}
+            className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
+              touchInspectMode
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-sm'
+                : 'bg-bg-secondary border-border text-text-muted hover:text-text-primary'
+            }`}
+            title={touchInspectMode ? 'İnceleme Modu Açık' : 'Sayfa Kaydırma Serbest (İncelemek için tıklayın)'}
+          >
+            <span>{touchInspectMode ? '📍 İncele' : '👆 Kaydır'}</span>
+          </button>
+
           {/* Chart Style Toggle (Candles vs Line) */}
           <div className="flex items-center bg-bg-secondary p-0.5 rounded-lg border border-border">
             <button
-              onClick={() => setChartType('candles')}
+              onClick={() => handleChartTypeSwitch('line')}
+              className={`px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                chartType === 'line'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+              title="Çizgi / Alan Grafiği"
+            >
+              📈 Çizgi
+            </button>
+            <button
+              onClick={() => handleChartTypeSwitch('candles')}
               className={`px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
                 chartType === 'candles'
                   ? 'bg-accent text-white shadow-sm'
@@ -484,17 +542,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
               title="Mum Grafiği"
             >
               📊 Mum
-            </button>
-            <button
-              onClick={() => setChartType('line')}
-              className={`px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                chartType === 'line'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-              title="Çizgi Grafik"
-            >
-              📈 Çizgi
             </button>
           </div>
 
@@ -518,11 +565,19 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         </div>
       </div>
 
-      {/* Chart Canvas */}
+      {/* Touch Inspect Mode Warning Banner */}
+      {touchInspectMode && (
+        <div className="flex items-center justify-between mb-2 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-400 animate-fade-in">
+          <span>📍 <strong>İnceleme Modu:</strong> Grafiğe dokunarak mumları inceleyin. Sayfayı kaydırmak için iki parmak kullanın veya modu kapatın.</span>
+          <button type="button" onClick={() => setTouchInspectMode(false)} className="underline ml-2 cursor-pointer font-bold">Kapat</button>
+        </div>
+      )}
+
+      {/* Chart Canvas with Non-locking Mobile Touch Action */}
       <div
         ref={chartContainerRef}
-        className="w-full relative touch-pan-x"
-        style={{ touchAction: 'pan-x' }}
+        className="w-full relative"
+        style={{ touchAction: touchInspectMode ? 'none' : 'pan-y' }}
       />
 
       {/* Embedded Bottom Controls (Timeframe & Indicators inside the chart flow) */}

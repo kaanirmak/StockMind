@@ -11,19 +11,24 @@ export default function WidgetsHubPage() {
   const [selectedWidgetForModal, setSelectedWidgetForModal] = useState<'portfolio' | 'heatmap'>('portfolio');
   const [apkModalOpen, setApkModalOpen] = useState(false);
 
-  const openDesktopWindow = (widget: 'portfolio' | 'heatmap') => {
+  const openDesktopWindow = (widget: 'portfolio' | 'heatmap', platform: 'mac' | 'win' = 'mac') => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const isMac = platform === 'mac';
     if (widget === 'portfolio') {
       window.open(
         `${origin}/widgets/portfolio`,
         'StockMind_Portfolio_Widget',
-        'width=400,height=320,top=120,left=120,toolbar=no,menubar=no,location=no,status=no,resizable=yes'
+        isMac
+          ? 'width=390,height=330,top=100,left=100,toolbar=no,menubar=no,location=no,status=no,resizable=yes'
+          : 'width=420,height=340,top=120,left=120,toolbar=no,menubar=no,location=no,status=no,resizable=yes'
       );
     } else {
       window.open(
         `${origin}/widgets/heatmap`,
         'StockMind_Heatmap_Widget',
-        'width=560,height=420,top=120,left=120,toolbar=no,menubar=no,location=no,status=no,resizable=yes'
+        isMac
+          ? 'width=560,height=420,top=100,left=100,toolbar=no,menubar=no,location=no,status=no,resizable=yes'
+          : 'width=590,height=440,top=120,left=120,toolbar=no,menubar=no,location=no,status=no,resizable=yes'
       );
     }
   };
@@ -113,21 +118,29 @@ export default function WidgetsHubPage() {
           </div>
 
           {/* Action Bar */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-border/50">
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/50">
             <button
               type="button"
-              onClick={() => openDesktopWindow('portfolio')}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-accent/15 hover:bg-accent/25 border border-accent/30 text-accent font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => openDesktopWindow('portfolio', 'mac')}
+              className="flex-1 min-w-[120px] py-2.5 px-3 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>🖥️ Masaüstü Penceresi Olarak Aç</span>
+              <span>🍎 Mac Glass</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openDesktopWindow('portfolio', 'win')}
+              className="flex-1 min-w-[120px] py-2.5 px-3 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>🪟 Windows 11</span>
             </button>
 
             <button
               type="button"
               onClick={() => openEmbedModal('portfolio')}
-              className="py-2.5 px-3.5 rounded-xl bg-bg-secondary hover:bg-bg-hover border border-border text-text-primary font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="py-2.5 px-3.5 rounded-xl bg-bg-secondary hover:bg-bg-hover border border-border text-text-primary font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
             >
-              <span>📋 iFrame / Notion Kodu</span>
+              <span>📋 iFrame</span>
             </button>
           </div>
         </div>
@@ -167,21 +180,29 @@ export default function WidgetsHubPage() {
           </div>
 
           {/* Action Bar */}
-          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-border/50">
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/50">
             <button
               type="button"
-              onClick={() => openDesktopWindow('heatmap')}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-accent/15 hover:bg-accent/25 border border-accent/30 text-accent font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => openDesktopWindow('heatmap', 'mac')}
+              className="flex-1 min-w-[120px] py-2.5 px-3 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-purple-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>🖥️ Masaüstü Penceresi Olarak Aç</span>
+              <span>🍎 Mac Glass</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openDesktopWindow('heatmap', 'win')}
+              className="flex-1 min-w-[120px] py-2.5 px-3 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>🪟 Windows 11</span>
             </button>
 
             <button
               type="button"
               onClick={() => openEmbedModal('heatmap')}
-              className="py-2.5 px-3.5 rounded-xl bg-bg-secondary hover:bg-bg-hover border border-border text-text-primary font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="py-2.5 px-3.5 rounded-xl bg-bg-secondary hover:bg-bg-hover border border-border text-text-primary font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
             >
-              <span>📋 iFrame / Notion Kodu</span>
+              <span>📋 iFrame</span>
             </button>
           </div>
         </div>
@@ -191,43 +212,51 @@ export default function WidgetsHubPage() {
       <div className="glass-card rounded-3xl border border-border p-6 sm:p-8 space-y-6">
         <div>
           <h3 className="text-lg font-bold text-text-primary">Widget'ları Nasıl Kullanabilirsiniz?</h3>
-          <p className="text-xs text-text-muted mt-1">İhtiyacınıza göre en uygun entegrasyon yöntemini seçin</p>
+          <p className="text-xs text-text-muted mt-1">İhtiyacınıza göre en uygun masaüstü veya mobil entegrasyon yöntemini seçin</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Guide 1: Desktop Floating Window */}
-          <div className="p-5 rounded-2xl bg-bg-secondary/60 border border-border space-y-2.5">
-            <div className="w-10 h-10 rounded-xl bg-accent/15 text-accent border border-accent/25 flex items-center justify-center text-lg">
-              🖥️
-            </div>
-            <h4 className="text-sm font-bold text-text-primary">Masaüstü Yüzen Widget</h4>
-            <p className="text-xs text-text-secondary leading-relaxed">
-              "Masaüstü Penceresi Olarak Aç" butonuna basarak seans süresince ekranınızın bir köşesinde sürekli duracak
-              kompakt bir mini widget penceresi açabilirsiniz.
-            </p>
-          </div>
-
-          {/* Guide 2: Notion & Websites */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Guide 1: macOS Sonoma/Sequoia */}
           <div className="p-5 rounded-2xl bg-bg-secondary/60 border border-border space-y-2.5">
             <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center text-lg">
-              📝
+              🍎
             </div>
-            <h4 className="text-sm font-bold text-text-primary">Notion & Web Sitesi Embed</h4>
+            <h4 className="text-sm font-bold text-text-primary">macOS Sonoma / Sequoia</h4>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Notion sayfanızda <code className="px-1.5 py-0.5 rounded bg-black/40 text-accent font-mono text-[11px]">/embed</code> yazıp
-              widget bağlantısını yapıştırın veya HTML web sitenize iframe kodunu doğrudan ekleyin.
+              "Mac Glass" ile seans boyunca masaüstünüzün köşesinde duracak akrilik pencere açın veya Safari'de "Masaüstüne Web Uygulaması Olarak Ekle" seçeneğini kullanın.
             </p>
           </div>
 
-          {/* Guide 3: Android Home Screen */}
+          {/* Guide 2: Windows 11 Widget Board */}
+          <div className="p-5 rounded-2xl bg-bg-secondary/60 border border-border space-y-2.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center text-lg">
+              🪟
+            </div>
+            <h4 className="text-sm font-bold text-text-primary">Windows 11 Widget Board</h4>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              PWA Manifest desteğimiz sayesinde Windows 11 Widget Panosuna (<code className="px-1 py-0.5 rounded bg-black/40 text-blue-400 text-[10px] font-mono">Win + W</code>) sabitleyebilir veya bağımsız akrilik mini pencere çalıştırabilirsiniz.
+            </p>
+          </div>
+
+          {/* Guide 3: iOS & Android Mobile */}
           <div className="p-5 rounded-2xl bg-bg-secondary/60 border border-border space-y-2.5">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center text-lg">
               📱
             </div>
-            <h4 className="text-sm font-bold text-text-primary">Telefon Ana Ekranına Ekleme</h4>
+            <h4 className="text-sm font-bold text-text-primary">iOS & Android Ana Ekran</h4>
             <p className="text-xs text-text-secondary leading-relaxed">
-              Android cihazınızda Chrome veya StockMind uygulamasında "Ana Ekrana Ekle" diyerek portföy ve ısı haritasını
-              telefonunuzun ana ekranından anında görüntüleyin.
+              iPhone'da Safari "Paylaş → Ana Ekrana Ekle", Android'de resmi APK veya Chrome üzerinden tek dokunuşla tam ekran portföy takibi yapın.
+            </p>
+          </div>
+
+          {/* Guide 4: Notion & Websites */}
+          <div className="p-5 rounded-2xl bg-bg-secondary/60 border border-border space-y-2.5">
+            <div className="w-10 h-10 rounded-xl bg-accent/15 text-accent border border-accent/25 flex items-center justify-center text-lg">
+              📝
+            </div>
+            <h4 className="text-sm font-bold text-text-primary">Notion & Web Embed</h4>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Notion sayfanızda <code className="px-1 py-0.5 rounded bg-black/40 text-accent font-mono text-[10px]">/embed</code> yazıp bağlantıyı yapıştırın veya iframe kodunu doğrudan kendi sitenize gömün.
             </p>
           </div>
         </div>

@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Borsa İstanbul, TEFAS Fonları ve Küresel Piyasa Takip & Portföy Platformu',
     start_url: '/dashboard',
     display: 'standalone',
-    background_color: '#0b0f19',
-    theme_color: '#6366f1',
+    background_color: '#000000',
+    theme_color: '#8b5cf6',
     icons: [
       {
         src: '/icon-192.png',
@@ -34,5 +34,28 @@ export default function manifest(): MetadataRoute.Manifest {
         type: 'image/png',
       },
     ],
+    // Windows 11 Widget Board Specification (PWA Widgets)
+    ...({
+      widgets: [
+        {
+          name: 'StockMind Portföy Widget',
+          short_name: 'Portföy',
+          description: 'Anlık portföy durumu ve günlük/aylık getiri takibi',
+          tag: 'stockmind-portfolio',
+          ms_ac_template: '/widgets/portfolio',
+          data: '/api/markets/overview',
+          type: 'application/json',
+        },
+        {
+          name: 'StockMind Isı Haritası',
+          short_name: 'Isı Haritası',
+          description: 'Canlı BIST ve portföy ağırlık ısı haritası',
+          tag: 'stockmind-heatmap',
+          ms_ac_template: '/widgets/heatmap',
+          data: '/api/markets/overview',
+          type: 'application/json',
+        },
+      ],
+    } as any),
   };
 }

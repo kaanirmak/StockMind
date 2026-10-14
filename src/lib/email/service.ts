@@ -222,22 +222,23 @@ export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailRes
   const html = generateStockMindEmailHtml(userName, payload);
   const subject = payload.subject || `StockMind Test Bildirimi • ${userName} (${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})`;
 
-  // Determine Custom SMTP Configuration (Must be provided by user, exactly like OpenRouter API key)
-  const smtpUser = (payload.customSmtp?.user || '').trim();
-  const smtpPass = (payload.customSmtp?.pass || '').trim();
-  const smtpHost = (payload.customSmtp?.host || '').trim();
-  const smtpPort = payload.customSmtp?.port || 587;
-  const smtpFrom = (payload.customSmtp?.from || '').trim() || `StockMind <${smtpUser}>`;
-  const smtpService = payload.customSmtp?.service || 'gmail';
+  // Determine SMTP Configuration: Server-side environment variables as primary, with optional custom override
+  const smtpUser = (payload.customSmtp?.user || process.env.SMTP_USER || '').trim();
+  const smtpPass = (payload.customSmtp?.pass || process.env.SMTP_PASS || '').trim();
+  const smtpHost = (payload.customSmtp?.host || process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+  const smtpPort = payload.customSmtp?.port || Number(process.env.SMTP_PORT) || 587;
+  const smtpFrom = (payload.customSmtp?.from || process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
+  const smtpService = payload.customSmtp?.service || process.env.SMTP_SERVICE || 'gmail';
 
-  // 1. Özel Gönderici SMTP Bilgileri Zorunludur (Tıpkı OpenRouter API Key gibi)
+  // If neither custom nor server environment SMTP is configured
   if (!smtpUser || !smtpPass) {
+    console.warn('System SMTP credentials are not configured on the server (SMTP_USER/SMTP_PASS).');
     return {
       success: false,
-      requiresSmtpConfig: true,
-      error: 'SMTP_CONFIG_REQUIRED',
+      requiresSmtpConfig: false,
+      error: 'SMTP_NOT_CONFIGURED',
       message:
-        'Özel Gönderici SMTP Bilgileri Zorunludur. E-posta bildirimlerini ve 18:30 bültenlerini gönderebilmek için lütfen Ayarlar sayfasından kendi özel SMTP gönderici e-posta adresinizi ve şifrenizi (Google Uygulama Şifresi) tanımlayın.',
+        'Sistem e-posta sunucusu geçici olarak aktif değil. Lütfen sunucu ortam değişkenlerini (SMTP_USER, SMTP_PASS) kontrol edin.',
       method: 'failed',
     };
   }

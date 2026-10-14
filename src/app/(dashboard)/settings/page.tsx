@@ -76,10 +76,35 @@ export default function SettingsPage() {
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
-  const [appVersionCode, setAppVersionCode] = useState<number>(4);
-  const [appVersionName, setAppVersionName] = useState<string>('1.0.3');
-  const [remoteVersionCode, setRemoteVersionCode] = useState<number>(5);
-  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.0.4');
+  const [appVersionCode, setAppVersionCode] = useState<number>(6);
+  const [appVersionName, setAppVersionName] = useState<string>('1.1.0');
+  const [remoteVersionCode, setRemoteVersionCode] = useState<number>(6);
+  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.1.0');
+
+  // Default Chart Type Preference
+  const [defaultChartType, setDefaultChartType] = useState<'line' | 'candles'>('line');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedType = localStorage.getItem('stockmind_default_chart_type');
+      if (savedType === 'candles' || savedType === 'line') {
+        setDefaultChartType(savedType);
+      }
+    }
+  }, []);
+
+  const handleChartTypeChange = (type: 'line' | 'candles') => {
+    setDefaultChartType(type);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stockmind_default_chart_type', type);
+      window.dispatchEvent(new Event('stockmind_chart_type_updated'));
+    }
+    showToast({
+      type: 'success',
+      title: 'Grafik Tercihi Güncellendi',
+      message: `Varsayılan grafik formatı: ${type === 'line' ? 'Çizgi / Alan Grafiği' : 'Mum Grafiği'}`,
+    });
+  };
 
   useEffect(() => {
     setPushSettings(loadPushPreferences());
@@ -410,19 +435,11 @@ export default function SettingsPage() {
       };
       localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
 
-      if (!smtpUser.trim() || !smtpPass.trim()) {
-        showToast({
-          type: 'warning',
-          title: 'Ayarlar Kaydedildi (SMTP Eksik)',
-          message: 'Bildirim tercihleriniz saklandı ancak e-posta bildirimleri ve 18:30 bülteni için özel SMTP gönderici bilgileri zorunludur.',
-        });
-      } else {
-        showToast({
-          type: 'success',
-          title: 'E-posta & Özel SMTP Ayarları Kaydedildi 🎉',
-          message: 'Özel SMTP gönderici bilgileriniz ve bildirim tercihleriniz başarıyla aktif edildi.',
-        });
-      }
+      showToast({
+        type: 'success',
+        title: 'E-posta & Bildirim Ayarları Kaydedildi 🎉',
+        message: 'Bildirim tercihleriniz ve alıcı e-posta adresiniz başarıyla güncellendi.',
+      });
     } catch (e) {
       showToast({
         type: 'danger',
@@ -496,15 +513,6 @@ export default function SettingsPage() {
       return;
     }
 
-    if (!smtpUser.trim() || !smtpPass.trim()) {
-      showToast({
-        type: 'danger',
-        title: 'Özel SMTP Bilgileri Zorunludur 🔑',
-        message: '18:30 Günlük Bültenini gönderebilmek için aşağıdaki SMTP Yapılandırması alanından gönderici e-posta ve şifrenizi (Uygulama Şifresi) girip kaydedin.',
-      });
-      return;
-    }
-
     setSendingDailyReport(true);
     try {
       const res = await fetch('/api/cron/daily-report', {
@@ -551,15 +559,6 @@ export default function SettingsPage() {
         type: 'danger',
         title: 'Geçersiz E-posta',
         message: 'Lütfen geçerli bir alıcı e-posta adresi girin.',
-      });
-      return;
-    }
-
-    if (!smtpUser.trim() || !smtpPass.trim()) {
-      showToast({
-        type: 'danger',
-        title: 'Özel SMTP Bilgileri Zorunludur 🔑',
-        message: 'Test e-postası gönderebilmek için aşağıdaki SMTP Yapılandırması alanından gönderici e-posta ve şifrenizi (Google Uygulama Şifresi) tanımlamalısınız.',
       });
       return;
     }
@@ -755,6 +754,75 @@ export default function SettingsPage() {
 
             <p className="text-xs text-text-secondary leading-relaxed">
               Ferah, temiz, yüksek kontrastlı aydınlık tasarım. Gündüz kullanımı ve net okunabilirlik için optimize edilmiştir.
+            </p>
+          </button>
+        </div>
+      </div>
+
+      {/* Default Chart Type Selection Card */}
+      <div className="glass-card p-6 space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b border-border/60">
+          <div>
+            <h3 className="text-base font-bold text-text-primary">Grafik Görünümü & Varsayılan Tip</h3>
+            <p className="text-xs text-text-muted">
+              Piyasa ve varlık detay sayfalarında grafiklerin ilk açılışta nasıl görüntüleneceğini belirleyin.
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent/15 border border-accent/30 text-accent">
+            {defaultChartType === 'line' ? '📈 Çizgi / Alan' : '🕯️ Mum Grafiği'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Option 1: Line / Area Chart */}
+          <button
+            type="button"
+            onClick={() => handleChartTypeChange('line')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-3 relative overflow-hidden ${
+              defaultChartType === 'line'
+                ? 'bg-accent/10 border-accent shadow-lg shadow-accent/15'
+                : 'bg-bg-tertiary/40 border-border hover:border-border-hover'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📈</span>
+                <span className="text-sm font-bold text-text-primary">Çizgi / Alan Grafiği</span>
+              </div>
+              {defaultChartType === 'line' && (
+                <span className="text-[11px] font-extrabold text-accent bg-accent/20 px-2 py-0.5 rounded-full">
+                  Varsayılan
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Mobil cihazlarda ultra akıcı, sade ve modern alan gradyanı. Fiyat trendlerini ve genel yönü anında kavramak için idealdir.
+            </p>
+          </button>
+
+          {/* Option 2: Candlestick Chart */}
+          <button
+            type="button"
+            onClick={() => handleChartTypeChange('candles')}
+            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-3 relative overflow-hidden ${
+              defaultChartType === 'candles'
+                ? 'bg-accent/10 border-accent shadow-lg shadow-accent/15'
+                : 'bg-bg-tertiary/40 border-border hover:border-border-hover'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🕯️</span>
+                <span className="text-sm font-bold text-text-primary">Mum Grafiği (Candlestick)</span>
+              </div>
+              {defaultChartType === 'candles' && (
+                <span className="text-[11px] font-extrabold text-accent bg-accent/20 px-2 py-0.5 rounded-full">
+                  Varsayılan
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Açılış, yüksek, düşük ve kapanış (OHLC) değerleri ile teknik analiz formasyonlarını incelemek isteyen profesyonel yatırımcılar için.
             </p>
           </button>
         </div>
@@ -1368,18 +1436,18 @@ export default function SettingsPage() {
             </label>
           </div>
 
-          {/* Mandatory Custom SMTP Section */}
+          {/* SMTP Section */}
           <div className="pt-3 border-t border-border/60 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-text-primary">Özel Gönderici E-posta Sunucusu (SMTP)</h4>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-accent/15 border border-accent/30 text-accent">
-                    Zorunlu Yapılandırma
+                  <h4 className="text-sm font-bold text-text-primary">E-posta Gönderim Servisi (SMTP)</h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                    Sistem Sunucusu Hazır
                   </span>
                 </div>
                 <p className="text-xs text-text-muted mt-0.5">
-                  E-posta bildirimleri ve 18:30 piyasa bültenlerini gönderebilmek için kendi gönderici SMTP bilgilerinizi tanımlamanız zorunludur.
+                  E-postalarınız StockMind merkezi SMTP altyapımız üzerinden otomatik ve ücretsiz iletilir. İsterseniz aşağıdaki alandan kendi özel sunucunuzu da bağlayabilirsiniz.
                 </p>
               </div>
 
@@ -1391,8 +1459,9 @@ export default function SettingsPage() {
                     <span>Özel SMTP Aktif</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-400 animate-pulse">
-                    <span>⚠️ Gönderici Tanımlanmadı</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Sistem SMTP Aktif</span>
                   </span>
                 )}
               </div>

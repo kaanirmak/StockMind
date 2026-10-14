@@ -14,7 +14,7 @@ function HeatmapWidgetInner() {
   return (
     <div
       className={`min-h-screen w-full flex items-center justify-center p-2 sm:p-4 transition-colors ${
-        isTransparent ? 'bg-transparent' : theme === 'light' ? 'bg-[#f4f5f8]' : 'bg-[#0a0d16]'
+        isTransparent ? 'bg-transparent' : theme === 'light' ? 'bg-[#f8fafc]' : 'bg-[#000000]'
       }`}
     >
       <div className="w-full max-w-2xl">

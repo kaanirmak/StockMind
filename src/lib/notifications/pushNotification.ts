@@ -140,6 +140,9 @@ export function playNotificationSound(): void {
   }
 }
 
+// In-memory cooldown cache to suppress duplicate/spam notifications
+const sentCooldownCache: Record<string, number> = {};
+
 /**
  * Sends a native phone notification (or web notification if on browser)
  */
@@ -151,6 +154,14 @@ export function sendPushNotification(title: string, message: string, route: stri
     console.log('Push notifications are disabled in settings.');
     return false;
   }
+
+  // Anti-spam cooldown: suppress identical alerts sent within 4 minutes
+  const notifFingerprint = `${title}::${message}`;
+  const lastSent = sentCooldownCache[notifFingerprint] || 0;
+  if (Date.now() - lastSent < 4 * 60 * 1000) {
+    return false;
+  }
+  sentCooldownCache[notifFingerprint] = Date.now();
 
   let sent = false;
 

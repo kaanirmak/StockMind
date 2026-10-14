@@ -84,14 +84,14 @@ export default function ReportsPage() {
     const smtpService = (settings.smtpService || 'gmail').trim();
     const recipientEmail = (settings.notificationEmail || smtpUser || '').trim();
 
-    if (!smtpUser || !smtpPass) {
-      showToast({
-        type: 'danger',
-        title: 'SMTP Ayarları Gerekli',
-        message: 'E-posta göndermek için Ayarlar → E-posta & Bildirimler bölümünden SMTP bilgilerinizi kaydedin.',
-      });
-      return;
-    }
+    const customSmtp = (smtpUser && smtpPass) ? {
+      user: smtpUser,
+      pass: smtpPass,
+      host: smtpHost,
+      port: smtpPort,
+      from: smtpFrom || `StockMind <${smtpUser}>`,
+      service: smtpService,
+    } : undefined;
 
     if (!recipientEmail || !recipientEmail.includes('@')) {
       showToast({
@@ -116,14 +116,7 @@ export default function ReportsPage() {
             totalPnL: currentSummary.totalPnL,
             totalPnLPercent: currentSummary.totalPnLPercent,
           },
-          customSmtp: {
-            user: smtpUser,
-            pass: smtpPass,
-            host: smtpHost,
-            port: smtpPort,
-            from: smtpFrom || `StockMind <${smtpUser}>`,
-            service: smtpService,
-          },
+          customSmtp,
         }),
       });
 

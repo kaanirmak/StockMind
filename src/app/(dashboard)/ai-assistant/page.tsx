@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
 import { Button, Badge } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,20 +13,26 @@ import {
 } from '@/lib/ai/apiKeyStorage';
 import { ChatMessageContent } from '@/components/ai/ChatMessageContent';
 
-interface Message {
+export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   createdAt: string;
-  isKeyPrompt?: boolean;
-  pendingPrompt?: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: Message[];
 }
 
 const INITIAL_MESSAGES: Message[] = [
   {
     id: 'msg-welcome',
     role: 'assistant',
-    content: `👋 **Merhaba! Ben StockMind AI Finansal Asistanınız.**
+    content: `👋 **Merhaba! Ben StockMind AI Finansal Danışmanınız.**
 
 Uygulamamızın canlı piyasa motoruna doğrudan bağlıyım. Anlık döviz kurları (USD/TRY, EUR/TRY), altın fiyatları, BIST 100 endeksi, hisse ve TEFAS fonları ile kendi portföyünüz hakkında gerçek zamanlı sorular sorabilirsiniz.
 
@@ -44,62 +49,166 @@ const PROMPT_SUGGESTIONS = [
   { label: '🏦 En İyi TEFAS Fonları', prompt: 'Son 1 yılda en çok kazandıran TEFAS fonları ve dengeli bir fon sepeti önerisi ver.' },
 ];
 
+const SESSIONS_STORAGE_KEY = 'stockmind_ai_chat_sessions_v2';
+
 function AIAssistantContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0].id);
   const [customApiKey, setCustomApiKey] = useState<string>('');
-  const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
-  const [tempKeyInput, setTempKeyInput] = useState<string>('');
-  const [inlineKeyInputs, setInlineKeyInputs] = useState<Record<string, string>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
-  // Load custom API key and default model from unified storage and sync automatically
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef<boolean>(true);
+
+  // 1. Initialize Sessions from LocalStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+      if (raw) {
+        const parsed: ChatSession[] = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSessions(parsed);
+          setCurrentSessionId(parsed[0].id);
+          setMessages(parsed[0].messages || INITIAL_MESSAGES);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load chat sessions:', e);
+    }
+
+    // Default first session
+    const firstSession: ChatSession = {
+      id: `session-${Date.now()}`,
+      title: 'Yeni Finansal Sohbet',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: INITIAL_MESSAGES,
+    };
+    setSessions([firstSession]);
+    setCurrentSessionId(firstSession.id);
+    setMessages(INITIAL_MESSAGES);
+    try {
+      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify([firstSession]));
+    } catch {}
+  }, []);
+
+  // 2. Load API key & model
   useEffect(() => {
     const key = getStoredOpenRouterKey(user?.id);
-    if (key) {
-      setCustomApiKey(key);
-      setTempKeyInput(key);
-    }
+    if (key) setCustomApiKey(key);
     const model = getStoredDefaultModel(user?.id);
-    if (model) {
-      setSelectedModel(model);
-    }
-
-    const handleSync = () => {
-      const refreshedKey = getStoredOpenRouterKey(user?.id);
-      setCustomApiKey(refreshedKey);
-      setTempKeyInput(refreshedKey);
-      const refreshedModel = getStoredDefaultModel(user?.id);
-      if (refreshedModel) setSelectedModel(refreshedModel);
-    };
-
-    window.addEventListener('stockmind_ai_key_updated', handleSync);
-    window.addEventListener('storage', handleSync);
-    return () => {
-      window.removeEventListener('stockmind_ai_key_updated', handleSync);
-      window.removeEventListener('storage', handleSync);
-    };
+    if (model) setSelectedModel(model);
   }, [user]);
 
-  const saveCustomKey = (key: string) => {
-    const trimmed = key.trim();
-    setCustomApiKey(trimmed);
-    setTempKeyInput(trimmed);
-    saveStoredOpenRouterKey(trimmed, user?.id, selectedModel);
-    setShowKeyModal(false);
+  // 3. Sync active session messages to LocalStorage
+  const updateCurrentSessionMessages = (newMessages: Message[], titleOverride?: string) => {
+    setMessages(newMessages);
+
+    setSessions((prev) => {
+      const updated = prev.map((s) => {
+        if (s.id === currentSessionId) {
+          let updatedTitle = s.title;
+          if (titleOverride) {
+            updatedTitle = titleOverride;
+          } else if (s.title === 'Yeni Finansal Sohbet' && newMessages.length > 1) {
+            const firstUserMsg = newMessages.find((m) => m.role === 'user');
+            if (firstUserMsg) {
+              updatedTitle = firstUserMsg.content.slice(0, 36) + (firstUserMsg.content.length > 36 ? '...' : '');
+            }
+          }
+          return {
+            ...s,
+            title: updatedTitle,
+            updatedAt: new Date().toISOString(),
+            messages: newMessages,
+          };
+        }
+        return s;
+      });
+
+      try {
+        localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed saving sessions to localStorage:', err);
+      }
+      return updated;
+    });
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // 4. Create New Chat Session
+  const handleCreateNewSession = () => {
+    const newSession: ChatSession = {
+      id: `session-${Date.now()}`,
+      title: 'Yeni Finansal Sohbet',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      messages: INITIAL_MESSAGES,
+    };
+
+    const updated = [newSession, ...sessions];
+    setSessions(updated);
+    setCurrentSessionId(newSession.id);
+    setMessages(INITIAL_MESSAGES);
+    setInput('');
+    setShowHistoryModal(false);
+
+    try {
+      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
   };
 
+  // 5. Select a Past Session
+  const handleSelectSession = (session: ChatSession) => {
+    setCurrentSessionId(session.id);
+    setMessages(session.messages || INITIAL_MESSAGES);
+    setShowHistoryModal(false);
+  };
+
+  // 6. Delete a Session
+  const handleDeleteSession = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    const remaining = sessions.filter((s) => s.id !== sessionId);
+
+    if (remaining.length === 0) {
+      handleCreateNewSession();
+      return;
+    }
+
+    setSessions(remaining);
+    try {
+      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(remaining));
+    } catch {}
+
+    if (sessionId === currentSessionId) {
+      setCurrentSessionId(remaining[0].id);
+      setMessages(remaining[0].messages || INITIAL_MESSAGES);
+    }
+  };
+
+  // 7. Track User Scroll Position in Chat Container (Fix for auto-scroll yanking)
+  const handleContainerScroll = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    // User is considered near bottom if within 90px of the bottom
+    isNearBottomRef.current = scrollHeight - (scrollTop + clientHeight) < 90;
+  };
+
+  // Auto scroll only when user is near bottom
   useEffect(() => {
-    scrollToBottom();
+    if (isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, loading]);
 
   // Handle URL prompt query param
@@ -110,56 +219,25 @@ function AIAssistantContent() {
     }
   }, [searchParams]);
 
-  const handleSendMessage = async (userText: string, overrideKey?: string) => {
-    const activeKey = (
-      overrideKey !== undefined
-        ? overrideKey
-        : (customApiKey || getStoredOpenRouterKey(user?.id) || '')
-    ).trim();
-
-    if (activeKey && !customApiKey) {
-      setCustomApiKey(activeKey);
-      setTempKeyInput(activeKey);
-    }
-
-    if (!userText.trim() || loading) return;
-
-    // 1. If user doesn't have an API key, DO NOT return dummy answers. Prompt directly for the key!
-    if (!activeKey) {
-      const userMessage: Message = {
-        id: `usr-${Date.now()}`,
-        role: 'user',
-        content: userText,
-        createdAt: new Date().toISOString(),
-      };
-
-      const keyPromptMessage: Message = {
-        id: `key-req-${Date.now() + 1}`,
-        role: 'assistant',
-        content: `🔑 **Canlı AI Analizi İçin API Anahtarı Gerekli**\n\n"${userText}" sorunuzu canlı yapay zeka modelleriyle analiz edebilmem için lütfen OpenRouter API anahtarınızı tanımlayın.\n\n*Sahte/dummy yanıtlar verilmemektedir.* Anahtarınızı aşağıya girip kaydettiğinizde sorunuz anında analiz edilecektir.`,
-        createdAt: new Date().toISOString(),
-        isKeyPrompt: true,
-        pendingPrompt: userText,
-      };
-
-      setMessages((prev) => [...prev, userMessage, keyPromptMessage]);
-      setInput('');
-      return;
-    }
+  // 8. Send Message
+  const handleSendMessage = async (userText: string) => {
+    const cleanText = userText.trim();
+    if (!cleanText || loading) return;
 
     const userMessage: Message = {
       id: `usr-${Date.now()}`,
       role: 'user',
-      content: userText,
+      content: cleanText,
       createdAt: new Date().toISOString(),
     };
 
     const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    updateCurrentSessionMessages(newMessages);
     setInput('');
     setLoading(true);
+    isNearBottomRef.current = true;
 
-    // 2. Extract current portfolio state from application store
+    // Extract current portfolio state
     let portfolioPayload: any = undefined;
     try {
       const summary = usePortfolioStore.getState().getSummary();
@@ -191,11 +269,9 @@ function AIAssistantContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages
-            .filter((m) => !m.isKeyPrompt)
-            .map((m) => ({ role: m.role, content: m.content })),
+          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
           model: selectedModel,
-          apiKey: activeKey || undefined,
+          apiKey: customApiKey || undefined,
           portfolioContext: portfolioPayload,
         }),
       });
@@ -208,35 +284,22 @@ function AIAssistantContent() {
           content: data.message.content,
           createdAt: data.message.createdAt || new Date().toISOString(),
         };
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else if (data.requiresApiKey) {
-        // API explicitly reported missing key
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `key-req-${Date.now()}`,
-            role: 'assistant',
-            content: `🔑 **API Anahtarı Gerekli:** ${data.error}`,
-            createdAt: new Date().toISOString(),
-            isKeyPrompt: true,
-            pendingPrompt: userText,
-          },
-        ]);
+        updateCurrentSessionMessages([...newMessages, assistantMessage]);
       } else {
         const errorText = data.error || 'AI yanıtı alınamadı.';
-        setMessages((prev) => [
-          ...prev,
+        updateCurrentSessionMessages([
+          ...newMessages,
           {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: `⚠️ **AI Hatası:**\n\n${errorText}\n\n*Lütfen API anahtarınızın geçerliliğini ve model bakiyenizi kontrol edin.*`,
+            content: `⚠️ **Analiz Uyarısı:** ${errorText}\n\n*Sunucu yanıt veremedi veya model meşgul.*`,
             createdAt: new Date().toISOString(),
           },
         ]);
       }
     } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
+      updateCurrentSessionMessages([
+        ...newMessages,
         {
           id: `err-${Date.now()}`,
           role: 'assistant',
@@ -249,26 +312,10 @@ function AIAssistantContent() {
     }
   };
 
-  const handleInlineKeySubmit = (messageId: string, pendingPrompt?: string) => {
-    const enteredKey = (inlineKeyInputs[messageId] || '').trim();
-    if (!enteredKey) return;
-
-    saveCustomKey(enteredKey);
-
-    // If there was a pending question waiting for the key, execute it right away!
-    if (pendingPrompt) {
-      handleSendMessage(pendingPrompt, enteredKey);
-    }
-  };
-
-  const handleClearChat = () => {
-    setMessages(INITIAL_MESSAGES);
-  };
-
   return (
-    <div className="ai-chat-container flex flex-col h-full max-h-full min-h-0 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-2 animate-fade-in relative">
+    <div className="ai-chat-container flex flex-col h-[calc(100dvh-7.5rem)] md:h-[calc(100dvh-5.5rem)] max-h-[calc(100dvh-7.5rem)] md:max-h-[calc(100dvh-5.5rem)] min-h-0 animate-fade-in relative">
       {/* Top Header - Compact for Mobile, Detailed for Desktop */}
-      <div className="glass-card p-2.5 sm:p-4 mb-2 sm:mb-3 shrink-0 rounded-2xl border border-border">
+      <div className="glass-card p-2 sm:p-3 mb-2 shrink-0 rounded-2xl border border-border">
         {/* Mobile Header (Single Compact Row) */}
         <div className="flex sm:hidden items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -279,33 +326,42 @@ function AIAssistantContent() {
             </div>
             <div className="min-w-0">
               <h1 className="text-xs font-bold text-text-primary truncate">StockMind AI</h1>
-              <button
-                type="button"
-                onClick={() => {
-                  setTempKeyInput(customApiKey);
-                  setShowKeyModal(true);
-                }}
-                className="flex items-center gap-1 text-[10px] font-semibold text-accent hover:underline cursor-pointer"
-              >
-                {customApiKey ? (
-                  <span className="text-emerald-500 font-mono">🟢 Key: ...{customApiKey.slice(-4)}</span>
-                ) : (
-                  <span className="text-amber-500 flex items-center gap-0.5 animate-pulse">
-                    ⚡ Key Tanımla
-                  </span>
-                )}
-              </button>
+              <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Canlı Lisanslı
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* History Button */}
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(true)}
+              className="p-1.5 text-text-muted hover:text-text-primary rounded-lg border border-border hover:bg-bg-hover transition-colors text-xs cursor-pointer flex items-center gap-1"
+              title="Sohbet Geçmişi"
+            >
+              <span>📜</span>
+            </button>
+
+            {/* New Chat Button */}
+            <button
+              type="button"
+              onClick={handleCreateNewSession}
+              className="p-1.5 text-accent hover:text-white rounded-lg border border-accent/30 bg-accent/10 hover:bg-accent transition-colors text-xs cursor-pointer"
+              title="Yeni Sohbet"
+            >
+              <span>➕</span>
+            </button>
+
+            {/* Model Select */}
             <select
               value={selectedModel}
               onChange={(e) => {
                 setSelectedModel(e.target.value);
                 saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value);
               }}
-              className="bg-bg-input text-text-primary text-[11px] rounded-lg border border-border px-2 py-1.5 focus:border-accent focus:outline-none max-w-[130px] truncate cursor-pointer font-medium"
+              className="bg-bg-input text-text-primary text-[11px] rounded-lg border border-border px-1.5 py-1 focus:border-accent focus:outline-none max-w-[105px] truncate cursor-pointer font-medium"
             >
               {AVAILABLE_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -313,16 +369,6 @@ function AIAssistantContent() {
                 </option>
               ))}
             </select>
-
-            <button
-              onClick={handleClearChat}
-              className="p-1.5 text-text-muted hover:text-text-primary rounded-lg border border-border hover:bg-bg-hover transition-colors text-xs cursor-pointer shrink-0"
-              title="Sohbeti Temizle"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
           </div>
         </div>
 
@@ -340,38 +386,35 @@ function AIAssistantContent() {
                 <Badge variant="success" size="sm" dot>
                   Canlı Piyasa & Portföy Entegre
                 </Badge>
-
-                {/* API Key Status Pill */}
-                {customApiKey ? (
-                  <button
-                    onClick={() => {
-                      setTempKeyInput(customApiKey);
-                      setShowKeyModal(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/25 transition-all cursor-pointer font-mono"
-                    title="Özel API anahtarınızı görüntüleyin veya değiştirin"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Key: {customApiKey.slice(0, 6)}...{customApiKey.slice(-4)}</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setTempKeyInput('');
-                      setShowKeyModal(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-500 hover:bg-amber-500/25 transition-all cursor-pointer animate-pulse"
-                    title="Canlı analizler için OpenRouter anahtarınızı girin"
-                  >
-                    <span>⚡ API Key Tanımla</span>
-                  </button>
-                )}
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                  Sistem Lisansı Aktif
+                </span>
               </div>
-              <p className="text-xs text-text-muted mt-0.5">BIST, TEFAS ve Küresel Piyasalar Canlı Analiz Motoru</p>
+              <p className="text-xs text-text-muted mt-0.5">BIST 100, TEFAS ve Küresel Piyasalar Canlı Analiz Motoru</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* History Button */}
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(true)}
+              className="px-3 py-1.5 rounded-xl border border-border bg-bg-secondary hover:bg-bg-hover text-xs font-semibold text-text-primary flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>📜</span>
+              <span>Geçmiş Sohbetler ({sessions.length})</span>
+            </button>
+
+            {/* New Chat Button */}
+            <button
+              type="button"
+              onClick={handleCreateNewSession}
+              className="px-3 py-1.5 rounded-xl border border-accent/40 bg-accent/15 hover:bg-accent text-accent hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <span>➕</span>
+              <span>Yeni Sohbet</span>
+            </button>
+
             {/* Model Selector */}
             <select
               value={selectedModel}
@@ -379,7 +422,7 @@ function AIAssistantContent() {
                 setSelectedModel(e.target.value);
                 saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value);
               }}
-              className="bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3 py-2 focus:border-accent focus:outline-none max-w-[240px] truncate cursor-pointer font-medium"
+              className="bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3 py-1.5 focus:border-accent focus:outline-none cursor-pointer font-medium"
             >
               {AVAILABLE_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -387,45 +430,17 @@ function AIAssistantContent() {
                 </option>
               ))}
             </select>
-
-            <button
-              onClick={handleClearChat}
-              className="p-2 text-text-muted hover:text-text-primary rounded-xl border border-border hover:bg-bg-hover transition-colors text-xs cursor-pointer shrink-0"
-              title="Sohbeti Temizle"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Missing Key Notification Banner (Shown when no key is set yet) */}
-      {!customApiKey && (
-        <div className="glass-card p-3 mb-2 shrink-0 rounded-xl border border-amber-500/30 bg-amber-500/5 flex items-center justify-between gap-3 animate-fade-in">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-lg shrink-0">🔑</span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-text-primary truncate">Canlı AI İçin API Anahtarı Tanımlayın</p>
-              <p className="text-[11px] text-text-muted truncate">Sahte yanıtlar yerine gerçek zamanlı analiz motoru kullanılır.</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setTempKeyInput('');
-              setShowKeyModal(true);
-            }}
-            className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-bold shrink-0 hover:bg-amber-600 transition-colors cursor-pointer"
-          >
-            Key Gir
-          </button>
-        </div>
-      )}
-
-      {/* Chat Messages Body */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar touch-pan-y overscroll-contain">
+      {/* Chat Messages Body - Scroll Fixed */}
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleContainerScroll}
+        className="flex-1 min-h-0 overflow-y-auto space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar touch-pan-y overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
           return (
@@ -456,55 +471,6 @@ function AIAssistantContent() {
                   <ChatMessageContent content={msg.content} isUser={isUser} />
                 </div>
 
-                {/* Interactive Key Input Prompt (Inside Bubble) */}
-                {msg.isKeyPrompt && (
-                  <div className="mt-3 p-3 rounded-xl bg-bg-secondary/80 border border-accent/30 space-y-2.5 animate-fade-in">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-text-primary">
-                      <svg className="w-4 h-4 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                      </svg>
-                      <span>OpenRouter API Anahtarınızı Tanımlayın:</span>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="password"
-                        value={inlineKeyInputs[msg.id] || ''}
-                        onChange={(e) =>
-                          setInlineKeyInputs((prev) => ({
-                            ...prev,
-                            [msg.id]: e.target.value,
-                          }))
-                        }
-                        placeholder="sk-or-v1-xxxxxxxx..."
-                        className="flex-1 bg-bg-input text-text-primary text-xs font-mono rounded-lg border border-border px-3 py-2 focus:border-accent focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleInlineKeySubmit(msg.id, msg.pendingPrompt)}
-                        className="px-3.5 py-2 rounded-lg bg-accent text-white text-xs font-bold hover:bg-accent-hover active:scale-95 transition-all cursor-pointer shrink-0"
-                      >
-                        Kaydet ve Başlat
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-text-muted pt-1 flex-wrap gap-1">
-                      <a
-                        href="https://openrouter.ai/keys"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-accent hover:underline flex items-center gap-1"
-                      >
-                        <span>OpenRouter'dan ücretsiz key al</span>
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                      <span>Tarayıcınızda güvenle saklanır</span>
-                    </div>
-                  </div>
-                )}
-
                 <div className={`text-[10px] mt-1 ${isUser ? 'text-white/70 text-right' : 'text-text-muted'}`}>
                   {new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                 </div>
@@ -520,7 +486,7 @@ function AIAssistantContent() {
             </div>
             <div className="glass-card p-3 sm:p-4 rounded-2xl rounded-tl-xs border border-border/80 flex items-center gap-2 text-xs text-text-muted">
               <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
-              <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name.split(' (')[0] || 'AI Modeli'} canlı analiz hazırlıyor...</span>
+              <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name.split(' (')[0] || 'AI'} canlı analiz hazırlıyor...</span>
             </div>
           </div>
         )}
@@ -528,7 +494,7 @@ function AIAssistantContent() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Preset Prompt Suggestions - Touch-Friendly Swipe for Mobile */}
+      {/* Preset Prompt Suggestions */}
       {messages.length <= 2 && (
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 shrink-0 no-scrollbar -mx-1 px-1 mb-1">
           {PROMPT_SUGGESTIONS.map((sug) => (
@@ -559,7 +525,7 @@ function AIAssistantContent() {
           className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none min-w-0"
         />
 
-        {/* Mobile Icon Button */}
+        {/* Mobile Submit Button */}
         <button
           type="button"
           onClick={() => handleSendMessage(input)}
@@ -580,7 +546,7 @@ function AIAssistantContent() {
           )}
         </button>
 
-        {/* Desktop Button */}
+        {/* Desktop Submit Button */}
         <div className="hidden sm:block shrink-0">
           <Button
             variant="primary"
@@ -595,75 +561,86 @@ function AIAssistantContent() {
         </div>
       </div>
 
-      {/* Quick API Key Modal / Bottom Sheet */}
-      {showKeyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 animate-fade-in">
-          <div className="glass-card max-w-md w-full p-5 sm:p-6 border border-border rounded-2xl shadow-elevated space-y-4">
-            <div className="flex items-center justify-between">
+      {/* Chat Sessions History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-4 animate-fade-in">
+          <div className="glass-card max-w-lg w-full p-5 sm:p-6 border border-border rounded-2xl shadow-elevated space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center text-accent">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                  </svg>
-                </div>
+                <span className="text-xl">📜</span>
                 <div>
-                  <h3 className="text-sm font-bold text-text-primary">OpenRouter API Anahtarı</h3>
-                  <p className="text-[11px] text-text-muted">Canlı yapay zeka analiz motoru</p>
+                  <h3 className="text-base font-bold text-text-primary">Sohbet Geçmişi</h3>
+                  <p className="text-xs text-text-muted">Önceki analiz ve danışmanlık oturumlarınız</p>
                 </div>
               </div>
               <button
-                onClick={() => setShowKeyModal(false)}
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
                 className="text-text-muted hover:text-text-primary p-1.5 rounded-lg hover:bg-bg-hover transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-text-secondary">API Anahtarı (API Key)</label>
-              <input
-                type="password"
-                value={tempKeyInput}
-                onChange={(e) => setTempKeyInput(e.target.value)}
-                placeholder="sk-or-v1-xxxxxxxxxxxxxxxx..."
-                className="w-full bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none font-mono"
-              />
-              <p className="text-[11px] text-text-muted">
-                Anahtarınız sunucuda saklanmaz, sadece tarayıcınızda güvenle tutulur. OpenRouter üzerinden ücretsiz modeller (DeepSeek, Llama, Qwen, Gemini) dahil dilediğinizi çalıştırabilirsiniz.
-              </p>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-text-secondary">Kayıtlı Sohbetler ({sessions.length})</span>
+              <button
+                type="button"
+                onClick={handleCreateNewSession}
+                className="text-xs font-bold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <span>➕ Yeni Sohbet Başlat</span>
+              </button>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              {customApiKey ? (
-                <button
-                  type="button"
-                  onClick={() => saveCustomKey('')}
-                  className="text-xs text-danger hover:underline cursor-pointer font-medium"
-                >
-                  Anahtarı Kaldır
-                </button>
-              ) : (
-                <a
-                  href="https://openrouter.ai/keys"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-accent hover:underline flex items-center gap-1"
-                >
-                  <span>Ücretsiz Key Al</span>
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              )}
+            {/* Sessions List */}
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+              {sessions.map((sess) => {
+                const isActive = sess.id === currentSessionId;
+                const messageCount = sess.messages?.length || 0;
+                return (
+                  <div
+                    key={sess.id}
+                    onClick={() => handleSelectSession(sess)}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                      isActive
+                        ? 'bg-accent/15 border-accent text-text-primary shadow-sm'
+                        : 'bg-bg-tertiary/50 border-border hover:bg-bg-hover text-text-secondary'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        {isActive && <span className="w-2 h-2 rounded-full bg-accent animate-pulse shrink-0" />}
+                        <h4 className="text-xs sm:text-sm font-semibold truncate text-text-primary">
+                          {sess.title}
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-text-muted mt-1">
+                        <span>{new Date(sess.updatedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>•</span>
+                        <span>{messageCount} mesaj</span>
+                      </div>
+                    </div>
 
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setShowKeyModal(false)}>
-                  İptal
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => saveCustomKey(tempKeyInput)}>
-                  Kaydet ve Kullan
-                </Button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteSession(e, sess.id)}
+                      className="p-1.5 text-text-muted hover:text-danger rounded-lg hover:bg-danger/10 transition-colors cursor-pointer shrink-0"
+                      title="Sohbeti Sil"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-border/60 flex justify-end">
+              <Button variant="secondary" size="sm" onClick={() => setShowHistoryModal(false)}>
+                Kapat
+              </Button>
             </div>
           </div>
         </div>

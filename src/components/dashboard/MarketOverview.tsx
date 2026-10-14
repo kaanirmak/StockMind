@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -25,6 +25,8 @@ const DEFAULT_INDICES: MarketItem[] = [
 export default function MarketOverview() {
   const [items, setItems] = useState<MarketItem[]>(DEFAULT_INDICES);
   const [loading, setLoading] = useState(true);
+  const [priceFlashes, setPriceFlashes] = useState<Record<string, 'up' | 'down'>>({});
+  const prevPricesRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -35,7 +37,30 @@ export default function MarketOverview() {
         if (res.ok) {
           const json = await res.json();
           if (json.data && json.data.length > 0 && isMounted) {
-            setItems(json.data);
+            const nextData: MarketItem[] = json.data;
+
+            // Compute price flashes
+            const newFlashes: Record<string, 'up' | 'down'> = {};
+            nextData.forEach((item) => {
+              const prev = prevPricesRef.current[item.symbol];
+              if (prev !== undefined && prev !== item.value) {
+                if (item.value > prev) {
+                  newFlashes[item.symbol] = 'up';
+                } else if (item.value < prev) {
+                  newFlashes[item.symbol] = 'down';
+                }
+              }
+              prevPricesRef.current[item.symbol] = item.value;
+            });
+
+            if (Object.keys(newFlashes).length > 0) {
+              setPriceFlashes(newFlashes);
+              setTimeout(() => {
+                if (isMounted) setPriceFlashes({});
+              }, 1200);
+            }
+
+            setItems(nextData);
           }
         }
       } catch (err) {
@@ -46,7 +71,8 @@ export default function MarketOverview() {
     }
 
     loadData();
-    const interval = setInterval(loadData, 30000);
+    // 8-second smart live polling for realtime market updates
+    const interval = setInterval(loadData, 8000);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -66,7 +92,10 @@ export default function MarketOverview() {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
           <span>Canlı Finans & Piyasa Nabzı</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Canlı Veri" />
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            Canlı Akış (8s)
+          </span>
         </h2>
         <Link
           href="/piyasalar"
@@ -100,7 +129,15 @@ export default function MarketOverview() {
                 </div>
               </div>
 
-              <div className="text-sm sm:text-base font-bold font-mono text-text-primary whitespace-nowrap">
+              <div
+                className={`text-sm sm:text-base font-bold font-mono text-text-primary whitespace-nowrap transition-all duration-300 ${
+                  priceFlashes[idx.symbol] === 'up'
+                    ? 'price-flash-up'
+                    : priceFlashes[idx.symbol] === 'down'
+                    ? 'price-flash-down'
+                    : ''
+                }`}
+              >
                 {symbolPrefix}
                 {idx.value < 10 ? idx.value.toFixed(2) : formatNumber(idx.value)}
               </div>
