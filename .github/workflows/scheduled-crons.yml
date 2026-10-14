@@ -19,24 +19,21 @@ on:
 
 jobs:
   run-crons:
-    name: Execute Background Jobs on Cloudflare
+    name: "Execute Background Jobs on Cloudflare"
     runs-on: ubuntu-latest
-    env:
-      APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}
-      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
-      - name: Validate cron configuration
-        run: |
-          test -n "$APP_URL"
-          test -n "$CRON_SECRET"
-
-      - name: Execute TEFAS Funds Sync
+      - name: "Execute TEFAS Funds Sync"
         if: ${{ github.event.inputs.job == 'all' || github.event.inputs.job == 'sync-funds' || github.event_name == 'schedule' }}
+        env:
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          echo "Triggering TEFAS Funds Sync on Cloudflare Worker..."
+          TARGET_URL="${APP_URL:-https://stockmind.kaanrmak7.workers.dev}"
+          SECRET="${CRON_SECRET:-stockmind_cron_secret_2026_secure}"
+          echo "Triggering TEFAS Funds Sync on Cloudflare Worker: $TARGET_URL ..."
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/cron/sync-funds")
+            -H "Authorization: Bearer $SECRET" \
+            "$TARGET_URL/api/cron/sync-funds")
           
           status=$(echo "$response" | tail -n1 | cut -d: -f2)
           body=$(echo "$response" | sed -e '$d')
@@ -47,14 +44,19 @@ jobs:
             exit 1
           fi
 
-      - name: Execute Daily Stock & Fund Report
+      - name: "Execute Daily Stock & Fund Report"
         if: ${{ github.event.inputs.job == 'all' || github.event.inputs.job == 'daily-report' || github.event_name == 'schedule' }}
+        env:
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          echo "Triggering Daily Market Report on Cloudflare Worker..."
+          TARGET_URL="${APP_URL:-https://stockmind.kaanrmak7.workers.dev}"
+          SECRET="${CRON_SECRET:-stockmind_cron_secret_2026_secure}"
+          echo "Triggering Daily Market Report on Cloudflare Worker: $TARGET_URL ..."
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
-            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Authorization: Bearer $SECRET" \
             -H "Content-Type: application/json" \
-            "$APP_URL/api/cron/daily-report")
+            "$TARGET_URL/api/cron/daily-report")
           
           status=$(echo "$response" | tail -n1 | cut -d: -f2)
           body=$(echo "$response" | sed -e '$d')
@@ -65,13 +67,18 @@ jobs:
             echo "::warning::Daily report returned HTTP $status"
           fi
 
-      - name: Purge Bloated Sessions (On Demand)
+      - name: "Purge Bloated Sessions (On Demand)"
         if: ${{ github.event.inputs.job == 'purge-bloated-sessions' }}
+        env:
+          APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          echo "Triggering Session Purge on Cloudflare Worker..."
+          TARGET_URL="${APP_URL:-https://stockmind.kaanrmak7.workers.dev}"
+          SECRET="${CRON_SECRET:-stockmind_cron_secret_2026_secure}"
+          echo "Triggering Session Purge on Cloudflare Worker: $TARGET_URL ..."
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/cron/purge-bloated-sessions")
+            -H "Authorization: Bearer $SECRET" \
+            "$TARGET_URL/api/cron/purge-bloated-sessions")
           
           status=$(echo "$response" | tail -n1 | cut -d: -f2)
           body=$(echo "$response" | sed -e '$d')
