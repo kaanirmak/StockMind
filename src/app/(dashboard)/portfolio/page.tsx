@@ -266,20 +266,34 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12 max-w-[1600px] mx-auto">
       {/* Header & Portfolio Selector */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Portföy Yönetimi</h1>
-          <p className="text-text-secondary text-xs sm:text-sm mt-0.5">
-            Varlıklarınızı, maliyetlerinizi, anlık kâr/zararınızı ve toplam işlem hacminizi yönetin.
-          </p>
+      <div className="product-hero flex flex-col xl:flex-row xl:items-center justify-between gap-5 p-4 sm:p-6">
+        <div className="relative z-10 min-w-0">
+          <div className="flex items-center gap-3.5">
+            <div className="hidden sm:flex w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white items-center justify-center shadow-lg shadow-violet-500/20">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5v10.5H3.75V6.75zM7.5 6.75V5.25A2.25 2.25 0 019.75 3h4.5a2.25 2.25 0 012.25 2.25v1.5M3.75 10.5h16.5" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">Portföy</h1>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] sm:text-xs font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Canlı değerleme
+                </span>
+              </div>
+              <p className="text-text-secondary text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
+                Varlık dağılımınızı, performansınızı ve tüm işlemlerinizi tek bakışta yönetin.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Action Toolbar on mobile & desktop */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+        <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 xl:max-w-[65%]">
           {/* Portfolio Switcher - Swipeable on mobile */}
-          <div className="flex items-center gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border overflow-x-auto scrollbar-none w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 p-1 bg-bg-primary/55 backdrop-blur-md rounded-xl border border-border/80 overflow-x-auto scrollbar-none w-full sm:w-auto">
             {portfolios.map((p) => {
               const isActive = activePortfolioId === p.id;
               return (
@@ -478,7 +492,7 @@ export default function PortfolioPage() {
       {/* Summary KPI Cards - 2x2 Grid on Mobile, 4 Cols on Desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Value */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': '#8b5cf6', '--metric-glow': 'rgba(139, 92, 246, 0.2)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>Portföy Değeri</span>
@@ -497,7 +511,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Total PnL */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': isProfit ? '#10b981' : '#ef4444', '--metric-glow': isProfit ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>Toplam Kâr/Zarar</span>
@@ -524,7 +538,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Total Turnover / Volume */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': '#3b82f6', '--metric-glow': 'rgba(59, 130, 246, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>İşlem Hacmi</span>
@@ -546,7 +560,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Daily PnL & Position Count */}
-        <div className="p-3.5 sm:p-5 rounded-2xl bg-bg-card border border-border shadow-xs hover:border-accent/30 transition-all flex flex-col justify-between">
+        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': summary.dailyPnL >= 0 ? '#10b981' : '#ef4444', '--metric-glow': summary.dailyPnL >= 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>Günlük Getiri</span>
@@ -586,7 +600,7 @@ export default function PortfolioPage() {
           <PortfolioAllocationChart allocation={summary.allocation} totalValue={summary.totalValue} />
         </div>
 
-        <div className="lg:col-span-7 flex flex-col justify-between p-4 sm:p-6 rounded-2xl bg-bg-card border border-border shadow-xs">
+        <div className="settings-panel lg:col-span-7 flex flex-col justify-between p-4 sm:p-6">
           <div>
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-sm sm:text-base font-bold text-text-primary">Portföy Varlık Özeti</h3>
@@ -646,7 +660,7 @@ export default function PortfolioPage() {
       {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
       <div className="space-y-4">
         {/* Navigation Tabs & Secondary Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
+        <div className="sticky top-[3.75rem] sm:top-[4.25rem] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm">
           <div className="flex items-center gap-1.5 p-1 bg-bg-card rounded-2xl border border-border w-full sm:w-fit overflow-x-auto scrollbar-none">
             <button
               onClick={() => setActiveTab('holdings')}

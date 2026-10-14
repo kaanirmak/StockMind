@@ -573,14 +573,51 @@ export default function SettingsPage() {
   const userInitial = (fullName || user?.email || 'M').charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12 max-w-4xl">
+    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12 max-w-6xl mx-auto">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Kullanıcı & Sistem Ayarları</h1>
-        <p className="text-text-secondary text-sm mt-1">
-          Hesabınıza özel profil bilgilerini, bildirim tercihlerinizi ve OpenRouter AI ayarlarınızı yapılandırın.
-        </p>
+      <div className="product-hero p-5 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/25 shrink-0">
+            <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.214 1.281a1.125 1.125 0 00.644.87l1.217.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827a1.125 1.125 0 00-.431.992v.255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456a1.125 1.125 0 00-1.076.124l-.22.128a1.125 1.125 0 00-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281a1.125 1.125 0 00-.644-.87l-1.217-.456a1.125 1.125 0 01-1.369-.49L3.59 15.36a1.125 1.125 0 01.26-1.431l1.004-.827a1.125 1.125 0 00.43-.992v-.255a1.125 1.125 0 00-.43-.99L3.85 10.037a1.125 1.125 0 01-.26-1.43L4.887 6.36a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124l.22-.128c.332-.183.582-.495.644-.869l.181-1.264z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">Ayarlar</h1>
+              <Badge variant={user ? 'success' : 'warning'} size="sm">{user ? 'Hesap bağlı' : 'Misafir modu'}</Badge>
+            </div>
+            <p className="text-text-secondary text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+              Hesabınızı, görünümü, bildirim kanallarını ve yapay zekâ tercihlerini tek merkezden yönetin.
+            </p>
+          </div>
+        </div>
+        <div className="relative z-10 grid grid-cols-2 gap-2 text-xs w-full md:w-auto">
+          <div className="px-3.5 py-2.5 rounded-xl bg-bg-primary/55 border border-border/70 backdrop-blur-md">
+            <span className="text-text-muted block text-[10px] uppercase tracking-wider">Tema</span>
+            <strong className="text-text-primary">{resolvedTheme === 'dark' ? 'Koyu' : 'Açık'}</strong>
+          </div>
+          <div className="px-3.5 py-2.5 rounded-xl bg-bg-primary/55 border border-border/70 backdrop-blur-md">
+            <span className="text-text-muted block text-[10px] uppercase tracking-wider">Dil / Para</span>
+            <strong className="text-text-primary">{language.toUpperCase()} · {currency}</strong>
+          </div>
+        </div>
       </div>
+
+      <nav aria-label="Ayar bölümleri" className="sticky top-[3.75rem] sm:top-[4.25rem] z-20 flex items-center gap-1.5 p-1.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm overflow-x-auto no-scrollbar">
+        {[
+          ['#appearance', 'Görünüm', '◐'],
+          ['#profile', 'Profil', '◎'],
+          ['#notifications', 'Bildirimler', '◉'],
+          ['#mobile', 'Mobil', '◇'],
+          ['#ai-settings', 'AI & Kota', '✦'],
+        ].map(([href, label, icon]) => (
+          <a key={href} href={href} className="min-h-10 px-3.5 rounded-xl inline-flex items-center gap-2 text-xs font-semibold text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors whitespace-nowrap">
+            <span className="text-accent">{icon}</span>{label}
+          </a>
+        ))}
+      </nav>
 
       {/* Guest vs Logged in Account Banner */}
       {!user ? (
@@ -622,7 +659,7 @@ export default function SettingsPage() {
       )}
 
       {/* Theme Selection Card (Görünüm ve Plan Tercihi) */}
-      <div className="glass-card p-6 space-y-4">
+      <div id="appearance" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">Görünüm & Tema (Plan Seçimi)</h3>
@@ -725,7 +762,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Default Chart Type Selection Card */}
-      <div className="glass-card p-6 space-y-6">
+      <div className="settings-panel p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">Grafik Görünümü & Varsayılan Tip</h3>
@@ -794,7 +831,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Mobile App & APK Card */}
-      <div className="glass-card p-6 space-y-4 border border-emerald-500/25">
+      <div id="mobile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4 !border-emerald-500/25">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
@@ -839,7 +876,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Card */}
-      <div className="glass-card p-6 space-y-6">
+      <div id="profile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">Profil Bilgileri</h3>
@@ -1025,7 +1062,7 @@ export default function SettingsPage() {
       {/* ═══════════════════════════════════════════
           MOBILE PHONE & PUSH NOTIFICATIONS CARD
           ═══════════════════════════════════════════ */}
-      <div className="glass-card p-6 space-y-6">
+      <div id="notifications" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border/60 gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -1223,7 +1260,7 @@ export default function SettingsPage() {
       </div>
 
       {/* APK Version & In-App Update Management Card */}
-      <div className="glass-card p-6 space-y-5">
+      <div className="settings-panel p-4 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">
           <div>
             <div className="flex items-center gap-2">
@@ -1329,7 +1366,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Email & Notification Settings Card */}
-      <div className="glass-card p-6 space-y-6">
+      <div className="settings-panel p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">E-posta Bildirimleri</h3>
@@ -1482,7 +1519,7 @@ export default function SettingsPage() {
       </div>
 
       {/* AI Usage Quota & Cost Transparency Card (AI-07) */}
-      <div className="glass-card p-6 space-y-6">
+      <div id="ai-settings" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">AI Kota ve Maliyet Şeffaflığı</h3>

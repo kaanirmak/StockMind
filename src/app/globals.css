@@ -403,6 +403,111 @@ html.dark .glass-purple {
 }
 
 /* ═══════════════════════════════════════════
+   Product Surfaces — Portfolio & Settings
+   ═══════════════════════════════════════════ */
+
+.product-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--accent-secondary) 20%, transparent) 0, transparent 34%),
+    linear-gradient(135deg, color-mix(in srgb, var(--bg-card) 94%, var(--accent) 6%), var(--bg-card));
+  box-shadow: var(--shadow-card);
+}
+
+.product-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.22;
+  background-image: radial-gradient(color-mix(in srgb, var(--accent) 55%, transparent) 0.75px, transparent 0.75px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to left, black, transparent 72%);
+  pointer-events: none;
+}
+
+.settings-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--bg-card) 96%, var(--accent) 4%);
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.settings-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1.25rem;
+  right: 1.25rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), transparent);
+}
+
+.settings-panel:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  box-shadow: var(--shadow-elevated);
+}
+
+.portfolio-metric-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 8.25rem;
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--bg-card) 97%, white 3%), var(--bg-card));
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.portfolio-metric-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--metric-color, var(--accent));
+  box-shadow: 0 0 20px var(--metric-glow, var(--accent-glow));
+}
+
+.portfolio-metric-card::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: 7rem;
+  height: 7rem;
+  right: -2.5rem;
+  top: -3rem;
+  border-radius: 999px;
+  background: var(--metric-glow, var(--accent-glow));
+  filter: blur(28px);
+  opacity: 0.55;
+}
+
+.portfolio-metric-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--metric-color, var(--accent)) 34%, var(--border));
+  box-shadow: var(--shadow-elevated);
+}
+
+@media (max-width: 639px) {
+  .product-hero {
+    border-radius: 1.25rem;
+  }
+
+  .portfolio-metric-card {
+    min-height: 7.5rem;
+  }
+}
+
+/* ═══════════════════════════════════════════
    Safe Area & Mobile Utilities
    ═══════════════════════════════════════════ */
 
