@@ -60,8 +60,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "StockMindPrefs";
     private static final String KEY_SERVER_URL = "server_url";
     
-    // Production server URL and local emulator fallback
-    private static final String PRODUCTION_URL = "https://stockmind-finora.vercel.app";
+    // Production server URL (Cloudflare Workers) and local emulator fallback
+    private static final String PRODUCTION_URL = "https://stockmind.kaanrmak7.workers.dev";
     private static final String DEFAULT_EMULATOR_URL = "http://10.0.2.2:3000";
 
     private WebView webView;
@@ -394,6 +394,7 @@ public class MainActivity extends AppCompatActivity {
                 // Security: Enforce HTTPS host whitelist to keep untrusted external pages from accessing the native bridge (AND-01)
                 String host = uri.getHost();
                 boolean isTrustedHost = host != null && (
+                        host.equalsIgnoreCase("stockmind.kaanrmak7.workers.dev") ||
                         host.equalsIgnoreCase("stockmind-finora.vercel.app") ||
                         host.equalsIgnoreCase("10.0.2.2") ||
                         host.equalsIgnoreCase("localhost") ||
@@ -513,7 +514,7 @@ public class MainActivity extends AppCompatActivity {
             if (prefs != null) {
                 prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
             }
-            Toast.makeText(this, "Canlı sunucuya (Vercel) geçiş yapılıyor...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Canlı sunucuya (Cloudflare) geçiş yapılıyor...", Toast.LENGTH_SHORT).show();
             loadAppUrl();
             return;
         }
@@ -609,6 +610,7 @@ public class MainActivity extends AppCompatActivity {
                 Uri dlUri = Uri.parse(fullUrl);
                 String dlHost = dlUri.getHost();
                 boolean isAllowedHost = dlHost != null && (
+                        dlHost.equalsIgnoreCase("stockmind.kaanrmak7.workers.dev") ||
                         dlHost.equalsIgnoreCase("stockmind-finora.vercel.app") ||
                         dlHost.equalsIgnoreCase("github.com") ||
                         dlHost.equalsIgnoreCase("raw.githubusercontent.com") ||
@@ -621,7 +623,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fullUrl));
-                request.setTitle("StockMind v1.0.2 Güncellemesi");
+                request.setTitle("StockMind v1.2.0 Güncellemesi");
                 request.setDescription("Yeni StockMind sürümü indiriliyor...");
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 

@@ -9,12 +9,12 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%26%20DB-3fcf8e?logo=supabase&logoColor=white)](https://supabase.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06b6d4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
-[![Vercel](https://img.shields.io/badge/Deploy-Vercel-000?logo=vercel&logoColor=white)](https://vercel.com)
+[![Cloudflare](https://img.shields.io/badge/Deploy-Cloudflare_Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![License](https://img.shields.io/badge/License-MIT-a855f7)](LICENSE)
 
 **BIST · NYSE · NASDAQ · TEFAS** — Tek platformda, gerçek zamanlı.
 
-[Canlı Demo →](https://stockmind-finora.vercel.app/) · [Hata Bildir](https://github.com/kaanirmak/StockMind/issues) · [Özellik İste](https://github.com/kaanirmak/StockMind/issues/new)
+[Canlı Demo →](https://stockmind.kaanrmak7.workers.dev/) · [Hata Bildir](https://github.com/kaanirmak/StockMind/issues) · [Özellik İste](https://github.com/kaanirmak/StockMind/issues/new)
 
 </div>
 
@@ -82,7 +82,7 @@
 | **Grafikler** | Lightweight Charts (TradingView) |
 | **AI** | OpenRouter (Gemini, GPT, Claude, Llama) |
 | **E-posta** | Nodemailer (SMTP) |
-| **Deploy** | Vercel (Edge Middleware) |
+| **Deploy** | Cloudflare Workers (Edge Node.js Runtime) |
 | **Mobil** | Android WebView (APK build desteği) |
 | **Dil** | TypeScript 5 |
 

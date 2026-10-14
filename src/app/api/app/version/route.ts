@@ -32,12 +32,12 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    version: '1.1.0',
-    versionCode: 6,
+    version: '1.2.0',
+    versionCode: 7,
     downloadUrl: '/api/download/apk',
     directApkUrl: '/StockMind.apk',
-    releaseNotes: 'OLED Pitch Black (#000000) teması, TradingView Lightweight Çizgi/Mum grafikleri, iOS Safari PWA kurulum rehberi, Windows 11 & Mac widget entegrasyonu, AI Asistan sohbet geçmişi (Chat History) ve 8 saniyelik canlı parıltılı (flash) veri akışı.',
-    publishedAt: '2026-10-14',
+    releaseNotes: 'Cloudflare Workers & Edge altyapısına tam geçiş. Küresel sıfır gecikmeli kenar dağıtımı, hisse & fon yüzdesel fiyat alarmları (%1, %2, %3, vb.) ve yenilenen modern arayüz deneyimi.',
+    publishedAt: '2026-10-15',
     minAndroidVersion: '7.0 (Nougat) ve üzeri',
     broadcast,
   });

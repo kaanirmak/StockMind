@@ -29,7 +29,7 @@ public class StockPriceWorker extends Worker {
     private static final String TAG = "StockPriceWorker";
     private static final String PREFS_NAME = "StockMindPrefs";
     private static final String KEY_SERVER_URL = "server_url";
-    private static final String DEFAULT_URL = "https://stockmind-finora.vercel.app";
+    private static final String DEFAULT_URL = "https://stockmind.kaanrmak7.workers.dev";
 
     public StockPriceWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
