@@ -22,6 +22,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate public build configuration
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+          test -n "$NEXT_PUBLIC_APP_URL"
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://jxujcjalxrgmjcecwkil.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}
+
       - name: Run Typecheck
         run: npm run typecheck
 
@@ -31,10 +42,10 @@ jobs:
       - name: Build Next.js
         run: npm run build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://jxujcjalxrgmjcecwkil.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}
 
   deploy:
     name: Deploy to Cloudflare Worker
@@ -53,9 +64,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build Cloudflare Worker
+        run: npm run build:cloudflare
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://jxujcjalxrgmjcecwkil.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}
+          NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: ${{ secrets.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH }}
+          NEXT_PUBLIC_ENABLE_GITHUB_AUTH: ${{ secrets.NEXT_PUBLIC_ENABLE_GITHUB_AUTH }}
+
       - name: Deploy with Wrangler Action
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      - name: Notice when deploy token missing
+        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        run: echo "::warning::CLOUDFLARE_API_TOKEN secret is not set in GitHub repository settings. Worker deployment skipped."

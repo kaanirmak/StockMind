@@ -39,6 +39,10 @@ cloudflare-secrets.json
 # vercel
 .vercel
 
+# cloudflare / OpenNext build output
+.open-next/
+.wrangler/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
