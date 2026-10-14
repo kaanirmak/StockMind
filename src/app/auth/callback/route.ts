@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     next = '/dashboard';
   }
 
-  // Determine real external origin (handles Vercel / reverse proxy headers)
+  // Determine real external origin (handles Cloudflare / reverse proxy headers)
   const forwardedHost = request.headers.get('x-forwarded-host');
   const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
   let appOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : requestUrl.origin;
@@ -62,8 +62,8 @@ export async function GET(request: Request) {
     // OAuth providers (Google, GitHub) can inject a large avatar_url
     // (sometimes base64-encoded) into user_metadata. Supabase encodes
     // user_metadata into the JWT, which @supabase/ssr stores as cookies.
-    // If the avatar is base64, cookies swell to 30-80 KB and Vercel
-    // returns 494 REQUEST_HEADER_TOO_LARGE on every subsequent request.
+    // If the avatar is base64, cookies swell to 30-80 KB and Edge proxies
+    // return 494/431 REQUEST_HEADER_TOO_LARGE on every subsequent request.
     //
     // Fix: strip the avatar immediately after session exchange, BEFORE
     // the first redirect sets the oversized cookie.

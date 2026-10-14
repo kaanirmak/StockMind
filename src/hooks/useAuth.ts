@@ -115,7 +115,7 @@ export function useAuth() {
       // Update Supabase auth user metadata as well
       // CRITICAL: NEVER store base64/data URLs in Supabase auth user_metadata!
       // Auth user_metadata is encoded into the JWT, which @supabase/ssr writes into cookies.
-      // If avatar_url is base64, cookies swell to >30KB-80KB, causing Vercel Edge 494 REQUEST_HEADER_TOO_LARGE.
+      // If avatar_url is base64, cookies swell to >30KB-80KB, causing Edge 494/431 REQUEST_HEADER_TOO_LARGE.
       // Base64 avatars are stored strictly in the PostgreSQL 'profiles' table.
       try {
         const safeAuthAvatar = (updates.avatarUrl && !updates.avatarUrl.startsWith('data:') && updates.avatarUrl.length < 500)

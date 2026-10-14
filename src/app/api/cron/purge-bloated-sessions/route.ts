@@ -11,13 +11,13 @@ import { createClient } from '@supabase/supabase-js';
  *   3. Strip the bloated fields from user_metadata
  *
  * This makes the JWT smaller on next token refresh, which prevents
- * Vercel 494 REQUEST_HEADER_TOO_LARGE errors caused by oversized
+ * Edge / Cloudflare Workers 494/431 REQUEST_HEADER_TOO_LARGE errors caused by oversized
  * Supabase auth cookies.
  *
  * Secured by CRON_SECRET.
  *
  * Usage:
- *   curl -X POST "https://your-domain.vercel.app/api/cron/purge-bloated-sessions" \
+ *   curl -X POST "https://stockmind.kaanrmak7.workers.dev/api/cron/purge-bloated-sessions" \
  *        -H "Authorization: Bearer YOUR_CRON_SECRET"
  */
 export async function POST(request: Request) {
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
   }
 }
 
-// Also support GET for Vercel Cron
+// Also support GET for cron callers
 export async function GET(request: Request) {
   return POST(request);
 }

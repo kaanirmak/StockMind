@@ -395,7 +395,6 @@ public class MainActivity extends AppCompatActivity {
                 String host = uri.getHost();
                 boolean isTrustedHost = host != null && (
                         host.equalsIgnoreCase("stockmind.kaanrmak7.workers.dev") ||
-                        host.equalsIgnoreCase("stockmind-finora.vercel.app") ||
                         host.equalsIgnoreCase("10.0.2.2") ||
                         host.equalsIgnoreCase("localhost") ||
                         (currentServerUrl != null && urlStr.startsWith(currentServerUrl))
@@ -611,7 +610,6 @@ public class MainActivity extends AppCompatActivity {
                 String dlHost = dlUri.getHost();
                 boolean isAllowedHost = dlHost != null && (
                         dlHost.equalsIgnoreCase("stockmind.kaanrmak7.workers.dev") ||
-                        dlHost.equalsIgnoreCase("stockmind-finora.vercel.app") ||
                         dlHost.equalsIgnoreCase("github.com") ||
                         dlHost.equalsIgnoreCase("raw.githubusercontent.com") ||
                         (currentServerUrl != null && fullUrl.startsWith(currentServerUrl))

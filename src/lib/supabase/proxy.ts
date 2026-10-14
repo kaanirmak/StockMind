@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 /**
  * Maximum total cookie size (bytes) before we consider headers dangerously large.
  * Normal Supabase session is ~2-3 KB. If it exceeds 8 KB, it's bloated and close
- * to triggering Vercel 494.
+ * to triggering Edge / reverse proxy 494/431 (REQUEST_HEADER_TOO_LARGE).
  */
 const MAX_COOKIE_BYTES = 8 * 1024;
 
@@ -49,8 +49,8 @@ export async function updateSession(request: NextRequest) {
 
   // ─── COOKIE SIZE GUARD ───────────────────────────────────────────────
   // When user_metadata contains a base64 avatar, the JWT (and therefore
-  // the Supabase auth cookies) can swell to 30-80 KB, exceeding Vercel
-  // Edge's ~16 KB header limit and causing 494 REQUEST_HEADER_TOO_LARGE.
+  // the Supabase auth cookies) can swell to 30-80 KB, exceeding Edge /
+  // Cloudflare Workers header limit and causing 494/431 REQUEST_HEADER_TOO_LARGE.
   //
   // We detect this BEFORE creating the Supabase client so we never even
   // attempt to send oversized headers upstream. The fix:
