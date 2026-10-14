@@ -149,33 +149,65 @@ public class StockPriceWorker extends Worker {
                 double targetPrice = item.optDouble("targetPrice", 0.0);
                 double basePrice = item.optDouble("price", 0.0);
                 String name = item.optString("name", sym);
+                String alertType = item.optString("alertType", "price");
+                double alertPercent = item.optDouble("alertPercent", 0.0);
+                double alertBase = item.optDouble("alertBasePrice", basePrice);
+                if (alertBase <= 0) alertBase = basePrice;
 
-                if (targetPrice <= 0 || !livePrices.containsKey(sym)) {
+                if (!livePrices.containsKey(sym)) {
                     continue;
                 }
 
                 double livePrice = livePrices.get(sym);
-                String alertSentKey = "alert_sent_" + sym + "_" + (long) (targetPrice * 100);
-                boolean sent = alertPrefs.getBoolean(alertSentKey, false);
-
-                // Determine whether target price was crossed
                 boolean reached = false;
-                if (targetPrice >= basePrice) {
-                    if (livePrice >= targetPrice) {
+                String notifTitle = "🎯 Hedef Fiyat Uyarısı: " + sym;
+                String notifBody = "";
+
+                if ("percent_up".equals(alertType) && alertPercent > 0 && alertBase > 0) {
+                    double threshold = alertBase * (1.0 + alertPercent / 100.0);
+                    if (livePrice >= threshold) {
                         reached = true;
+                        notifTitle = "📈 %" + String.format(Locale.getDefault(), "%.1f", alertPercent) + " Yükseliş Alarmı: " + sym;
+                        notifBody = name + " (" + sym + ") %" + alertPercent + " yükseliş hedefine ulaştı! (Güncel: " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + ")";
                     }
-                } else {
-                    if (livePrice <= targetPrice) {
+                } else if ("percent_down".equals(alertType) && alertPercent > 0 && alertBase > 0) {
+                    double threshold = alertBase * (1.0 - alertPercent / 100.0);
+                    if (livePrice <= threshold) {
                         reached = true;
+                        notifTitle = "📉 %" + String.format(Locale.getDefault(), "%.1f", alertPercent) + " Düşüş Alarmı: " + sym;
+                        notifBody = name + " (" + sym + ") %" + alertPercent + " düşüş eşiğine geriledi! (Güncel: " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + ")";
                     }
+                } else if ("percent_both".equals(alertType) && alertPercent > 0 && alertBase > 0) {
+                    double upper = alertBase * (1.0 + alertPercent / 100.0);
+                    double lower = alertBase * (1.0 - alertPercent / 100.0);
+                    if (livePrice >= upper) {
+                        reached = true;
+                        notifTitle = "📈 %" + String.format(Locale.getDefault(), "%.1f", alertPercent) + " Yükseliş Alarmı: " + sym;
+                        notifBody = name + " (" + sym + ") %" + alertPercent + " yükselerek " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + " oldu!";
+                    } else if (livePrice <= lower) {
+                        reached = true;
+                        notifTitle = "📉 %" + String.format(Locale.getDefault(), "%.1f", alertPercent) + " Düşüş Alarmı: " + sym;
+                        notifBody = name + " (" + sym + ") %" + alertPercent + " gerileyerek " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + " oldu!";
+                    }
+                } else if (targetPrice > 0) {
+                    if (targetPrice >= basePrice) {
+                        if (livePrice >= targetPrice) reached = true;
+                    } else {
+                        if (livePrice <= targetPrice) reached = true;
+                    }
+                    notifTitle = "🎯 Hedef Fiyat Uyarısı: " + sym;
+                    notifBody = name + " (" + sym + ") hedeflediğiniz " + String.format(Locale.getDefault(), "%.2f ₺", targetPrice) + " seviyesine ulaştı! (Güncel: " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + ")";
                 }
+
+                String alertSentKey = "alert_sent_" + sym + "_" + (long) (livePrice * 10) + "_" + alertType;
+                boolean sent = alertPrefs.getBoolean(alertSentKey, false);
 
                 if (reached && !sent) {
                     alertPrefs.edit().putBoolean(alertSentKey, true).apply();
                     NotificationHelper.showNotification(
                             context,
-                            "🎯 Hedef Fiyat Uyarısı: " + sym,
-                            name + " (" + sym + ") hedeflediğiniz " + String.format(Locale.getDefault(), "%.2f ₺", targetPrice) + " seviyesine ulaştı! (Güncel: " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + ")",
+                            notifTitle,
+                            notifBody,
                             "/watchlist"
                     );
                 }

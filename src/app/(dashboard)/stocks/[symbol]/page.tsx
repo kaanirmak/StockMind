@@ -11,6 +11,7 @@ import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/compone
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { BROKERS, Broker } from '@/lib/data/brokers';
+import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 
 export default function StockDetailPage({
   params,
@@ -21,8 +22,12 @@ export default function StockDetailPage({
   const symbol = resolvedParams.symbol.toUpperCase();
   const router = useRouter();
   const { showToast } = useToast();
-  const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
+  const { items, toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
   const { addTransaction, activePortfolioId, fetchLivePrices } = usePortfolioStore();
+
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const existingAlert = items.find((i) => i.symbol.toUpperCase() === symbol);
+  const hasAlert = Boolean(existingAlert?.targetPrice || existingAlert?.alertPercent);
 
   const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL'>('1Y');
   const [showSMA20, setShowSMA20] = useState(true);
@@ -202,13 +207,20 @@ export default function StockDetailPage({
 
           {/* Price Alert */}
           <button
-            onClick={handleSetAlert}
-            className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
-            title="Fiyat Alarmı Kur"
+            onClick={() => setIsAlertModalOpen(true)}
+            className={`p-2 rounded-xl transition-colors cursor-pointer relative ${
+              hasAlert
+                ? 'text-warning bg-warning/15 hover:bg-warning/25'
+                : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
+            }`}
+            title={hasAlert ? 'Fiyat Alarmı Düzenle / Kaldır' : 'Fiyat Alarmı Kur'}
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill={hasAlert ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
+            {hasAlert && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-warning animate-pulse" />
+            )}
           </button>
 
           {/* Share */}
@@ -869,6 +881,24 @@ export default function StockDetailPage({
           )}
         </div>
       </Modal>
+
+      {/* Smart Price & Percentage Alert Modal */}
+      <PriceAlertModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
+        stock={
+          stock
+            ? {
+                symbol,
+                name: stock.name,
+                price: stock.price,
+                changePercent: stock.changePercent,
+                exchange: stock.exchange,
+                assetType: 'stock',
+              }
+            : null
+        }
+      />
     </div>
   );
 }

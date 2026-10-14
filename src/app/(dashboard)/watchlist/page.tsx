@@ -6,14 +6,13 @@ import { useWatchlistStore, WatchlistItem } from '@/store/useWatchlistStore';
 import { Badge, Button, Input, Modal, useToast, InstrumentLogo } from '@/components/ui';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { POPULAR_FUNDS } from '@/lib/constants/funds';
-import { sendPushNotification } from '@/lib/notifications/pushNotification';
+import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 
 export default function WatchlistPage() {
-  const { items, addItem, removeItem, setTargetPrice } = useWatchlistStore();
+  const { items, addItem, removeItem } = useWatchlistStore();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [selectedItemForAlert, setSelectedItemForAlert] = useState<WatchlistItem | null>(null);
-  const [alertTargetPrice, setAlertTargetPrice] = useState<string>('');
 
   const [newAssetType, setNewAssetType] = useState<'stock' | 'fund'>('stock');
   const [selectedSymbol, setSelectedSymbol] = useState('');
@@ -102,29 +101,6 @@ export default function WatchlistPage() {
       title: 'Listeden Kaldırıldı',
       message: `${sym} takip listenizden çıkarıldı.`,
     });
-  };
-
-  const handleSetAlert = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedItemForAlert || !alertTargetPrice) return;
-
-    setTargetPrice(selectedItemForAlert.id, Number(alertTargetPrice));
-
-    // Send push notification confirmation to phone
-    sendPushNotification(
-      `🎯 Fiyat Alarmı: ${selectedItemForAlert.symbol}`,
-      `${selectedItemForAlert.symbol} fiyatı ₺${alertTargetPrice} seviyesine ulaştığında telefonunuza anlık bildirim gelecektir.`,
-      '/watchlist'
-    );
-
-    showToast({
-      type: 'success',
-      title: 'Fiyat Alarmı Kuruldu',
-      message: `${selectedItemForAlert.symbol} fiyatı ₺${alertTargetPrice} seviyesine ulaştığında bildirim alacaksınız.`,
-    });
-
-    setIsAlertModalOpen(false);
-    setSelectedItemForAlert(null);
   };
 
   return (
@@ -230,17 +206,34 @@ export default function WatchlistPage() {
                 <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
                   <div>
                     {item.targetPrice ? (
-                      <span className="inline-flex items-center gap-1.5 text-warning bg-warning/10 px-2 py-1 rounded-lg text-xs font-mono font-semibold">
-                        🔔 ₺{item.targetPrice.toFixed(2)}
-                      </span>
-                    ) : (
                       <button
+                        type="button"
                         onClick={() => {
                           setSelectedItemForAlert(item);
-                          setAlertTargetPrice(item.price.toString());
                           setIsAlertModalOpen(true);
                         }}
-                        className="text-xs text-text-muted hover:text-accent font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1.5 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-1 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer"
+                        title="Alarmı düzenle veya kaldır"
+                      >
+                        <span>🔔</span>
+                        <span>
+                          {item.alertType === 'percent_up'
+                            ? `+%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                            : item.alertType === 'percent_down'
+                            ? `-%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                            : item.alertType === 'percent_both'
+                            ? `±%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                            : `₺${item.targetPrice.toFixed(2)}`}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedItemForAlert(item);
+                          setIsAlertModalOpen(true);
+                        }}
+                        className="text-xs text-text-muted hover:text-accent font-medium flex items-center gap-1 transition-colors cursor-pointer py-1"
                       >
                         <span>🔔</span>
                         <span>Alarm Kur</span>
@@ -328,14 +321,31 @@ export default function WatchlistPage() {
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
                         {item.targetPrice ? (
-                          <span className="inline-flex items-center gap-1.5 text-warning bg-warning/10 px-2 py-0.5 rounded text-xs">
-                            🔔 ₺{item.targetPrice.toFixed(2)}
-                          </span>
-                        ) : (
                           <button
+                            type="button"
                             onClick={() => {
                               setSelectedItemForAlert(item);
-                              setAlertTargetPrice(item.price.toString());
+                              setIsAlertModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded text-xs font-semibold transition-colors cursor-pointer"
+                            title="Alarmı düzenle veya kaldır"
+                          >
+                            <span>🔔</span>
+                            <span>
+                              {item.alertType === 'percent_up'
+                                ? `+%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                                : item.alertType === 'percent_down'
+                                ? `-%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                                : item.alertType === 'percent_both'
+                                ? `±%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                                : `₺${item.targetPrice.toFixed(2)}`}
+                            </span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedItemForAlert(item);
                               setIsAlertModalOpen(true);
                             }}
                             className="text-xs text-text-muted hover:text-accent underline transition-colors cursor-pointer"
@@ -449,34 +459,15 @@ export default function WatchlistPage() {
         </form>
       </Modal>
 
-      {/* Alert Modal */}
-      <Modal
+      {/* Smart Price & Percentage Alert Modal */}
+      <PriceAlertModal
         isOpen={isAlertModalOpen}
-        onClose={() => setIsAlertModalOpen(false)}
-        title={`${selectedItemForAlert?.symbol} — Fiyat Alarmı`}
-        description="Fiyat belirlediğiniz seviyeye ulaştığında anlık uyarı alın."
-      >
-        <form onSubmit={handleSetAlert} className="space-y-4">
-          <Input
-            label="Hedef Fiyat"
-            type="number"
-            step="0.01"
-            value={alertTargetPrice}
-            onChange={(e) => setAlertTargetPrice(e.target.value)}
-            required
-            helperText={`Anlık Fiyat: ₺${selectedItemForAlert?.price.toFixed(2)}`}
-          />
-
-          <div className="flex justify-end gap-3 pt-3">
-            <Button type="button" variant="secondary" onClick={() => setIsAlertModalOpen(false)}>
-              İptal
-            </Button>
-            <Button type="submit" variant="primary">
-              Alarmı Kaydet
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => {
+          setIsAlertModalOpen(false);
+          setSelectedItemForAlert(null);
+        }}
+        stock={selectedItemForAlert}
+      />
     </div>
   );
 }

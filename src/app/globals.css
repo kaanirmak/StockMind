@@ -1,5 +1,33 @@
 @import "tailwindcss";
 
+html {
+  max-width: 100%;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-width: 320px;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
 /* Override Tailwind v4 dark mode to use class-based (.dark) instead of media query */
 @custom-variant dark (&:where(.dark, .dark *));
 

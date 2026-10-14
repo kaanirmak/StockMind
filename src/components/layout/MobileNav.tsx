@@ -136,32 +136,18 @@ export default function MobileNav() {
     (item) => pathname === item.href || pathname.startsWith(item.href + '/')
   );
 
-  // Hide router when entering detail pages (e.g. /stocks/[symbol] or /funds/[code])
-  const isDetailRoute =
-    (pathname.startsWith('/stocks/') && pathname !== '/stocks') ||
-    (pathname.startsWith('/funds/') && pathname !== '/funds') ||
-    (pathname.startsWith('/piyasalar/') && pathname !== '/piyasalar');
-
-  // Hide on scroll down, show on scroll up
-  const [isVisible, setIsVisible] = useState(true);
-  const lastScrollY = useRef(0);
+  useEffect(() => {
+    setShowMore(false);
+  }, [pathname]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY.current && currentScrollY > 70) {
-        setIsVisible(false);
-      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 30) {
-        setIsVisible(true);
-      }
-      lastScrollY.current = currentScrollY;
+    if (!showMore) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowMore(false);
     };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const shouldHide = isDetailRoute || (!isVisible && !showMore);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showMore]);
 
   return (
     <>
@@ -179,7 +165,7 @@ export default function MobileNav() {
           ref={panelRef}
           className="md:hidden fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 animate-slide-up"
         >
-          <div className="glass-purple rounded-2xl p-3.5 space-y-1.5 shadow-2xl border border-border">
+          <div className="glass-purple rounded-2xl p-3.5 space-y-1.5 shadow-2xl border border-border max-h-[min(68dvh,34rem)] overflow-y-auto overscroll-contain">
             {/* Panel header & Quick Theme Switch */}
             <div className="px-2 pt-1 pb-2 border-b border-border/60 flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
@@ -250,12 +236,10 @@ export default function MobileNav() {
       {/* Bottom Navigation Bar */}
       <nav
         aria-label="Mobil alt navigasyon"
-        className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/98 dark:bg-[#0f1021]/98 backdrop-blur-xl border-t border-border shadow-lg transition-transform duration-300 ease-in-out ${
-          shouldHide ? 'translate-y-full pointer-events-none' : 'translate-y-0'
-        }`}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/98 dark:bg-[#0f1021]/98 backdrop-blur-xl border-t border-border shadow-lg"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
       >
-        <div className="flex items-center justify-around h-16 px-1">
+        <div className="grid grid-cols-5 items-center h-16 px-1">
           {mobileNavItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + '/');
@@ -265,7 +249,7 @@ export default function MobileNav() {
                 href={item.href}
                 aria-label={item.label}
                 onClick={() => setShowMore(false)}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[48px] rounded-xl transition-all duration-200 relative ${
+                className={`flex flex-col items-center justify-center gap-1 px-1 py-1 min-w-0 min-h-[48px] rounded-xl transition-all duration-200 relative ${
                   isActive
                     ? 'text-accent font-semibold'
                     : 'text-text-muted hover:text-text-secondary'
@@ -286,7 +270,7 @@ export default function MobileNav() {
             aria-label="Diğer menü seçenekleri"
             aria-expanded={showMore}
             onClick={() => setShowMore(!showMore)}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[48px] rounded-xl transition-all duration-200 relative cursor-pointer ${
+            className={`flex flex-col items-center justify-center gap-1 px-1 py-1 min-w-0 min-h-[48px] rounded-xl transition-all duration-200 relative cursor-pointer ${
               showMore || isMoreActive
                 ? 'text-accent font-semibold'
                 : 'text-text-muted hover:text-text-secondary'

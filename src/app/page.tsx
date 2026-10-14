@@ -44,15 +44,15 @@ export default async function LandingPage() {
       }} />
 
       {/* Navbar */}
-      <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 h-20">
+      <nav className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-12 h-18 sm:h-20">
         <Link href="/" className="flex items-center group">
           <img
             src="/logo-white.png"
             alt="StockMind"
-            className="h-9 sm:h-11 w-auto object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_18px_rgba(139,92,246,0.35)]"
+            className="h-8 sm:h-11 w-auto max-w-[132px] sm:max-w-none object-contain group-hover:scale-105 transition-transform drop-shadow-[0_0_18px_rgba(139,92,246,0.35)]"
           />
         </Link>
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <Link
             href="/login"
             className="text-sm text-text-secondary hover:text-text-primary transition-colors font-medium"
@@ -61,7 +61,7 @@ export default async function LandingPage() {
           </Link>
           <Link
             href="/register"
-            className="px-5 py-2.5 rounded-xl gradient-accent text-white text-sm font-semibold hover:opacity-90 transition-all duration-200"
+            className="px-3.5 sm:px-5 py-2.5 rounded-xl gradient-accent text-white text-sm font-semibold whitespace-nowrap hover:opacity-90 transition-all duration-200"
           >
             Kayıt Ol
           </Link>
@@ -69,42 +69,42 @@ export default async function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative z-10 flex flex-col items-center text-center px-6 pt-20 lg:pt-32 pb-20">
+      <section className="relative z-10 flex flex-col items-center text-center px-4 sm:px-6 pt-14 sm:pt-20 lg:pt-32 pb-16 sm:pb-20">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-subtle text-sm text-text-secondary mb-8 animate-fade-in-down">
+        <div className="inline-flex max-w-full items-center gap-2 px-3 sm:px-4 py-2 rounded-full glass-subtle text-xs sm:text-sm text-text-secondary mb-7 sm:mb-8 animate-fade-in-down whitespace-nowrap">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
           BIST • NYSE • NASDAQ • TEFAS destekli
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-text-primary leading-tight max-w-4xl animate-fade-in-up">
+        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-text-primary leading-[1.12] sm:leading-tight max-w-4xl animate-fade-in-up">
           Yatırımlarınızı
           <br />
           <span className="gradient-text">Akıllıca</span> Yönetin
         </h1>
 
-        <p className="mt-6 text-lg lg:text-xl text-text-secondary max-w-2xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <p className="mt-5 sm:mt-6 text-base sm:text-lg lg:text-xl leading-relaxed text-text-secondary max-w-2xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           StockMind ile borsa hisselerini ve TEFAS fonlarını gerçek zamanlı takip edin. 
           AI destekli analizler, teknik göstergeler ve portföy yönetimi ile yatırım kararlarınızı güçlendirin.
         </p>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 mt-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+        <div className="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mt-8 sm:mt-10 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <Link
             href="/register"
-            className="px-8 py-3.5 rounded-xl gradient-accent text-white text-base font-semibold hover:opacity-90 transition-all duration-200 shadow-lg shadow-accent/25 animate-pulse-glow"
+            className="px-8 py-3.5 min-h-12 text-center rounded-xl gradient-accent text-white text-base font-semibold hover:opacity-90 transition-all duration-200 shadow-lg shadow-accent/25 animate-pulse-glow"
           >
             Ücretsiz Başlayın →
           </Link>
           <Link
             href="/login"
-            className="px-8 py-3.5 rounded-xl glass-card border border-border text-text-primary text-base font-medium hover:border-accent/30 transition-all duration-200"
+            className="px-8 py-3.5 min-h-12 text-center rounded-xl glass-card border border-border text-text-primary text-base font-medium hover:border-accent/30 transition-all duration-200"
           >
             Demo Görüntüle
           </Link>
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-8 lg:gap-12 mt-16 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-x-12 gap-y-6 sm:gap-8 lg:gap-12 mt-14 sm:mt-16 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           {[
             { value: '4+', label: 'Borsa' },
             { value: '10K+', label: 'Hisse & Fon' },
@@ -122,7 +122,7 @@ export default async function LandingPage() {
 
 
       {/* Features */}
-      <section className="relative z-10 px-6 lg:px-12 pb-24">
+      <section className="relative z-10 px-4 sm:px-6 lg:px-12 pb-24">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-text-primary text-center mb-4">Neden StockMind?</h2>
           <p className="text-text-secondary text-center mb-12 max-w-xl mx-auto">

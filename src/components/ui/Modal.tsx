@@ -107,7 +107,7 @@ export const Modal: React.FC<ModalProps> = ({
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
       aria-describedby={description ? descriptionId : undefined}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 pt-3 sm:p-6 overflow-y-auto"
     >
       {/* Backdrop */}
       <div
@@ -120,7 +120,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} bg-bg-card border border-border/80 rounded-2xl shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-scale-in my-auto sm:my-8 max-h-[92vh] sm:max-h-[90vh] flex flex-col focus:outline-none`}
+        className={`relative w-full ${sizeClasses[size]} bg-bg-card border border-border/80 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-slide-up sm:animate-scale-in mt-auto sm:my-8 max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] flex flex-col focus:outline-none`}
       >
         {/* Modal Header */}
         {(title || showCloseButton) && (
@@ -142,7 +142,7 @@ export const Modal: React.FC<ModalProps> = ({
                 type="button"
                 onClick={onClose}
                 aria-label="Kapat"
-                className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors cursor-pointer"
+                className="min-h-11 min-w-11 flex items-center justify-center -mr-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -153,7 +153,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Modal Content */}
-        <div className="px-4 sm:px-6 py-4 sm:py-5 overflow-y-auto flex-1">{children}</div>
+        <div className="px-4 sm:px-6 pt-4 sm:py-5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] overflow-y-auto overscroll-contain flex-1">{children}</div>
       </div>
     </div>
   );

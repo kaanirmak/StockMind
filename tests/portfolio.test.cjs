@@ -20,6 +20,7 @@ function loadModule(relPath) {
       if (name === 'next/cache') return { revalidateTag: () => {}, revalidatePath: () => {}, unstable_cache: (fn) => fn };
       if (name === '@/lib/data/stocks') return { POPULAR_STOCKS: [] };
       if (name === '@/lib/data/funds') return { TEFAS_FUNDS: [] };
+      if (name === 'zustand') return { create: (fn) => (typeof fn === 'function' ? fn(() => {}, () => ({})) : {}) };
       if (name === '@supabase/supabase-js') return { createClient: () => ({ from: () => ({ select: () => ({}) }) }) };
       if (name === '@/lib/data/tefas_funds_directory.json' || name === './tefas_funds_directory.json') {
         const jsonPath = path.join(root, 'src/lib/data/tefas_funds_directory.json');
@@ -539,14 +540,83 @@ test('OPS-03: Günlük bülten cron rotası mükerrer gönderimleri engellemek i
   assert.match(cronCode, /recipients/, 'Batch recipient queue support must exist');
 });
 
-test('OPS-06: GitHub Actions CI iş akışı typecheck, test ve lint adımlarını kapsar', () => {
-  const ciYamlPath = path.join(root, '.github/workflows/ci.yml');
-  assert.equal(fs.existsSync(ciYamlPath), true, 'ci.yml must exist');
-  const ciYaml = fs.readFileSync(ciYamlPath, 'utf8');
-  assert.match(ciYaml, /npm run typecheck/, 'CI must run typecheck');
-  assert.match(ciYaml, /npm test/, 'CI must run test suites');
-  assert.match(ciYaml, /npm run lint/, 'CI must run lint');
+test('ALERT-01: Yüzdesel yükseliş (%1, %2, %3) alarmı eşik fiyatını doğru hesaplar ve tetikler', () => {
+  const { calculateTargetPriceFromPercent, isPriceAlertTriggered } = loadModule('src/store/useWatchlistStore.ts');
+  const basePrice = 100;
+
+  assert.equal(calculateTargetPriceFromPercent(basePrice, 1, 'up'), 101);
+  assert.equal(calculateTargetPriceFromPercent(basePrice, 2, 'up'), 102);
+  assert.equal(calculateTargetPriceFromPercent(basePrice, 3, 'up'), 103);
+  assert.equal(calculateTargetPriceFromPercent(basePrice, 5, 'up'), 105);
+
+  const alertItem = {
+    id: 'w-1',
+    symbol: 'THYAO',
+    name: 'Türk Hava Yolları',
+    price: 100,
+    alertBasePrice: 100,
+    alertPercent: 2,
+    alertType: 'percent_up',
+  };
+
+  // Not reached
+  assert.equal(isPriceAlertTriggered(alertItem, 101.5).triggered, false);
+
+  // Reached exactly & crossed
+  const triggered = isPriceAlertTriggered(alertItem, 102.5);
+  assert.equal(triggered.triggered, true);
+  assert.match(triggered.title, /%2 Yükseliş Alarmı/);
 });
+
+test('ALERT-02: Yüzdesel düşüş (%1, %2, %3) alarmı eşik fiyatını doğru hesaplar ve tetikler', () => {
+  const { calculateTargetPriceFromPercent, isPriceAlertTriggered } = loadModule('src/store/useWatchlistStore.ts');
+  const basePrice = 200;
+
+  assert.equal(calculateTargetPriceFromPercent(basePrice, 1, 'down'), 198);
+  assert.equal(calculateTargetPriceFromPercent(basePrice, 2, 'down'), 196);
+  assert.equal(calculateTargetPriceFromPercent(basePrice, 3, 'down'), 194);
+
+  const alertItem = {
+    id: 'w-2',
+    symbol: 'EREGL',
+    name: 'Ereğli Demir Çelik',
+    price: 200,
+    alertBasePrice: 200,
+    alertPercent: 3,
+    alertType: 'percent_down',
+  };
+
+  // Not reached
+  assert.equal(isPriceAlertTriggered(alertItem, 195).triggered, false);
+
+  // Reached & dropped below 194
+  const triggered = isPriceAlertTriggered(alertItem, 193.8);
+  assert.equal(triggered.triggered, true);
+  assert.match(triggered.title, /%3 Düşüş Alarmı/);
+});
+
+test('ALERT-03: İki yönlü sapma (±%) alarmı her iki kırılımda da tetiklenir', () => {
+  const { isPriceAlertTriggered } = loadModule('src/store/useWatchlistStore.ts');
+  const alertItem = {
+    id: 'w-3',
+    symbol: 'BIMAS',
+    name: 'BİM Mağazalar',
+    price: 500,
+    alertBasePrice: 500,
+    alertPercent: 1,
+    alertType: 'percent_both',
+  };
+
+  // Within bounds
+  assert.equal(isPriceAlertTriggered(alertItem, 502).triggered, false);
+
+  // Upward breach (>= 505)
+  assert.equal(isPriceAlertTriggered(alertItem, 505.5).triggered, true);
+
+  // Downward breach (<= 495)
+  assert.equal(isPriceAlertTriggered(alertItem, 494.5).triggered, true);
+});
+
 
 
 

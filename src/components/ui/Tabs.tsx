@@ -26,14 +26,14 @@ export const Tabs: React.FC<TabsProps> = ({
 }) => {
   if (variant === 'segmented') {
     return (
-      <div className={`inline-flex p-1 bg-bg-secondary rounded-xl border border-border/80 ${className}`}>
+      <div className={`flex w-full sm:w-fit max-w-full overflow-x-auto no-scrollbar p-1 bg-bg-secondary rounded-xl border border-border/80 ${className}`}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer ${
+              className={`flex shrink-0 items-center justify-center gap-2 px-3.5 py-2 min-h-10 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 cursor-pointer ${
                 isActive
                   ? 'bg-accent text-white shadow-md shadow-accent/20'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover/60'
@@ -59,14 +59,14 @@ export const Tabs: React.FC<TabsProps> = ({
 
   if (variant === 'pills') {
     return (
-      <div className={`flex flex-wrap gap-2 ${className}`}>
+      <div className={`flex max-w-full overflow-x-auto no-scrollbar sm:flex-wrap gap-2 pb-1 sm:pb-0 ${className}`}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer border ${
+              className={`flex shrink-0 items-center gap-2 px-4 py-2 min-h-10 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer border ${
                 isActive
                   ? 'bg-accent/15 border-accent text-accent shadow-sm'
                   : 'bg-bg-card border-border text-text-secondary hover:text-text-primary hover:border-border-hover'
@@ -92,14 +92,14 @@ export const Tabs: React.FC<TabsProps> = ({
 
   // Underline variant
   return (
-    <div className={`flex border-b border-border/80 gap-6 ${className}`}>
+    <div className={`flex max-w-full overflow-x-auto no-scrollbar border-b border-border/80 gap-5 ${className}`}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-2 pb-3 text-sm font-medium transition-all relative cursor-pointer ${
+            className={`flex shrink-0 items-center gap-2 px-1 pb-3 text-sm font-medium whitespace-nowrap transition-all relative cursor-pointer ${
               isActive
                 ? 'text-accent font-semibold'
                 : 'text-text-secondary hover:text-text-primary'

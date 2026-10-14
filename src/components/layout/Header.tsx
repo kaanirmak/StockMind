@@ -284,7 +284,7 @@ export default function Header() {
             }}
             onKeyDown={handleSearchSubmit}
             placeholder="Hisse veya fon ara..."
-            className="w-full pl-9 sm:pl-10 pr-4 sm:pr-12 py-2 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
+            className="w-full min-h-10 pl-9 sm:pl-10 pr-3 sm:pr-12 py-2 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-text-muted bg-bg-tertiary border border-border">
             ⌘K
@@ -460,7 +460,7 @@ export default function Header() {
         <button
           type="button"
           onClick={toggleTheme}
-          className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0 border border-transparent hover:border-border"
+          className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer min-h-11 min-w-11 hidden sm:flex items-center justify-center shrink-0 border border-transparent hover:border-border"
           title={resolvedTheme === 'dark' ? 'Açık Temaya Geç' : 'Koyu Temaya Geç'}
           aria-label="Tema Değiştir"
         >
@@ -479,7 +479,7 @@ export default function Header() {
         <button
           type="button"
           onClick={() => setShowDisclaimerModal(true)}
-          className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0 border border-transparent hover:border-border"
+          className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer min-h-11 min-w-11 hidden sm:flex items-center justify-center shrink-0 border border-transparent hover:border-border"
           title="Piyasa Verileri ve Yasal Uyarı"
           aria-label="Piyasa Verileri ve Yasal Uyarı"
         >
@@ -492,7 +492,7 @@ export default function Header() {
         <div className="relative" ref={notificationRef}>
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className={`relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer ${
+            className={`relative p-2 min-h-11 min-w-11 flex items-center justify-center rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer ${
               showNotifications ? 'bg-bg-hover text-text-primary' : ''
             }`}
             title="Bildirimler"
@@ -658,7 +658,7 @@ export default function Header() {
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-bg-hover transition-all duration-200 cursor-pointer"
+            className="flex min-h-11 items-center gap-1 sm:gap-2 px-1.5 sm:px-2 py-1.5 rounded-xl hover:bg-bg-hover transition-all duration-200 cursor-pointer"
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold shadow-sm overflow-hidden flex-shrink-0 ${
               profile ? 'gradient-accent' : 'bg-amber-500/80'
