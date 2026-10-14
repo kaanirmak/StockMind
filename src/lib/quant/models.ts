@@ -31,6 +31,7 @@ export interface DCFResult {
   discountRate: number; // % iskonto veya prim
   isUndervalued: boolean;
   verdict: string;
+  modelApplicabilityWarning?: string;
   sensitivityMatrix: {
     waccRates: number[];
     growthRates: number[];
@@ -102,6 +103,12 @@ export function calculateDCF(params: DCFParams): DCFResult {
     });
   });
 
+  const bankSymbols = new Set(['GARAN', 'AKBNK', 'ISCTR', 'YKBNK', 'HALKB', 'VAKBN', 'ALBRK', 'SKBNK', 'TSKB', 'QNBFB']);
+  const isBank = bankSymbols.has(params.symbol.toUpperCase());
+  const modelApplicabilityWarning = isBank
+    ? 'Dikkat: Bankacılık ve finans kuruluşlarında mevduat ve borçlar operasyonel hammadde niteliğindedir. Serbest Nakit Akımı (FCF) modeli bankalar için finansal olarak uygun değildir; Temettü İndirgeme Modeli (DDM) veya Fiyat/Defter Değeri (F/DD) tercih edilmelidir.'
+    : undefined;
+
   return {
     projections,
     sumPVScheduled: Math.round(sumPVScheduled),
@@ -114,6 +121,7 @@ export function calculateDCF(params: DCFParams): DCFResult {
     discountRate: Number(diff.toFixed(1)),
     isUndervalued,
     verdict,
+    modelApplicabilityWarning,
     sensitivityMatrix: {
       waccRates: waccSteps,
       growthRates: growthSteps,
@@ -364,31 +372,54 @@ export interface MonteCarloResult {
   }[];
 }
 
+function gaussianRandom(): number {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
 export function runMonteCarloSimulation(currentPrice: number, volatility = 0.32, drift = 0.22): MonteCarloResult {
   const days = 252; // 1 yıl
-  const dt = 1 / days;
-  const sampleTrajectories: number[][] = [];
+  const numSimulations = 1000;
+  const terminalPrices: number[] = new Array(numSimulations);
 
-  // Generate 5 sample curves for the chart
+  // 1,000 genuine Geometric Brownian Motion terminal price simulations
+  // S_T = S_0 * exp((drift - 0.5 * sigma^2) * T + sigma * sqrt(T) * Z)
+  const driftTerm = (drift - 0.5 * volatility * volatility) * 1.0;
+  const volTerm = volatility * Math.sqrt(1.0);
+
+  for (let i = 0; i < numSimulations; i++) {
+    const z = gaussianRandom();
+    terminalPrices[i] = Math.max(0.01, currentPrice * Math.exp(driftTerm + volTerm * z));
+  }
+
+  terminalPrices.sort((a, b) => a - b);
+
+  const var5 = Number(terminalPrices[Math.floor(numSimulations * 0.05)].toFixed(2));
+  const median = Number(terminalPrices[Math.floor(numSimulations * 0.50)].toFixed(2));
+  const best95 = Number(terminalPrices[Math.floor(numSimulations * 0.95)].toFixed(2));
+
+  // Generate 5 sample curves for the chart using the exact same GBM dynamics
+  const sampleTrajectories: number[][] = [];
+  const points = 20;
+  const stepDt = 1.0 / points;
+  const stepDrift = (drift - 0.5 * volatility * volatility) * stepDt;
+  const stepVol = volatility * Math.sqrt(stepDt);
+
   for (let curve = 0; curve < 5; curve++) {
     const trajectory: number[] = [currentPrice];
     let p = currentPrice;
-    for (let d = 1; d <= 20; d++) {
-      // 20 periodic data points for fast charting
-      const randNorm = (Math.random() + Math.random() + Math.random() + Math.random() - 2) * 1.732;
-      const step = p * (drift * (days / 20) * dt + volatility * Math.sqrt(days / 20 * dt) * randNorm);
-      p = Math.max(currentPrice * 0.4, p + step);
+    for (let step = 1; step <= points; step++) {
+      const z = gaussianRandom();
+      p = Math.max(0.01, p * Math.exp(stepDrift + stepVol * z));
       trajectory.push(Number(p.toFixed(2)));
     }
     sampleTrajectories.push(trajectory);
   }
 
-  const var5 = Number((currentPrice * (1 - volatility * 0.95)).toFixed(2));
-  const median = Number((currentPrice * (1 + drift * 0.75)).toFixed(2));
-  const best95 = Number((currentPrice * (1 + drift + volatility * 1.4)).toFixed(2));
-
   return {
-    simulationsCount: 10000,
+    simulationsCount: numSimulations,
     timeHorizonDays: days,
     initialPrice: currentPrice,
     medianPrice: median,

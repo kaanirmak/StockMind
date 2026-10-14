@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Modal, Button, Badge, useToast } from '@/components/ui';
 import {
@@ -16,7 +16,7 @@ export interface ExcelImportModalProps {
 }
 
 export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onClose }) => {
-  const { addBatchTransactions, clearPortfolioTransactions, activePortfolioId, portfolios } = usePortfolioStore();
+  const { addBatchTransactions, replacePortfolioTransactions, activePortfolioId, portfolios, transactions } = usePortfolioStore();
   const { showToast } = useToast();
 
   const [isDragging, setIsDragging] = useState(false);
@@ -24,6 +24,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
   const [isParsing, setIsParsing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [overwriteExisting, setOverwriteExisting] = useState(true);
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [validRows, setValidRows] = useState<ParsedRowResult[]>([]);
   const [invalidRows, setInvalidRows] = useState<ParsedRowResult[]>([]);
   const [activeTab, setActiveTab] = useState<'valid' | 'invalid'>('valid');
@@ -31,6 +32,25 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activePort = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
+
+  const existingTxs = useMemo(() => {
+    return transactions.filter((t) => t.portfolioId === activePortfolioId);
+  }, [transactions, activePortfolioId]);
+
+  const duplicateIndices = useMemo(() => {
+    const dupes = new Set<number>();
+    validRows.forEach((r, idx) => {
+      const isDupe = existingTxs.some((ex) =>
+        ex.symbol.toUpperCase() === r.data.symbol.toUpperCase() &&
+        ex.transactionType === r.data.transactionType &&
+        Math.abs(Number(ex.quantity) - Number(r.data.quantity)) < 0.0001 &&
+        Math.abs(Number(ex.price) - Number(r.data.price)) < 0.0001 &&
+        ex.transactionDate === r.data.transactionDate
+      );
+      if (isDupe) dupes.add(idx);
+    });
+    return dupes;
+  }, [validRows, existingTxs]);
 
   const resetState = () => {
     setFile(null);
@@ -126,13 +146,22 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
   const handleImport = async () => {
     if (validRows.length === 0) return;
 
+    const rowsToProcess = (!overwriteExisting && skipDuplicates)
+      ? validRows.filter((_, idx) => !duplicateIndices.has(idx))
+      : validRows;
+
+    if (rowsToProcess.length === 0) {
+      showToast({
+        type: 'warning',
+        title: 'İçe Aktarılacak Yeni İşlem Yok',
+        message: 'Seçili satırların tamamı portföyünüzde zaten mevcut (mükerrer kayıtlar atlandı).',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      if (overwriteExisting && activePortfolioId) {
-        await clearPortfolioTransactions(activePortfolioId);
-      }
-
-      const txPayload = validRows.map((r) => ({
+      const txPayload = rowsToProcess.map((r) => ({
         portfolioId: activePortfolioId,
         symbol: r.data.symbol,
         assetType: r.data.assetType,
@@ -147,20 +176,25 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
         notes: r.data.notes || `Excel İçe Aktarım (${file?.name || 'Excel'})`,
       }));
 
-      const inserted = await addBatchTransactions(txPayload);
+      let inserted: any = null;
+      if (overwriteExisting && activePortfolioId) {
+        inserted = await replacePortfolioTransactions(activePortfolioId, txPayload);
+      } else {
+        inserted = await addBatchTransactions(txPayload);
+      }
 
       if (inserted && inserted.length > 0) {
         showToast({
           type: 'success',
           title: 'İçe Aktarma Başarılı',
-          message: `${inserted.length} işlem "${activePort?.name || 'Portföy'}" hesabınıza başarıyla eklendi.`,
+          message: `${inserted.length} işlem "${activePort?.name || 'Portföy'}" hesabınıza başarıyla ${overwriteExisting ? 'aktarıldı (tüm işlemler güncellendi)' : 'eklendi'}.`,
         });
         handleClose();
       } else {
         showToast({
           type: 'danger',
           title: 'Hata',
-          message: 'İşlemler kaydedilirken bir hata oluştu.',
+          message: 'İşlemler kaydedilemedi. Önceki kayıtlarınız güvenle korundu.',
         });
       }
     } catch (err: any) {
@@ -177,7 +211,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
 
   const totalValidCost = validRows.reduce((acc, r) => {
     const isUsd = (r.data.currency || '').toUpperCase() === 'USD' || r.data.exchange === 'NASDAQ' || r.data.exchange === 'NYSE';
-    const rate = isUsd ? (r.data.exchangeRate && r.data.exchangeRate > 0 ? r.data.exchangeRate : 38.5) : 1.0;
+    const rate = isUsd ? (r.data.exchangeRate && r.data.exchangeRate > 0 ? r.data.exchangeRate : 1.0) : 1.0;
     const txCost = (r.data.quantity * r.data.price * rate) + ((r.data.commission || 0) * (isUsd ? rate : 1.0));
     // Buy adds to cost, sell reduces it
     return r.data.transactionType === 'sell' ? acc - txCost : acc + txCost;
@@ -385,17 +419,26 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                       <tbody className="divide-y divide-border">
                         {validRows.map((row, idx) => {
                           const isUsd = (row.data.currency || '').toUpperCase() === 'USD' || row.data.exchange === 'NASDAQ' || row.data.exchange === 'NYSE';
-                          const fxRate = isUsd ? (row.data.exchangeRate && row.data.exchangeRate > 0 ? row.data.exchangeRate : 38.5) : 1.0;
+                          const hasFx = row.data.exchangeRate != null && Number(row.data.exchangeRate) > 0;
+                          const fxRate = isUsd ? (hasFx ? Number(row.data.exchangeRate) : 1.0) : 1.0;
                           const rawTotal = row.data.quantity * row.data.price;
-                          const totalInTry = isUsd ? rawTotal * fxRate : rawTotal;
+                          const totalInTry = isUsd ? (hasFx ? rawTotal * fxRate : rawTotal) : rawTotal;
+                          const isDupe = duplicateIndices.has(idx);
 
                           return (
-                            <tr key={idx} className="hover:bg-bg-secondary/40 transition-colors">
+                            <tr key={idx} className={`hover:bg-bg-secondary/40 transition-colors ${isDupe && !overwriteExisting ? 'bg-amber-500/5' : ''}`}>
                               <td className="py-2 px-3 text-text-secondary whitespace-nowrap">
                                 {row.data.transactionDate}
                               </td>
                               <td className="py-2 px-3 font-bold text-text-primary">
-                                {row.data.symbol}
+                                <div className="flex items-center gap-1.5">
+                                  <span>{row.data.symbol}</span>
+                                  {isDupe && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30" title="Bu işlem portföyünüzdeki mevcut bir kayıtla eşleşiyor">
+                                      Mükerrer
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td className="py-2 px-3">
                                 <span
@@ -410,7 +453,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                               </td>
                               <td className="py-2 px-3">
                                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${isUsd ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-bg-card border border-border text-text-muted'}`}>
-                                  {isUsd ? `USD (@ ${fxRate.toFixed(2)})` : 'TRY (₺)'}
+                                  {isUsd ? (hasFx ? `USD (@ ${fxRate.toFixed(2)})` : 'USD (Kur Bekleniyor)') : 'TRY (₺)'}
                                 </span>
                               </td>
                               <td className="py-2 px-3 text-right text-text-primary font-medium">
@@ -462,6 +505,26 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                         Toplam Portföy Maliyet Karşılığı: ₺{totalValidCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                       </span>
                     </div>
+
+                    {!overwriteExisting && duplicateIndices.size > 0 && (
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-300">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">⚠️</span>
+                          <span>
+                            Dosyadaki <strong>{duplicateIndices.size}</strong> işlem mevcut portföyünüzdeki kayıtlarla birebir eşleşiyor.
+                          </span>
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer font-semibold text-amber-200 shrink-0 select-none">
+                          <input
+                            type="checkbox"
+                            checked={skipDuplicates}
+                            onChange={(e) => setSkipDuplicates(e.target.checked)}
+                            className="rounded border-amber-500 text-accent focus:ring-accent w-4 h-4 cursor-pointer"
+                          />
+                          <span>Mükerrerleri Atla ({duplicateIndices.size})</span>
+                        </label>
+                      </div>
+                    )}
 
                     <label className="flex items-center gap-2.5 p-3 rounded-xl border border-border bg-bg-card hover:bg-bg-secondary/40 cursor-pointer transition-colors text-xs select-none">
                       <input

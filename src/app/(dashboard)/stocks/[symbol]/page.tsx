@@ -339,6 +339,7 @@ export default function StockDetailPage({
           <CandlestickChart
             candles={candles}
             symbol={symbol}
+            unit={isIndexAsset ? 'Puan' : currSymbol}
             height={440}
             showSMA20={showSMA20}
             showSMA50={showSMA50}

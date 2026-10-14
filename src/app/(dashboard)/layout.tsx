@@ -1,7 +1,16 @@
+import type { Metadata } from 'next';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import MobileNav from '@/components/layout/MobileNav';
 import { AppUpdateNotifier } from '@/components/ui';
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | StockMind',
+    default: 'StockMind — Akıllı Borsa & Portföy Takip',
+  },
+  description: 'BIST, TEFAS fonları, küresel hisseler ve kripto portföyünüzü canlı verilerle takip edin.',
+};
 
 export default function DashboardLayout({
   children,

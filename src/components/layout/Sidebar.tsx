@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV_ITEMS } from '@/lib/utils/constants';
 import { useTheme } from '@/components/theme/ThemeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
 import { ApkDownloadModal } from '@/components/ui';
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -25,6 +26,9 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [showApkModal, setShowApkModal] = useState(false);
   const { resolvedTheme, toggleTheme } = useTheme();
+
+  const { user } = useAuthStore();
+  const isPro = Boolean(user?.isPro || user?.plan === 'pro');
 
   return (
     <aside
@@ -95,18 +99,31 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Pro Membership Indicator */}
+      {/* Membership Indicator */}
       {!collapsed && (
-        <div className="mx-3 mb-2 p-3 rounded-2xl bg-gradient-to-br from-violet-600/10 via-accent/10 to-fuchsia-600/10 border border-accent/25 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] uppercase font-black tracking-wider text-accent flex items-center gap-1">
-              <span>★</span> PRO AKTİF
-            </span>
-            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-gradient-to-r from-accent to-fuchsia-600 text-white shadow-xs">PRO</span>
+        isPro ? (
+          <div className="mx-3 mb-2 p-3 rounded-2xl bg-gradient-to-br from-violet-600/10 via-accent/10 to-fuchsia-600/10 border border-accent/25 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] uppercase font-black tracking-wider text-accent flex items-center gap-1">
+                <span>★</span> PRO AKTİF
+              </span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-gradient-to-r from-accent to-fuchsia-600 text-white shadow-xs">PRO</span>
+            </div>
+            <p className="text-xs font-bold text-text-primary">StockMind Pro</p>
+            <p className="text-[10px] text-text-muted mt-0.5">Sınırsız portföy & derinlikli analizler.</p>
           </div>
-          <p className="text-xs font-bold text-text-primary">StockMind Pro</p>
-          <p className="text-[10px] text-text-muted mt-0.5">Sınırsız portföy & derinlikli analizler.</p>
-        </div>
+        ) : (
+          <div className="mx-3 mb-2 p-2.5 rounded-2xl bg-bg-card/60 border border-border/70 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[10px] uppercase font-semibold tracking-wider text-text-muted">
+                Standart Plan
+              </span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-bg-hover text-text-secondary border border-border">ÜCRETSİZ</span>
+            </div>
+            <p className="text-xs font-semibold text-text-primary">Temel Takip</p>
+            <p className="text-[10px] text-text-muted mt-0.5">Portföy ve piyasa verileri aktif.</p>
+          </div>
+        )
       )}
 
       {/* Android Mobile App Card */}
@@ -148,12 +165,12 @@ export default function Sidebar() {
 
       {/* Settings + Collapse */}
       <div className="px-3 py-4 border-t border-border space-y-1">
-        {/* Theme Plan Switcher */}
+        {/* Theme Switcher */}
         <button
           type="button"
           onClick={toggleTheme}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all duration-200 w-full cursor-pointer"
-          title={resolvedTheme === 'dark' ? 'Beyaz Plana Geç (Açık Tema)' : 'Siyah Plana Geç (Koyu Tema)'}
+          title={resolvedTheme === 'dark' ? 'Açık Temaya Geç' : 'Koyu Temaya Geç'}
         >
           {resolvedTheme === 'dark' ? (
             <svg className="w-5 h-5 shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -166,9 +183,9 @@ export default function Sidebar() {
           )}
           {!collapsed && (
             <div className="flex items-center justify-between flex-1">
-              <span className="text-sm font-medium">Plan</span>
+              <span className="text-sm font-medium">Tema</span>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
-                {resolvedTheme === 'dark' ? 'Siyah' : 'Beyaz'}
+                {resolvedTheme === 'dark' ? 'Koyu' : 'Açık'}
               </span>
             </div>
           )}

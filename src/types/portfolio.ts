@@ -3,7 +3,7 @@
 import type { Exchange } from './stock';
 
 export type AssetType = 'stock' | 'fund';
-export type TransactionType = 'buy' | 'sell';
+export type TransactionType = 'buy' | 'sell' | 'dividend' | 'split' | 'fee';
 
 export interface Portfolio {
   id: string;
@@ -52,6 +52,10 @@ export interface Holding {
   currentValue: number; // In Portfolio Base Currency (TRY)
   pnl: number; // In Portfolio Base Currency (TRY)
   pnlPercent: number;
+  fxPnL?: number; // In Portfolio Base Currency (TRY): Currency fluctuation impact (FIN-04)
+  assetPnL?: number; // In Portfolio Base Currency (TRY): Pure price movement impact (FIN-04)
+  dividendsEarned?: number; // Received dividends in TRY (FIN-06)
+  feesPaid?: number; // Fees paid in TRY (FIN-06)
   weight: number; // percentage of portfolio
   dailyChangePercent?: number;
   lots?: {
@@ -59,7 +63,17 @@ export interface Holding {
     costTry: number;
     costNative: number;
     date: string;
+    rate?: number;
+    priceNative?: number;
   }[];
+}
+
+export interface ValuationStatus {
+  isComplete: boolean;
+  missingFx: boolean;
+  missingPrices: string[];
+  stalePrices?: string[];
+  hasMissingPrices?: boolean;
 }
 
 export interface PortfolioSummary {
@@ -67,13 +81,21 @@ export interface PortfolioSummary {
   totalCost: number;
   totalPnL: number;
   totalPnLPercent: number;
+  realizedPnL: number;
+  unrealizedPnL: number;
+  unrealizedPnLPercent: number;
   dailyPnL: number;
   dailyPnLPercent: number;
+  fxPnL?: number; // Net portfolio currency impact (FIN-04)
+  assetPnL?: number; // Net asset price change impact (FIN-04)
+  dividendsTotal?: number; // Total dividend returns (FIN-06)
+  feesTotal?: number; // Total standalone fees paid (FIN-06)
   totalVolume: number; // Toplam işlem hacmi (TRY)
   buyVolume: number; // Toplam alış hacmi (TRY)
   sellVolume: number; // Toplam satış hacmi (TRY)
   holdings: Holding[];
   allocation: { label: string; value: number; percentage: number; color: string }[];
+  valuationStatus?: ValuationStatus;
 }
 
 export interface TransactionFormData {

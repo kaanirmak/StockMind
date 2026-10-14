@@ -206,6 +206,17 @@ export default function DCFValuationTab({
         )}
       </div>
 
+      {/* Sektörel Model Uyarısı (Örn: Bankalar) */}
+      {dcfResult.modelApplicabilityWarning && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-300">
+          <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold block text-amber-200">Sektörel Model Uyarısı</span>
+            <p className="mt-0.5 text-amber-300/90 leading-relaxed">{dcfResult.modelApplicabilityWarning}</p>
+          </div>
+        </div>
+      )}
+
       {/* Hero: Fair Value Comparison Card */}
       <div className="glass-card p-5 sm:p-6 rounded-2xl border border-border bg-gradient-to-br from-bg-card via-transparent to-accent/5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
@@ -559,6 +570,14 @@ export default function DCFValuationTab({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Şeffaflık & Model Varsayımları Uyarısı */}
+      <div className="p-4 rounded-xl bg-bg-secondary/50 border border-border text-[11px] text-text-muted flex items-start gap-2.5">
+        <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+        <span className="leading-relaxed">
+          <strong className="text-text-secondary font-medium">Model Varsayımları ve Yasal Uyarı:</strong> Bu değerleme motorundaki serbest nakit akımları (FCF), AOMM (WACC) ve terminal büyüme oranları analitik projeksiyon varsayımlarıdır. Borsa işlem fiyatı canlı piyasa verisidir, ancak hesaplanan içsel değer simülasyon amaçlıdır ve kesin bir getiri taahhüdü veya yatırım tavsiyesi içermez.
+        </span>
       </div>
     </div>
   );

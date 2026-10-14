@@ -57,6 +57,7 @@ export async function callOpenRouter(
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': 'https://stockmind.app',
@@ -76,7 +77,7 @@ export async function callOpenRouter(
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.warn('OpenRouter API error response:', res.status, errorText);
+      console.warn('OpenRouter API status:', res.status);
 
       let parsedMsg = errorText;
       try {
@@ -96,7 +97,7 @@ export async function callOpenRouter(
     const data = await res.json();
     return data.choices?.[0]?.message?.content || 'Üzgünüm, analiz yanıtı oluşturulamadı.';
   } catch (error: any) {
-    console.error('OpenRouter call error:', error);
+    console.error('OpenRouter call failed');
     throw error;
   }
 }

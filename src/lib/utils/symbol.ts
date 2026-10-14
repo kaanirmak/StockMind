@@ -1,7 +1,12 @@
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { POPULAR_ALIASES, normalizeText } from '@/lib/utils/search';
 
-const TEFAS_SET = new Set((TEFAS_DIRECTORY as { code: string }[]).map((f) => f.code.toUpperCase()));
+const tefasList: any[] = Array.isArray(TEFAS_DIRECTORY)
+  ? TEFAS_DIRECTORY
+  : (TEFAS_DIRECTORY as any)?.default && Array.isArray((TEFAS_DIRECTORY as any).default)
+  ? (TEFAS_DIRECTORY as any).default
+  : [];
+const TEFAS_SET = new Set(tefasList.map((f) => String(f.code || '').toUpperCase()));
 
 /**
  * Cleans broker prefixes (FON:, IST:, MUTF:, BIST:, etc.), ISIN codes, suffixes (.IS, .E)
@@ -90,21 +95,19 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
   }
 
   // 5. If raw is already an exact ticker key, don't alias-match it
-  if (Object.prototype.hasOwnProperty.call(POPULAR_ALIASES, raw)) {
-    return { symbol: raw, assetType, exchange };
-  }
-
-  // If raw looks like a full company name rather than a ticker (contains space or > 5 chars)
-  // Attempt to resolve via POPULAR_ALIASES
-  if (raw.includes(' ') || raw.length > 5) {
-    const norm = normalizeText(raw);
-    for (const [ticker, aliases] of Object.entries(POPULAR_ALIASES)) {
-      if (aliases.some((a) => {
-        const normA = normalizeText(a);
-        return norm === normA || (raw.includes(' ') && norm.includes(normA));
-      })) {
-        raw = ticker;
-        break;
+  if (!Object.prototype.hasOwnProperty.call(POPULAR_ALIASES, raw)) {
+    // If raw looks like a full company name rather than a ticker (contains space or > 5 chars)
+    // Attempt to resolve via POPULAR_ALIASES
+    if (raw.includes(' ') || raw.length > 5) {
+      const norm = normalizeText(raw);
+      for (const [ticker, aliases] of Object.entries(POPULAR_ALIASES)) {
+        if (aliases.some((a) => {
+          const normA = normalizeText(a);
+          return norm === normA || (raw.includes(' ') && norm.includes(normA));
+        })) {
+          raw = ticker;
+          break;
+        }
       }
     }
   }
@@ -127,3 +130,44 @@ export function normalizeSymbolKey(sym: string): string {
   if (symbol === 'GRAM_GUMUS') return 'XAGTRYG';
   return symbol;
 }
+
+/**
+ * Normalizes an instrument identity into a standardized `EXCHANGE:SYMBOL` identifier (DATA-07).
+ * Examples:
+ *  'THYAO' -> 'BIST:THYAO'
+ *  'TI2'   -> 'TEFAS:TI2'
+ *  'AAPL' (NASDAQ) -> 'NASDAQ:AAPL'
+ *  'BTC'   -> 'CRYPTO:BTCUSDT'
+ */
+export function normalizeInstrumentId(rawSymbol: string, fallbackExchange?: string): string {
+  if (!rawSymbol) return '';
+  const trimmed = rawSymbol.trim();
+  if (trimmed.includes(':')) {
+    const [ex, sym] = trimmed.split(':');
+    const cleaned = cleanSymbol(sym);
+    const resolvedEx = (ex || fallbackExchange || cleaned.exchange || 'BIST').toUpperCase();
+    return `${resolvedEx}:${cleaned.symbol}`;
+  }
+
+  const cleaned = cleanSymbol(trimmed);
+  if (!cleaned.symbol) return '';
+  const effExchange = (fallbackExchange || cleaned.exchange || 'BIST').toUpperCase();
+  return `${effExchange}:${cleaned.symbol}`;
+}
+
+/**
+ * Parses an instrument identifier back into its exchange and ticker symbol components.
+ */
+export function parseInstrumentId(instrumentId: string): { exchange: string; symbol: string } {
+  if (!instrumentId) return { exchange: 'BIST', symbol: '' };
+  const parts = instrumentId.split(':');
+  if (parts.length >= 2) {
+    return {
+      exchange: parts[0].toUpperCase().trim(),
+      symbol: parts.slice(1).join(':').toUpperCase().trim(),
+    };
+  }
+  const cleaned = cleanSymbol(instrumentId);
+  return { exchange: cleaned.exchange, symbol: cleaned.symbol };
+}
+

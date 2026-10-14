@@ -130,17 +130,17 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
             price: currentPrice,
             change: changeAmt,
             changePercent,
-            high: Number((currentPrice * 1.015).toFixed(2)),
-            low: Number((currentPrice * 0.985).toFixed(2)),
-            open: Number((currentPrice - changeAmt).toFixed(2)),
+            high: undefined,
+            low: undefined,
+            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
             close: currentPrice,
-            previousClose: Number((currentPrice - changeAmt).toFixed(2)),
+            previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
             volume: volume || 0,
             marketCap: marketCap || 0,
             peRatio: pe ? Number(pe.toFixed(1)) : undefined,
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
-            high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
-            low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.7).toFixed(2)),
+            high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+            low52w: low52 ? Number(low52.toFixed(2)) : undefined,
             timestamp: new Date().toISOString(),
           } as any);
         }
@@ -198,17 +198,17 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
             price: currentPrice,
             change: changeAmt,
             changePercent,
-            high: Number((currentPrice * 1.015).toFixed(2)),
-            low: Number((currentPrice * 0.985).toFixed(2)),
-            open: Number((currentPrice - changeAmt).toFixed(2)),
+            high: undefined,
+            low: undefined,
+            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
             close: currentPrice,
-            previousClose: Number((currentPrice - changeAmt).toFixed(2)),
+            previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
             volume: volume || 0,
             marketCap: marketCap || 0,
             peRatio: pe ? Number(pe.toFixed(1)) : undefined,
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
-            high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
-            low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.7).toFixed(2)),
+            high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+            low52w: low52 ? Number(low52.toFixed(2)) : undefined,
             timestamp: new Date().toISOString(),
           } as any);
         }
@@ -1499,17 +1499,17 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           price: currentPrice,
           change: changeAmt,
           changePercent,
-          high: Number((currentPrice * 1.015).toFixed(2)),
-          low: Number((currentPrice * 0.985).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
+          high: undefined,
+          low: undefined,
+          open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
           close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: volume || 1500000,
-          marketCap: marketCap || currentPrice * 50000000,
-          peRatio: pe ? Number(pe.toFixed(1)) : 8.5,
-          dividendYield: divYield ? Number(divYield.toFixed(2)) : 1.2,
-          high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.35).toFixed(2)),
-          low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.65).toFixed(2)),
+          previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+          volume: volume || undefined,
+          marketCap: marketCap || undefined,
+          peRatio: pe ? Number(pe.toFixed(1)) : undefined,
+          dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
+          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
           timestamp: new Date().toISOString(),
         } as any;
 
@@ -1559,17 +1559,17 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           price: currentPrice,
           change: changeAmt,
           changePercent,
-          high: Number((currentPrice * 1.015).toFixed(2)),
-          low: Number((currentPrice * 0.985).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
+          high: undefined,
+          low: undefined,
+          open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
           close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: volume || 2500000,
-          marketCap: marketCap || currentPrice * 100000000,
-          peRatio: pe ? Number(pe.toFixed(1)) : 22.4,
-          dividendYield: divYield ? Number(divYield.toFixed(2)) : 0.8,
-          high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.35).toFixed(2)),
-          low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.65).toFixed(2)),
+          previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+          volume: volume || undefined,
+          marketCap: marketCap || undefined,
+          peRatio: pe ? Number(pe.toFixed(1)) : undefined,
+          dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
+          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
           timestamp: new Date().toISOString(),
         } as any;
 
@@ -1953,8 +1953,14 @@ export async function fetchRealHistoricalCandles(
         } else if (targetPrice && targetPrice > 0) {
           const lastCandleClose = candles[candles.length - 1].close;
           const ratio = targetPrice / (lastCandleClose || 1);
-          if (ratio > 0.8 && ratio < 1.25) {
-            candles[candles.length - 1].close = Number(targetPrice.toFixed(2));
+          // Scale proportionately across all candles so chart continuity is preserved without artificial single-candle spike
+          if (ratio > 0.8 && ratio < 1.25 && Math.abs(ratio - 1) > 0.002) {
+            for (let i = 0; i < candles.length; i++) {
+              candles[i].open = Number((candles[i].open * ratio).toFixed(2));
+              candles[i].high = Number((candles[i].high * ratio).toFixed(2));
+              candles[i].low = Number((candles[i].low * ratio).toFixed(2));
+              candles[i].close = Number((candles[i].close * ratio).toFixed(2));
+            }
           }
         }
         return candles;
@@ -1964,122 +1970,27 @@ export async function fetchRealHistoricalCandles(
     console.warn(`Error fetching real candles for ${sym}:`, err);
   }
 
-  // Fallback if network fails
-  return generateCandles(symbol, timeframe, targetPrice);
+  // If real historical candles cannot be fetched, return empty array — do not return synthetic sine waves as real history
+  return [];
 }
 
 /**
- * Generate historical candlestick data for charts (100% synchronized with live target price)
+ * @deprecated Removed synthetic history generation per DATA-01 / DATA-09.
+ * Real history must come from live market providers, never fabricated via seededRandom.
  */
 export function generateCandles(
-  symbol: string,
-  timeframe: '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL' = '1M',
-  basePriceInput?: number
+  _symbol: string,
+  _timeframe: '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL' = '1M',
+  _basePriceInput?: number
 ): Candle[] {
-  const sym = symbol.toUpperCase().trim();
-  const stock = POPULAR_STOCKS.find((s) => s.symbol.toUpperCase() === sym);
-  const cachedStock = getStockBySymbol(sym);
-  const indexDef = MAJOR_INDEX_DEFINITIONS.find((i) => i.symbol.toUpperCase() === sym);
-  const commDef = CURATED_COMMODITY_DEFINITIONS.find((c) => c.symbol.toUpperCase() === sym);
-
-  const fallbackPrice = indexDef ? indexDef.basePrice : commDef ? commDef.basePrice : 100;
-  const targetPrice = basePriceInput || (cachedStock ? cachedStock.price : (stock ? stock.basePrice : fallbackPrice));
-  const symbolSeed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
-  function seededRandom(seed: number) {
-    const x = Math.sin(seed++) * 10000;
-    return x - Math.floor(x);
-  }
-
-  let numCandles = 30;
-  let intervalDays = 1;
-
-  switch (timeframe) {
-    case '1D':
-      numCandles = 40;
-      intervalDays = 0.01;
-      break;
-    case '1W':
-      numCandles = 7;
-      intervalDays = 1;
-      break;
-    case '1M':
-      numCandles = 30;
-      intervalDays = 1;
-      break;
-    case '3M':
-      numCandles = 65;
-      intervalDays = 1;
-      break;
-    case '6M':
-      numCandles = 130;
-      intervalDays = 1;
-      break;
-    case '1Y':
-      numCandles = 252;
-      intervalDays = 1;
-      break;
-    case '5Y':
-      numCandles = 260;
-      intervalDays = 7;
-      break;
-    case 'ALL':
-      numCandles = 365;
-      intervalDays = 5;
-      break;
-  }
-
-  const rawCandles: Candle[] = [];
-  const now = new Date();
-  let runningClose = targetPrice;
-
-  // Walk backwards from today (i = 0) so the final candle is guaranteed to end at targetPrice
-  for (let i = 0; i <= numCandles; i++) {
-    const d = new Date(now);
-    if (timeframe === '1D') {
-      d.setMinutes(d.getMinutes() - (i * 15));
-    } else {
-      d.setDate(d.getDate() - Math.floor(i * intervalDays));
-    }
-
-    if (intervalDays === 1 && (d.getDay() === 0 || d.getDay() === 6)) {
-      continue;
-    }
-
-    const dateStr = timeframe === '1D'
-      ? d.toISOString().replace('T', ' ').slice(0, 16)
-      : d.toISOString().split('T')[0];
-
-    const stepSeed = symbolSeed + (numCandles - i) * 37;
-    const vol = (seededRandom(stepSeed) - 0.49) * 0.025;
-    
-    // Day 0 is today, with exact targetPrice
-    const close = i === 0 ? Number(targetPrice.toFixed(2)) : Number(runningClose.toFixed(2));
-    const open = Number((close * (1 - vol)).toFixed(2));
-    const high = Number((Math.max(open, close) * (1 + seededRandom(stepSeed + 1) * 0.012)).toFixed(2));
-    const low = Number((Math.min(open, close) * (1 - seededRandom(stepSeed + 2) * 0.012)).toFixed(2));
-    const volume = Math.floor(
-      (targetPrice * 10000) * (0.6 + seededRandom(stepSeed + 3) * 0.8)
-    );
-
-    rawCandles.push({
-      time: dateStr,
-      open,
-      high,
-      low,
-      close,
-      volume,
-    });
-
-    runningClose = open;
-  }
-
-  // Reverse so older dates are at the start and newest (today) is at the end
-  return rawCandles.reverse();
+  return [];
 }
 
 export function getStockTechnicalAnalysis(symbol: string, candles?: Candle[]) {
-  const data = candles || generateCandles(symbol, '1Y');
+  if (!candles || candles.length < 14) {
+    return null;
+  }
+  const data = candles;
   const rsi = calculateRSI(data, 14);
   const macd = calculateMACD(data);
   const bb = calculateBollingerBands(data, 20, 2);

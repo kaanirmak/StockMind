@@ -22,6 +22,20 @@ export async function GET(
     const stock = await getStockBySymbolLive(symbol);
     const candles = await fetchRealHistoricalCandles(symbol, timeframe, stock?.price);
 
+    if (candles.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          symbol: symbol.toUpperCase(),
+          timeframe,
+          count: 0,
+          data: [],
+          error: 'Tarihsel fiyat verisi sağlayıcıda bulunamadı.',
+        },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       symbol: symbol.toUpperCase(),

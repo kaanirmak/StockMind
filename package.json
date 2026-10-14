@@ -8,7 +8,11 @@
     "start": "next start",
     "sync:funds": "node scripts/sync-tefas-funds.mjs",
     "build:apk": "export JAVA_HOME=\"${JAVA_HOME:-$(if [ -d '/Applications/Android Studio.app/Contents/jbr/Contents/Home' ]; then echo '/Applications/Android Studio.app/Contents/jbr/Contents/Home'; else echo '/opt/homebrew/opt/openjdk@21'; fi)}\" && export PATH=\"$JAVA_HOME/bin:$PATH\" && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../StockMind.apk && cp app/build/outputs/apk/debug/app-debug.apk ../public/StockMind.apk",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test:security": "node --test tests/security.test.cjs",
+    "test:portfolio": "node --test tests/portfolio.test.cjs",
+    "test": "node --test tests/security.test.cjs tests/portfolio.test.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

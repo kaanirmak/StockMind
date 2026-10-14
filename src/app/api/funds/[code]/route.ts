@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchTefasLiveDetail, fetchTefasPriceHistory } from '@/lib/api/tefas';
-import { getFundByCodeFromDatabase, getFundByCode, generateFundHistory } from '@/lib/data/funds';
+import { getFundByCodeFromDatabase, getFundByCode } from '@/lib/data/funds';
 import { createAdminClient } from '@/lib/supabase/admin';
 export const dynamic = 'force-dynamic';
 
@@ -96,9 +96,8 @@ export async function GET(
       );
     }
 
-    if (history.length === 0) {
-      history = generateFundHistory(upperCode, days, fund.price);
-    }
+    // If real history is unavailable from TEFAS or DB cache, do NOT fabricate synthetic history.
+    // Return empty history honestly per DATA-01.
 
     return NextResponse.json({
       success: true,

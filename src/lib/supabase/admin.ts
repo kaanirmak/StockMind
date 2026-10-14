@@ -1,22 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-/**
- * Supabase Admin Client for background cron jobs, sync workers, and system operations.
- * Uses SUPABASE_SERVICE_ROLE_KEY if provided to bypass RLS, or falls back to anon key.
- */
+/** Privileged operations must never silently fall back to an anonymous client. */
 export function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    'placeholder-key';
-
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+  if (!supabaseUrl || supabaseUrl.includes('placeholder') || !serviceRoleKey?.trim()) {
+    throw new Error('Supabase admin yapılandırması eksik.');
+  }
   return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 }

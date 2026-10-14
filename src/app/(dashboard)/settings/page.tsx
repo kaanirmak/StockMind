@@ -48,18 +48,10 @@ export default function SettingsPage() {
   const [currency, setCurrency] = useState('TRY');
   const [openRouterKey, setOpenRouterKey] = useState('');
   const [defaultModel, setDefaultModel] = useState('openrouter/free');
+  const [isAdvancedAiOpen, setIsAdvancedAiOpen] = useState(false);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
-
-  // Custom SMTP Configuration
-  const [useCustomSmtp, setUseCustomSmtp] = useState(false);
-  const [smtpService, setSmtpService] = useState('gmail');
-  const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
-  const [smtpPort, setSmtpPort] = useState(587);
-  const [smtpUser, setSmtpUser] = useState('');
-  const [smtpPass, setSmtpPass] = useState('');
-  const [smtpFrom, setSmtpFrom] = useState('');
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingEmailSettings, setIsSavingEmailSettings] = useState(false);
@@ -222,7 +214,10 @@ export default function SettingsPage() {
     // Load AI & notification preferences per user
     try {
       const storedAiKey = getStoredOpenRouterKey(user?.id);
-      if (storedAiKey) setOpenRouterKey(storedAiKey);
+      if (storedAiKey) {
+        setOpenRouterKey(storedAiKey);
+        setIsAdvancedAiOpen(true);
+      }
       const storedModel = getStoredDefaultModel(user?.id);
       if (storedModel) setDefaultModel(storedModel);
 
@@ -237,14 +232,6 @@ export default function SettingsPage() {
         if (parsed.priceAlerts !== undefined) setPriceAlerts(parsed.priceAlerts);
         if (parsed.dailyReportEnabled !== undefined) setDailyReportEnabled(parsed.dailyReportEnabled);
 
-        // SMTP
-        if (parsed.useCustomSmtp !== undefined) setUseCustomSmtp(parsed.useCustomSmtp);
-        if (parsed.smtpService) setSmtpService(parsed.smtpService);
-        if (parsed.smtpHost) setSmtpHost(parsed.smtpHost);
-        if (parsed.smtpPort) setSmtpPort(parsed.smtpPort);
-        if (parsed.smtpUser) setSmtpUser(parsed.smtpUser);
-        if (parsed.smtpPass) setSmtpPass(parsed.smtpPass);
-        if (parsed.smtpFrom) setSmtpFrom(parsed.smtpFrom);
       } else if (user?.email) {
         setNotificationEmail(user.email);
       }
@@ -422,13 +409,6 @@ export default function SettingsPage() {
       const updated = {
         ...parsed,
         notificationEmail: notificationEmail.trim(),
-        useCustomSmtp,
-        smtpService,
-        smtpHost,
-        smtpPort,
-        smtpUser: smtpUser.trim(),
-        smtpPass: smtpPass.trim(),
-        smtpFrom: smtpFrom.trim(),
         priceAlerts,
         emailAlerts,
         dailyReportEnabled,
@@ -490,18 +470,6 @@ export default function SettingsPage() {
     }
   };
 
-  const getCustomSmtpPayload = () => {
-    if (!smtpUser.trim() || !smtpPass.trim()) return undefined;
-    return {
-      service: smtpService,
-      host: smtpHost,
-      port: Number(smtpPort),
-      user: smtpUser.trim(),
-      pass: smtpPass.trim(),
-      from: smtpFrom.trim() || smtpUser.trim(),
-    };
-  };
-
   const handleTriggerDailyReport = async () => {
     const targetEmail = notificationEmail || email || user?.email;
     if (!targetEmail || !targetEmail.includes('@')) {
@@ -521,7 +489,6 @@ export default function SettingsPage() {
         body: JSON.stringify({
           email: targetEmail,
           name: fullName || 'Yatırımcı',
-          customSmtp: getCustomSmtpPayload(),
         }),
       });
       const data = await res.json();
@@ -553,12 +520,12 @@ export default function SettingsPage() {
   };
 
   const handleSendTestEmail = async () => {
-    const targetEmail = notificationEmail || email || user?.email;
+    const targetEmail = user?.email;
     if (!targetEmail || !targetEmail.includes('@')) {
       showToast({
         type: 'danger',
         title: 'Geçersiz E-posta',
-        message: 'Lütfen geçerli bir alıcı e-posta adresi girin.',
+        message: 'Test e-postası için doğrulanmış hesabınızla giriş yapın.',
       });
       return;
     }
@@ -572,8 +539,6 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: targetEmail,
-          userName: fullName || 'StockMind Yatırımcısı',
-          customSmtp: getCustomSmtpPayload(),
         }),
       });
 
@@ -613,7 +578,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-text-primary">Kullanıcı & Sistem Ayarları</h1>
         <p className="text-text-secondary text-sm mt-1">
-          Hesabınıza özel profil bilgilerini, bildirim e-postanızı, SMTP sunucunuzu ve OpenRouter AI ayarlarınızı yapılandırın.
+          Hesabınıza özel profil bilgilerini, bildirim tercihlerinizi ve OpenRouter AI ayarlarınızı yapılandırın.
         </p>
       </div>
 
@@ -1029,9 +994,10 @@ export default function SettingsPage() {
                 onChange={(e) => setLanguage(e.target.value as any)}
                 className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
               >
-                <option value="tr">🇹🇷 Türkçe (Turkish)</option>
-                <option value="en">🇬🇧 English (İngilizce)</option>
+                <option value="tr">🇹🇷 Türkçe (Aktif / Varsayılan)</option>
+                <option value="en" disabled>🇬🇧 English (Çok Yakında)</option>
               </select>
+              <p className="text-[11px] text-text-muted mt-1">Şu anda tüm borsa, TEFAS ve AI analizleri Türkçe olarak sunulmaktadır.</p>
             </div>
 
             <div>
@@ -1366,7 +1332,7 @@ export default function SettingsPage() {
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
-            <h3 className="text-base font-bold text-text-primary">E-posta Bildirimleri & SMTP Yapılandırması</h3>
+            <h3 className="text-base font-bold text-text-primary">E-posta Bildirimleri</h3>
             <p className="text-xs text-text-muted">
               18:30 günlük piyasa bültenlerinin ve portföy alarmlarının gönderileceği e-posta adresini ve gönderici sunucusunu belirleyin.
             </p>
@@ -1436,133 +1402,12 @@ export default function SettingsPage() {
             </label>
           </div>
 
-          {/* SMTP Section */}
-          <div className="pt-3 border-t border-border/60 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-text-primary">E-posta Gönderim Servisi (SMTP)</h4>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                    Sistem Sunucusu Hazır
-                  </span>
-                </div>
-                <p className="text-xs text-text-muted mt-0.5">
-                  E-postalarınız StockMind merkezi SMTP altyapımız üzerinden otomatik ve ücretsiz iletilir. İsterseniz aşağıdaki alandan kendi özel sunucunuzu da bağlayabilirsiniz.
-                </p>
-              </div>
-
-              {/* Status Pill */}
-              <div className="shrink-0">
-                {smtpUser && smtpPass ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Özel SMTP Aktif</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Sistem SMTP Aktif</span>
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-bg-tertiary/60 border border-border/60 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Servis Tipi</label>
-                  <select
-                    value={smtpService}
-                    onChange={(e) => {
-                      setSmtpService(e.target.value);
-                      if (e.target.value === 'gmail') {
-                        setSmtpHost('smtp.gmail.com');
-                        setSmtpPort(587);
-                      }
-                    }}
-                    className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
-                  >
-                    <option value="gmail">Google Gmail (Önerilen)</option>
-                    <option value="custom">Özel SMTP Sunucusu (Yandex, Outlook, Kurumsal)</option>
-                  </select>
-                </div>
-
-                <Input
-                  label="Gönderici Başlığı (From)"
-                  value={smtpFrom}
-                  onChange={(e) => setSmtpFrom(e.target.value)}
-                  placeholder="StockMind <ben@gmail.com>"
-                  helperText="Boş bırakılırsa SMTP kullanıcı adı kullanılır."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="SMTP E-posta / Gönderici Adresi *"
-                  type="email"
-                  value={smtpUser}
-                  onChange={(e) => setSmtpUser(e.target.value)}
-                  placeholder="ornek@gmail.com"
-                  required
-                />
-
-                <Input
-                  label="SMTP Şifresi / Google 16 Haneli Uygulama Şifresi *"
-                  type="password"
-                  value={smtpPass}
-                  onChange={(e) => setSmtpPass(e.target.value)}
-                  placeholder="16 haneli Google uygulama şifresi"
-                  helperText="Gmail için hesap şifreniz değil, 'Uygulama Şifresi' girilmelidir."
-                  required
-                />
-              </div>
-
-              {smtpService === 'custom' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="SMTP Sunucu Adresi (Host) *"
-                    value={smtpHost}
-                    onChange={(e) => setSmtpHost(e.target.value)}
-                    placeholder="mail.sirketiniz.com"
-                    required
-                  />
-
-                  <Input
-                    label="SMTP Port *"
-                    type="number"
-                    value={smtpPort.toString()}
-                    onChange={(e) => setSmtpPort(Number(e.target.value) || 587)}
-                    placeholder="587 veya 465"
-                    required
-                  />
-                </div>
-              )}
-
-              {/* Helpful Gmail Guide Box */}
-              <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 text-xs text-text-secondary space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-accent">
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Gmail ile Nasıl 16 Haneli Uygulama Şifresi Alınır?</span>
-                </div>
-                <p className="leading-relaxed">
-                  1. Google Hesabınızda 2 Adımlı Doğrulama aktif olmalıdır.<br />
-                  2.{' '}
-                  <a
-                    href="https://myaccount.google.com/apppasswords"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent underline font-semibold hover:text-accent-secondary"
-                  >
-                    Google Uygulama Şifreleri Sayfası
-                  </a>{' '}
-                  bağlantısını açın.<br />
-                  3. Uygulama adı olarak &ldquo;StockMind&rdquo; yazın ve &ldquo;Oluştur&rdquo; butonuna basın.<br />
-                  4. Üretilen 16 haneli şifreyi kopyalayıp yukarıdaki alana yapıştırın.
-                </p>
-              </div>
-            </div>
+          <div className="pt-3 border-t border-border/60 space-y-2">
+            <h4 className="text-sm font-bold text-text-primary">Test e-postası</h4>
+            <p className="text-xs text-text-secondary">
+              Test mesajı yalnız hesabınızın doğrulanmış e-posta adresine gönderilir.
+              Gönderim servisi StockMind tarafından yönetilir; SMTP şifresi girmeniz gerekmez.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -1636,90 +1481,178 @@ export default function SettingsPage() {
         </form>
       </div>
 
-      {/* OpenRouter AI Settings Card */}
+      {/* AI Usage Quota & Cost Transparency Card (AI-07) */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
-            <h3 className="text-base font-bold text-text-primary">OpenRouter AI Entegrasyonu</h3>
-            <p className="text-xs text-text-muted">Hesabınıza özel OpenRouter API anahtarınızı tanımlayın veya varsayılan modeli seçin.</p>
+            <h3 className="text-base font-bold text-text-primary">AI Kota ve Maliyet Şeffaflığı</h3>
+            <p className="text-xs text-text-muted">StockMind dahili yapay zeka sistem limitleri ve model maliyet tablosu.</p>
           </div>
           <Badge variant="success" size="sm">
-            AI Hazır
+            Dahili Kota Aktif
           </Badge>
         </div>
 
-        <form onSubmit={handleSaveAIConfig} className="space-y-4">
-          <Input
-            label="OpenRouter API Anahtarı (Opsiyonel)"
-            type="password"
-            placeholder="sk-or-v1-xxxxxxxx..."
-            value={openRouterKey}
-            onChange={(e) => {
-              const val = e.target.value;
-              setOpenRouterKey(val);
-              saveStoredOpenRouterKey(val, user?.id, defaultModel);
-            }}
-            onBlur={() => {
-              saveStoredOpenRouterKey(openRouterKey, user?.id, defaultModel);
-            }}
-            helperText="Yazdığınız anda anında tüm cihazlarınıza ve asistanlara kaydedilir. Boş bırakılırsa yerleşik analiz kullanılır."
-          />
-
-          {openRouterKey.trim() && (
-            <div className="text-xs p-2.5 rounded-xl border">
-              {openRouterKey.trim().startsWith('sk-or-') ? (
-                <p className="text-emerald-400 flex items-center gap-1.5 font-medium">
-                  <span>✅</span>
-                  <span>Geçerli OpenRouter anahtar formatı aktif ({openRouterKey.slice(0, 8)}...{openRouterKey.slice(-4)}). Canlı Quant ve AI Asistan hazır!</span>
-                </p>
-              ) : (
-                <p className="text-amber-400 flex items-center gap-1.5">
-                  <span>⚠️</span>
-                  <span>
-                    Girdiğiniz anahtar OpenRouter formatında (sk-or-v1-...) değil. Eğer OpenAI doğrudan anahtarı girdiyseniz, sistem OpenRouter altyapısını kullandığı için lütfen{' '}
-                    <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline font-bold text-accent">
-                      openrouter.ai/keys
-                    </a>{' '}
-                    adresinden ücretsiz anahtar oluşturup yapıştırın.
-                  </span>
-                </p>
-              )}
+        {/* Quota Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2">
+              <span className="text-base">💬</span>
+              <span className="text-xs font-semibold text-text-primary">AI Asistan Sohbet</span>
             </div>
-          )}
+            <div className="text-sm font-bold font-mono text-accent mt-2">10 istek / dk</div>
+            <div className="text-[11px] text-text-muted mt-0.5">Maks. 100 istek / gün (Ücretsiz)</div>
+          </div>
 
-          <div>
-            <label className="block text-xs font-medium text-text-secondary mb-1.5">Varsayılan AI Modeli</label>
-            <select
-              value={defaultModel}
+          <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚖️</span>
+              <span className="text-xs font-semibold text-text-primary">Quant Komitesi</span>
+            </div>
+            <div className="text-sm font-bold font-mono text-accent mt-2">2 analiz / dk</div>
+            <div className="text-[11px] text-text-muted mt-0.5">Maks. 20 analiz / gün (Ücretsiz)</div>
+          </div>
+
+          <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📧</span>
+              <span className="text-xs font-semibold text-text-primary">Bülten & E-posta</span>
+            </div>
+            <div className="text-sm font-bold font-mono text-accent mt-2">3 gönderim / 10 dk</div>
+            <div className="text-[11px] text-text-muted mt-0.5">Maks. 10 gönderim / gün (Ücretsiz)</div>
+          </div>
+        </div>
+
+        {/* Cost Guidance */}
+        <div className="p-4 rounded-xl bg-bg-secondary border border-border/70 space-y-2 text-xs">
+          <div className="font-semibold text-text-primary flex items-center gap-1.5">
+            <span>ℹ️</span>
+            <span>Model Maliyet ve Sağlayıcı Rehberi</span>
+          </div>
+          <p className="text-text-muted leading-relaxed">
+            Sistem kotaları dahilinde yapılan tüm AI analizleri platform tarafından ücretsiz karşılanır. Kendi OpenRouter API anahtarınızı tanımladığınızda sistem kotaları devre dışı kalır ve model kullanım ücretleri doğrudan OpenRouter bakiyenizden tahsil edilir.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+            <div className="text-emerald-400">Gemini 2.0 Flash: $0.00 / 1M token</div>
+            <div className="text-cyan-400">DeepSeek V3: ~$0.14 / 1M token</div>
+            <div className="text-purple-400">Claude 3.5 Sonnet: ~$3.00 / 1M token</div>
+          </div>
+        </div>
+
+        {/* Advanced AI Settings Collapsible Button */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setIsAdvancedAiOpen((prev) => !prev)}
+            className="w-full flex items-center justify-between p-3.5 rounded-xl bg-bg-secondary hover:bg-bg-tertiary border border-border transition-all cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-base">⚙️</span>
+              <div>
+                <span className="text-sm font-bold text-text-primary block">
+                  İleri Seviye AI & Özel OpenRouter Anahtarı (Opsiyonel)
+                </span>
+                <span className="text-[11px] text-text-muted block">
+                  {openRouterKey ? 'Özel API anahtarı tanımlı' : 'Sistem varsayılan kotaları ve modeli kullanılıyor'}
+                </span>
+              </div>
+            </div>
+            <span className="text-xs font-bold text-accent">
+              {isAdvancedAiOpen ? 'Kapat ▲' : 'Genişlet ▼'}
+            </span>
+          </button>
+        </div>
+
+        {/* Collapsible Advanced Form */}
+        {isAdvancedAiOpen && (
+          <form onSubmit={handleSaveAIConfig} className="space-y-4 pt-2 border-t border-border/60 animate-fade-in">
+            <Input
+              label="Özel OpenRouter API Anahtarı"
+              type="password"
+              placeholder="sk-or-v1-xxxxxxxx..."
+              value={openRouterKey}
               onChange={(e) => {
-                const newM = e.target.value;
-                setDefaultModel(newM);
-                saveStoredOpenRouterKey(openRouterKey, user?.id, newM);
+                const val = e.target.value;
+                setOpenRouterKey(val);
+                saveStoredOpenRouterKey(val, user?.id, defaultModel);
               }}
-              className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
-            >
-              {AVAILABLE_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              onBlur={() => {
+                saveStoredOpenRouterKey(openRouterKey, user?.id, defaultModel);
+              }}
+              helperText="Özel anahtar tanımlandığında sistem kotaları yerine doğrudan kendi sağlayıcı hesabınız kullanılır."
+            />
 
-          <div className="flex items-center justify-between pt-2">
-            <a
-              href="https://openrouter.ai/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
-            >
-              <span>🔑 Ücretsiz OpenRouter API Key Al</span>
-            </a>
-            <Button type="submit" variant="primary">
-              AI Ayarlarını Kaydet
-            </Button>
-          </div>
-        </form>
+            {openRouterKey.trim() && (
+              <div className="text-xs p-2.5 rounded-xl border">
+                {openRouterKey.trim().startsWith('sk-or-') ? (
+                  <p className="text-emerald-400 flex items-center gap-1.5 font-medium">
+                    <span>✅</span>
+                    <span>Geçerli OpenRouter anahtar formatı aktif ({openRouterKey.slice(0, 8)}...{openRouterKey.slice(-4)}). Canlı Quant ve AI Asistan hazır!</span>
+                  </p>
+                ) : (
+                  <p className="text-amber-400 flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span>
+                      Girdiğiniz anahtar OpenRouter formatında (sk-or-v1-...) değil. Eğer OpenAI doğrudan anahtarı girdiyseniz, sistem OpenRouter altyapısını kullandığı için lütfen{' '}
+                      <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline font-bold text-accent">
+                        openrouter.ai/keys
+                      </a>{' '}
+                      adresinden anahtar oluşturup yapıştırın.
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">Özel AI Modeli Seçimi</label>
+              <select
+                value={defaultModel}
+                onChange={(e) => {
+                  const newM = e.target.value;
+                  setDefaultModel(newM);
+                  saveStoredOpenRouterKey(openRouterKey, user?.id, newM);
+                }}
+                className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
+              >
+                {AVAILABLE_MODELS.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center gap-3">
+                <a
+                  href="https://openrouter.ai/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
+                >
+                  <span>🔑 OpenRouter Key Al</span>
+                </a>
+                {openRouterKey && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenRouterKey('');
+                      saveStoredOpenRouterKey('', user?.id, defaultModel);
+                      showToast({ type: 'info', title: 'Anahtar Temizlendi', message: 'Sistem varsayılan ücretsiz kotasına dönüldü.' });
+                    }}
+                    className="text-xs text-danger hover:underline cursor-pointer"
+                  >
+                    Anahtarı Kaldır
+                  </button>
+                )}
+              </div>
+              <Button type="submit" variant="primary">
+                AI Ayarlarını Kaydet
+              </Button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

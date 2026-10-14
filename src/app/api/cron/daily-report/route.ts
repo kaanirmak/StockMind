@@ -12,59 +12,83 @@ export async function POST(request: Request) {
   return handleDailyReport(request);
 }
 
+const sentReportsCache = new Set<string>();
+
+interface ReportRecipient {
+  email: string;
+  name?: string;
+}
+
 async function handleDailyReport(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
     const authHeader = request.headers.get('authorization') || '';
     const cronSecretHeader = request.headers.get('x-cron-secret') || '';
-    const secretQuery = searchParams.get('secret') || '';
+    const idempotencyHeader = request.headers.get('x-idempotency-key') || '';
 
     const expectedSecret = process.env.CRON_SECRET;
 
-    // Security Check: CRON_SECRET is strictly mandatory
+    // Security Check: CRON_SECRET is strictly mandatory via headers only (never via URL query)
     const isAuthorized =
       Boolean(expectedSecret) &&
       (authHeader === `Bearer ${expectedSecret}` ||
-        cronSecretHeader === expectedSecret ||
-        secretQuery === expectedSecret);
+        cronSecretHeader === expectedSecret);
 
     if (!isAuthorized) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized: Valid CRON_SECRET is required' },
+        { success: false, error: 'Unauthorized: Valid CRON_SECRET header is required' },
         { status: 401 }
       );
     }
 
-    let targetEmail = '';
-    let targetName = '';
-    let customSmtp: any = undefined;
+    let recipients: ReportRecipient[] = [];
+    let customIdempotencyKey = idempotencyHeader;
+    let force = false;
 
     if (request.method === 'POST') {
       try {
         const body = await request.json();
-        targetEmail = body.email;
-        targetName = body.name;
-        customSmtp = body.customSmtp;
+        if (Array.isArray(body.recipients)) {
+          recipients = body.recipients
+            .filter((r: unknown) => r && typeof (r as any).email === 'string')
+            .map((r: any) => ({ email: r.email.trim(), name: typeof r.name === 'string' ? r.name.trim() : undefined }));
+        } else if (typeof body.email === 'string') {
+          recipients = [{ email: body.email.trim(), name: typeof body.name === 'string' ? body.name.trim() : undefined }];
+        }
+        if (typeof body.idempotencyKey === 'string') customIdempotencyKey = body.idempotencyKey.trim();
+        if (Boolean(body.force)) force = true;
       } catch (_) {}
     }
 
-    if (!targetEmail) {
-      targetEmail =
-        searchParams.get('email') ||
+    if (recipients.length === 0) {
+      const defaultEmail =
         process.env.DAILY_REPORT_RECIPIENT_EMAIL ||
         process.env.SMTP_USER ||
         '';
-      targetName = searchParams.get('name') || 'Değerli Yatırımcı';
+      if (defaultEmail) {
+        recipients = [{ email: defaultEmail, name: 'Değerli Yatırımcı' }];
+      }
     }
 
-    if (!targetEmail) {
+    if (recipients.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Alıcı e-posta adresi belirtilmelidir.' },
         { status: 400 }
       );
     }
 
-    // Fetch live market closing prices for the report
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Check overall batch idempotency key if supplied
+    if (customIdempotencyKey && sentReportsCache.has(customIdempotencyKey) && !force) {
+      return NextResponse.json({
+        success: true,
+        idempotent: true,
+        message: 'Bu rapor toplu anahtarı için bülten zaten işlendi.',
+        idempotencyKey: customIdempotencyKey,
+      });
+    }
+
+    // Fetch live market closing prices for the report once for all recipients
     const [gold, usdtry, btc, thyao, xu100] = await Promise.all([
       fetchSpecificSymbolLive('XAUUSD').catch(() => null),
       fetchSpecificSymbolLive('USDTRY').catch(() => null),
@@ -73,39 +97,56 @@ async function handleDailyReport(request: Request) {
       fetchSpecificSymbolLive('XU100').catch(() => null),
     ]);
 
-    const result = await sendTestEmail({
-      to: targetEmail,
-      userName: targetName,
-      subject: `StockMind Günlük Piyasa Kapanış Bülteni (18:30) • ${new Date().toLocaleDateString('tr-TR')}`,
-      isDailyReport: true,
-      marketData: {
+    const results: Array<{ email: string; success: boolean; skipped?: boolean; message?: string }> = [];
+
+    for (const recipient of recipients.slice(0, 50)) {
+      const perUserKey = `${todayStr}:${recipient.email.toLowerCase()}`;
+      if (sentReportsCache.has(perUserKey) && !force) {
+        results.push({ email: recipient.email, success: true, skipped: true, message: 'Bugün için zaten iletildi' });
+        continue;
+      }
+
+      const sendResult = await sendTestEmail({
+        to: recipient.email,
+        userName: recipient.name || 'Değerli Yatırımcı',
+        subject: `StockMind Günlük Piyasa Kapanış Bülteni (18:30) • ${new Date().toLocaleDateString('tr-TR')}`,
+        isDailyReport: true,
+        marketData: {
+          gold: gold?.price,
+          usdtry: usdtry?.price,
+          btc: btc?.price,
+          thyao: thyao?.price,
+          bist100: xu100?.price,
+        },
+        portfolioSummary: undefined,
+      });
+
+      if (sendResult.success) {
+        sentReportsCache.add(perUserKey);
+      }
+      results.push({ email: recipient.email, success: sendResult.success, message: sendResult.message });
+    }
+
+    if (customIdempotencyKey) {
+      sentReportsCache.add(customIdempotencyKey);
+    }
+
+    const successfulCount = results.filter((r) => r.success).length;
+
+    return NextResponse.json({
+      success: successfulCount > 0,
+      timestamp: new Date().toISOString(),
+      recipientsCount: recipients.length,
+      successfulCount,
+      results,
+      marketSummary: {
         gold: gold?.price,
         usdtry: usdtry?.price,
         btc: btc?.price,
         thyao: thyao?.price,
         bist100: xu100?.price,
       },
-      portfolioSummary: {
-        totalValue: 184500,
-        totalPnL: 8420,
-        totalPnLPercent: 4.78,
-      },
-      customSmtp,
-    });
-
-    return NextResponse.json({
-      success: result.success,
-      timestamp: new Date().toISOString(),
-      recipient: targetEmail,
-      marketSummary: {
-        gold: gold?.price,
-        usdtry: usdtry?.price,
-        btc: btc?.price,
-        thyao: thyao?.price,
-      },
-      emailResult: result,
-      error: !result.success ? result.message : undefined,
-    }, { status: result.success ? 200 : 400 });
+    }, { status: successfulCount > 0 ? 200 : 400 });
   } catch (error: any) {
     console.error('Daily Report Cron Error:', error);
     return NextResponse.json(

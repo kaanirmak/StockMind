@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
@@ -35,6 +35,8 @@ export default function PortfolioPage() {
   const [portfolioToDelete, setPortfolioToDelete] = useState<(typeof portfolios)[0] | null>(null);
   const [isClearTxModalOpen, setIsClearTxModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
 
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
@@ -44,9 +46,55 @@ export default function PortfolioPage() {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setIsActionsMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
     setIsMounted(true);
     fetchPortfoliosAndTransactions();
   }, [fetchPortfoliosAndTransactions]);
+
+  // Visibility-aware live price background refresh (OPS-01)
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    const startPolling = () => {
+      if (interval) clearInterval(interval);
+      interval = setInterval(() => {
+        if (typeof document !== 'undefined' && !document.hidden) {
+          fetchLivePrices();
+        }
+      }, 60000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchLivePrices();
+        startPolling();
+      } else if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      startPolling();
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [fetchLivePrices]);
 
   const summary = getSummary();
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
@@ -279,17 +327,17 @@ export default function PortfolioPage() {
             </button>
           </div>
 
-          {/* Action Buttons: Responsive Swipeable Toolbar on Mobile */}
+          {/* Action Buttons: Prominent Primary Action + Clean Secondary Dropdown */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 sm:pb-0">
             {/* Primary Action Button */}
             <Button
               variant="primary"
               size="sm"
               onClick={() => setIsTradeModalOpen(true)}
-              className="whitespace-nowrap shrink-0 shadow-xs"
+              className="whitespace-nowrap shrink-0 shadow-md font-bold px-3.5"
               leftIcon={
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                 </svg>
               }
             >
@@ -333,39 +381,99 @@ export default function PortfolioPage() {
               Excel Yükle
             </Button>
 
-            {/* Export Options */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={activeTab === 'transactions' ? handleExportExcel : handleExportCSV}
-              className="whitespace-nowrap shrink-0 text-xs"
-              leftIcon={
-                <svg className="w-3.5 h-3.5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            {/* Secondary Actions Dropdown Menu */}
+            <div className="relative shrink-0" ref={actionsMenuRef}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
+                className="whitespace-nowrap shrink-0 text-xs px-2.5"
+                title="Diğer Seçenekler"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
                 </svg>
-              }
-            >
-              {activeTab === 'transactions' ? 'Excel İndir' : 'CSV İndir'}
-            </Button>
+              </Button>
 
-            {/* Delete Active Portfolio Button (visible on desktop; mobile uses the X on pill) */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleOpenDeletePortfolio(activePortfolio)}
-              className="hidden sm:inline-flex whitespace-nowrap shrink-0 text-xs border-red-500/30 text-rose-400 hover:bg-red-500/10 hover:border-red-500"
-              title={`"${activePortfolio?.name}" portföyünü sil`}
-              leftIcon={
-                <svg className="w-3.5 h-3.5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              }
-            >
-              Portföyü Sil
-            </Button>
+              {isActionsMenuOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-56 rounded-2xl bg-bg-card border border-border shadow-xl p-1.5 z-40 text-xs space-y-0.5 animate-fade-in">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false);
+                      handleExportExcel();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-text-primary hover:bg-bg-hover flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <span>📊</span>
+                    <span>İşlemleri Excel Olarak İndir</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false);
+                      handleExportCSV();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-text-primary hover:bg-bg-hover flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <span>📄</span>
+                    <span>Varlıkları CSV Olarak İndir</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false);
+                      downloadExcelTemplate();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-text-primary hover:bg-bg-hover flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <span>📥</span>
+                    <span>Örnek Excel Şablonu İndir</span>
+                  </button>
+
+                  <div className="my-1 border-t border-border/60" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false);
+                      setIsClearTxModalOpen(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-500/10 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <span>🧹</span>
+                    <span>Bu Portföyün İşlemlerini Temizle</span>
+                  </button>
+
+                  {portfolios.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsActionsMenuOpen(false);
+                        handleOpenDeletePortfolio(activePortfolio);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-500/10 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold"
+                    >
+                      <span>🗑️</span>
+                      <span>Portföyü Sil</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Valuation Warning Banner if any live prices are missing */}
+      {summary.valuationStatus?.hasMissingPrices && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5">
+          <span className="text-base shrink-0">⚠️</span>
+          <span>Portföyünüzdeki bazı varlıkların canlı piyasa fiyatı alınamadı; değerleme son bilinen işlem maliyeti üzerinden gösteriliyor.</span>
+        </div>
+      )}
 
       {/* Summary KPI Cards - 2x2 Grid on Mobile, 4 Cols on Desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
@@ -399,11 +507,19 @@ export default function PortfolioPage() {
               {isProfit ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h3>
           </div>
-          <div className="flex items-center gap-1.5 mt-2 text-[10px] sm:text-xs">
-            <Badge variant={isProfit ? 'success' : 'danger'} size="sm">
-              {isProfit ? '+' : ''}{summary.totalPnLPercent.toFixed(2)}%
-            </Badge>
-            <span className="text-text-muted hidden sm:inline">tüm zamanlar</span>
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs">
+              <Badge variant={isProfit ? 'success' : 'danger'} size="sm">
+                {isProfit ? '+' : ''}{summary.totalPnLPercent.toFixed(2)}%
+              </Badge>
+              <span className="text-text-muted hidden sm:inline">net getiri</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-text-muted pt-1 border-t border-border/50">
+              <span>Açık: <strong className={summary.unrealizedPnL >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>₺{summary.unrealizedPnL.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></span>
+              {summary.realizedPnL !== 0 && (
+                <span>Kapanan: <strong className={summary.realizedPnL >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>₺{summary.realizedPnL.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></span>
+              )}
+            </div>
           </div>
         </div>
 

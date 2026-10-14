@@ -2,6 +2,28 @@
 
 export type Exchange = 'BIST' | 'NYSE' | 'NASDAQ' | 'CRYPTO' | 'COMMODITY' | 'FOREX' | 'INDEX';
 
+export type QuoteStatus = 'live' | 'delayed' | 'closed' | 'stale' | 'unavailable';
+
+export interface UnifiedPriceQuote {
+  instrumentId: string; // Standardized ID: e.g. 'BIST:THYAO', 'TEFAS:TI2', 'NASDAQ:AAPL'
+  symbol: string;       // Bare ticker, e.g. 'THYAO'
+  exchange: Exchange | 'TEFAS';
+  currency: 'TRY' | 'USD' | 'EUR';
+  price: number;
+  previousClose?: number;
+  change?: number;
+  changePercent?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  volume?: number;
+  asOf: string;          // ISO 8601 market time
+  fetchedAt: string;     // ISO 8601 timestamp when query was executed
+  source: string;        // 'bist', 'tefas', 'yahoo', 'binance', etc.
+  status: QuoteStatus;
+  isStale?: boolean;
+}
+
 export interface StockQuote {
   symbol: string;
   exchange: Exchange;

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useFundDetail } from '@/hooks/useFunds';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function FundDetailPage({
   params,
@@ -15,6 +16,7 @@ export default function FundDetailPage({
   const code = resolvedParams.code.toUpperCase();
   const { showToast } = useToast();
   const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
+  const { activePortfolioId, addTransaction, fetchLivePrices } = usePortfolioStore();
 
   const [days, setDays] = useState<number>(90);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
@@ -41,17 +43,32 @@ export default function FundDetailPage({
     });
   };
 
-  const handleTradeSubmit = (e: React.FormEvent) => {
+  const handleTradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const price = fund?.price || 1;
     const total = price * lotCount;
 
+    await addTransaction({
+      portfolioId: activePortfolioId,
+      symbol: code,
+      assetType: 'fund',
+      transactionType: tradeType.toLowerCase() as 'buy' | 'sell',
+      quantity: lotCount,
+      price: price,
+      commission: 0,
+      currency: 'TRY',
+      transactionDate: new Date().toISOString().split('T')[0],
+      exchange: 'TEFAS',
+      notes: `${code} TEFAS fon detayından hızlı işlem`,
+    });
+
     showToast({
       type: 'success',
-      title: `${tradeType === 'BUY' ? 'Fon Alımı' : 'Fon Satımı'} Başarılı!`,
+      title: `${tradeType === 'BUY' ? 'Fon Alımı' : 'Fon Satımı'} Kaydedildi!`,
       message: `${lotCount} adet ${code} payı ₺${price.toFixed(4)} fiyattan portföyünüze eklendi. Toplam: ₺${total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`,
     });
     setIsTradeModalOpen(false);
+    fetchLivePrices();
   };
 
   if (loading) {
@@ -139,6 +156,11 @@ export default function FundDetailPage({
                 {isDailyPos ? '+' : ''}
                 {fund.dailyReturn.toFixed(2)}% (Günlük)
               </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-1.5 justify-start lg:justify-end">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>TEFAS Gün Sonu Takas Fiyatı</span>
+              {fund.lastSyncAt && <span>({new Date(fund.lastSyncAt).toLocaleDateString('tr-TR')})</span>}
             </div>
           </div>
 

@@ -1,36 +1,23 @@
 import { NextResponse } from 'next/server';
 import { runInvestmentCommittee } from '@/lib/ai/investment-committee';
 import { getStockBySymbolLive } from '@/lib/data/stocks';
+import { ApiError, apiErrorResponse, authorizeAction, optionalText, readJsonObject } from '@/lib/api/security';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { symbol, apiKey, quote } = body;
-
-    if (!symbol || typeof symbol !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Hisse veya Fon sembolü zorunludur' },
-        { status: 400 }
-      );
-    }
-
-    const cleanSymbol = symbol.trim().toUpperCase();
-    const liveQuote = quote || (await getStockBySymbolLive(cleanSymbol).catch(() => null));
-    const effectiveApiKey = apiKey?.trim() || process.env.OPENROUTER_API_KEY?.trim();
-    const report = await runInvestmentCommittee(cleanSymbol, liveQuote, effectiveApiKey);
-
-    return NextResponse.json({
-      success: true,
-      report,
-    });
-  } catch (error: any) {
-    console.error('Quant Committee API Error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Komite simülasyonu çalıştırılırken bir hata oluştu',
-      },
-      { status: 500 }
-    );
+    const access = await authorizeAction(request, 'ai_committee');
+    if (access.response) return access.response;
+    const body = await readJsonObject(request, 8 * 1024);
+    const symbol = optionalText(body.symbol, 40)?.toUpperCase();
+    if (!symbol || !/^[A-Z0-9_.:=^/-]+$/.test(symbol)) throw new ApiError(400, 'Geçerli bir sembol zorunludur.');
+    const apiKey = optionalText(body.apiKey, 512) || process.env.OPENROUTER_API_KEY?.trim();
+    if (!apiKey) throw new ApiError(401, 'AI anahtarı tanımlanmalıdır.');
+    // Never trust a caller-supplied quote for the committee's market context.
+    const liveQuote = await getStockBySymbolLive(symbol);
+    if (!liveQuote || !Number.isFinite(liveQuote.price) || liveQuote.price <= 0) throw new ApiError(503, 'Bu varlık için piyasa verisi alınamadı.');
+    const report = await runInvestmentCommittee(symbol, liveQuote, apiKey);
+    return NextResponse.json({ success: true, report });
+  } catch (error) {
+    return apiErrorResponse(error);
   }
 }

@@ -1,4 +1,4 @@
-import { Transaction, PortfolioSummary } from '@/types/portfolio';
+import { Transaction, PortfolioSummary, TransactionType } from '@/types/portfolio';
 
 export interface HistoricalHoldingSnapshot {
   symbol: string;
@@ -15,7 +15,7 @@ export interface HistoricalHoldingSnapshot {
   gainSharePercent?: number; // % of that day's gross gains contributed by this asset
   lossExplanation?: string; // Short breakdown math: quantity * price diff = loss
   todayTransactions?: {
-    type: 'buy' | 'sell';
+    type: TransactionType;
     quantity: number;
     price: number;
   }[];

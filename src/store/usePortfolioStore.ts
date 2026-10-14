@@ -21,6 +21,7 @@ interface PortfolioState {
   deletePortfolio: (id: string) => Promise<boolean>;
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'userId'>) => Promise<Transaction | null>;
   addBatchTransactions: (txList: Omit<Transaction, 'id' | 'createdAt' | 'userId'>[]) => Promise<Transaction[]>;
+  replacePortfolioTransactions: (portfolioId: string, txList: Omit<Transaction, 'id' | 'createdAt' | 'userId'>[]) => Promise<Transaction[] | null>;
   deleteTransaction: (id: string) => Promise<boolean>;
   clearPortfolioTransactions: (portfolioId: string) => Promise<boolean>;
   resetStore: () => void;
@@ -220,36 +221,9 @@ async function insertSingleTransactionSupabase(
       return parseTransactionFromDb(data);
     }
 
-    // Attempt 2: Fallback with base columns from 001_initial_schema
-    const notesMeta =
-      tx.currency === 'USD'
-        ? tx.notes
-          ? `${tx.notes} [CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
-          : `[CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
-        : tx.notes || null;
-
-    const basePayload = {
-      portfolio_id: portfolioId,
-      user_id: user.id,
-      symbol: tx.symbol.toUpperCase(),
-      asset_type: tx.assetType,
-      transaction_type: tx.transactionType,
-      quantity: tx.quantity,
-      price: tx.price,
-      commission: tx.commission || 0,
-      transaction_date: tx.transactionDate,
-      exchange: tx.exchange || null,
-      notes: notesMeta,
-    };
-
-    const { data: baseData, error: baseError } = await supabase.from('transactions').insert(basePayload).select().single();
-    if (!baseError && baseData) {
-      const res = parseTransactionFromDb(baseData);
-      res.currency = tx.currency || 'TRY';
-      res.exchangeRate = tx.exchangeRate;
-      return res;
+    if (error) {
+      console.error('insertSingleTransactionSupabase error:', error.message || error);
     }
-
     return null;
   } catch (e) {
     console.error('insertSingleTransactionSupabase error:', e);
@@ -282,7 +256,7 @@ async function insertBatchTransactionsSupabase(
         quantity: Math.max(0.0001, Number(tx.quantity) || 1),
         price: Math.max(0, Number(tx.price) || 0),
         currency: isUsd ? 'USD' : (tx.currency || 'TRY').toUpperCase(),
-        exchange_rate: tx.exchangeRate ? Number(tx.exchangeRate) : (isUsd ? 38.5 : null),
+        exchange_rate: tx.exchangeRate ? Number(tx.exchangeRate) : null,
         commission: Math.max(0, Number(tx.commission) || 0),
         transaction_date: tx.transactionDate || new Date().toISOString().split('T')[0],
         exchange: exchange || tx.exchange || null,
@@ -301,47 +275,7 @@ async function insertBatchTransactionsSupabase(
     }
 
     if (error) {
-      console.warn('insertBatchTransactionsSupabase fullRows error, attempting baseRows fallback:', error.message || error);
-    }
-
-    // Attempt 2: Fallback with base schema (no currency or exchange_rate columns in DB)
-    const baseRows = txList.map((tx) => {
-      const { symbol, assetType, exchange } = cleanSymbol(tx.symbol);
-      const isUsd = (tx.currency || '').toUpperCase() === 'USD' || exchange === 'NASDAQ' || exchange === 'NYSE';
-      const notesMeta =
-        isUsd
-          ? tx.notes
-            ? `${tx.notes} [CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
-            : `[CCY:USD${tx.exchangeRate ? `|FX:${tx.exchangeRate}` : ''}]`
-          : tx.notes || null;
-
-      return {
-        portfolio_id: portfolioId,
-        user_id: user.id,
-        symbol: (symbol || tx.symbol).toUpperCase().trim(),
-        asset_type: (tx.assetType === 'fund' || assetType === 'fund') ? 'fund' : 'stock',
-        transaction_type: tx.transactionType === 'sell' ? 'sell' : 'buy',
-        quantity: Math.max(0.0001, Number(tx.quantity) || 1),
-        price: Math.max(0, Number(tx.price) || 0),
-        commission: Math.max(0, Number(tx.commission) || 0),
-        transaction_date: tx.transactionDate || new Date().toISOString().split('T')[0],
-        exchange: exchange || tx.exchange || null,
-        notes: notesMeta,
-      };
-    });
-
-    const { data: baseData, error: baseError } = await supabase.from('transactions').insert(baseRows).select();
-    if (!baseError && baseData && baseData.length > 0) {
-      return baseData.map((d: any, idx: number) => {
-        const parsed = parseTransactionFromDb(d);
-        parsed.currency = txList[idx]?.currency || 'TRY';
-        parsed.exchangeRate = txList[idx]?.exchangeRate;
-        return parsed;
-      });
-    }
-
-    if (baseError) {
-      console.warn('insertBatchTransactionsSupabase baseRows error:', baseError.message || baseError);
+      console.error('insertBatchTransactionsSupabase error:', error.message || error);
     }
 
     return null;
@@ -757,8 +691,18 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
         if (user) {
           if (isUuid(id)) {
-            await supabase.from('transactions').delete().eq('portfolio_id', id).eq('user_id', user.id);
-            await supabase.from('portfolios').delete().eq('id', id).eq('user_id', user.id);
+            const { error: txErr } = await supabase.from('transactions').delete().eq('portfolio_id', id).eq('user_id', user.id);
+            if (txErr) {
+              console.error('deletePortfolio transactions error:', txErr);
+              set({ error: 'Portföy işlemleri silinemedi: ' + txErr.message });
+              return false;
+            }
+            const { error: portErr } = await supabase.from('portfolios').delete().eq('id', id).eq('user_id', user.id);
+            if (portErr) {
+              console.error('deletePortfolio error:', portErr);
+              set({ error: 'Portföy silinemedi: ' + portErr.message });
+              return false;
+            }
           } else {
             const port = get().portfolios.find((p) => p.id === id);
             if (port) {
@@ -769,8 +713,18 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
                 .eq('name', port.name)
                 .maybeSingle();
               if (dbP?.id) {
-                await supabase.from('transactions').delete().eq('portfolio_id', dbP.id).eq('user_id', user.id);
-                await supabase.from('portfolios').delete().eq('id', dbP.id).eq('user_id', user.id);
+                const { error: txErr } = await supabase.from('transactions').delete().eq('portfolio_id', dbP.id).eq('user_id', user.id);
+                if (txErr) {
+                  console.error('deletePortfolio transactions error:', txErr);
+                  set({ error: 'Portföy işlemleri silinemedi: ' + txErr.message });
+                  return false;
+                }
+                const { error: portErr } = await supabase.from('portfolios').delete().eq('id', dbP.id).eq('user_id', user.id);
+                if (portErr) {
+                  console.error('deletePortfolio error:', portErr);
+                  set({ error: 'Portföy silinemedi: ' + portErr.message });
+                  return false;
+                }
               }
             }
           }
@@ -860,19 +814,23 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
                 activePortfolioId: state.activePortfolioId,
                 transactions: updated,
               });
-              return { transactions: updated };
+              return { transactions: updated, error: null };
             });
             get().fetchLivePrices();
             return insertedDbTx;
+          } else {
+            console.error('addTransaction: Supabase insert failed');
+            set({ error: 'İşlem sunucuya kaydedilemedi. Lütfen bağlantınızı kontrol edin.' });
+            return null;
           }
         }
 
-        // Fallback / Guest mode
+        // Guest mode only (never used as fallback for authenticated users)
         const fallbackTx: Transaction = {
           ...tx,
           id: `tx-${Date.now()}`,
           portfolioId: targetPort?.id || targetPortfolioId || 'p-default',
-          userId: user?.id || 'guest',
+          userId: 'guest',
           currency: tx.currency || 'TRY',
           exchangeRate: tx.exchangeRate,
           createdAt: new Date().toISOString(),
@@ -880,7 +838,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
         set((state) => {
           const updated = [fallbackTx, ...state.transactions];
-          saveLocalState(user?.id, {
+          saveLocalState('guest', {
             portfolios: state.portfolios,
             activePortfolioId: state.activePortfolioId,
             transactions: updated,
@@ -892,6 +850,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         return fallbackTx;
       } catch (e: any) {
         console.error('addTransaction error:', e);
+        set({ error: e.message || 'İşlem eklenirken hata oluştu.' });
         return null;
       }
     },
@@ -933,35 +892,40 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
           if (insertedList && insertedList.length > 0) {
             set((state) => {
-              const otherPortTxs = state.transactions.filter((t) => t.portfolioId !== targetPort.id);
-              const updated = [...insertedList, ...otherPortTxs];
+              // Preserve existing transactions and prepend newly inserted ones
+              const insertedIds = new Set(insertedList.map((t) => t.id));
+              const existingTxs = state.transactions.filter((t) => !insertedIds.has(t.id));
+              const updated = [...insertedList, ...existingTxs];
               saveLocalState(user.id, {
                 portfolios: state.portfolios,
                 activePortfolioId: targetPort.id,
                 transactions: updated,
               });
-              return { transactions: updated, activePortfolioId: targetPort.id };
+              return { transactions: updated, activePortfolioId: targetPort.id, error: null };
             });
             get().fetchLivePrices();
             return insertedList;
+          } else {
+            console.error('addBatchTransactions: Supabase batch insert failed');
+            set({ error: 'İşlemler sunucuya kaydedilemedi.' });
+            return [];
           }
         }
 
-        // Fallback / Guest mode batch insert
+        // Guest mode batch insert
         const fallbackTxs: Transaction[] = txList.map((tx, idx) => ({
           ...tx,
           id: `tx-${Date.now()}-${idx}`,
           portfolioId: targetPort?.id || targetPortfolioId || 'p-default',
-          userId: user?.id || 'guest',
+          userId: 'guest',
           currency: tx.currency || 'TRY',
           exchangeRate: tx.exchangeRate,
           createdAt: new Date().toISOString(),
         }));
 
         set((state) => {
-          const otherPortTxs = state.transactions.filter((t) => t.portfolioId !== (targetPort?.id || targetPortfolioId || 'p-default'));
-          const updated = [...fallbackTxs, ...otherPortTxs];
-          saveLocalState(user?.id, {
+          const updated = [...fallbackTxs, ...state.transactions];
+          saveLocalState('guest', {
             portfolios: state.portfolios,
             activePortfolioId: targetPort?.id || targetPortfolioId || 'p-default',
             transactions: updated,
@@ -973,7 +937,117 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         return fallbackTxs;
       } catch (e: any) {
         console.error('addBatchTransactions error:', e);
+        set({ error: e.message || 'İşlemler eklenirken hata oluştu.' });
         return [];
+      }
+    },
+
+    replacePortfolioTransactions: async (portfolioId, txList) => {
+      if (!txList || txList.length === 0) return [];
+      try {
+        const supabase = createClient();
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+
+        const currentPortfolios = get().portfolios;
+        let targetPort = currentPortfolios.find((p) => p.id === portfolioId) || currentPortfolios[0];
+
+        if (user && targetPort) {
+          const realPortfolioId = await ensurePortfolioInSupabase(supabase, user, targetPort);
+          const currentTxs = get().transactions;
+          const backupTxs = currentTxs.filter((t) => t.portfolioId === realPortfolioId || t.portfolioId === targetPort.id);
+
+          // Delete existing transactions for this portfolio
+          const { error: deleteError } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('portfolio_id', realPortfolioId)
+            .eq('user_id', user.id);
+
+          if (deleteError) {
+            console.error('replacePortfolioTransactions delete error:', deleteError);
+            set({ error: 'Mevcut işlemler silinirken hata oluştu, işlem iptal edildi.' });
+            return null;
+          }
+
+          const insertedList = await insertBatchTransactionsSupabase(
+            supabase,
+            user,
+            realPortfolioId,
+            txList.map((t) => ({ ...t, portfolioId: realPortfolioId }))
+          );
+
+          if (!insertedList || insertedList.length === 0) {
+            // Rollback: restore previous transactions to prevent data loss!
+            console.warn('replacePortfolioTransactions failed insert, rolling back...');
+            if (backupTxs.length > 0) {
+              await insertBatchTransactionsSupabase(
+                supabase,
+                user,
+                realPortfolioId,
+                backupTxs.map((t) => ({
+                  symbol: t.symbol,
+                  assetType: t.assetType,
+                  transactionType: t.transactionType,
+                  quantity: t.quantity,
+                  price: t.price,
+                  currency: t.currency,
+                  exchangeRate: t.exchangeRate,
+                  commission: t.commission,
+                  transactionDate: t.transactionDate,
+                  exchange: t.exchange,
+                  notes: t.notes,
+                  portfolioId: realPortfolioId,
+                }))
+              );
+            }
+            set({ error: 'Yeni işlemler kaydedilemedi. Eski kayıtlarınız korundu.' });
+            return null;
+          }
+
+          set((state) => {
+            const otherPortTxs = state.transactions.filter((t) => t.portfolioId !== realPortfolioId && t.portfolioId !== targetPort.id);
+            const updated = [...insertedList, ...otherPortTxs];
+            saveLocalState(user.id, {
+              portfolios: state.portfolios,
+              activePortfolioId: realPortfolioId,
+              transactions: updated,
+            });
+            return { transactions: updated, activePortfolioId: realPortfolioId, error: null };
+          });
+
+          get().fetchLivePrices();
+          return insertedList;
+        }
+
+        // Guest mode replace
+        const fallbackTxs: Transaction[] = txList.map((tx, idx) => ({
+          ...tx,
+          id: `tx-${Date.now()}-${idx}`,
+          portfolioId: targetPort?.id || portfolioId || 'p-default',
+          userId: 'guest',
+          currency: tx.currency || 'TRY',
+          exchangeRate: tx.exchangeRate,
+          createdAt: new Date().toISOString(),
+        }));
+
+        set((state) => {
+          const otherPortTxs = state.transactions.filter((t) => t.portfolioId !== (targetPort?.id || portfolioId || 'p-default'));
+          const updated = [...fallbackTxs, ...otherPortTxs];
+          saveLocalState('guest', {
+            portfolios: state.portfolios,
+            activePortfolioId: targetPort?.id || portfolioId || 'p-default',
+            transactions: updated,
+          });
+          return { transactions: updated, activePortfolioId: targetPort?.id || portfolioId || 'p-default' };
+        });
+
+        get().fetchLivePrices();
+        return fallbackTxs;
+      } catch (e: any) {
+        console.error('replacePortfolioTransactions error:', e);
+        set({ error: e.message || 'İşlemler güncellenemedi.' });
+        return null;
       }
     },
 
@@ -984,7 +1058,12 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const user = authData?.user;
 
         if (user && isUuid(id)) {
-          await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
+          const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id);
+          if (error) {
+            console.error('deleteTransaction Supabase error:', error);
+            set({ error: 'İşlem silinemedi: ' + error.message });
+            return false;
+          }
         }
 
         set((state) => {
@@ -1020,7 +1099,12 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             }
           }
           if (isUuid(dbPortId)) {
-            await supabase.from('transactions').delete().eq('portfolio_id', dbPortId).eq('user_id', user.id);
+            const { error } = await supabase.from('transactions').delete().eq('portfolio_id', dbPortId).eq('user_id', user.id);
+            if (error) {
+              console.error('clearPortfolioTransactions Supabase error:', error);
+              set({ error: 'İşlemler silinemedi: ' + error.message });
+              return false;
+            }
           }
         }
 

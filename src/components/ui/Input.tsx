@@ -45,6 +45,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             disabled={disabled}
+            aria-invalid={Boolean(error)}
+            aria-describedby={
+              error && inputId ? `${inputId}-error` : helperText && inputId ? `${inputId}-helper` : undefined
+            }
             className={`w-full bg-bg-input text-text-primary text-sm rounded-xl border transition-all duration-200 placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent ${
               leftIcon ? 'pl-10' : 'pl-3.5'
             } ${rightIcon ? 'pr-10' : 'pr-3.5'} py-2.5 ${
@@ -61,7 +65,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error ? (
-          <p className="text-xs text-danger flex items-center gap-1 mt-1">
+          <p id={inputId ? `${inputId}-error` : undefined} role="alert" className="text-xs text-danger flex items-center gap-1 mt-1">
             <svg
               className="w-3.5 h-3.5 shrink-0"
               fill="currentColor"
@@ -76,7 +80,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {error}
           </p>
         ) : helperText ? (
-          <p className="text-xs text-text-muted mt-1">{helperText}</p>
+          <p id={inputId ? `${inputId}-helper` : undefined} className="text-xs text-text-muted mt-1">{helperText}</p>
         ) : null}
       </div>
     );

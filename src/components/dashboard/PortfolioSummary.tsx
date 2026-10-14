@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
-type TimePeriod = 'daily' | 'weekly' | 'monthly' | 'total';
+type MetricView = 'daily' | 'unrealized' | 'realized' | 'total';
 
 export default function PortfolioSummary() {
   const router = useRouter();
   const { getSummary, livePrices } = usePortfolioStore();
   const summary = getSummary();
-  const [period, setPeriod] = useState<TimePeriod>('daily');
+  const [period, setPeriod] = useState<MetricView>('daily');
   const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
 
   useEffect(() => {
@@ -31,13 +31,18 @@ export default function PortfolioSummary() {
   };
 
   const usdQuote = livePrices['USDTRY'] || livePrices['USD'];
-  const usdTry = typeof usdQuote === 'number' ? usdQuote : (usdQuote && typeof usdQuote === 'object' ? usdQuote.price : 38.5);
+  const usdTry =
+    typeof usdQuote === 'number' && usdQuote > 0
+      ? usdQuote
+      : usdQuote && typeof usdQuote === 'object' && Number.isFinite(usdQuote.price) && usdQuote.price > 0
+      ? usdQuote.price
+      : null;
 
-  const periods: { key: TimePeriod; label: string }[] = [
+  const periods: { key: MetricView; label: string }[] = [
     { key: 'daily', label: 'Bugün' },
-    { key: 'weekly', label: 'Bu Hafta' },
-    { key: 'monthly', label: 'Bu Ay' },
-    { key: 'total', label: 'Toplam' },
+    { key: 'unrealized', label: 'Açık K/Z' },
+    { key: 'realized', label: 'Gerçekleşmiş' },
+    { key: 'total', label: 'Toplam K/Z' },
   ];
 
   const currentPeriodObj = periods.find((p) => p.key === period) || periods[0];
@@ -64,17 +69,17 @@ export default function PortfolioSummary() {
           pnl: summary.dailyPnL,
           pnlPercent: summary.dailyPnLPercent,
         };
-      case 'weekly':
+      case 'unrealized':
         return {
-          label: 'Bu Hafta',
-          pnl: summary.dailyPnL * 5,
-          pnlPercent: summary.dailyPnLPercent * 5,
+          label: 'Açık K/Z',
+          pnl: summary.unrealizedPnL,
+          pnlPercent: summary.totalCost > 0 ? (summary.unrealizedPnL / summary.totalCost) * 100 : 0,
         };
-      case 'monthly':
+      case 'realized':
         return {
-          label: 'Bu Ay',
-          pnl: summary.dailyPnL * 22,
-          pnlPercent: summary.dailyPnLPercent * 22,
+          label: 'Gerçekleşmiş',
+          pnl: summary.realizedPnL,
+          pnlPercent: 0,
         };
       case 'total':
       default:
@@ -95,7 +100,9 @@ export default function PortfolioSummary() {
         const sign = periodData.pnl >= 0 ? '↗ +' : '↘ ';
         const pnlStr = `${sign}${formatCurrency(Math.abs(periodData.pnl))}`;
         const pnlPctStr = `(%${periodData.pnlPercent >= 0 ? '+' : ''}${periodData.pnlPercent.toFixed(2)})`;
-        const costStr = `Maliyet: ${formatCurrency(summary.totalCost)} • $${Math.round(summary.totalValue / usdTry)}`;
+        const costStr = usdTry
+          ? `Maliyet: ${formatCurrency(summary.totalCost)} • $${Math.round(summary.totalValue / usdTry)}`
+          : `Maliyet: ${formatCurrency(summary.totalCost)}`;
         (window as any).StockMindAndroid.updatePortfolio(
           formatCurrency(summary.totalValue),
           pnlStr,
@@ -224,22 +231,69 @@ export default function PortfolioSummary() {
             </div>
           </div>
 
-          {/* Middle Row: Main Portfolio Value & Clean P&L Text */}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {/* Big Portfolio Value */}
-              <h2
-                className={`text-2xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight tabular-nums leading-none transition-all duration-300 ${
-                  isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''
-                }`}
-              >
-                {summary.totalValue > 0
-                  ? `₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : '₺0,00'}
-              </h2>
+          {/* Middle Row: Empty State Onboarding or Main Portfolio Value */}
+          {summary.holdings.length === 0 && summary.totalCost === 0 ? (
+            <div className="space-y-4 py-1">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Portföyünüz Henüz Boş
+                </h2>
+                <p className="text-xs sm:text-sm text-white/70 mt-1 max-w-xl leading-relaxed">
+                  BIST & ABD hisseleri veya TEFAS fonlarınızı ekleyerek anlık kâr/zararınızı, net maliyetinizi ve portföy dağılımınızı canlı takip edin.
+                </p>
+              </div>
 
-              {/* Clean K/Z text — NO button border, perfectly responsive without overflow */}
-              {summary.totalValue > 0 && (
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push('/portfolio');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>+</span>
+                  <span>İlk İşlemini Ekle</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push('/portfolio');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15 active:scale-95 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>📥</span>
+                  <span>Excel / Ekstre Yükle</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push('/markets');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-all border border-white/10 active:scale-95 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>📈</span>
+                  <span>Piyasaları İncele</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                {/* Big Portfolio Value */}
+                <h2
+                  className={`text-2xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight tabular-nums leading-none transition-all duration-300 ${
+                    isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''
+                  }`}
+                >
+                  ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </h2>
+
+                {/* Clean K/Z text */}
                 <div
                   className={`inline-flex items-center gap-1.5 text-sm sm:text-lg font-bold tabular-nums transition-all duration-300 ${
                     isPositive ? 'text-emerald-400' : 'text-rose-400'
@@ -253,37 +307,55 @@ export default function PortfolioSummary() {
                     )}
                   </svg>
                   <span>{getPnLSign(periodData.pnl)}{formatCurrency(Math.abs(periodData.pnl))}</span>
-                  <span className="text-xs sm:text-sm font-semibold opacity-90">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>
+                  {periodData.pnlPercent !== 0 && (
+                    <span className="text-xs sm:text-sm font-semibold opacity-90">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Sub-info: Cost, USD equivalent, and Breakdown */}
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium transition-all duration-300 ${
+                  isPrivacyMode ? 'filter blur-[5px] select-none opacity-60' : ''
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  <span>Maliyet: {formatCurrency(summary.totalCost)}</span>
+                  <span>•</span>
+                  <span>Açık: {formatCurrency(summary.unrealizedPnL)}</span>
+                  {summary.realizedPnL !== 0 && (
+                    <>
+                      <span>•</span>
+                      <span>Gerçekleşmiş: {formatCurrency(summary.realizedPnL)}</span>
+                    </>
+                  )}
+                  {usdTry && usdTry > 0 && (
+                    <>
+                      <span>•</span>
+                      <span>
+                        ${(summary.totalValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {' '}
+                        <span className="text-white/30 hidden sm:inline">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Subtle visual link hint */}
+                <span className="text-[11px] text-white/35 group-hover:text-white/70 transition-colors hidden sm:inline">
+                  Detaylı Portföy →
+                </span>
+              </div>
+
+              {/* Valuation Warning Banner if any live quotes were missing */}
+              {summary.valuationStatus?.hasMissingPrices && (
+                <div className="mt-2.5 py-1.5 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-medium flex items-center gap-1.5">
+                  <span className="shrink-0">⚠️</span>
+                  <span>Bazı varlıkların anlık piyasa fiyatı henüz alınamadı; değerlemede son maliyet fiyatı kullanılıyor.</span>
                 </div>
               )}
             </div>
-
-            {/* Sub-info: Cost, USD equivalent, and click hint */}
-            <div
-              className={`flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium transition-all duration-300 ${
-                isPrivacyMode ? 'filter blur-[5px] select-none opacity-60' : ''
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <span>Maliyet: {formatCurrency(summary.totalCost)}</span>
-                {usdTry && usdTry > 0 && (
-                  <>
-                    <span>•</span>
-                    <span>
-                      ${(summary.totalValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      {' '}
-                      <span className="text-white/30 hidden sm:inline">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Subtle visual link hint */}
-              <span className="text-[11px] text-white/35 group-hover:text-white/70 transition-colors hidden sm:inline">
-                Detaylı Portföy →
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

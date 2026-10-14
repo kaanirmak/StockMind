@@ -42,7 +42,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   const [assetType, setAssetType] = useState<'stock' | 'fund'>('stock');
   const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy');
   const [currency, setCurrency] = useState<'TRY' | 'USD'>('TRY');
-  const [exchangeRate, setExchangeRate] = useState<string>('38.50');
+  const [exchangeRate, setExchangeRate] = useState<string>('');
   const [symbol, setSymbol] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [quantity, setQuantity] = useState<number>(100);
@@ -50,6 +50,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   const [commission, setCommission] = useState<number>(0);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [searchResults, setSearchResults] = useState<{
     stocks: any[];
@@ -60,10 +61,19 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   const [isFetchingPrice, setIsFetchingPrice] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const usdQuote = livePrices?.['USDTRY'] || livePrices?.['USD'];
   const liveUsdRate =
-    (typeof livePrices?.['USDTRY'] === 'object' ? livePrices['USDTRY']?.price : typeof livePrices?.['USDTRY'] === 'number' ? livePrices['USDTRY'] : 0) ||
-    (typeof livePrices?.['USD'] === 'object' ? livePrices['USD']?.price : typeof livePrices?.['USD'] === 'number' ? livePrices['USD'] : 0) ||
-    38.5;
+    typeof usdQuote === 'number' && usdQuote > 0
+      ? usdQuote
+      : usdQuote && typeof usdQuote === 'object' && Number.isFinite(usdQuote.price) && usdQuote.price > 0
+      ? usdQuote.price
+      : null;
+
+  useEffect(() => {
+    if (liveUsdRate && !exchangeRate) {
+      setExchangeRate(liveUsdRate.toFixed(2));
+    }
+  }, [liveUsdRate]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -137,7 +147,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
 
     if (isUsdAsset) {
       setCurrency('USD');
-      setExchangeRate(liveUsdRate.toFixed(2));
+      if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
     } else {
       setCurrency('TRY');
     }
@@ -172,7 +182,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             if (p > 0) setPrice(p.toString());
             if (json.data.currency === 'USD') {
               setCurrency('USD');
-              setExchangeRate(liveUsdRate.toFixed(2));
+              if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
             }
           }
         }
@@ -192,7 +202,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
       setCurrency('TRY');
     } else if (exchange === 'NASDAQ' || exchange === 'NYSE') {
       setCurrency('USD');
-      setExchangeRate(liveUsdRate.toFixed(2));
+      if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
     }
 
     setIsFetchingPrice(true);
@@ -214,7 +224,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             if (p > 0) setPrice(p.toString());
             if (json.data.currency === 'USD') {
               setCurrency('USD');
-              setExchangeRate(liveUsdRate.toFixed(2));
+              if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
             }
           }
         }
@@ -226,14 +236,48 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!symbol || !price || !quantity) {
-      showToast({ type: 'danger', title: 'Hata', message: 'Lütfen tüm zorunlu alanları doldurun.' });
+      showToast({ type: 'danger', title: 'Eksik Alan', message: 'Lütfen tüm zorunlu alanları doldurun.' });
+      return;
+    }
+
+    const numQty = Number(quantity);
+    const numPrice = Number(price);
+
+    if (numQty <= 0 || numPrice <= 0) {
+      showToast({ type: 'danger', title: 'Geçersiz Değer', message: 'Miktar ve birim fiyat sıfırdan büyük olmalıdır.' });
       return;
     }
 
     const { symbol: cleanSym, assetType: detectedType, exchange: detectedEx } = cleanSymbol(symbol);
+
+    // FIN-05: Prevent short selling / selling more than currently owned in active portfolio
+    if (transactionType === 'sell') {
+      const summary = usePortfolioStore.getState().getSummary();
+      const existingHolding = summary.holdings.find(
+        (h) => h.symbol.toUpperCase() === cleanSym.toUpperCase()
+      );
+      const availableQty = existingHolding?.totalQuantity || 0;
+      if (availableQty <= 0) {
+        showToast({
+          type: 'danger',
+          title: 'Varlık Bulunamadı',
+          message: `Portföyünüzde hiç ${cleanSym} bulunmamaktadır. Satış işlemi yapamazsınız.`,
+        });
+        return;
+      }
+      if (numQty > availableQty) {
+        showToast({
+          type: 'danger',
+          title: 'Yetersiz Miktar',
+          message: `Portföyünüzde ${availableQty} adet ${cleanSym} bulunmaktadır. ${numQty} adet satamazsınız.`,
+        });
+        return;
+      }
+    }
+
     const finalType = assetType || detectedType;
     const finalEx =
       finalType === 'fund'
@@ -242,39 +286,59 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
           detectedEx ||
           (currency === 'USD' ? 'NASDAQ' : 'BIST');
 
-    const fxRateNum = currency === 'USD' ? Number(exchangeRate) || liveUsdRate : 1.0;
+    const fxRateNum = currency === 'USD' ? Number(exchangeRate) || liveUsdRate || 1.0 : 1.0;
 
-    addTransaction({
-      portfolioId: activePortfolioId,
-      symbol: cleanSym,
-      assetType: finalType,
-      transactionType,
-      quantity: Number(quantity),
-      price: Number(price),
-      currency,
-      exchangeRate: currency === 'USD' ? fxRateNum : undefined,
-      commission: Number(commission),
-      transactionDate: date,
-      exchange: finalEx as any,
-      notes: notes || null,
-    });
+    setIsSubmitting(true);
+    try {
+      const savedTx = await addTransaction({
+        portfolioId: activePortfolioId,
+        symbol: cleanSym,
+        assetType: finalType,
+        transactionType,
+        quantity: numQty,
+        price: numPrice,
+        currency,
+        exchangeRate: currency === 'USD' ? fxRateNum : undefined,
+        commission: Number(commission) || 0,
+        transactionDate: date,
+        exchange: finalEx as any,
+        notes: notes || null,
+      });
 
-    showToast({
-      type: 'success',
-      title: 'İşlem Başarıyla Eklendi',
-      message: `${quantity} adet ${cleanSym} işlemi portföyünüze kaydedildi.`,
-    });
+      if (!savedTx) {
+        showToast({
+          type: 'danger',
+          title: 'Kayıt Başarısız',
+          message: 'İşlem sunucuya kaydedilemedi. Lütfen internet bağlantınızı kontrol edin.',
+        });
+        return;
+      }
 
-    // Reset form
-    setSymbol('');
-    setSearchQuery('');
-    setPrice('');
-    setNotes('');
-    onClose();
+      showToast({
+        type: 'success',
+        title: 'İşlem Başarıyla Eklendi',
+        message: `${numQty} adet ${cleanSym} ${transactionType === 'buy' ? 'alımı' : 'satışı'} portföyünüze kaydedildi.`,
+      });
+
+      // Reset form & close
+      setSymbol('');
+      setSearchQuery('');
+      setPrice('');
+      setNotes('');
+      onClose();
+    } catch (err: any) {
+      showToast({
+        type: 'danger',
+        title: 'Hata',
+        message: err.message || 'İşlem kaydedilirken bir hata oluştu.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const isUsd = currency === 'USD';
-  const fx = Number(exchangeRate) || liveUsdRate;
+  const fx = Number(exchangeRate) || liveUsdRate || 1.0;
   const rawTotal = Number(price || 0) * (quantity || 0) + (commission || 0);
   const totalInTry = isUsd ? rawTotal * fx : rawTotal;
 
@@ -367,7 +431,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
               type="button"
               onClick={() => {
                 setCurrency('USD');
-                setExchangeRate(liveUsdRate.toFixed(2));
+                if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
               }}
               className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                 currency === 'USD'
@@ -588,7 +652,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
               step="0.01"
               value={exchangeRate}
               onChange={(e) => setExchangeRate(e.target.value)}
-              helperText={`Anlık kur: 1 USD = ₺${liveUsdRate.toFixed(2)} (Geçmiş işlem kurunuzu girebilirsiniz)`}
+              helperText={
+                liveUsdRate
+                  ? `Anlık kur: 1 USD = ₺${liveUsdRate.toFixed(2)} (Geçmiş işlem kurunuzu girebilirsiniz)`
+                  : 'USD kuru bekleniyor (geçmiş veya güncel işlem kurunuzu girebilirsiniz)'
+              }
               required
             />
           </div>
@@ -640,11 +708,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
 
         {/* Actions */}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-3">
-          <Button type="button" variant="secondary" onClick={onClose} className="w-full sm:w-auto justify-center">
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto justify-center">
             İptal
           </Button>
-          <Button type="submit" variant="primary" className="w-full sm:w-auto justify-center">
-            İşlemi Kaydet
+          <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full sm:w-auto justify-center">
+            {isSubmitting ? 'Kaydediliyor...' : 'İşlemi Kaydet'}
           </Button>
         </div>
       </form>

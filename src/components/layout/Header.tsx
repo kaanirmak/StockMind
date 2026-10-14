@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
-import { ApkDownloadModal, InstrumentLogo } from '@/components/ui';
+import { ApkDownloadModal, InstrumentLogo, LegalDisclaimerModal } from '@/components/ui';
 
 export interface NotificationItem {
   id: string;
@@ -17,44 +17,7 @@ export interface NotificationItem {
   link?: string;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'notif-1',
-    title: 'THYAO Direnç Seviyesinde',
-    description: 'THYAO hisseniz +%2.8 artışla ₺284 seviyesine ulaştı. Kâr realizasyonu hedefleri güncellendi.',
-    time: '15 dk önce',
-    read: false,
-    category: 'portfolio',
-    link: '/portfolio',
-  },
-  {
-    id: 'notif-2',
-    title: 'BIST 100 Günlük Kapanış',
-    description: 'BIST 100 endeksi günü pozitif bölgede kapattı. Volatilite göstergeleri dengeli seyrediyor.',
-    time: '45 dk önce',
-    read: false,
-    category: 'market',
-    link: '/dashboard',
-  },
-  {
-    id: 'notif-3',
-    title: 'TEFAS Fon Sepeti Analizi Hazır',
-    description: 'StockMind AI, teknoloji ve büyüme fonları için haftalık sepet önerisini tamamladı.',
-    time: '2 saat önce',
-    read: false,
-    category: 'ai',
-    link: '/ai-assistant',
-  },
-  {
-    id: 'notif-4',
-    title: '18:30 Günlük Bülten Servisi',
-    description: 'E-posta bildirim servisiniz aktif. Günlük kapanış bülteniniz her akşam iletilecektir.',
-    time: 'Bugün',
-    read: true,
-    category: 'system',
-    link: '/settings',
-  },
-];
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
 function getNotificationIcon(category: NotificationItem['category']) {
   switch (category) {
@@ -107,6 +70,7 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showApkModal, setShowApkModal] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Notification state
@@ -122,10 +86,10 @@ export default function Header() {
       if (saved) {
         setNotifications(JSON.parse(saved));
       } else {
-        setNotifications(INITIAL_NOTIFICATIONS);
+        setNotifications([]);
       }
     } catch (_) {
-      setNotifications(INITIAL_NOTIFICATIONS);
+      setNotifications([]);
     }
   }, []);
 
@@ -497,7 +461,7 @@ export default function Header() {
           type="button"
           onClick={toggleTheme}
           className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0 border border-transparent hover:border-border"
-          title={resolvedTheme === 'dark' ? 'Beyaz Plana Geç (Açık Tema)' : 'Siyah Plana Geç (Koyu Tema)'}
+          title={resolvedTheme === 'dark' ? 'Açık Temaya Geç' : 'Koyu Temaya Geç'}
           aria-label="Tema Değiştir"
         >
           {resolvedTheme === 'dark' ? (
@@ -509,6 +473,19 @@ export default function Header() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
             </svg>
           )}
+        </button>
+
+        {/* Legal Disclaimer & Data Transparency Button (DATA-10) */}
+        <button
+          type="button"
+          onClick={() => setShowDisclaimerModal(true)}
+          className="relative p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer min-h-[38px] min-w-[38px] flex items-center justify-center shrink-0 border border-transparent hover:border-border"
+          title="Piyasa Verileri ve Yasal Uyarı"
+          aria-label="Piyasa Verileri ve Yasal Uyarı"
+        >
+          <svg className="w-5 h-5 text-text-muted hover:text-accent transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+          </svg>
         </button>
 
         {/* Notifications Dropdown */}
@@ -705,14 +682,14 @@ export default function Header() {
                 <span className="text-xs font-bold text-text-primary max-w-[110px] truncate leading-tight">
                   {profile?.fullName || profile?.username || 'Misafir Kullanıcı'}
                 </span>
-                {(profile?.isPro ?? true) && (
+                {Boolean(profile?.isPro) && (
                   <span className="px-1.5 py-0.2 rounded-md bg-gradient-to-r from-violet-600 via-accent to-fuchsia-600 text-white text-[9px] font-black tracking-wider uppercase shadow-xs shadow-accent/30 flex items-center gap-0.5 shrink-0">
                     <span className="text-[8px]">★</span> PRO
                   </span>
                 )}
               </div>
               <span className="text-[10px] text-text-muted">
-                {profile ? ((profile?.isPro ?? true) ? 'StockMind Pro' : 'Hesabım') : 'Misafir Modu'}
+                {profile ? (profile?.isPro ? 'StockMind Pro' : 'Hesabım') : 'Misafir Modu'}
               </span>
             </div>
             <svg className={`w-4 h-4 text-text-muted transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -747,14 +724,14 @@ export default function Header() {
                     <p className="text-sm font-bold text-text-primary truncate">
                       {profile?.fullName || 'Misafir Kullanıcı'}
                     </p>
-                    {(profile?.isPro ?? true) && (
+                    {Boolean(profile?.isPro) && (
                       <span className="px-1.5 py-0.5 rounded-md bg-gradient-to-r from-violet-600 via-accent to-fuchsia-600 text-white text-[10px] font-black tracking-wider uppercase shadow-xs shadow-accent/30 flex items-center gap-0.5 shrink-0">
                         <span className="text-[8px]">★</span> PRO
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-text-muted truncate mt-0.5">
-                    {profile?.username || 'Giriş Yapılmadı'} • {(profile?.isPro ?? true) ? '⭐ Pro Üye' : 'Standart'}
+                    {profile?.username || 'Giriş Yapılmadı'} • {profile?.isPro ? '⭐ Pro Üye' : 'Standart'}
                   </p>
                 </div>
               </div>
@@ -802,7 +779,7 @@ export default function Header() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                     </svg>
                   )}
-                  <span>Plan: {resolvedTheme === 'dark' ? 'Siyah Plan' : 'Beyaz Plan'}</span>
+                  <span>Tema: {resolvedTheme === 'dark' ? 'Koyu Tema' : 'Açık Tema'}</span>
                 </div>
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
                   {resolvedTheme === 'dark' ? 'Koyu' : 'Açık'}
@@ -843,6 +820,9 @@ export default function Header() {
 
       {/* Android APK Modal */}
       <ApkDownloadModal isOpen={showApkModal} onClose={() => setShowApkModal(false)} />
+
+      {/* Legal & Data Transparency Modal (DATA-10) */}
+      <LegalDisclaimerModal isOpen={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />
     </header>
   );
 }

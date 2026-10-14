@@ -54,9 +54,13 @@ function PiyasalarContent() {
   }>({ tickers: [], sections: null });
   const [overviewLoading, setOverviewLoading] = useState(false);
 
+  const initialSearch = searchParams.get('q') || searchParams.get('search') || '';
+  const initialSector = searchParams.get('sector') || 'ALL';
+  const initialCategory = searchParams.get('category') || 'ALL';
+
   // Stocks state
-  const [selectedSector, setSelectedSector] = useState<string>('ALL');
-  const [stockSearch, setStockSearch] = useState<string>('');
+  const [selectedSector, setSelectedSector] = useState<string>(initialSector);
+  const [stockSearch, setStockSearch] = useState<string>(initialSearch);
   const [stockSortBy, setStockSortBy] = useState<'changePercent' | 'price' | 'volume' | 'marketCap'>('marketCap');
   const [stockSortOrder, setStockSortOrder] = useState<'asc' | 'desc'>('desc');
   
@@ -65,8 +69,8 @@ function PiyasalarContent() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Funds state
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [fundSearch, setFundSearch] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
+  const [fundSearch, setFundSearch] = useState<string>(initialSearch);
   const [fundLimit, setFundLimit] = useState<number>(30);
   const loadMoreFundsRef = useRef<HTMLDivElement>(null);
   const [fundSortBy, setFundSortBy] = useState<'dailyReturn' | 'monthlyReturn' | 'return3m' | 'yearlyReturn' | 'return3y' | 'return5y' | 'price' | 'riskValue'>('yearlyReturn');

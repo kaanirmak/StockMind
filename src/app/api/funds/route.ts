@@ -65,10 +65,29 @@ export async function GET(request: Request) {
       }
     }
 
+    // Apply sorting if requested
+    if (sortBy) {
+      const mult = order === 'asc' ? 1 : -1;
+      funds.sort((a: any, b: any) => {
+        const valA = a[sortBy] != null ? Number(a[sortBy]) : -Infinity * mult;
+        const valB = b[sortBy] != null ? Number(b[sortBy]) : -Infinity * mult;
+        if (valA === valB) return 0;
+        return (valA - valB) * mult;
+      });
+    }
+
+    const totalCount = funds.length;
+    const page = searchParams.get('page') ? Math.max(1, Number(searchParams.get('page')) || 1) : 1;
+    const parsedLimit = limit && limit > 0 ? limit : undefined;
+    const pagedFunds = parsedLimit ? funds.slice((page - 1) * parsedLimit, page * parsedLimit) : funds;
+
     return NextResponse.json({
       success: true,
-      count: funds.length,
-      data: funds,
+      count: pagedFunds.length,
+      total: totalCount,
+      page,
+      limit: parsedLimit || totalCount,
+      data: pagedFunds,
     });
   } catch (error) {
     console.error('Funds API Error:', error);

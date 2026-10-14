@@ -23,6 +23,18 @@ export async function GET(
     const candles = await fetchRealHistoricalCandles(symbol, timeframe, stock?.price);
     const analysis = getStockTechnicalAnalysis(symbol, candles);
 
+    if (!analysis) {
+      return NextResponse.json(
+        {
+          success: false,
+          symbol: symbol.toUpperCase(),
+          error: 'Yeterli gerçek tarihsel veri bulunamadığından teknik analiz göstergeleri hesaplanamadı.',
+          data: null,
+        },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: analysis,

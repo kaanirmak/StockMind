@@ -194,21 +194,21 @@ export default function MobileNav() {
                 type="button"
                 onClick={toggleTheme}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-bg-card border border-border text-text-primary text-xs font-semibold hover:border-accent transition-all cursor-pointer shadow-sm active:scale-95"
-                title="Planı Değiştir"
+                title="Temayı Değiştir"
               >
                 {resolvedTheme === 'dark' ? (
                   <>
                     <svg className="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
                     </svg>
-                    <span>Beyaz Plan</span>
+                    <span>Açık</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                     </svg>
-                    <span>Siyah Plan</span>
+                    <span>Koyu</span>
                   </>
                 )}
               </button>
@@ -222,7 +222,7 @@ export default function MobileNav() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setShowMore(false)}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[44px] ${
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 min-h-[48px] ${
                     isActive
                       ? 'bg-accent/15 text-accent font-semibold'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -249,6 +249,7 @@ export default function MobileNav() {
 
       {/* Bottom Navigation Bar */}
       <nav
+        aria-label="Mobil alt navigasyon"
         className={`md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/98 dark:bg-[#0f1021]/98 backdrop-blur-xl border-t border-border shadow-lg transition-transform duration-300 ease-in-out ${
           shouldHide ? 'translate-y-full pointer-events-none' : 'translate-y-0'
         }`}
@@ -262,8 +263,9 @@ export default function MobileNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-label={item.label}
                 onClick={() => setShowMore(false)}
-                className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[44px] rounded-xl transition-all duration-200 relative ${
+                className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[48px] rounded-xl transition-all duration-200 relative ${
                   isActive
                     ? 'text-accent font-semibold'
                     : 'text-text-muted hover:text-text-secondary'
@@ -280,8 +282,11 @@ export default function MobileNav() {
 
           {/* More Button */}
           <button
+            type="button"
+            aria-label="Diğer menü seçenekleri"
+            aria-expanded={showMore}
             onClick={() => setShowMore(!showMore)}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[44px] rounded-xl transition-all duration-200 relative cursor-pointer ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-1 min-w-[54px] min-h-[48px] rounded-xl transition-all duration-200 relative cursor-pointer ${
               showMore || isMoreActive
                 ? 'text-accent font-semibold'
                 : 'text-text-muted hover:text-text-secondary'

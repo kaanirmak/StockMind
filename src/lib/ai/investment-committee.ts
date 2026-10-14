@@ -72,17 +72,8 @@ export async function runInvestmentCommittee(
   const sym = symbol.toUpperCase().trim();
   const effectiveKey = apiKey?.trim() || (typeof process !== 'undefined' ? process.env.OPENROUTER_API_KEY?.trim() : undefined);
 
-  // If a valid OpenRouter API key is available, call live LLM for authentic, dynamic multi-agent debate
-  if (effectiveKey) {
-    try {
-      return await callLiveCommitteeAPI(sym, stockQuote, effectiveKey);
-    } catch (e) {
-      console.warn('Live committee LLM call failed, fallback to analytical simulation:', e);
-    }
-  }
-
-  // High-fidelity structured analytical simulation
-  return generateAnalyticalCommittee(sym, stockQuote);
+  if (!effectiveKey) throw new Error('API_KEY_REQUIRED');
+  return callLiveCommitteeAPI(sym, stockQuote, effectiveKey);
 }
 
 async function callLiveCommitteeAPI(symbol: string, stockQuote: any, apiKey: string): Promise<CommitteeReport> {
@@ -153,6 +144,7 @@ KRİTİK TALİMATLAR:
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
+    signal: AbortSignal.timeout(30_000),
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'HTTP-Referer': 'https://stockmind.app',

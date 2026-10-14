@@ -277,33 +277,11 @@ export async function fetchTefasLiveFundDetail(code: string): Promise<TefasFundI
   return live || getFundByCode(code);
 }
 
-export function generateFundHistory(code: string, days: number = 90, basePrice?: number) {
-  const fund = getFundByCode(code);
-  const endPrice = basePrice || (fund ? fund.price : 1.0);
-  const history = [];
-  const now = new Date();
-
-  let price = endPrice * 0.92;
-
-  for (let i = days; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-
-    if (d.getDay() === 0 || d.getDay() === 6) continue;
-
-    const dateStr = d.toISOString().split('T')[0];
-    const change = Math.sin(i * 0.2 + (fund?.riskValue || 5)) * 0.005 + 0.001;
-    price = price * (1 + change);
-
-    history.push({
-      date: dateStr,
-      price: Number(price.toFixed(4)),
-    });
-  }
-
-  if (history.length > 0) {
-    history[history.length - 1].price = Number(endPrice.toFixed(4));
-  }
-
-  return history;
+/**
+ * @deprecated Removed synthetic history generation per DATA-01 / FIN-07.
+ * Real history must come from TEFAS or database snapshots, never fabricated via sine-waves.
+ */
+export function generateFundHistory(_code: string, _days: number = 90, _basePrice?: number): { date: string; price: number }[] {
+  return [];
 }
+

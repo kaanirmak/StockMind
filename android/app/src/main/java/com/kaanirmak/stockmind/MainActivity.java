@@ -308,7 +308,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
+        // Security: Block direct file scheme access and disallow mixed HTTP/HTTPS content (AND-01, AND-02)
+        settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
@@ -317,7 +318,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         }
 
         // Clean user agent: removes "; wv" and "Version/X.X" so Google Sign-In and OAuth services do NOT block authentication
@@ -389,6 +390,24 @@ public class MainActivity extends AppCompatActivity {
                         return true;
                     } catch (Exception ignored) {}
                 }
+
+                // Security: Enforce HTTPS host whitelist to keep untrusted external pages from accessing the native bridge (AND-01)
+                String host = uri.getHost();
+                boolean isTrustedHost = host != null && (
+                        host.equalsIgnoreCase("stockmind-finora.vercel.app") ||
+                        host.equalsIgnoreCase("10.0.2.2") ||
+                        host.equalsIgnoreCase("localhost") ||
+                        (currentServerUrl != null && urlStr.startsWith(currentServerUrl))
+                );
+
+                if (!isTrustedHost && (scheme == null || scheme.equals("http") || scheme.equals("https"))) {
+                    try {
+                        Intent externalIntent = new Intent(Intent.ACTION_VIEW, uri);
+                        startActivity(externalIntent);
+                        return true;
+                    } catch (Exception ignored) {}
+                }
+
                 return false;
             }
 
@@ -584,6 +603,21 @@ public class MainActivity extends AppCompatActivity {
                 String fullUrl = downloadUrl;
                 if (!fullUrl.startsWith("http://") && !fullUrl.startsWith("https://")) {
                     fullUrl = currentServerUrl.replaceAll("/$", "") + (fullUrl.startsWith("/") ? fullUrl : "/" + fullUrl);
+                }
+
+                // Security: Validate download URL domain to prevent malicious payload installations (AND-02)
+                Uri dlUri = Uri.parse(fullUrl);
+                String dlHost = dlUri.getHost();
+                boolean isAllowedHost = dlHost != null && (
+                        dlHost.equalsIgnoreCase("stockmind-finora.vercel.app") ||
+                        dlHost.equalsIgnoreCase("github.com") ||
+                        dlHost.equalsIgnoreCase("raw.githubusercontent.com") ||
+                        (currentServerUrl != null && fullUrl.startsWith(currentServerUrl))
+                );
+
+                if (!isAllowedHost) {
+                    Toast.makeText(this, "Güvenlik uyarısı: Güvenilmeyen kaynaktan APK indirmesi engellendi.", Toast.LENGTH_LONG).show();
+                    return;
                 }
 
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fullUrl));

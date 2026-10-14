@@ -9,7 +9,14 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
-  const next = searchParams.get('next') ?? '/dashboard';
+  let next = searchParams.get('next') ?? (type === 'recovery' ? '/reset-password' : '/dashboard');
+  if (type === 'recovery' && next === '/dashboard') {
+    next = '/reset-password';
+  }
+  // Sanitize next to avoid open redirect vulnerabilities
+  if (!next.startsWith('/') || next.startsWith('//')) {
+    next = '/dashboard';
+  }
 
   // Determine real external origin (handles Vercel / reverse proxy headers)
   const forwardedHost = request.headers.get('x-forwarded-host');

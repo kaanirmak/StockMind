@@ -16,6 +16,7 @@ import { Candle, BollingerBandsResult, calculateSMA, calculateBollingerBands } f
 export interface CandlestickChartProps {
   candles: Candle[];
   symbol: string;
+  unit?: string;
   height?: number;
   bollingerBands?: BollingerBandsResult[];
   sma20?: { time: string | number; value: number }[];
@@ -30,6 +31,7 @@ export interface CandlestickChartProps {
 export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   candles,
   symbol,
+  unit,
   height = 450,
   bollingerBands = [],
   sma20 = [],
@@ -197,9 +199,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
     chartRef.current = chart;
 
-    // Format candle data
+    // Format candle data ensuring standard time resolution for lightweight-charts
     const formattedCandles = candles.map((c) => ({
-      time: String(c.time),
+      time: typeof c.time === 'number'
+        ? c.time
+        : (c.time.includes(' ') || c.time.includes(':'))
+          ? Math.floor(new Date(c.time.replace(' ', 'T')).getTime() / 1000)
+          : String(c.time),
       open: c.open,
       high: c.high,
       low: c.low,
@@ -475,7 +481,9 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           {activeCandle && (
             <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono overflow-x-auto no-scrollbar">
               <span className="font-bold text-text-primary">
+                {unit && unit !== 'Puan' ? unit : ''}
                 {activeCandle.close?.toFixed(2)}
+                {unit === 'Puan' ? ' Puan' : ''}
               </span>
               <span
                 className={`font-semibold px-1.5 py-0.2 rounded text-[10px] ${

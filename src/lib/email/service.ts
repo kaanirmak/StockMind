@@ -32,6 +32,9 @@ export interface EmailPayload {
 }
 
 export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırımcı', payload?: Partial<EmailPayload>): string {
+  if (payload?.isDailyReport === false) {
+    return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>StockMind test e-postası</title></head><body><h1>StockMind</h1><p>Bu bir test e-postasıdır. Doğrulanmış hesabınıza e-posta gönderimi başarılı oldu.</p><p>Bu mesaj piyasa verisi veya portföy raporu içermez.</p></body></html>';
+  }
   const dateStr = new Date().toLocaleDateString('tr-TR', {
     day: 'numeric',
     month: 'long',
@@ -262,8 +265,12 @@ export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailRes
             user: smtpUser,
             pass: cleanPass,
           },
+          requireTLS: true,
+          connectionTimeout: 10_000,
+          greetingTimeout: 10_000,
+          socketTimeout: 20_000,
           tls: {
-            rejectUnauthorized: false,
+            rejectUnauthorized: true,
           },
         })
       : nodemailer.createTransport({
@@ -274,8 +281,12 @@ export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailRes
             user: smtpUser,
             pass: cleanPass,
           },
+          requireTLS: true,
+          connectionTimeout: 10_000,
+          greetingTimeout: 10_000,
+          socketTimeout: 20_000,
           tls: {
-            rejectUnauthorized: false,
+            rejectUnauthorized: true,
           },
         });
 

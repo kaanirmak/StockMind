@@ -25,6 +25,9 @@ export function useAuth() {
       const pictureAvatar = currentUser?.user_metadata?.picture;
       const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
 
+      const isPro = Boolean(data?.is_pro ?? currentUser?.user_metadata?.is_pro ?? false);
+      const plan = (data?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+
       const userProf: UserProfile = {
         id: userId,
         username: data?.username || currentUser?.email?.split('@')[0] || 'kullanici',
@@ -32,8 +35,8 @@ export function useAuth() {
         avatarUrl: data?.avatar_url || safeMetaAvatar || safePicture || null,
         preferredLanguage: data?.preferred_language || 'tr',
         preferredCurrency: data?.preferred_currency || 'TRY',
-        isPro: true,
-        plan: 'pro',
+        isPro,
+        plan,
         createdAt: data?.created_at || new Date().toISOString(),
         updatedAt: data?.updated_at || new Date().toISOString(),
       };
@@ -48,6 +51,9 @@ export function useAuth() {
         const pictureAvatar = currentUser?.user_metadata?.picture;
         const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
 
+        const isPro = Boolean(currentUser.user_metadata?.is_pro ?? false);
+        const plan = (currentUser.user_metadata?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+
         const fallbackProf: UserProfile = {
           id: userId,
           username: currentUser.email?.split('@')[0] || 'kullanici',
@@ -55,8 +61,8 @@ export function useAuth() {
           avatarUrl: safeMetaAvatar || safePicture || null,
           preferredLanguage: 'tr',
           preferredCurrency: 'TRY',
-          isPro: true,
-          plan: 'pro',
+          isPro,
+          plan,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -83,8 +89,8 @@ export function useAuth() {
         avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (profile?.avatarUrl || null),
         preferredLanguage: updates.preferredLanguage || profile?.preferredLanguage || 'tr',
         preferredCurrency: updates.preferredCurrency || profile?.preferredCurrency || 'TRY',
-        isPro: true,
-        plan: 'pro',
+        isPro: false,
+        plan: 'free',
         createdAt: profile?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -227,10 +233,22 @@ export function useAuth() {
 
     getUser();
 
+    let currentTrackedUserId: string | null = null;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         const authUser = session?.user ?? null;
         if (isMounted) {
+          const prevUserId = currentTrackedUserId;
+          currentTrackedUserId = authUser?.id ?? null;
+
+          // If signed out or account switched, reset stores immediately to prevent state bleed
+          if (event === 'SIGNED_OUT' || !authUser || (prevUserId && prevUserId !== authUser?.id)) {
+            usePortfolioStore.getState().resetStore();
+            useWatchlistStore.getState().resetWatchlist();
+            useAuthStore.getState().clearUser();
+          }
+
           setUser(authUser);
           if (authUser) {
             cleanupBloatedMetadata(authUser);
