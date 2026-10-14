@@ -53,7 +53,22 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
     raw === 'XAUTRYG' ||
     raw === 'XAUTRY'
   ) {
-    return { symbol: 'GRAM_ALTIN', assetType: 'stock', exchange: 'BIST' };
+    return { symbol: 'XAUTRYG', assetType: 'stock', exchange: 'COMMODITY' };
+  }
+  if (raw === 'CEYREK' || raw === 'CEYREK ALTIN' || raw === 'CEYREK_ALTIN') {
+    return { symbol: 'CEYREK_ALTIN', assetType: 'stock', exchange: 'COMMODITY' };
+  }
+  if (raw === 'YARIM' || raw === 'YARIM ALTIN' || raw === 'YARIM_ALTIN') {
+    return { symbol: 'YARIM_ALTIN', assetType: 'stock', exchange: 'COMMODITY' };
+  }
+  if (raw === 'CUMHURIYET' || raw === 'CUMHURIYET ALTINI' || raw === 'CUMHURIYET_ALTINI') {
+    return { symbol: 'CUMHURIYET_ALTINI', assetType: 'stock', exchange: 'COMMODITY' };
+  }
+  if (raw === 'ATA' || raw === 'ATA ALTIN' || raw === 'ATA_ALTIN') {
+    return { symbol: 'ATA_ALTIN', assetType: 'stock', exchange: 'COMMODITY' };
+  }
+  if (raw === 'BILEZIK22' || raw === '22 AYAR BILEZIK') {
+    return { symbol: 'BILEZIK22', assetType: 'stock', exchange: 'COMMODITY' };
   }
   if (raw === 'GUMUS' || raw === 'GUMUS.S1' || raw === 'GUMUSS1' || raw === 'GUMUS_S1') {
     return { symbol: 'GUMUS', assetType: 'stock', exchange: 'BIST' };
@@ -65,17 +80,28 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
     raw === 'XAGTRYG' ||
     raw === 'XAGTRY'
   ) {
-    return { symbol: 'GRAM_GUMUS', assetType: 'stock', exchange: 'BIST' };
+    return { symbol: 'XAGTRYG', assetType: 'stock', exchange: 'COMMODITY' };
+  }
+  if (raw === 'BTC' || raw === 'BITCOIN') {
+    return { symbol: 'BTCUSDT', assetType: 'stock', exchange: 'CRYPTO' };
+  }
+  if (raw === 'ETH' || raw === 'ETHEREUM') {
+    return { symbol: 'ETHUSDT', assetType: 'stock', exchange: 'CRYPTO' };
   }
 
-  // 5. If raw looks like a full company name rather than a ticker (contains space or > 5 chars)
+  // 5. If raw is already an exact ticker key, don't alias-match it
+  if (Object.prototype.hasOwnProperty.call(POPULAR_ALIASES, raw)) {
+    return { symbol: raw, assetType, exchange };
+  }
+
+  // If raw looks like a full company name rather than a ticker (contains space or > 5 chars)
   // Attempt to resolve via POPULAR_ALIASES
   if (raw.includes(' ') || raw.length > 5) {
     const norm = normalizeText(raw);
     for (const [ticker, aliases] of Object.entries(POPULAR_ALIASES)) {
       if (aliases.some((a) => {
         const normA = normalizeText(a);
-        return norm === normA || norm.includes(normA) || normA.includes(norm);
+        return norm === normA || (raw.includes(' ') && norm.includes(normA));
       })) {
         raw = ticker;
         break;

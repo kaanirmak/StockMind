@@ -18,8 +18,11 @@ export interface StockMarketInfo {
   symbol: string;
   name: string;
   exchange: 'BIST' | 'NASDAQ' | 'NYSE' | 'CRYPTO' | 'COMMODITY' | 'FOREX' | 'INDEX';
-  currency: 'TRY' | 'USD' | 'EUR';
+  currency: string;
   sector: string;
+  subCategory?: string;
+  unit?: string;
+  isIndex?: boolean;
   basePrice: number;
   price?: number;
   change?: number;
@@ -230,11 +233,19 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
  * Results are cached for 60 seconds across all serverless instances via Next.js unstable_cache.
  * This prevents every concurrent request from hitting TradingView independently.
  */
-export const fetchAllTradingViewStocks = unstable_cache(
+const _cachedTradingViewStocks = unstable_cache(
   _fetchAllTradingViewStocksCore,
   ['tradingview-all-stocks'],
   { revalidate: 60, tags: ['tradingview-stocks'] }
 );
+
+export async function fetchAllTradingViewStocks(): Promise<{ bist: StockMarketInfo[]; us: StockMarketInfo[] }> {
+  try {
+    return await _cachedTradingViewStocks();
+  } catch {
+    return await _fetchAllTradingViewStocksCore();
+  }
+}
 
 export interface AlternativeMarketsData {
   crypto: StockMarketInfo[];
@@ -479,68 +490,105 @@ const FOREX_NAMES: Record<string, string> = {
   CHFJPY: 'İsviçre Frangı / Japon Yeni',
 };
 
-const MAJOR_INDEX_DEFINITIONS = [
-  // BIST Ana & Sektör Endeksleri (Gerçek piyasa değerleri TL cinsindendir)
-  { ticker: 'XU100.IS', symbol: 'XU100', name: 'Borsa İstanbul 100 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 12265.98, marketCap: 12_500_000_000_000 },
-  { ticker: 'XU050.IS', symbol: 'XU050', name: 'Borsa İstanbul 50 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 13800.50, marketCap: 10_800_000_000_000 },
-  { ticker: 'XU030.IS', symbol: 'XU030', name: 'Borsa İstanbul 30 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15145.27, marketCap: 9_200_000_000_000 },
-  { ticker: 'XUSIN.IS', symbol: 'XUSIN', name: 'BIST Sınai Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 16011.48, marketCap: 3_400_000_000_000 },
-  { ticker: 'XBANK.IS', symbol: 'XBANK', name: 'BIST Bankacılık Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 15870.84, marketCap: 1_900_000_000_000 },
-  { ticker: 'XUHIZ.IS', symbol: 'XUHIZ', name: 'BIST Hizmetler Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10795.61, marketCap: 1_800_000_000_000 },
-  { ticker: 'XHOLD.IS', symbol: 'XHOLD', name: 'BIST Holding & Yatırım', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 10495.89, marketCap: 1_700_000_000_000 },
-  { ticker: 'XKMYA.IS', symbol: 'XKMYA', name: 'BIST Kimya Petrol Plastik', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 18400.0, marketCap: 1_200_000_000_000 },
-  { ticker: 'XULAS.IS', symbol: 'XULAS', name: 'BIST Ulaştırma Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 33163.41, marketCap: 750_000_000_000 },
-  { ticker: 'XUTEK.IS', symbol: 'XUTEK', name: 'BIST Teknoloji Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 37934.21, marketCap: 650_000_000_000 },
-  { ticker: 'XELKT.IS', symbol: 'XELKT', name: 'BIST Elektrik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 613.31, marketCap: 620_000_000_000 },
-  { ticker: 'XGIDA.IS', symbol: 'XGIDA', name: 'BIST Gıda İçecek Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 14200.0, marketCap: 600_000_000_000 },
-  { ticker: 'XTCRT.IS', symbol: 'XTCRT', name: 'BIST Ticaret Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 38200.0, marketCap: 550_000_000_000 },
-  { ticker: 'XGMYO.IS', symbol: 'XGMYO', name: 'BIST Gayrimenkul YO', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 5113.42, marketCap: 480_000_000_000 },
-  { ticker: 'XBLSM.IS', symbol: 'XBLSM', name: 'BIST Bilişim Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 8900.0, marketCap: 380_000_000_000 },
-  { ticker: 'XMADN.IS', symbol: 'XMADN', name: 'BIST Madencilik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 7850.2, marketCap: 350_000_000_000 },
-  { ticker: 'XSGRT.IS', symbol: 'XSGRT', name: 'BIST Sigorta Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 98500.0, marketCap: 290_000_000_000 },
-  { ticker: 'XTRZM.IS', symbol: 'XTRZM', name: 'BIST Turizm Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', basePrice: 1420.5, marketCap: 180_000_000_000 },
+export interface MajorIndexDef {
+  ticker: string;
+  symbol: string;
+  name: string;
+  currency: string;
+  sector: string;
+  subCategory: 'BIST' | 'US' | 'EU' | 'ASIA' | 'OTHER';
+  basePrice: number;
+  marketCap: number;
+}
 
-  // Küresel Majör Borsa Endeksleri (Orijinal para birimlerinde gerçek piyasa değerleri)
-  { ticker: '^GSPC', symbol: 'SPX', name: 'S&P 500 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 7811.54, marketCap: 45_000_000_000_000 },
-  { ticker: '^IXIC', symbol: 'NDX', name: 'NASDAQ 100 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 27366.17, marketCap: 22_000_000_000_000 },
-  { ticker: '^DJI', symbol: 'DJI', name: 'Dow Jones Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 51654.95, marketCap: 15_000_000_000_000 },
-  { ticker: '^GDAXI', symbol: 'DAX', name: 'Almanya DAX 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 25087.27, marketCap: 4_800_000_000_000 },
-  { ticker: '^N225', symbol: 'N225', name: 'Japonya Nikkei 225 Endeksi', currency: 'JPY', sector: 'Küresel Endeksler', basePrice: 69030.92, marketCap: 670_000_000_000_000 },
-  { ticker: '^STOXX50E', symbol: 'STOXX50', name: 'Euro Stoxx 50 Endeksi (Avrupa)', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 5420.0, marketCap: 4_200_000_000_000 },
-  { ticker: '^FTSE', symbol: 'FTSE', name: 'İngiltere FTSE 100 Endeksi', currency: 'GBP', sector: 'Küresel Endeksler', basePrice: 10552.05, marketCap: 2_500_000_000_000 },
-  { ticker: '^HSI', symbol: 'HSI', name: 'Hong Kong Hang Seng Endeksi', currency: 'HKD', sector: 'Küresel Endeksler', basePrice: 26400.0, marketCap: 24_000_000_000_000 },
-  { ticker: '^RUT', symbol: 'RUT', name: 'Russell 2000 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 2150.0, marketCap: 3_000_000_000_000 },
-  { ticker: '^FCHI', symbol: 'CAC40', name: 'Fransa CAC 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', basePrice: 8120.0, marketCap: 2_600_000_000_000 },
-  { ticker: 'DX-Y.NYB', symbol: 'DXY', name: 'Dolar Endeksi (DXY)', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 104.5, marketCap: 850_000_000_000 },
-  { ticker: '^AORD', symbol: 'AORD', name: 'Avustralya All Ordinaries', currency: 'AUD', sector: 'Küresel Endeksler', basePrice: 9480.0, marketCap: 2_600_000_000_000 },
-  { ticker: '^KS11', symbol: 'KOSPI', name: 'Güney Kore KOSPI Endeksi', currency: 'KRW', sector: 'Küresel Endeksler', basePrice: 2950.0, marketCap: 2_400_000_000_000_000 },
-  { ticker: '^BVSP', symbol: 'BVSP', name: 'Brezilya Bovespa Endeksi', currency: 'BRL', sector: 'Küresel Endeksler', basePrice: 138000.0, marketCap: 4_500_000_000_000 },
-  { ticker: '^VIX', symbol: 'VIX', name: 'VIX Volatilite (Korku) Endeksi', currency: 'USD', sector: 'Küresel Endeksler', basePrice: 17.2, marketCap: 0 },
+export interface CuratedCommodityDef {
+  ticker: string;
+  symbol: string;
+  name: string;
+  currency: 'TRY' | 'USD';
+  sector: string;
+  subCategory: 'GOLD_TR' | 'METALS' | 'ENERGY' | 'AGRI';
+  unit: string;
+  basePrice: number;
+  marketCap: number;
+}
+
+export const MAJOR_INDEX_DEFINITIONS: MajorIndexDef[] = [
+  // BIST Ana & Sektör Endeksleri
+  { ticker: 'XU100.IS', symbol: 'XU100', name: 'Borsa İstanbul 100 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 12188.73, marketCap: 12_500_000_000_000 },
+  { ticker: 'XU050.IS', symbol: 'XU050', name: 'Borsa İstanbul 50 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 13800.50, marketCap: 10_800_000_000_000 },
+  { ticker: 'XU030.IS', symbol: 'XU030', name: 'Borsa İstanbul 30 Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 15140.72, marketCap: 9_200_000_000_000 },
+  { ticker: 'XBANK.IS', symbol: 'XBANK', name: 'BIST Bankacılık Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 16052.17, marketCap: 1_900_000_000_000 },
+  { ticker: 'XUSIN.IS', symbol: 'XUSIN', name: 'BIST Sınai Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 15666.32, marketCap: 3_400_000_000_000 },
+  { ticker: 'XUHIZ.IS', symbol: 'XUHIZ', name: 'BIST Hizmetler Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 10795.61, marketCap: 1_800_000_000_000 },
+  { ticker: 'XHOLD.IS', symbol: 'XHOLD', name: 'BIST Holding & Yatırım', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 10495.89, marketCap: 1_700_000_000_000 },
+  { ticker: 'XKMYA.IS', symbol: 'XKMYA', name: 'BIST Kimya Petrol Plastik', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 18400.0, marketCap: 1_200_000_000_000 },
+  { ticker: 'XULAS.IS', symbol: 'XULAS', name: 'BIST Ulaştırma Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 33163.41, marketCap: 750_000_000_000 },
+  { ticker: 'XUTEK.IS', symbol: 'XUTEK', name: 'BIST Teknoloji Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 37934.21, marketCap: 650_000_000_000 },
+  { ticker: 'XELKT.IS', symbol: 'XELKT', name: 'BIST Elektrik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 613.31, marketCap: 620_000_000_000 },
+  { ticker: 'XGIDA.IS', symbol: 'XGIDA', name: 'BIST Gıda İçecek Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 14200.0, marketCap: 600_000_000_000 },
+  { ticker: 'XTCRT.IS', symbol: 'XTCRT', name: 'BIST Ticaret Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 38200.0, marketCap: 550_000_000_000 },
+  { ticker: 'XGMYO.IS', symbol: 'XGMYO', name: 'BIST Gayrimenkul YO', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 5113.42, marketCap: 480_000_000_000 },
+  { ticker: 'XBLSM.IS', symbol: 'XBLSM', name: 'BIST Bilişim Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 8900.0, marketCap: 380_000_000_000 },
+  { ticker: 'XMADN.IS', symbol: 'XMADN', name: 'BIST Madencilik Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 7850.2, marketCap: 350_000_000_000 },
+  { ticker: 'XSGRT.IS', symbol: 'XSGRT', name: 'BIST Sigorta Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 98500.0, marketCap: 290_000_000_000 },
+  { ticker: 'XTRZM.IS', symbol: 'XTRZM', name: 'BIST Turizm Endeksi', currency: 'TRY', sector: 'BIST Endeksleri', subCategory: 'BIST', basePrice: 1420.5, marketCap: 180_000_000_000 },
+
+  // ABD Majör Endeksleri
+  { ticker: '^GSPC', symbol: 'SPX', name: 'S&P 500 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', subCategory: 'US', basePrice: 7805.45, marketCap: 45_000_000_000_000 },
+  { ticker: '^IXIC', symbol: 'NDX', name: 'NASDAQ 100 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', subCategory: 'US', basePrice: 27204.38, marketCap: 22_000_000_000_000 },
+  { ticker: '^DJI', symbol: 'DJI', name: 'Dow Jones Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', subCategory: 'US', basePrice: 51670.10, marketCap: 15_000_000_000_000 },
+  { ticker: '^RUT', symbol: 'RUT', name: 'Russell 2000 Endeksi (ABD)', currency: 'USD', sector: 'Küresel Endeksler', subCategory: 'US', basePrice: 2150.0, marketCap: 3_000_000_000_000 },
+  { ticker: 'DX-Y.NYB', symbol: 'DXY', name: 'ABD Dolar Endeksi (DXY)', currency: 'USD', sector: 'Küresel Endeksler', subCategory: 'US', basePrice: 102.23, marketCap: 850_000_000_000 },
+  { ticker: '^VIX', symbol: 'VIX', name: 'CBOE VIX Volatilite (Korku) Endeksi', currency: 'USD', sector: 'Küresel Endeksler', subCategory: 'US', basePrice: 15.23, marketCap: 0 },
+
+  // Avrupa Majör Endeksleri
+  { ticker: '^GDAXI', symbol: 'DAX', name: 'Almanya DAX 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', subCategory: 'EU', basePrice: 25408.20, marketCap: 4_800_000_000_000 },
+  { ticker: '^FTSE', symbol: 'FTSE', name: 'İngiltere FTSE 100 Endeksi', currency: 'GBP', sector: 'Küresel Endeksler', subCategory: 'EU', basePrice: 10699.13, marketCap: 2_500_000_000_000 },
+  { ticker: '^FCHI', symbol: 'CAC40', name: 'Fransa CAC 40 Endeksi', currency: 'EUR', sector: 'Küresel Endeksler', subCategory: 'EU', basePrice: 8120.0, marketCap: 2_600_000_000_000 },
+  { ticker: '^STOXX50E', symbol: 'STOXX50', name: 'Euro Stoxx 50 Endeksi (Avrupa)', currency: 'EUR', sector: 'Küresel Endeksler', subCategory: 'EU', basePrice: 5420.0, marketCap: 4_200_000_000_000 },
+
+  // Asya & Pasifik Endeksleri
+  { ticker: '^N225', symbol: 'N225', name: 'Japonya Nikkei 225 Endeksi', currency: 'JPY', sector: 'Küresel Endeksler', subCategory: 'ASIA', basePrice: 67744.29, marketCap: 670_000_000_000_000 },
+  { ticker: '^HSI', symbol: 'HSI', name: 'Hong Kong Hang Seng Endeksi', currency: 'HKD', sector: 'Küresel Endeksler', subCategory: 'ASIA', basePrice: 26400.0, marketCap: 24_000_000_000_000 },
+  { ticker: '^KS11', symbol: 'KOSPI', name: 'Güney Kore KOSPI Endeksi', currency: 'KRW', sector: 'Küresel Endeksler', subCategory: 'ASIA', basePrice: 2950.0, marketCap: 2_400_000_000_000_000 },
+  { ticker: '^AORD', symbol: 'AORD', name: 'Avustralya All Ordinaries', currency: 'AUD', sector: 'Küresel Endeksler', subCategory: 'ASIA', basePrice: 9480.0, marketCap: 2_600_000_000_000 },
+  { ticker: '^BVSP', symbol: 'BVSP', name: 'Brezilya Bovespa Endeksi', currency: 'BRL', sector: 'Küresel Endeksler', subCategory: 'OTHER', basePrice: 138000.0, marketCap: 4_500_000_000_000 },
 ];
 
-const CFD_NAMES: Record<string, string> = {
-  XAUUSD: 'Ons Altın ($)',
-  SILVER: 'Ons Gümüş ($)',
-  UKOIL: 'Brent Petrol ($)',
-  USOIL: 'Ham Petrol WTI ($)',
-  NATGAS: 'Doğalgaz ($)',
-  COPPER: 'Bakır ($)',
-  PLATINUM: 'Platin ($)',
-  PALLADIUM: 'Paladyum ($)',
-  WHEAT: 'Buğday ($)',
-  CORN: 'Mısır ($)',
-  COFFEE: 'Kahve ($)',
-  SUGAR: 'Şeker ($)',
-  SOYBEAN: 'Soya Fasulyesi ($)',
-  COTTON: 'Pamuk ($)',
-  COCOA: 'Kakao ($)',
-  SPX: 'S&P 500 Endeksi',
-  NDX: 'NASDAQ 100 Endeksi',
-  DJI: 'Dow Jones Endeksi',
-  DAX: 'Almanya DAX 40 Endeksi',
-  DXY: 'Dolar Endeksi (DXY)',
-  VIX: 'VIX Korku Endeksi',
-};
+export const CURATED_COMMODITY_DEFINITIONS: CuratedCommodityDef[] = [
+  // 1. Kıymetli Madenler (Türk Lirası & Uluslararası)
+  { ticker: 'GC=F', symbol: 'XAUTRYG', name: 'Gram Altın (TL)', currency: 'TRY', sector: 'Kıymetli Madenler', subCategory: 'GOLD_TR', unit: 'TL / Gram', basePrice: 6645.0, marketCap: 26_400_000_000_000 },
+  { ticker: 'GC=F', symbol: 'CEYREK_ALTIN', name: 'Çeyrek Altın (TL)', currency: 'TRY', sector: 'Kıymetli Madenler', subCategory: 'GOLD_TR', unit: 'TL / Adet', basePrice: 10830.0, marketCap: 6_000_000_000_000 },
+  { ticker: 'GC=F', symbol: 'YARIM_ALTIN', name: 'Yarım Altın (TL)', currency: 'TRY', sector: 'Kıymetli Madenler', subCategory: 'GOLD_TR', unit: 'TL / Adet', basePrice: 21660.0, marketCap: 3_000_000_000_000 },
+  { ticker: 'GC=F', symbol: 'CUMHURIYET_ALTINI', name: 'Cumhuriyet Altını (TL)', currency: 'TRY', sector: 'Kıymetli Madenler', subCategory: 'GOLD_TR', unit: 'TL / Adet', basePrice: 43320.0, marketCap: 4_500_000_000_000 },
+  { ticker: 'GC=F', symbol: 'ATA_ALTIN', name: 'Ata Altın (TL)', currency: 'TRY', sector: 'Kıymetli Madenler', subCategory: 'GOLD_TR', unit: 'TL / Adet', basePrice: 44650.0, marketCap: 3_800_000_000_000 },
+  { ticker: 'GC=F', symbol: 'BILEZIK22', name: '22 Ayar Bilezik (TL/Gr)', currency: 'TRY', sector: 'Kıymetli Madenler', subCategory: 'GOLD_TR', unit: 'TL / Gram', basePrice: 6086.0, marketCap: 8_200_000_000_000 },
+  { ticker: 'GC=F', symbol: 'XAUUSD', name: 'Ons Altın ($)', currency: 'USD', sector: 'Kıymetli Madenler', subCategory: 'METALS', unit: '$ / Ons', basePrice: 4166.8, marketCap: 28_500_000_000_000 },
+  { ticker: 'SI=F', symbol: 'SILVER', name: 'Ons Gümüş ($)', currency: 'USD', sector: 'Kıymetli Madenler', subCategory: 'METALS', unit: '$ / Ons', basePrice: 58.77, marketCap: 3_200_000_000_000 },
+  { ticker: 'SI=F', symbol: 'XAGTRYG', name: 'Gram Gümüş (TL)', currency: 'TRY', sector: 'Kıymetli Madenler', subCategory: 'GOLD_TR', unit: 'TL / Gram', basePrice: 93.5, marketCap: 1_700_000_000_000 },
+  { ticker: 'PL=F', symbol: 'PLATINUM', name: 'Platin ($)', currency: 'USD', sector: 'Kıymetli Madenler', subCategory: 'METALS', unit: '$ / Ons', basePrice: 1668.4, marketCap: 400_000_000_000 },
+  { ticker: 'PA=F', symbol: 'PALLADIUM', name: 'Paladyum ($)', currency: 'USD', sector: 'Kıymetli Madenler', subCategory: 'METALS', unit: '$ / Ons', basePrice: 1137.0, marketCap: 150_000_000_000 },
+
+  // 2. Enerji Emtiaları
+  { ticker: 'BZ=F', symbol: 'UKOIL', name: 'Brent Petrol ($)', currency: 'USD', sector: 'Enerji Emtiaları', subCategory: 'ENERGY', unit: '$ / Varil', basePrice: 106.43, marketCap: 2_500_000_000_000 },
+  { ticker: 'CL=F', symbol: 'USOIL', name: 'Ham Petrol WTI ($)', currency: 'USD', sector: 'Enerji Emtiaları', subCategory: 'ENERGY', unit: '$ / Varil', basePrice: 95.27, marketCap: 2_200_000_000_000 },
+  { ticker: 'NG=F', symbol: 'NATGAS', name: 'Doğalgaz ($)', currency: 'USD', sector: 'Enerji Emtiaları', subCategory: 'ENERGY', unit: '$ / MMBtu', basePrice: 3.30, marketCap: 800_000_000_000 },
+  { ticker: 'RB=F', symbol: 'GASOLINE', name: 'Benzin RBOB ($)', currency: 'USD', sector: 'Enerji Emtiaları', subCategory: 'ENERGY', unit: '$ / Galon', basePrice: 2.75, marketCap: 450_000_000_000 },
+  { ticker: 'HO=F', symbol: 'HEATINGOIL', name: 'Isınma Yakıtı ($)', currency: 'USD', sector: 'Enerji Emtiaları', subCategory: 'ENERGY', unit: '$ / Galon', basePrice: 2.92, marketCap: 380_000_000_000 },
+
+  // 3. Endüstriyel Metaller
+  { ticker: 'HG=F', symbol: 'COPPER', name: 'Bakır ($)', currency: 'USD', sector: 'Endüstriyel Metaller', subCategory: 'METALS', unit: '$ / Lb', basePrice: 6.74, marketCap: 600_000_000_000 },
+
+  // 4. Tarım & Gıda Emtiaları
+  { ticker: 'ZW=F', symbol: 'WHEAT', name: 'Buğday ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Bushel', basePrice: 666.5, marketCap: 250_000_000_000 },
+  { ticker: 'ZC=F', symbol: 'CORN', name: 'Mısır ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Bushel', basePrice: 482.0, marketCap: 220_000_000_000 },
+  { ticker: 'ZS=F', symbol: 'SOYBEAN', name: 'Soya Fasulyesi ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Bushel', basePrice: 1291.5, marketCap: 190_000_000_000 },
+  { ticker: 'KC=F', symbol: 'COFFEE', name: 'Kahve ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Lb', basePrice: 294.75, marketCap: 160_000_000_000 },
+  { ticker: 'CC=F', symbol: 'COCOA', name: 'Kakao ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Ton', basePrice: 5920.0, marketCap: 140_000_000_000 },
+  { ticker: 'SB=F', symbol: 'SUGAR', name: 'Şeker ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Lb', basePrice: 20.89, marketCap: 110_000_000_000 },
+  { ticker: 'CT=F', symbol: 'COTTON', name: 'Pamuk ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Lb', basePrice: 80.67, marketCap: 95_000_000_000 },
+];
 
 async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   const result: AlternativeMarketsData = {
@@ -551,109 +599,179 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   };
 
   try {
-    const [majorCryptoRes, additionalCryptoRes, tryFxRes, allFxRes, cfdRes, yahooIndicesRes] = await Promise.all([
-      // 1. Top Ranked Major Cryptocurrencies (BTC, ETH, SOL, BNB, XRP...) from Binance
-      fetch('https://scanner.tradingview.com/crypto/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbols: { tickers: TOP_CRYPTO_RANKED_SYMBOLS.map((s) => `BINANCE:${s}`) },
-          columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
-        }),
-        next: { revalidate: 30 },
-      }).then((r) => r.json()).catch(() => null),
+    const [majorCryptoRes, additionalCryptoRes, tryFxRes, allFxRes, cfdGoldRes, cfdSilverRes, yahooFuturesRes, yahooIndicesRes] =
+      await Promise.all([
+        // 1. Top Ranked Major Cryptocurrencies from Binance
+        fetch('https://scanner.tradingview.com/crypto/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbols: { tickers: TOP_CRYPTO_RANKED_SYMBOLS.map((s) => `BINANCE:${s}`) },
+            columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
+          }),
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null),
 
-      // 1.5 Additional high volume cryptocurrencies from Binance
-      fetch('https://scanner.tradingview.com/crypto/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filter: [
-            { left: 'exchange', operation: 'equal', right: 'BINANCE' },
-            { left: 'name', operation: 'match', right: '.*USDT$' },
-          ],
-          columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
-          sort: { sortBy: 'volume', sortOrder: 'desc' },
-          range: [0, 80],
-        }),
-        next: { revalidate: 30 },
-      }).then((r) => r.json()).catch(() => null),
+        // 1.5 Additional high volume cryptocurrencies from Binance
+        fetch('https://scanner.tradingview.com/crypto/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filter: [
+              { left: 'exchange', operation: 'equal', right: 'BINANCE' },
+              { left: 'name', operation: 'match', right: '.*USDT$' },
+            ],
+            columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
+            sort: { sortBy: 'volume', sortOrder: 'desc' },
+            range: [0, 80],
+          }),
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null),
 
-      // 2. All Turkish Lira (TRY) currency pairs
-      fetch('https://scanner.tradingview.com/forex/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filter: [{ left: 'name', operation: 'match', right: '.*TRY$' }],
-          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
-          sort: { sortBy: 'volume', sortOrder: 'desc' },
-          range: [0, 40],
-        }),
-        next: { revalidate: 30 },
-      }).then((r) => r.json()).catch(() => null),
+        // 2. All Turkish Lira (TRY) currency pairs
+        fetch('https://scanner.tradingview.com/forex/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filter: [{ left: 'name', operation: 'match', right: '.*TRY$' }],
+            columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+            sort: { sortBy: 'volume', sortOrder: 'desc' },
+            range: [0, 40],
+          }),
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null),
 
-      // 3. Top 100 Global Forex Pairs
-      fetch('https://scanner.tradingview.com/forex/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
-          sort: { sortBy: 'volume', sortOrder: 'desc' },
-          range: [0, 100],
-        }),
-        next: { revalidate: 30 },
-      }).then((r) => r.json()).catch(() => null),
+        // 3. Top 100 Global Forex Pairs
+        fetch('https://scanner.tradingview.com/forex/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+            sort: { sortBy: 'volume', sortOrder: 'desc' },
+            range: [0, 100],
+          }),
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null),
 
-      // 4. Top 80 Global Commodities & Precious Metals
-      fetch('https://scanner.tradingview.com/cfd/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
-          sort: { sortBy: 'volume', sortOrder: 'desc' },
-          range: [0, 80],
-        }),
-        next: { revalidate: 30 },
-      }).then((r) => r.json()).catch(() => null),
+        // 4. Spot Gold CFD for fast precision
+        fetch('https://scanner.tradingview.com/cfd/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filter: [{ left: 'name', operation: 'equal', right: 'XAUUSD' }],
+            columns: ['name', 'close', 'change', 'description'],
+          }),
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null),
 
-      // 5. Live Major BIST & World Indices from Yahoo Finance
-      Promise.all(
-        MAJOR_INDEX_DEFINITIONS.map(async (item) => {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3500);
-            const r = await fetch(
-              `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.ticker)}?interval=1d&range=1d`,
-              {
-                headers: { 'User-Agent': 'Mozilla/5.0' },
-                signal: controller.signal,
-                next: { revalidate: 30 },
-              }
-            ).then((x) => x.json());
-            clearTimeout(timeoutId);
+        // 4.5 Spot Silver CFD for fast precision
+        fetch('https://scanner.tradingview.com/cfd/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filter: [{ left: 'name', operation: 'equal', right: 'SILVER' }],
+            columns: ['name', 'close', 'change', 'description'],
+          }),
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null),
 
-            const meta = r?.chart?.result?.[0]?.meta;
-            const livePrice = meta?.regularMarketPrice || item.basePrice;
-            const liveChange = meta?.regularMarketChangePercent ?? 0;
-            return {
-              ...item,
-              price: Number(livePrice.toFixed(2)),
-              changePercent: Number(liveChange.toFixed(2)),
-            };
-          } catch {
-            return {
-              ...item,
-              price: item.basePrice,
-              changePercent: 0,
-            };
-          }
-        })
-      ),
-    ]);
+        // 5. Global Commodities from Official Yahoo Finance Futures
+        Promise.all(
+          CURATED_COMMODITY_DEFINITIONS.filter((c) => c.currency === 'USD').map(async (item) => {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 3500);
+              const r = await fetch(
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.ticker)}?interval=1d&range=1d`,
+                {
+                  headers: { 'User-Agent': 'Mozilla/5.0' },
+                  signal: controller.signal,
+                  next: { revalidate: 30 },
+                }
+              ).then((x) => x.json());
+              clearTimeout(timeoutId);
 
-    // Parse Crypto: Guarantee BTC, ETH, SOL, BNB, XRP, DOGE, ADA are at the top!
+              const meta = r?.chart?.result?.[0]?.meta;
+              const livePrice = meta?.regularMarketPrice || item.basePrice;
+              const liveChange = meta?.regularMarketChangePercent ?? 0;
+              const high = meta?.regularMarketDayHigh || livePrice * 1.01;
+              const low = meta?.regularMarketDayLow || livePrice * 0.99;
+              const high52 = meta?.fiftyTwoWeekHigh || livePrice * 1.3;
+              const low52 = meta?.fiftyTwoWeekLow || livePrice * 0.7;
+
+              return {
+                ...item,
+                price: Number(livePrice.toFixed(2)),
+                changePercent: Number(liveChange.toFixed(2)),
+                high: Number(high.toFixed(2)),
+                low: Number(low.toFixed(2)),
+                high52w: Number(high52.toFixed(2)),
+                low52w: Number(low52.toFixed(2)),
+              };
+            } catch {
+              return {
+                ...item,
+                price: item.basePrice,
+                changePercent: 0,
+                high: Number((item.basePrice * 1.01).toFixed(2)),
+                low: Number((item.basePrice * 0.99).toFixed(2)),
+                high52w: Number((item.basePrice * 1.3).toFixed(2)),
+                low52w: Number((item.basePrice * 0.7).toFixed(2)),
+              };
+            }
+          })
+        ),
+
+        // 6. Live Major BIST & World Indices from Yahoo Finance
+        Promise.all(
+          MAJOR_INDEX_DEFINITIONS.map(async (item) => {
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 3500);
+              const r = await fetch(
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(item.ticker)}?interval=1d&range=1d`,
+                {
+                  headers: { 'User-Agent': 'Mozilla/5.0' },
+                  signal: controller.signal,
+                  next: { revalidate: 30 },
+                }
+              ).then((x) => x.json());
+              clearTimeout(timeoutId);
+
+              const meta = r?.chart?.result?.[0]?.meta;
+              const livePrice = meta?.regularMarketPrice || item.basePrice;
+              const liveChange = meta?.regularMarketChangePercent ?? 0;
+              const high = meta?.regularMarketDayHigh || livePrice * 1.01;
+              const low = meta?.regularMarketDayLow || livePrice * 0.99;
+              const high52 = meta?.fiftyTwoWeekHigh || livePrice * 1.25;
+              const low52 = meta?.fiftyTwoWeekLow || livePrice * 0.75;
+
+              return {
+                ...item,
+                price: Number(livePrice.toFixed(2)),
+                changePercent: Number(liveChange.toFixed(2)),
+                high: Number(high.toFixed(2)),
+                low: Number(low.toFixed(2)),
+                high52w: Number(high52.toFixed(2)),
+                low52w: Number(low52.toFixed(2)),
+              };
+            } catch {
+              return {
+                ...item,
+                price: item.basePrice,
+                changePercent: 0,
+                high: Number((item.basePrice * 1.01).toFixed(2)),
+                low: Number((item.basePrice * 0.99).toFixed(2)),
+                high52w: Number((item.basePrice * 1.25).toFixed(2)),
+                low52w: Number((item.basePrice * 0.75).toFixed(2)),
+              };
+            }
+          })
+        ),
+      ]);
+
+    // Parse Crypto
     const seenCrypto = new Set<string>();
-
     const parseCryptoItem = (item: any) => {
       const [name, close, change, volume, desc, high52, low52] = item.d;
       if (!name || close === null || close === undefined || seenCrypto.has(name)) return;
@@ -665,12 +783,15 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       const supply = CRYPTO_CIRCULATING_SUPPLY[name] || 0;
       const marketCap = supply > 0 ? Number((currentPrice * supply).toFixed(0)) : 0;
 
+      const isMajor = TOP_CRYPTO_RANKED_SYMBOLS.includes(name);
+
       result.crypto.push({
         symbol: name,
         name: CRYPTO_NAMES[name] || desc || name,
         exchange: 'CRYPTO',
         currency: 'USD',
         sector: 'Kripto Varlıklar',
+        subCategory: isMajor ? 'MAJOR' : 'ALT',
         basePrice: currentPrice,
         price: currentPrice,
         change: changeAmt,
@@ -688,7 +809,6 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       } as any);
     };
 
-    // 1. Add all Top Ranked Major Cryptos in exact order (BTC, ETH, BNB, XRP, SOL...)
     const majorMap = new Map();
     majorCryptoRes?.data?.forEach((item: any) => {
       if (item?.d?.[0]) majorMap.set(item.d[0], item);
@@ -697,17 +817,12 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       const found = majorMap.get(sym);
       if (found) parseCryptoItem(found);
     });
-
-    // 2. Append additional high-volume Binance crypto pairs
     additionalCryptoRes?.data?.forEach((item: any) => parseCryptoItem(item));
-
-    // Sort cryptos strictly by real market cap descending
     result.crypto.sort((a, b) => (Number(b.marketCap) || 0) - (Number(a.marketCap) || 0));
 
+    // Parse Forex
     let liveUsdTry = 49.25;
     let liveUsdTryChange = 0;
-
-    // Parse Forex: 1. Priority Turkish Lira pairs, 2. Global Pairs
     const seenForex = new Set<string>();
 
     const parseForexItem = (item: any) => {
@@ -716,7 +831,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       seenForex.add(name);
 
       const isTryPair = name.endsWith('TRY');
-      const currentPrice = Number(close.toFixed(isTryPair ? 4 : 4));
+      const currentPrice = Number(close.toFixed(4));
       const changePercent = Number((change || 0).toFixed(2));
       const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(4));
 
@@ -730,7 +845,8 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         name: FOREX_NAMES[name] || desc || name,
         exchange: 'FOREX',
         currency: isTryPair ? 'TRY' : 'USD',
-        sector: 'Döviz & Kurlar',
+        sector: isTryPair ? 'Türk Lirası Kurları' : 'Majör Pariteler',
+        subCategory: isTryPair ? 'TRY' : 'MAJOR',
         basePrice: currentPrice,
         price: currentPrice,
         change: changeAmt,
@@ -748,68 +864,11 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       } as any);
     };
 
-    // First add all Turkish Lira pairs
     tryFxRes?.data?.forEach(parseForexItem);
-    // Then add all global currency pairs
     allFxRes?.data?.forEach(parseForexItem);
-
-    // Sort forex pairs by global market size / turnover descending
     result.forex.sort((a, b) => (Number(b.marketCap) || 0) - (Number(a.marketCap) || 0));
 
-    let liveOnsAltin = 4195;
-    let liveOnsAltinChange = 0;
-    let liveOnsGumus = 60.8;
-    let liveOnsGumusChange = 0;
-
-    // Parse CFD Commodities
-    const seenCfd = new Set<string>();
-    cfdRes?.data?.forEach((item: any) => {
-      const [name, close, change, desc, high52, low52] = item.d;
-      if (name && close !== null && close !== undefined && !seenCfd.has(name)) {
-        seenCfd.add(name);
-        const currentPrice = Number(close.toFixed(2));
-        const changePercent = Number((change || 0).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
-
-        if (name === 'XAUUSD') {
-          liveOnsAltin = currentPrice;
-          liveOnsAltinChange = changePercent;
-        } else if (name === 'SILVER') {
-          liveOnsGumus = currentPrice;
-          liveOnsGumusChange = changePercent;
-        }
-
-        const isIndex = ['SPX', 'NDX', 'DJI', 'DAX', 'DXY', 'VIX', 'UK100', 'CAC40', 'NI225', 'HSI', 'SX5E', 'NIFTY', 'FTSE'].some((idx) => name.includes(idx));
-
-        const itemObj: StockMarketInfo = {
-          symbol: name,
-          name: CFD_NAMES[name] || desc || name,
-          exchange: 'COMMODITY',
-          currency: 'USD',
-          sector: 'Kıymetli Madenler & Emtia',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: Number((currentPrice * 1.01).toFixed(2)),
-          low: Number((currentPrice * 0.99).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
-          close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: 10000000,
-          marketCap: COMMODITY_MARKET_CAPS[name] || 0,
-          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
-          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
-          timestamp: new Date().toISOString(),
-        };
-
-        if (!isIndex) {
-          result.commodity.push(itemObj);
-        }
-      }
-    });
-
-    // Parse Major BIST & World Indices (Authoritative stock indices)
+    // Parse Authoritative Indices
     const seenIndices = new Set<string>();
     yahooIndicesRes?.forEach((item: any) => {
       if (!item || seenIndices.has(item.symbol)) return;
@@ -822,170 +881,159 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         exchange: 'INDEX',
         currency: item.currency,
         sector: item.sector,
+        subCategory: item.subCategory,
+        unit: 'Puan',
+        isIndex: true,
         basePrice: item.price,
         price: item.price,
         change: changeAmt,
         changePercent: item.changePercent,
-        high: Number((item.price * 1.01).toFixed(2)),
-        low: Number((item.price * 0.99).toFixed(2)),
+        high: item.high || Number((item.price * 1.01).toFixed(2)),
+        low: item.low || Number((item.price * 0.99).toFixed(2)),
         open: Number((item.price - changeAmt).toFixed(2)),
         close: item.price,
         previousClose: Number((item.price - changeAmt).toFixed(2)),
         volume: 100000000,
         marketCap: item.marketCap || 0,
+        high52w: item.high52w,
+        low52w: item.low52w,
         timestamp: new Date().toISOString(),
       } as any);
     });
 
-    // Strict filter: Exclude any cryptocurrency, dominance tickers (.D), or market cap tokens from indices!
-    const CRYPTO_DISQUALIFIERS = new Set([
-      'BTC', 'ETH', 'SOL', 'AVAX', 'VELVET', 'CVX', 'KCS', 'QI', 'ETC', 'NIL',
-      'CAKE', 'DOT', 'MAGIC', 'ZANO', 'TRX', 'ZEN', 'XRP', 'ILV', 'WLDW', 'LYN',
-      'POND', 'MOVR', 'ALICE', 'USDD', 'DOGE', 'ADA', 'BNB', 'SHIB', 'PEPE', 'NEAR', 'SUI'
-    ]);
-    result.indices = result.indices.filter((idx) => {
-      const sym = idx.symbol.toUpperCase();
-      const name = idx.name.toUpperCase();
-      if (sym.includes('.D') || sym.includes('.C') || name.includes('DOMINANCE') || name.includes('MARKET CAP')) return false;
-      if (CRYPTO_DISQUALIFIERS.has(sym)) return false;
-      return true;
-    });
+    // Parse Pure Curated Commodities
+    // 1. Live spot gold & silver for Turkish gold varieties
+    const liveOnsAltin = cfdGoldRes?.data?.[0]?.d?.[1] || 4166.8;
+    const liveOnsAltinChange = cfdGoldRes?.data?.[0]?.d?.[2] || 0;
+    const liveOnsGumus = cfdSilverRes?.data?.[0]?.d?.[1] || 58.77;
+    const liveOnsGumusChange = cfdSilverRes?.data?.[0]?.d?.[2] || 0;
 
-    // Sort indices by USD-equivalent market cap descending
-    const getIndexUSD = (idx: any) => {
-      const cap = Number(idx.marketCap) || 0;
-      if (cap <= 0) return 0;
-      const curr = String(idx.currency || 'USD').toUpperCase();
-      if (curr === 'TRY') return cap / liveUsdTry;
-      if (curr === 'EUR') return cap * 1.09;
-      if (curr === 'GBP') return cap * 1.30;
-      if (curr === 'JPY') return cap / 152;
-      if (curr === 'HKD') return cap / 7.78;
-      if (curr === 'AUD') return cap * 0.65;
-      if (curr === 'BRL') return cap * 0.17;
-      if (curr === 'KRW') return cap / 1400;
-      return cap;
-    };
-    result.indices.sort((a, b) => getIndexUSD(b) - getIndexUSD(a));
-
-    // Add Calculated Turkish Lira Gold & Silver items
     const gramPrice = Number(((liveOnsAltin * liveUsdTry) / 31.1034768).toFixed(2));
     const gramChangePercent = Number((liveOnsAltinChange + liveUsdTryChange).toFixed(2));
     const gramChangeAmt = Number(((gramPrice * gramChangePercent) / 100).toFixed(2));
-
-    const ceyrekPrice = Number((gramPrice * 1.63).toFixed(2));
-    const ceyrekChangeAmt = Number(((ceyrekPrice * gramChangePercent) / 100).toFixed(2));
-
-    const yarimPrice = Number((gramPrice * 3.26).toFixed(2));
-    const yarimChangeAmt = Number(((yarimPrice * gramChangePercent) / 100).toFixed(2));
-
-    const cumhuriyetPrice = Number((gramPrice * 6.52).toFixed(2));
-    const cumhuriyetChangeAmt = Number(((cumhuriyetPrice * gramChangePercent) / 100).toFixed(2));
 
     const gramGumusPrice = Number(((liveOnsGumus * liveUsdTry) / 31.1034768).toFixed(2));
     const gramGumusChangePercent = Number((liveOnsGumusChange + liveUsdTryChange).toFixed(2));
     const gramGumusChangeAmt = Number(((gramGumusPrice * gramGumusChangePercent) / 100).toFixed(2));
 
-    // Prepend Turkish Gold/Silver at top of commodities
-    result.commodity.unshift(
+    const turkishGoldItems = [
       {
         symbol: 'XAUTRYG',
         name: 'Gram Altın (TL)',
-        exchange: 'COMMODITY',
-        currency: 'TRY',
-        sector: 'Kıymetli Madenler & Emtia',
-        basePrice: gramPrice,
         price: gramPrice,
-        change: gramChangeAmt,
-        changePercent: gramChangePercent,
-        high: Number((gramPrice * 1.01).toFixed(2)),
-        low: Number((gramPrice * 0.99).toFixed(2)),
-        open: Number((gramPrice - gramChangeAmt).toFixed(2)),
-        close: gramPrice,
-        previousClose: Number((gramPrice - gramChangeAmt).toFixed(2)),
-        volume: 25000000,
-        marketCap: 26_400_000_000_000, // ~4,000 ton yastıkaltı Türk altın rezerv değeri
-        timestamp: new Date().toISOString(),
-      } as any,
+        multiplier: 1.0,
+        marketCap: 26_400_000_000_000,
+        unit: 'TL / Gram',
+      },
       {
         symbol: 'CEYREK_ALTIN',
         name: 'Çeyrek Altın (TL)',
-        exchange: 'COMMODITY',
-        currency: 'TRY',
-        sector: 'Kıymetli Madenler & Emtia',
-        basePrice: ceyrekPrice,
-        price: ceyrekPrice,
-        change: ceyrekChangeAmt,
-        changePercent: gramChangePercent,
-        high: Number((ceyrekPrice * 1.01).toFixed(2)),
-        low: Number((ceyrekPrice * 0.99).toFixed(2)),
-        open: Number((ceyrekPrice - ceyrekChangeAmt).toFixed(2)),
-        close: ceyrekPrice,
-        previousClose: Number((ceyrekPrice - ceyrekChangeAmt).toFixed(2)),
-        volume: 15000000,
+        price: Number((gramPrice * 1.63).toFixed(2)),
+        multiplier: 1.63,
         marketCap: 6_000_000_000_000,
-        timestamp: new Date().toISOString(),
-      } as any,
+        unit: 'TL / Adet',
+      },
       {
         symbol: 'YARIM_ALTIN',
         name: 'Yarım Altın (TL)',
-        exchange: 'COMMODITY',
-        currency: 'TRY',
-        sector: 'Kıymetli Madenler & Emtia',
-        basePrice: yarimPrice,
-        price: yarimPrice,
-        change: yarimChangeAmt,
-        changePercent: gramChangePercent,
-        high: Number((yarimPrice * 1.01).toFixed(2)),
-        low: Number((yarimPrice * 0.99).toFixed(2)),
-        open: Number((yarimPrice - yarimChangeAmt).toFixed(2)),
-        close: yarimPrice,
-        previousClose: Number((yarimPrice - yarimChangeAmt).toFixed(2)),
-        volume: 10000000,
+        price: Number((gramPrice * 3.26).toFixed(2)),
+        multiplier: 3.26,
         marketCap: 3_000_000_000_000,
-        timestamp: new Date().toISOString(),
-      } as any,
+        unit: 'TL / Adet',
+      },
       {
         symbol: 'CUMHURIYET_ALTINI',
         name: 'Cumhuriyet Altını (TL)',
-        exchange: 'COMMODITY',
-        currency: 'TRY',
-        sector: 'Kıymetli Madenler & Emtia',
-        basePrice: cumhuriyetPrice,
-        price: cumhuriyetPrice,
-        change: cumhuriyetChangeAmt,
-        changePercent: gramChangePercent,
-        high: Number((cumhuriyetPrice * 1.01).toFixed(2)),
-        low: Number((cumhuriyetPrice * 0.99).toFixed(2)),
-        open: Number((cumhuriyetPrice - cumhuriyetChangeAmt).toFixed(2)),
-        close: cumhuriyetPrice,
-        previousClose: Number((cumhuriyetPrice - cumhuriyetChangeAmt).toFixed(2)),
-        volume: 8000000,
+        price: Number((gramPrice * 6.52).toFixed(2)),
+        multiplier: 6.52,
         marketCap: 4_500_000_000_000,
-        timestamp: new Date().toISOString(),
-      } as any,
+        unit: 'TL / Adet',
+      },
+      {
+        symbol: 'ATA_ALTIN',
+        name: 'Ata Altın (TL)',
+        price: Number((gramPrice * 6.72).toFixed(2)),
+        multiplier: 6.72,
+        marketCap: 3_800_000_000_000,
+        unit: 'TL / Adet',
+      },
+      {
+        symbol: 'BILEZIK22',
+        name: '22 Ayar Bilezik (TL/Gr)',
+        price: Number((gramPrice * 0.916).toFixed(2)),
+        multiplier: 0.916,
+        marketCap: 8_200_000_000_000,
+        unit: 'TL / Gram',
+      },
       {
         symbol: 'XAGTRYG',
         name: 'Gram Gümüş (TL)',
+        price: gramGumusPrice,
+        multiplier: 1.0,
+        marketCap: 1_700_000_000_000,
+        unit: 'TL / Gram',
+        isSilver: true,
+      },
+    ];
+
+    turkishGoldItems.forEach((tg) => {
+      const chgPct = (tg as any).isSilver ? gramGumusChangePercent : gramChangePercent;
+      const chgAmt = Number(((tg.price * chgPct) / 100).toFixed(2));
+      result.commodity.push({
+        symbol: tg.symbol,
+        name: tg.name,
         exchange: 'COMMODITY',
         currency: 'TRY',
-        sector: 'Kıymetli Madenler & Emtia',
-        basePrice: gramGumusPrice,
-        price: gramGumusPrice,
-        change: gramGumusChangeAmt,
-        changePercent: gramGumusChangePercent,
-        high: Number((gramGumusPrice * 1.015).toFixed(2)),
-        low: Number((gramGumusPrice * 0.985).toFixed(2)),
-        open: Number((gramGumusPrice - gramGumusChangeAmt).toFixed(2)),
-        close: gramGumusPrice,
-        previousClose: Number((gramGumusPrice - gramGumusChangeAmt).toFixed(2)),
-        volume: 5000000,
-        marketCap: 1_700_000_000_000,
+        sector: 'Kıymetli Madenler',
+        subCategory: 'GOLD_TR',
+        unit: tg.unit,
+        basePrice: tg.price,
+        price: tg.price,
+        change: chgAmt,
+        changePercent: chgPct,
+        high: Number((tg.price * 1.01).toFixed(2)),
+        low: Number((tg.price * 0.99).toFixed(2)),
+        open: Number((tg.price - chgAmt).toFixed(2)),
+        close: tg.price,
+        previousClose: Number((tg.price - chgAmt).toFixed(2)),
+        volume: 25000000,
+        marketCap: tg.marketCap,
+        high52w: Number((tg.price * 1.3).toFixed(2)),
+        low52w: Number((tg.price * 0.7).toFixed(2)),
         timestamp: new Date().toISOString(),
-      } as any
-    );
+      } as any);
+    });
 
-    // Sort commodities by USD-equivalent market valuation descending
+    // Append global commodities from live Yahoo futures
+    yahooFuturesRes?.forEach((item: any) => {
+      if (!item) return;
+      const chgAmt = Number(((item.price * item.changePercent) / 100).toFixed(2));
+      result.commodity.push({
+        symbol: item.symbol,
+        name: item.name,
+        exchange: 'COMMODITY',
+        currency: 'USD',
+        sector: item.sector,
+        subCategory: item.subCategory,
+        unit: item.unit,
+        basePrice: item.price,
+        price: item.price,
+        change: chgAmt,
+        changePercent: item.changePercent,
+        high: item.high || Number((item.price * 1.01).toFixed(2)),
+        low: item.low || Number((item.price * 0.99).toFixed(2)),
+        open: Number((item.price - chgAmt).toFixed(2)),
+        close: item.price,
+        previousClose: Number((item.price - chgAmt).toFixed(2)),
+        volume: 15000000,
+        marketCap: item.marketCap || 0,
+        high52w: item.high52w,
+        low52w: item.low52w,
+        timestamp: new Date().toISOString(),
+      } as any);
+    });
+
+    // Sort commodities by USD-equivalent market cap descending
     const getCommodityUSD = (c: any) => {
       const cap = Number(c.marketCap) || 0;
       if (cap <= 0) return 0;
@@ -999,11 +1047,19 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   return result;
 }
 
-export const fetchAllAlternativeMarkets = unstable_cache(
+const _cachedAlternativeMarkets = unstable_cache(
   _fetchAlternativeMarketsCore,
   ['tradingview-alt-markets'],
   { revalidate: 30, tags: ['tradingview-alt-markets'] }
 );
+
+export async function fetchAllAlternativeMarkets(): Promise<AlternativeMarketsData> {
+  try {
+    return await _cachedAlternativeMarkets();
+  } catch {
+    return await _fetchAlternativeMarketsCore();
+  }
+}
 
 /**
  * Fetch a specific symbol directly from TradingView Multi-Asset Scanner APIs (CFD, Forex, Crypto, BIST, US)
@@ -1014,18 +1070,248 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
   if (!originalSym) return null;
 
   let sym = originalSym;
-  if (sym === 'GRAM_ALTIN' || sym === 'GRAM ALTIN' || sym === 'ALTIN' || sym === 'GA') {
-    sym = 'XAUTRYG';
-  } else if (sym === 'GRAM_GUMUS' || sym === 'GRAM GUMUS' || sym === 'GUMUS') {
-    sym = 'XAGTRYG';
+  // Aliases normalization
+  if (['GRAM_ALTIN', 'GRAM ALTIN', 'ALTIN', 'GA', 'XAUTRY', 'XAUTRYG'].includes(sym)) sym = 'XAUTRYG';
+  else if (['CEYREK', 'CEYREK ALTIN', 'CEYREK_ALTIN'].includes(sym)) sym = 'CEYREK_ALTIN';
+  else if (['YARIM', 'YARIM ALTIN', 'YARIM_ALTIN'].includes(sym)) sym = 'YARIM_ALTIN';
+  else if (['CUMHURIYET', 'CUMHURIYET ALTINI', 'CUMHURIYET_ALTINI'].includes(sym)) sym = 'CUMHURIYET_ALTINI';
+  else if (['ATA', 'ATA ALTIN', 'ATA_ALTIN'].includes(sym)) sym = 'ATA_ALTIN';
+  else if (['BILEZIK', '22 AYAR', '22 AYAR BILEZIK', 'BILEZIK22'].includes(sym)) sym = 'BILEZIK22';
+  else if (['GRAM_GUMUS', 'GRAM GUMUS', 'GUMUS TL', 'XAGTRY', 'XAGTRYG'].includes(sym)) sym = 'XAGTRYG';
+  else if (['ONS ALTIN', 'GOLD', 'XAU', 'XAUUSD'].includes(sym)) sym = 'XAUUSD';
+  else if (['ONS GUMUS', 'GUMUS', 'XAGUSD', 'SILVER'].includes(sym)) sym = 'SILVER';
+  else if (['BIST100', 'BIST 100', 'BIST', 'XU100'].includes(sym)) sym = 'XU100';
+  else if (['BIST30', 'BIST 30', 'XU030'].includes(sym)) sym = 'XU030';
+  else if (['BIST50', 'BIST 50', 'XU050'].includes(sym)) sym = 'XU050';
+  else if (['SP500', 'S&P 500', 'S&P500', 'SPX'].includes(sym)) sym = 'SPX';
+  else if (['NASDAQ100', 'NASDAQ 100', 'NASDAQ', 'NDX'].includes(sym)) sym = 'NDX';
+  else if (['DOW', 'DOW JONES', 'DOW30', 'DJI'].includes(sym)) sym = 'DJI';
+  else if (['DAX40', 'DAX 40', 'DAX'].includes(sym)) sym = 'DAX';
+  else if (['FTSE100', 'FTSE 100', 'FTSE'].includes(sym)) sym = 'FTSE';
+  else if (['CAC40', 'CAC 40'].includes(sym)) sym = 'CAC40';
+  else if (['NIKKEI', 'NIKKEI 225', 'NIKKEI225', 'N225'].includes(sym)) sym = 'N225';
+  else if (['BRENT', 'BRENT PETROL', 'UKOIL'].includes(sym)) sym = 'UKOIL';
+  else if (['HAM PETROL', 'WTI', 'WTI PETROL', 'USOIL'].includes(sym)) sym = 'USOIL';
+  else if (['DOGALGAZ', 'DOGAL GAZ', 'NATURAL GAS', 'NATGAS'].includes(sym)) sym = 'NATGAS';
+
+  // 1. Check Authoritative Major Indices
+  const indexDef = MAJOR_INDEX_DEFINITIONS.find((i) => i.symbol.toUpperCase() === sym || i.symbol.toUpperCase() === originalSym);
+  if (indexDef) {
+    try {
+      const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(indexDef.ticker)}?interval=1d&range=1d`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        next: { revalidate: 30 },
+      }).then((r) => r.json()).catch(() => null);
+
+      const meta = res?.chart?.result?.[0]?.meta;
+      const currentPrice = meta?.regularMarketPrice || indexDef.basePrice;
+      const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
+      const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
+      const changePercent = meta?.regularMarketChangePercent ?? (prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0);
+
+      return {
+        symbol: indexDef.symbol,
+        name: indexDef.name,
+        exchange: 'INDEX',
+        currency: indexDef.currency,
+        sector: indexDef.sector,
+        subCategory: indexDef.subCategory,
+        unit: 'Puan',
+        isIndex: true,
+        basePrice: Number(currentPrice.toFixed(2)),
+        price: Number(currentPrice.toFixed(2)),
+        change: Number(changeAmt.toFixed(2)),
+        changePercent: Number(changePercent.toFixed(2)),
+        high: meta?.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : Number((currentPrice * 1.01).toFixed(2)),
+        low: meta?.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : Number((currentPrice * 0.99).toFixed(2)),
+        open: meta?.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : Number((currentPrice - changeAmt).toFixed(2)),
+        close: Number(currentPrice.toFixed(2)),
+        previousClose: Number(prevClose.toFixed(2)),
+        volume: meta?.regularMarketVolume || 100000000,
+        marketCap: indexDef.marketCap,
+        high52w: meta?.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : Number((currentPrice * 1.25).toFixed(2)),
+        low52w: meta?.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : Number((currentPrice * 0.75).toFixed(2)),
+        timestamp: new Date().toISOString(),
+      } as any;
+    } catch (e) {
+      console.warn(`Error resolving index ${sym}:`, e);
+      return {
+        symbol: indexDef.symbol,
+        name: indexDef.name,
+        exchange: 'INDEX',
+        currency: indexDef.currency,
+        sector: indexDef.sector,
+        subCategory: indexDef.subCategory,
+        unit: 'Puan',
+        isIndex: true,
+        basePrice: indexDef.basePrice,
+        price: indexDef.basePrice,
+        change: 0,
+        changePercent: 0,
+        high: Number((indexDef.basePrice * 1.01).toFixed(2)),
+        low: Number((indexDef.basePrice * 0.99).toFixed(2)),
+        open: indexDef.basePrice,
+        close: indexDef.basePrice,
+        previousClose: indexDef.basePrice,
+        volume: 100000000,
+        marketCap: indexDef.marketCap,
+        high52w: Number((indexDef.basePrice * 1.25).toFixed(2)),
+        low52w: Number((indexDef.basePrice * 0.75).toFixed(2)),
+        timestamp: new Date().toISOString(),
+      } as any;
+    }
   }
 
-  // 1. Check local cache first
+  // 2. Check Curated Commodities (Turkish Gold & Silver Varieties or Global Futures)
+  const commDef = CURATED_COMMODITY_DEFINITIONS.find((c) => c.symbol.toUpperCase() === sym || c.symbol.toUpperCase() === originalSym);
+  if (commDef) {
+    if (commDef.currency === 'TRY') {
+      try {
+        const [cfdGoldRes, cfdSilverRes, fxRes] = await Promise.all([
+          fetch('https://scanner.tradingview.com/cfd/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: [{ left: 'name', operation: 'equal', right: 'XAUUSD' }],
+              columns: ['name', 'close', 'change', 'description'],
+            }),
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+          fetch('https://scanner.tradingview.com/cfd/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: [{ left: 'name', operation: 'equal', right: 'SILVER' }],
+              columns: ['name', 'close', 'change', 'description'],
+            }),
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+          fetch('https://scanner.tradingview.com/forex/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filter: [{ left: 'name', operation: 'equal', right: 'USDTRY' }],
+              columns: ['name', 'close', 'change', 'description'],
+            }),
+            next: { revalidate: 30 },
+          }).then((r) => r.json()).catch(() => null),
+        ]);
+
+        let goldPrice = cfdGoldRes?.data?.[0]?.d?.[1];
+        let goldChange = cfdGoldRes?.data?.[0]?.d?.[2] || 0;
+        let silverPrice = cfdSilverRes?.data?.[0]?.d?.[1];
+        let silverChange = cfdSilverRes?.data?.[0]?.d?.[2] || 0;
+        let fxPrice = fxRes?.data?.[0]?.d?.[1];
+        let fxChange = fxRes?.data?.[0]?.d?.[2] || 0;
+
+        if (!goldPrice || !fxPrice) {
+          const [goldY, fxY] = await Promise.all([
+            fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d', {
+              headers: { 'User-Agent': 'Mozilla/5.0' },
+              next: { revalidate: 30 },
+            }).then((r) => r.json()).catch(() => null),
+            fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
+              headers: { 'User-Agent': 'Mozilla/5.0' },
+              next: { revalidate: 30 },
+            }).then((r) => r.json()).catch(() => null),
+          ]);
+          goldPrice = goldY?.chart?.result?.[0]?.meta?.regularMarketPrice || 4166.8;
+          goldChange = goldY?.chart?.result?.[0]?.meta?.regularMarketChangePercent || 0;
+          fxPrice = fxY?.chart?.result?.[0]?.meta?.regularMarketPrice || 49.25;
+          fxChange = fxY?.chart?.result?.[0]?.meta?.regularMarketChangePercent || 0;
+        }
+
+        const isSilver = sym === 'XAGTRYG';
+        const baseMetalPrice = isSilver ? (silverPrice || 58.77) : (goldPrice || 4166.8);
+        const metalChange = isSilver ? silverChange : goldChange;
+        const gramPrice = (baseMetalPrice * (fxPrice || 49.25)) / 31.1034768;
+
+        let multiplier = 1.0;
+        if (sym === 'CEYREK_ALTIN') multiplier = 1.63;
+        else if (sym === 'YARIM_ALTIN') multiplier = 3.26;
+        else if (sym === 'CUMHURIYET_ALTINI') multiplier = 6.52;
+        else if (sym === 'ATA_ALTIN') multiplier = 6.72;
+        else if (sym === 'BILEZIK22') multiplier = 0.916;
+
+        const currentPrice = Number((gramPrice * multiplier).toFixed(2));
+        const changePercent = Number((metalChange + (fxChange || 0)).toFixed(2));
+        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+
+        return {
+          symbol: commDef.symbol,
+          name: commDef.name,
+          exchange: 'COMMODITY',
+          currency: 'TRY',
+          sector: commDef.sector,
+          subCategory: commDef.subCategory,
+          unit: commDef.unit,
+          basePrice: currentPrice,
+          price: currentPrice,
+          change: changeAmt,
+          changePercent,
+          high: Number((currentPrice * 1.01).toFixed(2)),
+          low: Number((currentPrice * 0.99).toFixed(2)),
+          open: Number((currentPrice - changeAmt).toFixed(2)),
+          close: currentPrice,
+          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
+          volume: 25000000,
+          marketCap: commDef.marketCap,
+          high52w: Number((currentPrice * 1.3).toFixed(2)),
+          low52w: Number((currentPrice * 0.7).toFixed(2)),
+          timestamp: new Date().toISOString(),
+        } as any;
+      } catch (e) {
+        console.warn(`Error resolving Turkish gold commodity ${sym}:`, e);
+      }
+    } else {
+      // Global commodity (USD futures from Yahoo Finance)
+      try {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(commDef.ticker)}?interval=1d&range=1d`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          next: { revalidate: 30 },
+        }).then((r) => r.json()).catch(() => null);
+
+        const meta = res?.chart?.result?.[0]?.meta;
+        const currentPrice = meta?.regularMarketPrice || commDef.basePrice;
+        const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
+        const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
+        const changePercent = meta?.regularMarketChangePercent ?? (prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0);
+
+        return {
+          symbol: commDef.symbol,
+          name: commDef.name,
+          exchange: 'COMMODITY',
+          currency: 'USD',
+          sector: commDef.sector,
+          subCategory: commDef.subCategory,
+          unit: commDef.unit,
+          basePrice: Number(currentPrice.toFixed(2)),
+          price: Number(currentPrice.toFixed(2)),
+          change: Number(changeAmt.toFixed(2)),
+          changePercent: Number(changePercent.toFixed(2)),
+          high: meta?.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : Number((currentPrice * 1.01).toFixed(2)),
+          low: meta?.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : Number((currentPrice * 0.99).toFixed(2)),
+          open: meta?.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : Number((currentPrice - changeAmt).toFixed(2)),
+          close: Number(currentPrice.toFixed(2)),
+          previousClose: Number(prevClose.toFixed(2)),
+          volume: meta?.regularMarketVolume || 15000000,
+          marketCap: commDef.marketCap,
+          high52w: meta?.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
+          low52w: meta?.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : Number((currentPrice * 0.7).toFixed(2)),
+          timestamp: new Date().toISOString(),
+        } as any;
+      } catch (e) {
+        console.warn(`Error resolving global commodity ${sym}:`, e);
+      }
+    }
+  }
+
+  // 3. Check local cache for Equities
   const { bist, us } = await fetchAllTradingViewStocks();
   const cached = [...bist, ...us].find((s) => s.symbol.toUpperCase() === sym || s.symbol.toUpperCase() === originalSym);
   if (cached) return { ...cached, symbol: originalSym };
 
-  // 1.5 Check if symbol is a TEFAS fund (e.g. THF, MAC, TI2, TLY, etc.)
+  // 3.5 Check if symbol is a TEFAS fund
   const isFundCode =
     cleanType === 'fund' ||
     (TEFAS_DIRECTORY as { code: string }[]).some(
@@ -1063,268 +1349,6 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
   }
 
   try {
-    // 1.8 BIST 100 / BIST 30 Index Live Check
-    if (sym === 'XU100' || sym === 'BIST100' || sym === 'BIST' || sym === 'XU030' || sym === 'BIST30') {
-      const is30 = sym === 'XU030' || sym === 'BIST30';
-      const ticker = is30 ? 'XU030.IS' : 'XU100.IS';
-      try {
-        const indexRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          next: { revalidate: 30 },
-        }).then((r) => r.json()).catch(() => null);
-
-        const meta = indexRes?.chart?.result?.[0]?.meta;
-        const currentPrice = meta?.regularMarketPrice || indexRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-        const changePercent = meta?.regularMarketChangePercent || 0;
-        const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
-        const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
-
-        if (currentPrice) {
-          return {
-            symbol: is30 ? 'XU030' : 'XU100',
-            name: is30 ? 'Borsa İstanbul 30 Endeksi' : 'Borsa İstanbul 100 Endeksi',
-            exchange: 'BIST',
-            currency: 'TRY',
-            sector: 'Borsa Endeksleri',
-            basePrice: Number(currentPrice.toFixed(2)),
-            price: Number(currentPrice.toFixed(2)),
-            change: Number(changeAmt.toFixed(2)),
-            changePercent: Number(changePercent.toFixed(2)),
-            high: meta?.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : Number((currentPrice * 1.01).toFixed(2)),
-            low: meta?.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : Number((currentPrice * 0.99).toFixed(2)),
-            open: meta?.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : currentPrice,
-            close: Number(currentPrice.toFixed(2)),
-            previousClose: Number(prevClose.toFixed(2)),
-            volume: meta?.regularMarketVolume || 100000000,
-            marketCap: 0,
-            timestamp: new Date().toISOString(),
-          } as any;
-        }
-      } catch (e) {
-        console.warn('Error fetching BIST index:', e);
-      }
-    }
-    // 2. Gram Altın (TL) live calculation (TradingView Spot XAUUSD * USDTRY / 31.1034768)
-    if (sym === 'XAUTRYG' || sym === 'XAUTRY' || sym === 'GRAM_ALTIN' || sym === 'ALTIN' || sym === 'GA') {
-      let goldPrice: number | null = null;
-      let fxPrice: number | null = null;
-      let goldChange = 0;
-      let fxChange = 0;
-
-      // Primary: TradingView CFD & Forex scanner for true spot price
-      try {
-        const [cfdRes, fxRes] = await Promise.all([
-          fetch('https://scanner.tradingview.com/cfd/scan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              filter: [{ left: 'name', operation: 'equal', right: 'XAUUSD' }],
-              columns: ['name', 'close', 'change', 'description'],
-            }),
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-          fetch('https://scanner.tradingview.com/forex/scan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              filter: [{ left: 'name', operation: 'equal', right: 'USDTRY' }],
-              columns: ['name', 'close', 'change', 'description'],
-            }),
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-        ]);
-
-        if (cfdRes?.data?.[0]?.d?.[1] && fxRes?.data?.[0]?.d?.[1]) {
-          goldPrice = cfdRes.data[0].d[1];
-          goldChange = cfdRes.data[0].d[2] || 0;
-          fxPrice = fxRes.data[0].d[1];
-          fxChange = fxRes.data[0].d[2] || 0;
-        }
-      } catch (err) {
-        console.warn('Error fetching TradingView spot gold/fx:', err);
-      }
-
-      // Fallback: Yahoo Finance if TradingView is unreachable
-      if (!goldPrice || !fxPrice) {
-        const [goldRes, fxRes] = await Promise.all([
-          fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d', {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-          fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-        ]);
-
-        const goldMeta = goldRes?.chart?.result?.[0]?.meta;
-        const fxMeta = fxRes?.chart?.result?.[0]?.meta;
-        goldPrice = goldMeta?.regularMarketPrice || goldRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-        fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-        goldChange = goldMeta?.regularMarketChangePercent || 0;
-      }
-
-      if (goldPrice && fxPrice) {
-        const currentPrice = Number(((goldPrice * fxPrice) / 31.1034768).toFixed(2));
-        const changePercent = Number((goldChange + fxChange).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
-
-        return {
-          symbol: originalSym,
-          name: 'Gram Altın (TL)',
-          exchange: 'BIST',
-          currency: 'TRY',
-          sector: 'Kıymetli Madenler & Emtia',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: Number((currentPrice * 1.01).toFixed(2)),
-          low: Number((currentPrice * 0.99).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
-          close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: 25000000,
-          marketCap: currentPrice * 500000000,
-          timestamp: new Date().toISOString(),
-        } as any;
-      }
-    }
-
-    // 3. Gram Gümüş (TL) live calculation (TradingView Spot SILVER * USDTRY / 31.1034768)
-    if (sym === 'XAGTRYG' || sym === 'XAGTRY' || sym === 'GRAM_GUMUS' || sym === 'GUMUS') {
-      let silverPrice: number | null = null;
-      let fxPrice: number | null = null;
-      let silverChange = 0;
-      let fxChange = 0;
-
-      // Primary: TradingView CFD & Forex scanner for true spot price
-      try {
-        const [cfdRes, fxRes] = await Promise.all([
-          fetch('https://scanner.tradingview.com/cfd/scan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              filter: [{ left: 'name', operation: 'equal', right: 'SILVER' }],
-              columns: ['name', 'close', 'change', 'description'],
-            }),
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-          fetch('https://scanner.tradingview.com/forex/scan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              filter: [{ left: 'name', operation: 'equal', right: 'USDTRY' }],
-              columns: ['name', 'close', 'change', 'description'],
-            }),
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-        ]);
-
-        if (cfdRes?.data?.[0]?.d?.[1] && fxRes?.data?.[0]?.d?.[1]) {
-          silverPrice = cfdRes.data[0].d[1];
-          silverChange = cfdRes.data[0].d[2] || 0;
-          fxPrice = fxRes.data[0].d[1];
-          fxChange = fxRes.data[0].d[2] || 0;
-        }
-      } catch (err) {
-        console.warn('Error fetching TradingView spot silver/fx:', err);
-      }
-
-      // Fallback: Yahoo Finance if TradingView is unreachable
-      if (!silverPrice || !fxPrice) {
-        const [silverRes, fxRes] = await Promise.all([
-          fetch('https://query1.finance.yahoo.com/v8/finance/chart/SI=F?interval=1d&range=1d', {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-          fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
-            headers: { 'User-Agent': 'Mozilla/5.0' },
-            next: { revalidate: 30 },
-          }).then((r) => r.json()).catch(() => null),
-        ]);
-
-        const silverMeta = silverRes?.chart?.result?.[0]?.meta;
-        const fxMeta = fxRes?.chart?.result?.[0]?.meta;
-        silverPrice = silverMeta?.regularMarketPrice || silverRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-        fxPrice = fxMeta?.regularMarketPrice || fxRes?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(Boolean).pop();
-        silverChange = silverMeta?.regularMarketChangePercent || 0;
-      }
-
-      if (silverPrice && fxPrice) {
-        const currentPrice = Number(((silverPrice * fxPrice) / 31.1034768).toFixed(2));
-        const changePercent = Number((silverChange + fxChange).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
-
-        return {
-          symbol: originalSym,
-          name: 'Gram Gümüş (TL)',
-          exchange: 'BIST',
-          currency: 'TRY',
-          sector: 'Kıymetli Madenler & Emtia',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: Number((currentPrice * 1.015).toFixed(2)),
-          low: Number((currentPrice * 0.985).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
-          close: currentPrice,
-          previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: 5000000,
-          marketCap: currentPrice * 100000000,
-          timestamp: new Date().toISOString(),
-        } as any;
-      }
-    }
-
-    // 4. Query CFD Scanner (Gold XAUUSD, Silver XAGUSD/SILVER, Oil UKOIL/USOIL, etc.)
-    if (sym.startsWith('XAU') || sym.startsWith('XAG') || sym === 'GOLD' || sym === 'SILVER' || sym.includes('OIL') || sym.includes('GAS')) {
-      const queryName = sym === 'XAGUSD' ? 'SILVER' : sym;
-      const cfdRes = await fetch('https://scanner.tradingview.com/cfd/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          filter: [{ left: 'name', operation: 'equal', right: queryName }],
-          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
-        }),
-      });
-
-      if (cfdRes.ok) {
-        const cfdData = await cfdRes.json();
-        if (cfdData.data && cfdData.data.length > 0) {
-          const [name, close, change, desc, high52, low52] = cfdData.data[0].d;
-          const currentPrice = Number((close || 0).toFixed(2));
-          const changePercent = Number((change || 0).toFixed(2));
-          const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
-
-          const friendlyName =
-            sym === 'XAUUSD' ? 'Ons Altın ($)' : sym === 'XAGUSD' || sym === 'SILVER' ? 'Ons Gümüş ($)' : sym === 'UKOIL' ? 'Brent Petrol ($)' : sym === 'USOIL' ? 'Ham Petrol WTI ($)' : desc || sym;
-
-          return {
-            symbol: sym,
-            name: friendlyName,
-            exchange: 'COMMODITY' as any,
-            currency: 'USD',
-            sector: 'Kıymetli Madenler & Emtia',
-            basePrice: currentPrice,
-            price: currentPrice,
-            change: changeAmt,
-            changePercent,
-            high: Number((currentPrice * 1.01).toFixed(2)),
-            low: Number((currentPrice * 0.99).toFixed(2)),
-            open: Number((currentPrice - changeAmt).toFixed(2)),
-            close: currentPrice,
-            previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-            volume: 15000000,
-            marketCap: currentPrice * 1000000000,
-            high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.2).toFixed(2)),
-            low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.8).toFixed(2)),
-            timestamp: new Date().toISOString(),
-          } as any;
-        }
-      }
-    }
 
     // 5. Query Forex Scanner (USDTRY, EURTRY, GBPTRY, EURUSD, USDJPY, etc.)
     if (sym.endsWith('TRY') || sym.startsWith('USD') || sym.startsWith('EUR') || sym.startsWith('GBP') || sym.startsWith('JPY')) {
@@ -1604,6 +1628,13 @@ export async function getAllStocksLive(filter?: {
   if (exUpper === 'CRYPTO') {
     const { crypto } = await fetchAllAlternativeMarkets();
     let res = crypto;
+    if (filter?.sector && filter.sector !== 'ALL') {
+      res = res.filter(
+        (s) =>
+          (s.subCategory && s.subCategory.toUpperCase() === filter.sector?.toUpperCase()) ||
+          s.sector.toLowerCase().includes(filter.sector!.toLowerCase())
+      );
+    }
     if (filter?.search) {
       const q = filter.search.toLowerCase();
       res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
@@ -1614,6 +1645,13 @@ export async function getAllStocksLive(filter?: {
   if (exUpper === 'COMMODITY') {
     const { commodity } = await fetchAllAlternativeMarkets();
     let res = commodity;
+    if (filter?.sector && filter.sector !== 'ALL') {
+      res = res.filter(
+        (s) =>
+          (s.subCategory && s.subCategory.toUpperCase() === filter.sector?.toUpperCase()) ||
+          s.sector.toLowerCase().includes(filter.sector!.toLowerCase())
+      );
+    }
     if (filter?.search) {
       const q = filter.search.toLowerCase();
       res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
@@ -1624,6 +1662,13 @@ export async function getAllStocksLive(filter?: {
   if (exUpper === 'FOREX') {
     const { forex } = await fetchAllAlternativeMarkets();
     let res = forex;
+    if (filter?.sector && filter.sector !== 'ALL') {
+      res = res.filter(
+        (s) =>
+          (s.subCategory && s.subCategory.toUpperCase() === filter.sector?.toUpperCase()) ||
+          s.sector.toLowerCase().includes(filter.sector!.toLowerCase())
+      );
+    }
     if (filter?.search) {
       const q = filter.search.toLowerCase();
       res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
@@ -1634,6 +1679,13 @@ export async function getAllStocksLive(filter?: {
   if (exUpper === 'INDEX') {
     const { indices } = await fetchAllAlternativeMarkets();
     let res = indices;
+    if (filter?.sector && filter.sector !== 'ALL') {
+      res = res.filter(
+        (s) =>
+          (s.subCategory && s.subCategory.toUpperCase() === filter.sector?.toUpperCase()) ||
+          s.sector.toLowerCase().includes(filter.sector!.toLowerCase())
+      );
+    }
     if (filter?.search) {
       const q = filter.search.toLowerCase();
       res = res.filter((s) => s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q));
@@ -1770,26 +1822,57 @@ export async function fetchRealHistoricalCandles(
 ): Promise<Candle[]> {
   const sym = symbol.toUpperCase().trim();
   let querySymbol = sym;
+  let isGoldOrSilverScale = false;
+  let scaleTarget: number | undefined = undefined;
 
-  if (sym === 'XAUUSD' || sym === 'GOLD') querySymbol = 'GC=F';
-  else if (sym === 'XAGUSD' || sym === 'SILVER') querySymbol = 'SI=F';
-  else if (sym === 'USDTRY') querySymbol = 'USDTRY=X';
-  else if (sym === 'EURTRY') querySymbol = 'EURTRY=X';
-  else if (sym === 'GBPTRY') querySymbol = 'GBPTRY=X';
-  else if (sym === 'EURUSD') querySymbol = 'EURUSD=X';
-  else if (sym === 'USDJPY') querySymbol = 'JPY=X';
-  else if (sym === 'BTCUSD' || sym === 'BTCUSDT' || sym === 'BTC') querySymbol = 'BTC-USD';
-  else if (sym === 'ETHUSD' || sym === 'ETHUSDT' || sym === 'ETH') querySymbol = 'ETH-USD';
-  else if (sym === 'SOLUSD' || sym === 'SOLUSDT' || sym === 'SOL') querySymbol = 'SOL-USD';
-  else if (sym === 'UKOIL') querySymbol = 'BZ=F';
-  else if (sym === 'USOIL') querySymbol = 'CL=F';
-  else if (sym === 'XU100' || sym === 'BIST100') querySymbol = 'XU100.IS';
-  else if (sym === 'XAUTRYG' || sym === 'XAUTRY' || sym === 'GRAM_ALTIN' || sym === 'ALTIN' || sym === 'GA') querySymbol = 'ALTIN.IS';
-  else if (
-    sym.length >= 4 &&
-    !['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOG', 'GOOGL', 'META', 'NFLX', 'PLTR', 'UBER', 'COIN', 'SOFI', 'MSTR', 'SMCI', 'RKLB', 'HOOD', 'AMD', 'INTC', 'CRM'].includes(sym)
-  ) {
-    querySymbol = `${sym}.IS`;
+  // 1. Check if index
+  const indexDef = MAJOR_INDEX_DEFINITIONS.find(
+    (i) => i.symbol.toUpperCase() === sym || i.ticker.toUpperCase() === sym || (sym === 'BIST100' && i.symbol === 'XU100')
+  );
+  if (indexDef) {
+    querySymbol = indexDef.ticker;
+  }
+
+  // 2. Check if commodity
+  const commDef = CURATED_COMMODITY_DEFINITIONS.find(
+    (c) => c.symbol.toUpperCase() === sym || c.ticker.toUpperCase() === sym
+  );
+  if (commDef) {
+    querySymbol = commDef.ticker;
+    if (commDef.subCategory === 'GOLD_TR') {
+      isGoldOrSilverScale = true;
+      scaleTarget = targetPrice || commDef.basePrice;
+    }
+  }
+
+  // 3. Known Forex / Crypto / Commodities / Stocks
+  if (!indexDef && !commDef) {
+    if (sym === 'XAUUSD' || sym === 'GOLD') querySymbol = 'GC=F';
+    else if (sym === 'XAGUSD' || sym === 'SILVER') querySymbol = 'SI=F';
+    else if (sym === 'USDTRY') querySymbol = 'USDTRY=X';
+    else if (sym === 'EURTRY') querySymbol = 'EURTRY=X';
+    else if (sym === 'GBPTRY') querySymbol = 'GBPTRY=X';
+    else if (sym === 'EURUSD') querySymbol = 'EURUSD=X';
+    else if (sym === 'USDJPY') querySymbol = 'JPY=X';
+    else if (sym.endsWith('TRY') && sym.length === 6) querySymbol = `${sym}=X`;
+    else if (sym === 'BTCUSD' || sym === 'BTCUSDT' || sym === 'BTC') querySymbol = 'BTC-USD';
+    else if (sym === 'ETHUSD' || sym === 'ETHUSDT' || sym === 'ETH') querySymbol = 'ETH-USD';
+    else if (sym === 'SOLUSD' || sym === 'SOLUSDT' || sym === 'SOL') querySymbol = 'SOL-USD';
+    else if (sym === 'XRPUSD' || sym === 'XRPUSDT' || sym === 'XRP') querySymbol = 'XRP-USD';
+    else if (sym === 'AVAXUSD' || sym === 'AVAXUSDT' || sym === 'AVAX') querySymbol = 'AVAX-USD';
+    else if (sym === 'BNBUSD' || sym === 'BNBUSDT' || sym === 'BNB') querySymbol = 'BNB-USD';
+    else if (sym === 'DOGEUSD' || sym === 'DOGEUSDT' || sym === 'DOGE') querySymbol = 'DOGE-USD';
+    else if (sym.endsWith('USDT')) querySymbol = `${sym.replace('USDT', '')}-USD`;
+    else if (sym.endsWith('USD') && sym.length >= 6) querySymbol = `${sym.slice(0, -3)}-USD`;
+    else if (sym === 'UKOIL') querySymbol = 'BZ=F';
+    else if (sym === 'USOIL') querySymbol = 'CL=F';
+    else if (sym === 'XU100' || sym === 'BIST100') querySymbol = 'XU100.IS';
+    else if (
+      sym.length >= 4 &&
+      !['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOG', 'GOOGL', 'META', 'NFLX', 'PLTR', 'UBER', 'COIN', 'SOFI', 'MSTR', 'SMCI', 'RKLB', 'HOOD', 'AMD', 'INTC', 'CRM', 'BABA', 'ORCL', 'AVGO', 'COST', 'PEP', 'CSCO', 'ADBE', 'TXN', 'QCOM', 'TMUS'].includes(sym)
+    ) {
+      querySymbol = `${sym}.IS`;
+    }
   }
 
   let range = '1mo';
@@ -1855,8 +1938,24 @@ export async function fetchRealHistoricalCandles(
       }
 
       if (candles.length > 0) {
-        if (targetPrice && targetPrice > 0) {
-          candles[candles.length - 1].close = Number(targetPrice.toFixed(2));
+        if (isGoldOrSilverScale && scaleTarget && scaleTarget > 0) {
+          const lastCandleClose = candles[candles.length - 1].close;
+          if (lastCandleClose > 0) {
+            const factor = scaleTarget / lastCandleClose;
+            for (let i = 0; i < candles.length; i++) {
+              candles[i].open = Number((candles[i].open * factor).toFixed(2));
+              candles[i].high = Number((candles[i].high * factor).toFixed(2));
+              candles[i].low = Number((candles[i].low * factor).toFixed(2));
+              candles[i].close = Number((candles[i].close * factor).toFixed(2));
+            }
+          }
+          candles[candles.length - 1].close = Number(scaleTarget.toFixed(2));
+        } else if (targetPrice && targetPrice > 0) {
+          const lastCandleClose = candles[candles.length - 1].close;
+          const ratio = targetPrice / (lastCandleClose || 1);
+          if (ratio > 0.8 && ratio < 1.25) {
+            candles[candles.length - 1].close = Number(targetPrice.toFixed(2));
+          }
         }
         return candles;
       }
@@ -1877,9 +1976,14 @@ export function generateCandles(
   timeframe: '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL' = '1M',
   basePriceInput?: number
 ): Candle[] {
-  const stock = POPULAR_STOCKS.find((s) => s.symbol.toUpperCase() === symbol.toUpperCase());
-  const cachedStock = getStockBySymbol(symbol);
-  const targetPrice = basePriceInput || (cachedStock ? cachedStock.price : (stock ? stock.basePrice : 100));
+  const sym = symbol.toUpperCase().trim();
+  const stock = POPULAR_STOCKS.find((s) => s.symbol.toUpperCase() === sym);
+  const cachedStock = getStockBySymbol(sym);
+  const indexDef = MAJOR_INDEX_DEFINITIONS.find((i) => i.symbol.toUpperCase() === sym);
+  const commDef = CURATED_COMMODITY_DEFINITIONS.find((c) => c.symbol.toUpperCase() === sym);
+
+  const fallbackPrice = indexDef ? indexDef.basePrice : commDef ? commDef.basePrice : 100;
+  const targetPrice = basePriceInput || (cachedStock ? cachedStock.price : (stock ? stock.basePrice : fallbackPrice));
   const symbolSeed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
   function seededRandom(seed: number) {

@@ -80,6 +80,8 @@ function PiyasalarContent() {
 
   const handleMarketChange = (market: MarketId) => {
     setActiveMarket(market);
+    setSelectedSector('ALL');
+    setStockSearch('');
     setStockLimit(30);
     setFundLimit(30);
     router.replace(`/piyasalar?market=${market.toLowerCase()}`, { scroll: false });
@@ -240,6 +242,34 @@ function PiyasalarContent() {
     setFundLimit(30);
   };
 
+  const indexCategories = [
+    { id: 'ALL', label: 'Tüm Endeksler' },
+    { id: 'BIST', label: '🇹🇷 BIST Endeksleri' },
+    { id: 'US', label: '🇺🇸 ABD (S&P, Nasdaq, Dow)' },
+    { id: 'EU', label: '🇪🇺 Avrupa (DAX, FTSE, CAC)' },
+    { id: 'ASIA', label: '🌏 Asya & Pasifik' },
+  ];
+
+  const commodityCategories = [
+    { id: 'ALL', label: 'Tüm Emtialar' },
+    { id: 'GOLD_TR', label: '🪙 Altın & Kıymetli (TL)' },
+    { id: 'METALS', label: '🥈 Küresel Metaller ($)' },
+    { id: 'ENERGY', label: '⚡ Enerji & Petrol' },
+    { id: 'AGRI', label: '🌾 Tarım & Gıda' },
+  ];
+
+  const forexCategories = [
+    { id: 'ALL', label: 'Tüm Kurlar' },
+    { id: 'TRY', label: '🇹🇷 Türk Lirası Kurları' },
+    { id: 'MAJOR', label: '🌐 Majör Pariteler' },
+  ];
+
+  const cryptoCategories = [
+    { id: 'ALL', label: 'Tüm Kriptolar' },
+    { id: 'MAJOR', label: '⭐ Majör Kriptolar' },
+    { id: 'ALT', label: '🚀 Altcoinler' },
+  ];
+
   const sectors = ['ALL', 'Bankacılık', 'Havacılık', 'Savunma', 'Sanayi', 'Perakende', 'Teknoloji', 'Enerji', 'Holding'];
 
   const fundCategories = [
@@ -257,6 +287,7 @@ function PiyasalarContent() {
     if (ex === 'CRYPTO') return 'warning';
     if (ex === 'COMMODITY') return 'orange';
     if (ex === 'FOREX') return 'emerald';
+    if (ex === 'INDEX') return 'info';
     return 'info';
   };
 
@@ -264,6 +295,7 @@ function PiyasalarContent() {
     const isPositive = (item.changePercent || 0) >= 0;
     const curr = (item.currency as string) === 'TRY' ? '₺' : (item.currency as string) === 'EUR' ? '€' : '$';
     const isStarred = checkWatchlisted(item.symbol);
+    const isIndexItem = item.isIndex || item.exchange === 'INDEX';
 
     return (
       <div
@@ -284,7 +316,11 @@ function PiyasalarContent() {
 
         <div className="text-right shrink-0">
           <span className="font-mono font-bold text-xs sm:text-sm text-text-primary block">
-            {curr}{item.price < 1 ? item.price.toFixed(4) : item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            {isIndexItem ? (
+              `${item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`
+            ) : (
+              `${curr}${item.price < 1 ? item.price.toFixed(4) : item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
+            )}
           </span>
           <span
             className={`font-mono text-[10px] sm:text-xs font-bold px-1.5 py-0.2 rounded ${
@@ -599,7 +635,83 @@ function PiyasalarContent() {
                 </button>
               </div>
             </div>
-            {/* Sector Chips (Only for equities) */}
+            {/* Sub-Category / Sector Filter Chips */}
+            {activeMarket === 'INDEX' && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                <span className="text-text-muted text-[11px] shrink-0 font-medium">Bölge:</span>
+                {indexCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedSector(c.id)}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                      selectedSector === c.id
+                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
+                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeMarket === 'COMMODITY' && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                <span className="text-text-muted text-[11px] shrink-0 font-medium">Kategori:</span>
+                {commodityCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedSector(c.id)}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                      selectedSector === c.id
+                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
+                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeMarket === 'FOREX' && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                <span className="text-text-muted text-[11px] shrink-0 font-medium">Grup:</span>
+                {forexCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedSector(c.id)}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                      selectedSector === c.id
+                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
+                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeMarket === 'CRYPTO' && (
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                <span className="text-text-muted text-[11px] shrink-0 font-medium">Varlık:</span>
+                {cryptoCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedSector(c.id)}
+                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                      selectedSector === c.id
+                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
+                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                    }`}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {['BIST', 'NASDAQ', 'NYSE'].includes(activeMarket) && (
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
                 <span className="text-text-muted text-[11px] shrink-0 font-medium">Sektör:</span>
@@ -636,7 +748,7 @@ function PiyasalarContent() {
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold">Sembol</th>
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold hidden sm:table-cell">Piyasa</th>
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('price')}>
-                        Fiyat {stockSortBy === 'price' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                        {activeMarket === 'INDEX' ? 'Puan / Değer' : 'Fiyat'} {stockSortBy === 'price' && (stockSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('changePercent')}>
                         Değişim {stockSortBy === 'changePercent' && (stockSortOrder === 'desc' ? '↓' : '↑')}
@@ -645,7 +757,7 @@ function PiyasalarContent() {
                         Hacim {stockSortBy === 'volume' && (stockSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden lg:table-cell" onClick={() => toggleStockSort('marketCap')}>
-                        Piyasa Değeri {stockSortBy === 'marketCap' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                        {activeMarket === 'INDEX' ? 'Endeks Büyüklüğü' : 'Piyasa Değeri'} {stockSortBy === 'marketCap' && (stockSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
                       <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-center">İşlem</th>
                     </tr>
@@ -671,7 +783,21 @@ function PiyasalarContent() {
                             <Badge variant={badgeVariant as any} size="sm">{stock.exchange}</Badge>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
-                            {curr}{stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                            {activeMarket === 'INDEX' || stock.isIndex ? (
+                              <div className="flex flex-col items-end">
+                                <span>{stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="text-[10px] text-text-muted font-normal font-sans">Puan</span>
+                              </div>
+                            ) : activeMarket === 'COMMODITY' ? (
+                              <div className="flex flex-col items-end">
+                                <span>{curr}{stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                {stock.unit && <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>}
+                              </div>
+                            ) : (
+                              <span>
+                                {curr}{stock.price < 1 ? (stock.price < 0.001 ? stock.price.toFixed(6) : stock.price.toFixed(4)) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}
+                              </span>
+                            )}
                           </td>
                           <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-right font-mono whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg ${isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
@@ -751,13 +877,22 @@ function PiyasalarContent() {
                     <Link href={`/stocks/${stock.symbol}`}>
                       <div className="pt-2 border-t border-border/50 flex items-center justify-between">
                         <div>
-                          <span className="text-[10px] text-text-muted block">Son Fiyat</span>
-                          <span className="text-sm font-bold font-mono text-text-primary">
-                            {curr}{stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                          <span className="text-[10px] text-text-muted block">
+                            {stock.isIndex || activeMarket === 'INDEX' ? 'Endeks Değeri' : 'Son Fiyat'}
                           </span>
+                          <span className="text-sm font-bold font-mono text-text-primary">
+                            {stock.isIndex || activeMarket === 'INDEX'
+                              ? `${stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`
+                              : `${curr}${stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}`}
+                          </span>
+                          {stock.unit && (
+                            <span className="text-[10px] text-text-muted block font-sans">{stock.unit}</span>
+                          )}
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] text-text-muted block">Piyasa Değeri</span>
+                          <span className="text-[10px] text-text-muted block">
+                            {stock.isIndex || activeMarket === 'INDEX' ? 'Büyüklük' : 'Piyasa Değeri'}
+                          </span>
                           <span className="text-xs font-semibold font-mono text-text-secondary">
                             {stock.marketCap
                               ? stock.marketCap >= 1e12

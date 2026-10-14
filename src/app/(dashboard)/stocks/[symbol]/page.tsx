@@ -53,7 +53,14 @@ export default function StockDetailPage({
   const { candles, loading: chartLoading } = useStockHistory(symbol, timeframe);
   const { indicators } = useStockIndicators(symbol, timeframe);
 
-  const currSymbol = stock?.currency === 'TRY' ? '₺' : stock?.currency === 'EUR' ? '€' : '$';
+  const isIndexAsset =
+    stock?.isIndex ||
+    stock?.exchange === 'INDEX' ||
+    ['XU100', 'XU030', 'XU050', 'XBANK', 'XUSIN', 'XUHIZ', 'XHOLD', 'XKMYA', 'XULAS', 'XUTEK', 'XELKT', 'XGIDA', 'XTCRT', 'XGMYO', 'XBLSM', 'XMADN', 'XSGRT', 'XTRZM', 'SPX', 'NDX', 'DJI', 'RUT', 'DXY', 'VIX', 'DAX', 'FTSE', 'CAC40', 'STOXX50', 'N225', 'HSI', 'KOSPI', 'AORD', 'BVSP'].includes(symbol);
+  const isCommodityAsset = stock?.exchange === 'COMMODITY';
+  const isForexAsset = stock?.exchange === 'FOREX';
+
+  const currSymbol = isIndexAsset ? '' : (stock?.currency === 'TRY' ? '₺' : stock?.currency === 'EUR' ? '€' : '$');
   const currentPrice = stock?.price || (candles.length > 0 ? candles[candles.length - 1].close : 0);
   const isPositive = (stock?.changePercent || 0) >= 0;
   const isWatchlisted = checkWatchlisted(symbol);
@@ -244,10 +251,26 @@ export default function StockDetailPage({
           {/* Prominent Price & Clean Percentage */}
           <div className="flex items-baseline gap-2.5 mt-2">
             <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
-              {currSymbol}
-              {currentPrice < 1
-                ? currentPrice.toFixed(4)
-                : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              {isIndexAsset ? (
+                <>
+                  {currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className="text-base sm:text-lg font-bold text-text-muted ml-2 font-sans">Puan</span>
+                </>
+              ) : isCommodityAsset ? (
+                <>
+                  {currSymbol}{currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {stock?.unit && (
+                    <span className="text-sm sm:text-base font-semibold text-text-muted ml-2 font-sans">({stock.unit})</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  {currSymbol}
+                  {currentPrice < 1
+                    ? (currentPrice < 0.001 ? currentPrice.toFixed(6) : currentPrice.toFixed(4))
+                    : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: isForexAsset ? 4 : 2 })}
+                </>
+              )}
             </span>
             <span
               className={`text-base sm:text-lg font-bold font-mono ${
@@ -279,16 +302,24 @@ export default function StockDetailPage({
             </Button>
           </Link>
 
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => {
-              setPriceInput(currentPrice.toString());
-              setIsTradeModalOpen(true);
-            }}
-          >
-            İşlem Yap
-          </Button>
+          {isIndexAsset ? (
+            <Link href={symbol.startsWith('X') ? '/piyasalar?market=bist' : '/piyasalar?market=nasdaq'}>
+              <Button variant="primary" size="md">
+                Bileşenleri İncele
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setPriceInput(currentPrice.toString());
+                setIsTradeModalOpen(true);
+              }}
+            >
+              İşlem Yap
+            </Button>
+          )}
         </div>
       </div>
 
@@ -415,13 +446,17 @@ export default function StockDetailPage({
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-text-muted block">Günlük Aralık</span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
-            {currSymbol}{stock?.low?.toFixed(2)} - {currSymbol}{stock?.high?.toFixed(2)}
+            {isIndexAsset
+              ? `${stock?.low?.toFixed(2) || '-'} - ${stock?.high?.toFixed(2) || '-'}`
+              : `${currSymbol}${stock?.low?.toFixed(isForexAsset ? 4 : 2) || '-'} - ${currSymbol}${stock?.high?.toFixed(isForexAsset ? 4 : 2) || '-'}`}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-text-muted block">52H Aralık</span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
-            {currSymbol}{stock?.low52w?.toFixed(2)} - {currSymbol}{stock?.high52w?.toFixed(2)}
+            {isIndexAsset
+              ? `${stock?.low52w?.toFixed(2) || '-'} - ${stock?.high52w?.toFixed(2) || '-'}`
+              : `${currSymbol}${stock?.low52w?.toFixed(isForexAsset ? 4 : 2) || '-'} - ${currSymbol}${stock?.high52w?.toFixed(isForexAsset ? 4 : 2) || '-'}`}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">
@@ -431,7 +466,9 @@ export default function StockDetailPage({
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">
-          <span className="text-[11px] text-text-muted block">Piyasa Değeri</span>
+          <span className="text-[11px] text-text-muted block">
+            {isIndexAsset ? 'Endeks Büyüklüğü' : 'Piyasa Değeri'}
+          </span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
             {stock?.marketCap
               ? stock.marketCap >= 1e12
@@ -443,15 +480,31 @@ export default function StockDetailPage({
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">
-          <span className="text-[11px] text-text-muted block">F/K Oranı (P/E)</span>
+          <span className="text-[11px] text-text-muted block">
+            {isIndexAsset ? 'Bölge / Kapsam' : isCommodityAsset ? 'Birim / Ölçü' : isForexAsset ? 'Parite Grubu' : 'F/K Oranı (P/E)'}
+          </span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
-            {stock?.peRatio ? stock.peRatio.toFixed(1) : '-'}
+            {isIndexAsset
+              ? stock?.sector || 'Küresel Endeks'
+              : isCommodityAsset
+              ? stock?.unit || 'Standart'
+              : isForexAsset
+              ? stock?.sector || 'Döviz'
+              : stock?.peRatio ? stock.peRatio.toFixed(1) : '-'}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">
-          <span className="text-[11px] text-text-muted block">Temettü Verimi</span>
+          <span className="text-[11px] text-text-muted block">
+            {isIndexAsset ? 'Ölçü Birimi' : isCommodityAsset ? 'Kategori' : isForexAsset ? 'Karşıt Para' : 'Temettü Verimi'}
+          </span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
-            %{stock?.dividendYield ? stock.dividendYield.toFixed(2) : '0.00'}
+            {isIndexAsset
+              ? 'Endeks Puanı'
+              : isCommodityAsset
+              ? stock?.sector || 'Emtia'
+              : isForexAsset
+              ? stock?.currency || 'TRY'
+              : `%${stock?.dividendYield ? stock.dividendYield.toFixed(2) : '0.00'}`}
           </span>
         </div>
       </div>
@@ -460,7 +513,9 @@ export default function StockDetailPage({
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg-card/95 backdrop-blur-md border-t border-border p-2.5 px-4 flex items-center justify-between gap-3 shadow-2xl">
         <div className="min-w-0">
           <span className="font-mono text-sm font-bold text-text-primary block truncate">
-            {currSymbol}{currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toFixed(2)}
+            {isIndexAsset
+              ? `${currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} Pts`
+              : `${currSymbol}${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toFixed(2)}`}
           </span>
           <span className={`text-[10px] font-mono font-bold block ${isPositive ? 'text-success' : 'text-danger'}`}>
             {isPositive ? '+' : ''}{stock?.changePercent ? stock.changePercent.toFixed(2) : '0.00'}%
@@ -491,16 +546,24 @@ export default function StockDetailPage({
             </Button>
           </Link>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => {
-              setPriceInput(currentPrice.toString());
-              setIsTradeModalOpen(true);
-            }}
-          >
-            İşlem Yap
-          </Button>
+          {isIndexAsset ? (
+            <Link href={symbol.startsWith('X') ? '/piyasalar?market=bist' : '/piyasalar?market=nasdaq'}>
+              <Button variant="primary" size="sm">
+                Bileşenler
+              </Button>
+            </Link>
+          ) : (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setPriceInput(currentPrice.toString());
+                setIsTradeModalOpen(true);
+              }}
+            >
+              İşlem
+            </Button>
+          )}
         </div>
       </div>
 
@@ -527,7 +590,9 @@ export default function StockDetailPage({
             </div>
             <div className="text-right">
               <div className="font-mono font-bold text-sm text-text-primary">
-                {currSymbol}{currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {isIndexAsset
+                  ? `${currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} Pts`
+                  : `${currSymbol}${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`}
               </div>
               <div className={`text-[11px] font-mono font-bold ${isPositive ? 'text-success' : 'text-danger'}`}>
                 {isPositive ? '+' : ''}{stock?.changePercent ? stock.changePercent.toFixed(2) : '0.00'}%

@@ -21,7 +21,7 @@ export async function GET() {
       {
         symbol: 'XU100',
         name: 'BIST 100',
-        value: bist100?.price || 10540,
+        value: bist100?.price || 12188.73,
         change: bist100?.changePercent || 0,
         currency: 'TRY',
         flag: '🇹🇷',
@@ -53,7 +53,7 @@ export async function GET() {
       {
         symbol: 'BTC',
         name: 'Bitcoin',
-        value: btc?.price || 83000,
+        value: btc?.price || 95000,
         change: btc?.changePercent || 0,
         currency: 'USD',
         flag: '₿',
@@ -61,7 +61,7 @@ export async function GET() {
       {
         symbol: 'SPX',
         name: 'S&P 500',
-        value: spx?.price || 5820,
+        value: spx?.price || 7805.45,
         change: spx?.changePercent || 0,
         currency: 'USD',
         flag: '🇺🇸',
@@ -69,7 +69,7 @@ export async function GET() {
       {
         symbol: 'BRENT',
         name: 'Brent Petrol',
-        value: brent?.price || 92,
+        value: brent?.price || 106.43,
         change: brent?.changePercent || 0,
         currency: 'USD',
         flag: '🛢️',
@@ -81,10 +81,10 @@ export async function GET() {
         success: true,
         data: topIndices,
         sections: {
-          commodity: altMarkets.commodity.slice(0, 5),
-          forex: altMarkets.forex.slice(0, 5),
-          crypto: altMarkets.crypto.slice(0, 5),
-          indices: altMarkets.indices.slice(0, 5),
+          commodity: altMarkets.commodity.slice(0, 6),
+          forex: altMarkets.forex.slice(0, 6),
+          crypto: altMarkets.crypto.slice(0, 6),
+          indices: altMarkets.indices.slice(0, 6),
         },
       },
       {
