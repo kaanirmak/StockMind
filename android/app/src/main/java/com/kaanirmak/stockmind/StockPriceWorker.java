@@ -58,8 +58,9 @@ public class StockPriceWorker extends Worker {
             // Get current server URL
             SharedPreferences appPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             String serverUrl = appPrefs.getString(KEY_SERVER_URL, DEFAULT_URL);
-            if (serverUrl == null || serverUrl.isEmpty()) {
+            if (serverUrl == null || serverUrl.isEmpty() || serverUrl.contains("stockmind-finora.vercel.app")) {
                 serverUrl = DEFAULT_URL;
+                appPrefs.edit().putString(KEY_SERVER_URL, serverUrl).apply();
             }
             serverUrl = serverUrl.replaceAll("/$", "");
 

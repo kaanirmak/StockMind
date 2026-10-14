@@ -36,7 +36,7 @@ yarn-error.log*
 cloudflare-secrets.json
 .dev.vars
 
-# vercel
+# legacy Vercel local metadata
 .vercel
 
 # cloudflare / OpenNext build output

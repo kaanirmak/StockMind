@@ -32,11 +32,11 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    version: '1.2.0',
-    versionCode: 7,
+    version: '1.2.1',
+    versionCode: 8,
     downloadUrl: '/api/download/apk',
     directApkUrl: '/StockMind.apk',
-    releaseNotes: 'Cloudflare Workers & Edge altyapısına tam geçiş. Küresel sıfır gecikmeli kenar dağıtımı, hisse & fon yüzdesel fiyat alarmları (%1, %2, %3, vb.) ve yenilenen modern arayüz deneyimi.',
+    releaseNotes: 'Cloudflare Workers geçişi tamamlandı. Eski Vercel adresine kayıtlı Android kurulumları otomatik olarak yeni Cloudflare adresine taşınır; giriş, güncelleme ve zamanlanmış görev akışları Cloudflare üzerinde çalışır.',
     publishedAt: '2026-10-15',
     minAndroidVersion: '7.0 (Nougat) ve üzeri',
     broadcast,

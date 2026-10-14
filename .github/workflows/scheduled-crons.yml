@@ -21,14 +21,22 @@ jobs:
   run-crons:
     name: Execute Background Jobs on Cloudflare
     runs-on: ubuntu-latest
+    env:
+      APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
+      - name: Validate cron configuration
+        run: |
+          test -n "$APP_URL"
+          test -n "$CRON_SECRET"
+
       - name: Execute TEFAS Funds Sync
         if: ${{ github.event.inputs.job == 'all' || github.event.inputs.job == 'sync-funds' || github.event_name == 'schedule' }}
         run: |
           echo "Triggering TEFAS Funds Sync on Cloudflare Worker..."
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X GET \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET || 'stockmind_cron_secret_2026_secure' }}" \
-            "${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}/api/cron/sync-funds")
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/sync-funds")
           
           status=$(echo "$response" | tail -n1 | cut -d: -f2)
           body=$(echo "$response" | sed -e '$d')
@@ -44,9 +52,9 @@ jobs:
         run: |
           echo "Triggering Daily Market Report on Cloudflare Worker..."
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET || 'stockmind_cron_secret_2026_secure' }}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json" \
-            "${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}/api/cron/daily-report")
+            "$APP_URL/api/cron/daily-report")
           
           status=$(echo "$response" | tail -n1 | cut -d: -f2)
           body=$(echo "$response" | sed -e '$d')
@@ -62,8 +70,8 @@ jobs:
         run: |
           echo "Triggering Session Purge on Cloudflare Worker..."
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET || 'stockmind_cron_secret_2026_secure' }}" \
-            "${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}/api/cron/purge-bloated-sessions")
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/purge-bloated-sessions")
           
           status=$(echo "$response" | tail -n1 | cut -d: -f2)
           body=$(echo "$response" | sed -e '$d')

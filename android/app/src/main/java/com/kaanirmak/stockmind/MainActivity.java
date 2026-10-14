@@ -94,7 +94,11 @@ public class MainActivity extends AppCompatActivity {
         currentServerUrl = prefs.getString(KEY_SERVER_URL, getDefaultUrl());
 
         // Auto-migrate if previously stuck on local development IP, old domain or invalid URL
-        if (currentServerUrl == null || currentServerUrl.contains("192.168.1.") || currentServerUrl.contains("stock-mind-bay") || currentServerUrl.isEmpty()) {
+        if (currentServerUrl == null ||
+                currentServerUrl.contains("192.168.1.") ||
+                currentServerUrl.contains("stock-mind-bay") ||
+                currentServerUrl.contains("stockmind-finora.vercel.app") ||
+                currentServerUrl.isEmpty()) {
             currentServerUrl = getDefaultUrl();
             prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
         }
@@ -621,7 +625,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fullUrl));
-                request.setTitle("StockMind v1.2.0 Güncellemesi");
+                request.setTitle("StockMind v1.2.1 Güncellemesi");
                 request.setDescription("Yeni StockMind sürümü indiriliyor...");
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 

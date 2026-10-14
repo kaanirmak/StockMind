@@ -69,9 +69,9 @@ export default function SettingsPage() {
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
   const [appVersionCode, setAppVersionCode] = useState<number>(6);
-  const [appVersionName, setAppVersionName] = useState<string>('1.1.0');
+  const [appVersionName, setAppVersionName] = useState<string>('1.2.1');
   const [remoteVersionCode, setRemoteVersionCode] = useState<number>(6);
-  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.1.0');
+  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.2.1');
 
   // Default Chart Type Preference
   const [defaultChartType, setDefaultChartType] = useState<'line' | 'candles'>('line');
