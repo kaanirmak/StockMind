@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
-type MetricView = 'daily' | 'unrealized' | 'realized' | 'total';
+type MetricView = 'daily' | 'total';
 
 export default function PortfolioSummary() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function PortfolioSummary() {
   const summary = getSummary();
   const [period, setPeriod] = useState<MetricView>('daily');
   const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
+  const [fetchedUsdTry, setFetchedUsdTry] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -31,17 +32,33 @@ export default function PortfolioSummary() {
   };
 
   const usdQuote = livePrices['USDTRY'] || livePrices['USD'];
-  const usdTry =
+  const storeUsdTry =
     typeof usdQuote === 'number' && usdQuote > 0
       ? usdQuote
       : usdQuote && typeof usdQuote === 'object' && Number.isFinite(usdQuote.price) && usdQuote.price > 0
       ? usdQuote.price
       : null;
 
+  useEffect(() => {
+    if (storeUsdTry) return;
+    let isMounted = true;
+    fetch('/api/stocks/USDTRY')
+      .then((r) => r.json())
+      .then((json) => {
+        if (isMounted && json.success && json.data?.price > 0) {
+          setFetchedUsdTry(Number(json.data.price));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [storeUsdTry]);
+
+  const usdTry = storeUsdTry || fetchedUsdTry;
+
   const periods: { key: MetricView; label: string }[] = [
     { key: 'daily', label: 'Bugün' },
-    { key: 'unrealized', label: 'Açık K/Z' },
-    { key: 'realized', label: 'Gerçekleşmiş' },
     { key: 'total', label: 'Toplam K/Z' },
   ];
 
@@ -68,18 +85,6 @@ export default function PortfolioSummary() {
           label: 'Bugün',
           pnl: summary.dailyPnL,
           pnlPercent: summary.dailyPnLPercent,
-        };
-      case 'unrealized':
-        return {
-          label: 'Açık K/Z',
-          pnl: summary.unrealizedPnL,
-          pnlPercent: summary.totalCost > 0 ? (summary.unrealizedPnL / summary.totalCost) * 100 : 0,
-        };
-      case 'realized':
-        return {
-          label: 'Gerçekleşmiş',
-          pnl: summary.realizedPnL,
-          pnlPercent: 0,
         };
       case 'total':
       default:
@@ -321,24 +326,16 @@ export default function PortfolioSummary() {
               >
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                   <span>Maliyet: {formatCurrency(summary.totalCost)}</span>
-                  <span>•</span>
-                  <span>Açık: {formatCurrency(summary.unrealizedPnL)}</span>
-                  {summary.realizedPnL !== 0 && (
-                    <>
-                      <span>•</span>
-                      <span>Gerçekleşmiş: {formatCurrency(summary.realizedPnL)}</span>
-                    </>
-                  )}
-                  {usdTry && usdTry > 0 && (
+                  {usdTry && usdTry > 0 ? (
                     <>
                       <span>•</span>
                       <span>
-                        ${(summary.totalValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Dolar Karşılığı: ${(summary.totalValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         {' '}
                         <span className="text-white/30 hidden sm:inline">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
                       </span>
                     </>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Subtle visual link hint */}
