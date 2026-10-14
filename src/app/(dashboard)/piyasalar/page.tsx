@@ -135,11 +135,15 @@ function PiyasalarContent() {
           sector: selectedSector,
           search: stockSearch,
         }
-      : undefined
+      : undefined,
+    { enabled: isStocksMarket }
   );
 
   // If in 'ALL' tab, also fetch BIST top stocks
-  const { stocks: bistStocks } = useStocks(activeMarket === 'ALL' ? { exchange: 'BIST' } : undefined);
+  const { stocks: bistStocks } = useStocks(
+    activeMarket === 'ALL' ? { exchange: 'BIST' } : undefined,
+    { enabled: activeMarket === 'ALL' }
+  );
 
   const getNormalizedValue = (item: StockWithQuote, key: 'changePercent' | 'price' | 'volume' | 'marketCap') => {
     if (key === 'marketCap') {
@@ -213,10 +217,13 @@ function PiyasalarContent() {
   };
 
   // Funds data
-  const { funds, loading: fundsLoading, error: fundsError } = useFunds({
-    category: selectedCategory,
-    search: fundSearch,
-  });
+  const { funds, loading: fundsLoading, error: fundsError } = useFunds(
+    {
+      category: selectedCategory,
+      search: fundSearch,
+    },
+    { enabled: activeMarket === 'TEFAS' }
+  );
 
   const sortedFunds = [...funds].sort((a, b) => {
     const valA = a[fundSortBy] || 0;
@@ -320,18 +327,21 @@ function PiyasalarContent() {
 
         <div className="text-right shrink-0">
           <span className="font-mono font-bold text-xs sm:text-sm text-text-primary block">
-            {isIndexItem ? (
-              `${item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`
-            ) : (
-              `${curr}${item.price < 1 ? item.price.toFixed(4) : item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`
-            )}
+            {(() => {
+              const p = Number(item.price ?? item.basePrice ?? 0);
+              const validP = Number.isFinite(p) ? p : 0;
+              if (isIndexItem) {
+                return `${validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`;
+              }
+              return `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+            })()}
           </span>
           <span
             className={`font-mono text-[10px] sm:text-xs font-bold px-1.5 py-0.2 rounded ${
               isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'
             }`}
           >
-            {isPositive ? '+' : ''}{item.changePercent?.toFixed(2)}%
+            {isPositive ? '+' : ''}{Number(item.changePercent || 0).toFixed(2)}%
           </span>
         </div>
 
@@ -787,21 +797,31 @@ function PiyasalarContent() {
                             <Badge variant={badgeVariant as any} size="sm">{stock.exchange}</Badge>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
-                            {activeMarket === 'INDEX' || stock.isIndex ? (
-                              <div className="flex flex-col items-end">
-                                <span>{stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                <span className="text-[10px] text-text-muted font-normal font-sans">Puan</span>
-                              </div>
-                            ) : activeMarket === 'COMMODITY' ? (
-                              <div className="flex flex-col items-end">
-                                <span>{curr}{stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                {stock.unit && <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>}
-                              </div>
-                            ) : (
-                              <span>
-                                {curr}{stock.price < 1 ? (stock.price < 0.001 ? stock.price.toFixed(6) : stock.price.toFixed(4)) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}
-                              </span>
-                            )}
+                            {(() => {
+                              const p = Number(stock.price ?? stock.basePrice ?? 0);
+                              const validP = Number.isFinite(p) ? p : 0;
+                              if (activeMarket === 'INDEX' || stock.isIndex) {
+                                return (
+                                  <div className="flex flex-col items-end">
+                                    <span>{validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <span className="text-[10px] text-text-muted font-normal font-sans">Puan</span>
+                                  </div>
+                                );
+                              }
+                              if (activeMarket === 'COMMODITY') {
+                                return (
+                                  <div className="flex flex-col items-end">
+                                    <span>{curr}{validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    {stock.unit && <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>}
+                                  </div>
+                                );
+                              }
+                              return (
+                                <span>
+                                  {curr}{validP < 1 ? (validP < 0.001 ? validP.toFixed(6) : validP.toFixed(4)) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-right font-mono whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg ${isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
@@ -885,9 +905,14 @@ function PiyasalarContent() {
                             {stock.isIndex || activeMarket === 'INDEX' ? 'Endeks Değeri' : 'Son Fiyat'}
                           </span>
                           <span className="text-sm font-bold font-mono text-text-primary">
-                            {stock.isIndex || activeMarket === 'INDEX'
-                              ? `${stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`
-                              : `${curr}${stock.price < 1 ? stock.price.toFixed(4) : stock.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}`}
+                            {(() => {
+                              const p = Number(stock.price ?? stock.basePrice ?? 0);
+                              const validP = Number.isFinite(p) ? p : 0;
+                              if (stock.isIndex || activeMarket === 'INDEX') {
+                                return `${validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`;
+                              }
+                              return `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}`;
+                            })()}
                           </span>
                           {stock.unit && (
                             <span className="text-[10px] text-text-muted block font-sans">{stock.unit}</span>

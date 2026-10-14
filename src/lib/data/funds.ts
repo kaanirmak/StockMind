@@ -1,7 +1,26 @@
+import { createClient } from '@supabase/supabase-js';
 import { FundCategory } from '@/types/fund';
 import { calculateFuzzyScore } from '@/lib/utils/search';
 import TEFAS_DIRECTORY from './tefas_funds_directory.json';
-import { createAdminClient } from '@/lib/supabase/admin';
+
+export function getSupabaseFundsClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !key || supabaseUrl.includes('placeholder')) {
+    return null;
+  }
+  try {
+    return createClient(supabaseUrl, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  } catch {
+    return null;
+  }
+}
 
 export interface TefasFundInfo {
   code: string;
@@ -77,8 +96,11 @@ export async function getFundsFromDatabase(filter?: {
   order?: 'asc' | 'desc';
   limit?: number;
 }): Promise<TefasFundInfo[]> {
-  const supabase = createAdminClient();
-  let query = supabase.from('funds').select('*').neq('code', 'SYS_BROADCAST');
+  try {
+    const supabase = getSupabaseFundsClient();
+    if (!supabase) return [];
+
+    let query = supabase.from('funds').select('*').neq('code', 'SYS_BROADCAST');
 
   if (filter?.category && filter.category !== 'ALL') {
     query = query.eq('category', filter.category);
@@ -147,20 +169,26 @@ export async function getFundsFromDatabase(filter?: {
   }
 
   return mapped;
+  } catch (err) {
+    console.error('getFundsFromDatabase error:', err);
+    return [];
+  }
 }
 
 /**
  * Fetch single fund detail from database with price history
  */
 export async function getFundByCodeFromDatabase(code: string): Promise<TefasFundInfo | null> {
-  const sym = code.toUpperCase().trim();
-  const supabase = createAdminClient();
+  try {
+    const sym = code.toUpperCase().trim();
+    const supabase = getSupabaseFundsClient();
+    if (!supabase) return null;
 
-  const { data, error } = await supabase
-    .from('funds')
-    .select('*')
-    .eq('code', sym)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from('funds')
+      .select('*')
+      .eq('code', sym)
+      .maybeSingle();
 
   if (error || !data) {
     return null;
@@ -188,6 +216,10 @@ export async function getFundByCodeFromDatabase(code: string): Promise<TefasFund
     kapLink: data.kap_link,
     lastSyncAt: data.last_sync_at,
   };
+  } catch (err) {
+    console.error('getFundByCodeFromDatabase error:', err);
+    return null;
+  }
 }
 
 /**

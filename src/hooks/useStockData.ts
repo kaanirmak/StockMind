@@ -1,18 +1,25 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { StockMarketInfo } from '@/lib/data/stocks';
-import { StockQuote } from '@/types/stock';
+import { StockMarketInfo, StockQuote } from '@/types/stock';
 import { Candle } from '@/lib/indicators';
 
 export type StockWithQuote = StockMarketInfo & StockQuote;
 
-export function useStocks(filter?: { exchange?: string; sector?: string; search?: string }) {
+export function useStocks(
+  filter?: { exchange?: string; sector?: string; search?: string },
+  options?: { enabled?: boolean }
+) {
+  const isEnabled = options?.enabled !== false;
   const [stocks, setStocks] = useState<StockWithQuote[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isEnabled);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStocks = useCallback(async () => {
+    if (!isEnabled) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -32,7 +39,7 @@ export function useStocks(filter?: { exchange?: string; sector?: string; search?
     } finally {
       setLoading(false);
     }
-  }, [filter?.exchange, filter?.sector, filter?.search]);
+  }, [isEnabled, filter?.exchange, filter?.sector, filter?.search]);
 
   useEffect(() => {
     fetchStocks();

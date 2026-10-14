@@ -61,15 +61,15 @@ export default function MarketOverview() {
             setItems(nextData);
             setError(null);
             setLastUpdated(new Date());
-          } else if (isMounted && items.length === 0) {
-            setError('Piyasa verisi alınamadı.');
+          } else if (isMounted) {
+            setError((prev) => prev || 'Piyasa verisi alınamadı.');
           }
-        } else if (isMounted && items.length === 0) {
-          setError('Piyasa servisine ulaşılamıyor.');
+        } else if (isMounted) {
+          setError((prev) => prev || 'Piyasa servisine ulaşılamıyor.');
         }
       } catch (err) {
-        if (isMounted && items.length === 0) {
-          setError('Piyasa verisi yüklenirken bağlantı hatası oluştu.');
+        if (isMounted) {
+          setError((prev) => prev || 'Piyasa verisi yüklenirken bağlantı hatası oluştu.');
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -93,7 +93,7 @@ export default function MarketOverview() {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [items.length]);
+  }, []);
 
   const getTargetUrl = (symbol: string) => {
     if (symbol === 'XU100') return '/piyasalar?market=bist';

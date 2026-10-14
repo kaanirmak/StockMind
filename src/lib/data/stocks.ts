@@ -1,9 +1,9 @@
-import { unstable_cache } from 'next/cache';
-import { StockQuote } from '@/types/stock';
+import { StockQuote, StockMarketInfo } from '@/types/stock';
 import { calculateFuzzyScore, normalizeText, POPULAR_ALIASES } from '@/lib/utils/search';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { fetchTefasLiveDetail } from '@/lib/api/tefas';
 import { cleanSymbol } from '@/lib/utils/symbol';
+import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import {
   Candle,
   calculateBollingerBands,
@@ -14,32 +14,8 @@ import {
   calculateStochRSI,
 } from '@/lib/indicators';
 
-export interface StockMarketInfo {
-  symbol: string;
-  name: string;
-  exchange: 'BIST' | 'NASDAQ' | 'NYSE' | 'CRYPTO' | 'COMMODITY' | 'FOREX' | 'INDEX';
-  currency: string;
-  sector: string;
-  subCategory?: string;
-  unit?: string;
-  isIndex?: boolean;
-  basePrice: number;
-  price?: number;
-  change?: number;
-  changePercent?: number;
-  high?: number;
-  low?: number;
-  open?: number;
-  close?: number;
-  previousClose?: number;
-  volume?: number;
-  marketCap?: number;
-  peRatio?: number;
-  dividendYield?: number;
-  high52w?: number;
-  low52w?: number;
-  timestamp?: string;
-}
+export type { StockMarketInfo };
+export { POPULAR_STOCKS };
 
 // In-memory fallback cache (used only within the same serverless instance invocation)
 // The real shared cache is handled by unstable_cache below.
@@ -230,21 +206,21 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
 
 /**
  * Fetch ALL stocks live from TradingView Scanner API (Turkey & US).
- * Results are cached for 60 seconds across all serverless instances via Next.js unstable_cache.
- * This prevents every concurrent request from hitting TradingView independently.
+ * Results are cached in-memory with a 45-second TTL.
+ * This prevents concurrent requests from spamming TradingView independently.
  */
-const _cachedTradingViewStocks = unstable_cache(
-  _fetchAllTradingViewStocksCore,
-  ['tradingview-all-stocks'],
-  { revalidate: 60, tags: ['tradingview-stocks'] }
-);
+let _cachedTvStocksData: { data: { bist: StockMarketInfo[]; us: StockMarketInfo[] }; expiresAt: number } | null = null;
 
 export async function fetchAllTradingViewStocks(): Promise<{ bist: StockMarketInfo[]; us: StockMarketInfo[] }> {
-  try {
-    return await _cachedTradingViewStocks();
-  } catch {
-    return await _fetchAllTradingViewStocksCore();
+  const now = Date.now();
+  if (_cachedTvStocksData && _cachedTvStocksData.expiresAt > now && _cachedTvStocksData.data.bist.length > 0) {
+    return _cachedTvStocksData.data;
   }
+  const result = await _fetchAllTradingViewStocksCore();
+  if (result.bist.length > 0 || result.us.length > 0) {
+    _cachedTvStocksData = { data: result, expiresAt: now + 45_000 };
+  }
+  return result;
 }
 
 export interface AlternativeMarketsData {
@@ -1047,18 +1023,20 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   return result;
 }
 
-const _cachedAlternativeMarkets = unstable_cache(
-  _fetchAlternativeMarketsCore,
-  ['tradingview-alt-markets'],
-  { revalidate: 30, tags: ['tradingview-alt-markets'] }
-);
+let _cachedAltMarketsData: { data: AlternativeMarketsData; expiresAt: number } | null = null;
 
 export async function fetchAllAlternativeMarkets(): Promise<AlternativeMarketsData> {
-  try {
-    return await _cachedAlternativeMarkets();
-  } catch {
-    return await _fetchAlternativeMarketsCore();
+  const now = Date.now();
+  if (
+    _cachedAltMarketsData &&
+    _cachedAltMarketsData.expiresAt > now &&
+    (_cachedAltMarketsData.data.commodity.length > 0 || _cachedAltMarketsData.data.forex.length > 0)
+  ) {
+    return _cachedAltMarketsData.data;
   }
+  const result = await _fetchAlternativeMarketsCore();
+  _cachedAltMarketsData = { data: result, expiresAt: now + 30_000 };
+  return result;
 }
 
 /**
@@ -1786,31 +1764,6 @@ export function getStockBySymbol(symbol: string): (StockMarketInfo & StockQuote)
   return (stock as any) || null;
 }
 
-export const POPULAR_STOCKS: StockMarketInfo[] = [
-  { symbol: 'THYAO', name: 'Türk Hava Yolları A.O.', exchange: 'BIST', currency: 'TRY', sector: 'Ulaştırma & Havacılık', basePrice: 285.25, marketCap: 407790000000, high52w: 355.5, low52w: 215.4 },
-  { symbol: 'ASELS', name: 'Aselsan Elektronik Sanayi', exchange: 'BIST', currency: 'TRY', sector: 'Elektronik & Teknoloji', basePrice: 377.0, marketCap: 1698600000000, high52w: 450.0, low52w: 142.1 },
-  { symbol: 'GARAN', name: 'Türkiye Garanti Bankası', exchange: 'BIST', currency: 'TRY', sector: 'Bankacılık & Finans', basePrice: 127.8, marketCap: 562380000000, high52w: 169.7, low52w: 58.6 },
-  { symbol: 'EREGL', name: 'Ereğli Demir Çelik', exchange: 'BIST', currency: 'TRY', sector: 'Madencilik & Demir Çelik', basePrice: 38.26, marketCap: 133910000000, high52w: 59.8, low52w: 36.2 },
-  { symbol: 'KCHOL', name: 'Koç Holding A.Ş.', exchange: 'BIST', currency: 'TRY', sector: 'Enerji & Petrol', basePrice: 218.8, marketCap: 571845000000, high52w: 270.75, low52w: 136.5 },
-  { symbol: 'TUPRS', name: 'Tüpraş Rafinerileri', exchange: 'BIST', currency: 'TRY', sector: 'Enerji & Petrol', basePrice: 412.5, marketCap: 801065000000, high52w: 423.0, low52w: 128.0 },
-  { symbol: 'SISE', name: 'Şişecam', exchange: 'BIST', currency: 'TRY', sector: 'Sanayi & İnşaat', basePrice: 42.4, marketCap: 128883000000, high52w: 57.45, low52w: 39.8 },
-  { symbol: 'BIMAS', name: 'BİM Mağazalar', exchange: 'BIST', currency: 'TRY', sector: 'Perakende Ticaret', basePrice: 498.0, marketCap: 302385000000, high52w: 540.0, low52w: 290.0 },
-  { symbol: 'AKBNK', name: 'Akbank T.A.Ş.', exchange: 'BIST', currency: 'TRY', sector: 'Bankacılık & Finans', basePrice: 62.15, marketCap: 323180000000, high52w: 68.5, low52w: 29.4 },
-  { symbol: 'KONTR', name: 'Kontrolmatik Teknoloji', exchange: 'BIST', currency: 'TRY', sector: 'Elektronik & Teknoloji', basePrice: 3.35, marketCap: 4524000000, high52w: 56.12, low52w: 0.23 },
-  { symbol: 'ASTOR', name: 'Astor Enerji A.Ş.', exchange: 'BIST', currency: 'TRY', sector: 'Enerji & Altyapı', basePrice: 272.25, marketCap: 94500000000, high52w: 290.0, low52w: 75.0 },
-  { symbol: 'REEDR', name: 'Reeder Teknoloji', exchange: 'BIST', currency: 'TRY', sector: 'Elektronik & Teknoloji', basePrice: 5.35, marketCap: 28400000000, high52w: 78.0, low52w: 4.8 },
-  { symbol: 'NVDA', name: 'NVIDIA Corporation', exchange: 'NASDAQ', currency: 'USD', sector: 'Elektronik & Teknoloji', basePrice: 211.95, marketCap: 5108000000000, high52w: 220.0, low52w: 85.2 },
-  { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', currency: 'USD', sector: 'Elektronik & Teknoloji', basePrice: 330.5, marketCap: 4823000000000, high52w: 345.0, low52w: 164.0 },
-  { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NASDAQ', currency: 'USD', sector: 'Bilişim & Yazılım', basePrice: 498.78, marketCap: 3703000000000, high52w: 510.0, low52w: 380.0 },
-  { symbol: 'PLTR', name: 'Palantir Technologies', exchange: 'NASDAQ', currency: 'USD', sector: 'Bilişim & Yazılım', basePrice: 174.21, marketCap: 418600000000, high52w: 180.0, low52w: 22.5 },
-  { symbol: 'TSLA', name: 'Tesla, Inc.', exchange: 'NASDAQ', currency: 'USD', sector: 'Ulaştırma & Havacılık', basePrice: 357.6, marketCap: 1412000000000, high52w: 380.0, low52w: 138.8 },
-  { symbol: 'BRK.B', name: 'Berkshire Hathaway Inc.', exchange: 'NYSE', currency: 'USD', sector: 'Bankacılık & Finans', basePrice: 462.5, marketCap: 1012000000000, high52w: 485.0, low52w: 360.0 },
-  { symbol: 'JPM', name: 'JPMorgan Chase & Co.', exchange: 'NYSE', currency: 'USD', sector: 'Bankacılık & Finans', basePrice: 228.4, marketCap: 648000000000, high52w: 240.0, low52w: 145.0 },
-  { symbol: 'WMT', name: 'Walmart Inc.', exchange: 'NYSE', currency: 'USD', sector: 'Perakende Ticaret', basePrice: 85.3, marketCap: 686000000000, high52w: 88.0, low52w: 52.0 },
-  { symbol: 'V', name: 'Visa Inc.', exchange: 'NYSE', currency: 'USD', sector: 'Bankacılık & Finans', basePrice: 295.6, marketCap: 595000000000, high52w: 305.0, low52w: 230.0 },
-  { symbol: 'KO', name: 'The Coca-Cola Company', exchange: 'NYSE', currency: 'USD', sector: 'Gıda & İçecek', basePrice: 68.2, marketCap: 293000000000, high52w: 73.0, low52w: 55.0 },
-  { symbol: 'DIS', name: 'The Walt Disney Company', exchange: 'NYSE', currency: 'USD', sector: 'Eğlence & Medya', basePrice: 112.4, marketCap: 205000000000, high52w: 123.0, low52w: 88.0 },
-];
 
 /**
  * Fetch 100% REAL historical candlestick OHLCV data dynamically from live market data feeds

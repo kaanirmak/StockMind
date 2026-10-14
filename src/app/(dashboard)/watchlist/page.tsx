@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useWatchlistStore, WatchlistItem } from '@/store/useWatchlistStore';
 import { Badge, Button, Input, Modal, useToast, InstrumentLogo } from '@/components/ui';
-import { POPULAR_STOCKS } from '@/lib/data/stocks';
-import { TEFAS_FUNDS } from '@/lib/data/funds';
+import { POPULAR_STOCKS } from '@/lib/constants/stocks';
+import { POPULAR_FUNDS } from '@/lib/constants/funds';
 import { sendPushNotification } from '@/lib/notifications/pushNotification';
 
 export default function WatchlistPage() {
@@ -64,12 +64,12 @@ export default function WatchlistPage() {
             exchange: 'TEFAS',
           });
         } else {
-          const fund = TEFAS_FUNDS.find((f) => f.code === sym);
+          const fund = POPULAR_FUNDS.find((f) => f.code === sym);
           addItem({
             symbol: sym,
             name: fund ? fund.name : sym,
             assetType: 'fund',
-            price: fund ? fund.price : 5.0,
+            price: 5.0,
             changePercent: 0,
             exchange: 'TEFAS',
           });
@@ -429,7 +429,7 @@ export default function WatchlistPage() {
                         {s.symbol} — {s.name} ({s.exchange})
                       </option>
                     ))
-                  : TEFAS_FUNDS.map((f) => (
+                  : POPULAR_FUNDS.map((f) => (
                       <option key={f.code} value={f.code}>
                         {f.code} — {f.name}
                       </option>

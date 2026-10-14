@@ -110,3 +110,30 @@ export interface TechnicalIndicator {
   values: { time: string; value: number; [key: string]: string | number }[];
   params: Record<string, number>;
 }
+
+export interface StockMarketInfo {
+  symbol: string;
+  name: string;
+  exchange: 'BIST' | 'NASDAQ' | 'NYSE' | 'CRYPTO' | 'COMMODITY' | 'FOREX' | 'INDEX';
+  currency: string;
+  sector: string;
+  subCategory?: string;
+  unit?: string;
+  isIndex?: boolean;
+  basePrice: number;
+  price?: number;
+  change?: number;
+  changePercent?: number;
+  high?: number;
+  low?: number;
+  open?: number;
+  close?: number;
+  previousClose?: number;
+  volume?: number;
+  marketCap?: number;
+  peRatio?: number;
+  dividendYield?: number;
+  high52w?: number;
+  low52w?: number;
+  timestamp?: string;
+}

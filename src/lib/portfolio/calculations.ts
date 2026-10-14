@@ -1,6 +1,5 @@
 import { Holding, PortfolioSummary, Transaction, ValuationStatus } from '@/types/portfolio';
-import { POPULAR_STOCKS } from '@/lib/data/stocks';
-import { TEFAS_FUNDS } from '@/lib/data/funds';
+import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { cleanSymbol, normalizeSymbolKey } from '@/lib/utils/symbol';
 
 export { cleanSymbol, normalizeSymbolKey };
@@ -74,7 +73,7 @@ export function getCurrentAssetPrice(
     return { price: lastTxPrice, changePercent: 0, isLive: false, isStale: true, isMissing: false };
   }
 
-  // 3. Fallback to catalog base price if available
+  // 3. Fallback to catalog base price if available (stocks/commodities)
   const effectiveType = assetType || detectedType;
   if (effectiveType === 'stock') {
     const stock = POPULAR_STOCKS.find(
@@ -84,17 +83,6 @@ export function getCurrentAssetPrice(
       return {
         price: stock.basePrice,
         changePercent: stock.changePercent || 0,
-        isLive: false,
-        isStale: true,
-        isMissing: false,
-      };
-    }
-  } else {
-    const fund = TEFAS_FUNDS.find((f) => f.code.toUpperCase() === cleanSym);
-    if (fund && fund.price > 0) {
-      return {
-        price: fund.price,
-        changePercent: fund.dailyReturn || 0,
         isLive: false,
         isStale: true,
         isMissing: false,

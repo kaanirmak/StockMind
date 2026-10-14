@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchTefasLiveDetail, fetchTefasPriceHistory } from '@/lib/api/tefas';
-import { getFundByCodeFromDatabase, getFundByCode } from '@/lib/data/funds';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { getFundByCodeFromDatabase, getFundByCode, getSupabaseFundsClient } from '@/lib/data/funds';
 export const dynamic = 'force-dynamic';
 
 export async function GET(
@@ -14,7 +13,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const days = searchParams.get('days') ? Number(searchParams.get('days')) : 90;
 
-    const supabase = createAdminClient();
+    const supabase = getSupabaseFundsClient();
 
     // 1. Fetch live detail and price history from official TEFAS API
     const [liveDetail, realHistory, dbFund] = await Promise.all([
@@ -27,24 +26,26 @@ export async function GET(
     let history: { date: string; price: number }[] = realHistory;
 
     // If live history empty, try fetching from DB history table
-    if (history.length === 0 && dbFund) {
-      const { data: dbHistory } = await supabase
-        .from('fund_daily_history')
-        .select('price_date, price')
-        .eq('fund_code', upperCode)
-        .order('price_date', { ascending: true })
-        .limit(days);
+    if (history.length === 0 && dbFund && supabase) {
+      try {
+        const { data: dbHistory } = await supabase
+          .from('fund_daily_history')
+          .select('price_date, price')
+          .eq('fund_code', upperCode)
+          .order('price_date', { ascending: true })
+          .limit(days);
 
-      if (dbHistory && dbHistory.length > 0) {
-        history = dbHistory.map((h: any) => ({
-          date: h.price_date,
-          price: Number(h.price),
-        }));
-      }
+        if (dbHistory && dbHistory.length > 0) {
+          history = dbHistory.map((h: any) => ({
+            date: h.price_date,
+            price: Number(h.price),
+          }));
+        }
+      } catch {}
     }
 
     // If live detail fetched, persist to DB in background
-    if (liveDetail) {
+    if (liveDetail && supabase) {
       (async () => {
         try {
           await supabase.from('funds').upsert(

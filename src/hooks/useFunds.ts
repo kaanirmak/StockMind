@@ -3,17 +3,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TefasFundInfo } from '@/lib/data/funds';
 
-export function useFunds(filter?: {
-  category?: string;
-  search?: string;
-  minRisk?: number;
-  maxRisk?: number;
-}) {
+export function useFunds(
+  filter?: {
+    category?: string;
+    search?: string;
+    minRisk?: number;
+    maxRisk?: number;
+  },
+  options?: { enabled?: boolean }
+) {
+  const isEnabled = options?.enabled !== false;
   const [funds, setFunds] = useState<TefasFundInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isEnabled);
   const [error, setError] = useState<string | null>(null);
 
   const fetchFunds = useCallback(async () => {
+    if (!isEnabled) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -34,7 +42,7 @@ export function useFunds(filter?: {
     } finally {
       setLoading(false);
     }
-  }, [filter?.category, filter?.search, filter?.minRisk, filter?.maxRisk]);
+  }, [isEnabled, filter?.category, filter?.search, filter?.minRisk, filter?.maxRisk]);
 
   useEffect(() => {
     fetchFunds();
