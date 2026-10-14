@@ -327,6 +327,16 @@ test('AND-01 & AND-02: Android WebView dosya erişimi kapalı, mixed content yas
   assert.match(mainActivityCode, /isAllowedHost/, 'APK download domain validation must be present');
 });
 
+test('AND-04: Eski Vercel kurulumu Cloudflare Worker adresine otomatik taşınır', () => {
+  const mainActivityCode = fs.readFileSync(path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/MainActivity.java'), 'utf8');
+  const priceWorkerCode = fs.readFileSync(path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/StockPriceWorker.java'), 'utf8');
+
+  assert.match(mainActivityCode, /PRODUCTION_URL\s*=\s*"https:\/\/stockmind\.kaanrmak7\.workers\.dev"/);
+  assert.match(mainActivityCode, /currentServerUrl\.contains\("stockmind-finora\.vercel\.app"\)/);
+  assert.match(priceWorkerCode, /serverUrl\.contains\("stockmind-finora\.vercel\.app"\)/);
+  assert.doesNotMatch(mainActivityCode, /host\.equalsIgnoreCase\("stockmind-finora\.vercel\.app"\)/);
+});
+
 test('DATA-06 & DATA-07: Ortak fiyat sözleşmesi ve borsa normalizasyonu', () => {
   const { normalizeInstrumentId, parseInstrumentId } = loadModule('src/lib/utils/symbol.ts');
   const { toUnifiedPriceQuote } = loadModule('src/lib/api/adapters.ts');

@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 
 const eslintConfig = defineConfig([
@@ -8,6 +9,7 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     plugins: {
+      react,
       "react-hooks": reactHooks,
     },
     rules: {
@@ -25,6 +27,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".open-next/**",
+    ".wrangler/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
