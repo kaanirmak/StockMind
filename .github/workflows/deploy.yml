@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  validate:
-    name: Test & Build
+  deploy:
+    name: Build & Deploy to Cloudflare Worker
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js 20
@@ -20,49 +20,13 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
-
-      - name: Validate public build configuration
-        run: |
-          test -n "$NEXT_PUBLIC_SUPABASE_URL"
-          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY$NEXT_PUBLIC_SUPABASE_ANON_KEY"
-          test -n "$NEXT_PUBLIC_APP_URL"
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://jxujcjalxrgmjcecwkil.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}
+        run: npm ci || npm install
 
       - name: Run Typecheck
         run: npm run typecheck
 
       - name: Run Tests
         run: npm test
-
-      - name: Build Next.js
-        run: npm run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://jxujcjalxrgmjcecwkil.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_ViHxJOr9MYuwnFapjAEolg_BxEHIVXi' }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev' }}
-
-  deploy:
-    name: Deploy to Cloudflare Worker
-    needs: validate
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Build Cloudflare Worker
         run: npm run build:cloudflare
@@ -74,13 +38,12 @@ jobs:
           NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: ${{ secrets.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH }}
           NEXT_PUBLIC_ENABLE_GITHUB_AUTH: ${{ secrets.NEXT_PUBLIC_ENABLE_GITHUB_AUTH }}
 
-      - name: Deploy with Wrangler Action
+      - name: Deploy to Cloudflare Workers
         if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Notice when deploy token missing
         if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
