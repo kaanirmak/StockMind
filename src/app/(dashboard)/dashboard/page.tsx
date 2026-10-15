@@ -24,7 +24,7 @@ export default function DashboardPage() {
   }, [fetchPortfoliosAndTransactions]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="dashboard-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(4rem+env(safe-area-inset-bottom))]">
       {/* Portfolio Hero Card */}
       <PortfolioSummary />
 
@@ -32,7 +32,7 @@ export default function DashboardPage() {
       <PortfolioHeatmap />
 
       {/* Quick Access: Widgets & Android App */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl glass-card border border-border">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl glass-card border border-border shadow-sm">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/25 text-accent flex items-center justify-center font-bold text-sm shrink-0">
             🧩

@@ -464,6 +464,15 @@ html.dark .glass-purple {
 }
 
 @media (max-width: 640px) {
+  .dashboard-page > * {
+    min-width: 0;
+  }
+
+  .dashboard-page .glass-card,
+  .dashboard-page .product-hero {
+    border-radius: 1rem;
+  }
+
   .settings-page .product-hero {
     border-radius: 1.25rem;
     box-shadow: var(--shadow-card);
