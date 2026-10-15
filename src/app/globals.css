@@ -968,3 +968,46 @@ main:has(.ai-chat-container) {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
+
+/* Cross-screen interaction baseline */
+button, a, input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a {
+  touch-action: manipulation;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.overflow-x-auto {
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+
+  [role='dialog'] {
+    overscroll-behavior: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
