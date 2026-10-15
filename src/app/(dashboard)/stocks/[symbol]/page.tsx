@@ -264,19 +264,12 @@ export default function StockDetailPage({
           </div>
 
           {/* Prominent Price & Clean Percentage */}
-          <div className="flex items-baseline gap-2.5 mt-2">
+          <div className="flex flex-wrap items-baseline gap-2 sm:gap-2.5 mt-2">
             <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
               {isIndexAsset ? (
                 <>
                   {currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   <span className="text-base sm:text-lg font-bold text-text-muted ml-2 font-sans">Puan</span>
-                </>
-              ) : isCommodityAsset ? (
-                <>
-                  {currSymbol}{currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  {stock?.unit && (
-                    <span className="text-sm sm:text-base font-semibold text-text-muted ml-2 font-sans">({stock.unit})</span>
-                  )}
                 </>
               ) : (
                 <>
@@ -292,8 +285,13 @@ export default function StockDetailPage({
                 isPositive ? 'text-success' : 'text-danger'
               }`}
             >
-              %{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
+              {isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
             </span>
+            {isCommodityAsset && stock?.unit && (
+              <span className="text-xs sm:text-sm font-semibold text-text-muted font-sans ml-1">
+                ({stock.unit})
+              </span>
+            )}
           </div>
         </div>
 
@@ -530,25 +528,16 @@ export default function StockDetailPage({
         className="md:hidden fixed left-0 right-0 z-40 bg-bg-card/95 backdrop-blur-xl border-t border-border/80 px-3 py-2.5 shadow-[0_-8px_25px_rgba(0,0,0,0.4)]"
         style={{ bottom: 'calc(4rem + max(env(safe-area-inset-bottom, 0px), 6px))' }}
       >
-        <div className="flex items-center justify-between gap-2 max-w-lg mx-auto">
-          {/* Symbol, Price, and Percent Change (Moved from top to bottom) */}
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-mono text-xs sm:text-sm font-bold text-text-primary tracking-tight shrink-0">
+        <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+          {/* Clean Symbol & Price (No squished percentage text) */}
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="font-mono text-xs font-bold text-text-muted tracking-tight shrink-0">
               {symbol}
             </span>
-            <span className="font-mono text-sm sm:text-base font-black text-text-primary shrink-0">
+            <span className="font-mono text-base sm:text-lg font-black text-text-primary tracking-tight truncate">
               {isIndexAsset
-                ? `${currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+                ? `${currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} Pts`
                 : `${currSymbol}${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            </span>
-            <span
-              className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0 flex items-center ${
-                isPositive
-                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                  : 'bg-red-500/15 text-red-400 border border-red-500/20'
-              }`}
-            >
-              {isPositive ? '+' : ''}%{Math.abs(stock?.changePercent || 0).toFixed(2)}
             </span>
           </div>
 
