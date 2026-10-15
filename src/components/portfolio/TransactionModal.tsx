@@ -4,12 +4,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Modal, Input, Button, useToast } from '@/components/ui';
 import { CashPanel } from './CashPanel';
+import { BrokerDirectory } from './BrokerDirectory';
 import { cleanSymbol } from '@/lib/utils/symbol';
 
 export interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
   presentation?: 'dialog' | 'sheet' | 'drawer';
+  initialSymbol?: string;
+  initialMode?: 'broker' | 'stock' | 'fund' | 'cash';
 }
 
 const POPULAR_STOCK_CHIPS = [
@@ -26,18 +29,25 @@ const POPULAR_STOCK_CHIPS = [
   { symbol: 'GRAM_ALTIN', name: 'Gram Altın', exchange: 'BIST', currency: 'TRY' },
 ];
 
-export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, presentation = 'dialog' }) => {
+export const TransactionModal: React.FC<TransactionModalProps> = ({
+  isOpen,
+  onClose,
+  presentation = 'dialog',
+  initialSymbol,
+  initialMode = 'stock',
+}) => {
   const { addTransaction, activePortfolioId, livePrices } = usePortfolioStore();
   const { showToast } = useToast();
 
-  const [cashMode, setCashMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<'broker' | 'stock' | 'fund' | 'cash'>(initialMode);
+  const [cashMode, setCashMode] = useState(initialMode === 'cash');
   const [cashBusy, setCashBusy] = useState(false);
-  const [assetType, setAssetType] = useState<'stock' | 'fund'>('stock');
+  const [assetType, setAssetType] = useState<'stock' | 'fund'>(initialMode === 'fund' ? 'fund' : 'stock');
   const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy');
   const [currency, setCurrency] = useState<'TRY' | 'USD'>('TRY');
   const [exchangeRate, setExchangeRate] = useState<string>('');
-  const [symbol, setSymbol] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [symbol, setSymbol] = useState(initialSymbol || '');
+  const [searchQuery, setSearchQuery] = useState(initialSymbol || '');
   const [quantity, setQuantity] = useState<number>(100);
   const [price, setPrice] = useState<string>('');
   const [commission, setCommission] = useState<number>(0);
@@ -67,6 +77,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
       setExchangeRate(liveUsdRate.toFixed(2));
     }
   }, [liveUsdRate]);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialSymbol) {
+        setSymbol(initialSymbol.toUpperCase().trim());
+        setSearchQuery(initialSymbol.toUpperCase().trim());
+      }
+      if (initialMode) {
+        setActiveTab(initialMode);
+        if (initialMode === 'cash') {
+          setCashMode(true);
+        } else if (initialMode === 'stock' || initialMode === 'fund') {
+          setCashMode(false);
+          setAssetType(initialMode);
+        } else {
+          setCashMode(false);
+        }
+      }
+    }
+  }, [isOpen, initialSymbol, initialMode]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -335,20 +365,73 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   const rawTotal = Number(price || 0) * (quantity || 0) + (commission || 0);
   const totalInTry = isUsd ? rawTotal * fx : rawTotal;
 
+  const modalTitle =
+    activeTab === 'broker'
+      ? (symbol ? `${symbol} — İşlem Yap (Midas & Kurumlar)` : 'İşlem Yap — Aracı Kurum Seçimi')
+      : activeTab === 'cash'
+      ? 'Nakit Yönetimi'
+      : 'Portföy İşlemi Ekle';
+
   return (
-    <Modal presentation={presentation}
+    <Modal
+      presentation={presentation}
       isOpen={isOpen}
       onClose={() => { if (!cashBusy && !isSubmitting) onClose(); }}
-      title="İşlem Ekle"
+      title={modalTitle}
       size="md"
     >
-      <div className="grid grid-cols-3 gap-1 mb-4 rounded-xl bg-bg-secondary p-1" role="group" aria-label="İşlem kategorisi">
-        {(['stock', 'fund', 'cash'] as const).map(type => <button type="button" key={type} disabled={cashBusy || isSubmitting} aria-pressed={type === 'cash' ? cashMode : !cashMode && assetType === type} onClick={() => {
-          setCashMode(type === 'cash');
-          if (type !== 'cash' && type !== assetType) { setAssetType(type); setSymbol(''); setSearchQuery(''); setPrice(''); if (type === 'fund') setCurrency('TRY'); }
-        }} className={`min-h-11 rounded-lg text-sm font-medium ${(type === 'cash' ? cashMode : !cashMode && assetType === type) ? 'bg-bg-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}>{type === 'stock' ? 'Hisse' : type === 'fund' ? 'Fon' : 'Nakit'}</button>)}
+      <div className="grid grid-cols-4 gap-1 mb-4 rounded-xl bg-bg-secondary p-1" role="group" aria-label="İşlem kategorisi">
+        {(['broker', 'stock', 'fund', 'cash'] as const).map((type) => (
+          <button
+            type="button"
+            key={type}
+            disabled={cashBusy || isSubmitting}
+            aria-pressed={activeTab === type}
+            onClick={() => {
+              setActiveTab(type);
+              if (type === 'cash') {
+                setCashMode(true);
+              } else {
+                setCashMode(false);
+                if (type === 'stock' || type === 'fund') {
+                  if (assetType !== type) {
+                    setAssetType(type);
+                    setSymbol('');
+                    setSearchQuery('');
+                    setPrice('');
+                    if (type === 'fund') setCurrency('TRY');
+                  }
+                }
+              }
+            }}
+            className={`min-h-11 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              activeTab === type
+                ? 'bg-bg-card text-text-primary shadow-sm border border-border/60'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            {type === 'broker' ? '⚡ Midas' : type === 'stock' ? 'Hisse' : type === 'fund' ? 'Fon' : 'Nakit'}
+          </button>
+        ))}
       </div>
-      {cashMode ? <CashPanel embedded onComplete={onClose} onBusyChange={setCashBusy} /> : <form onSubmit={handleSubmit} className="space-y-4">
+      {activeTab === 'broker' ? (
+        <BrokerDirectory
+          selectedSymbol={symbol}
+          onSelectBroker={(b) => {
+            const symText = symbol ? `${symbol} için ` : '';
+            showToast({
+              type: 'info',
+              title: `${b.shortName}'a Yönlendiriliyorsunuz`,
+              message: `${symText}${b.name} açılıyor...`,
+            });
+            window.open(b.url, '_blank', 'noopener,noreferrer');
+            onClose();
+          }}
+        />
+      ) : activeTab === 'cash' ? (
+        <CashPanel embedded onComplete={onClose} onBusyChange={setCashBusy} />
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="space-y-1 block text-xs text-text-secondary">İşlem türü<select aria-label="İşlem türü" value={transactionType} onChange={e => setTransactionType(e.target.value as 'buy' | 'sell')} className="block w-full h-11 px-3 rounded-xl bg-bg-input border border-border text-text-primary"><option value="buy">Alış</option><option value="sell">Satış</option></select></label>
           <label className="space-y-1 block text-xs text-text-secondary">Para birimi<select aria-label="Para birimi" value={currency} onChange={e => { setCurrency(e.target.value as 'TRY' | 'USD'); if (e.target.value === 'USD' && liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2)); }} className="block w-full h-11 px-3 rounded-xl bg-bg-input border border-border text-text-primary"><option value="TRY">TRY · Türk Lirası</option><option value="USD">USD · ABD Doları</option></select></label>
@@ -601,8 +684,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             {isSubmitting ? 'Kaydediliyor...' : 'İşlemi Kaydet'}
           </Button>
         </div>
-      </form>}
-    </Modal>
+      </form>
+    )}
+  </Modal>
   );
 };
 

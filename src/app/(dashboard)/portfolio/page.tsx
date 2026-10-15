@@ -38,6 +38,8 @@ export default function PortfolioPage() {
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [clearConfirmed, setClearConfirmed] = useState(false);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [tradeModalSymbol, setTradeModalSymbol] = useState<string | undefined>(undefined);
+  const [tradeModalMode, setTradeModalMode] = useState<'broker' | 'stock' | 'fund' | 'cash'>('broker');
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isNewPortModalOpen, setIsNewPortModalOpen] = useState(false);
   const [isDeletePortModalOpen, setIsDeletePortModalOpen] = useState(false);
@@ -356,12 +358,35 @@ export default function PortfolioPage() {
 
           {/* Action Buttons: Prominent Primary Action + Clean Secondary Dropdown */}
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-            {/* Primary Action Button */}
+            {/* Primary Action Button: İşlem Yap (Midas & Aracı Kurumlar) */}
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setIsTradeModalOpen(true)}
-              className="whitespace-nowrap shrink-0 shadow-md font-bold px-3.5"
+              onClick={() => {
+                setTradeModalSymbol(undefined);
+                setTradeModalMode('broker');
+                setIsTradeModalOpen(true);
+              }}
+              className="whitespace-nowrap shrink-0 shadow-md font-bold px-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 border-none text-white shadow-violet-500/20"
+              leftIcon={
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              }
+            >
+              İşlem Yap
+            </Button>
+
+            {/* Secondary Action: Manuel İşlem Ekle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setTradeModalSymbol(undefined);
+                setTradeModalMode('stock');
+                setIsTradeModalOpen(true);
+              }}
+              className="whitespace-nowrap shrink-0 text-xs"
               leftIcon={
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -656,7 +681,16 @@ export default function PortfolioPage() {
         {activeTab === 'holdings' ? (assetFilter === 'cash' ? <StateView title="Nakit hareketleri" description="Bakiyelerinizi ve para giriş/çıkış geçmişinizi Nakit Hesabı bölümünden yönetin." /> :
           <HoldingsTable
             holdings={summary.holdings.filter((h) => assetFilter === 'all' || h.assetType === assetFilter)}
-            onAddTransaction={() => setIsTradeModalOpen(true)}
+            onAddTransaction={() => {
+              setTradeModalSymbol(undefined);
+              setTradeModalMode('stock');
+              setIsTradeModalOpen(true);
+            }}
+            onTrade={(sym) => {
+              setTradeModalSymbol(sym);
+              setTradeModalMode('broker');
+              setIsTradeModalOpen(true);
+            }}
           />
         ) : activeTab === 'heatmap' ? (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-fade-in items-start">
@@ -942,10 +976,12 @@ export default function PortfolioPage() {
       </div>
 
       {deleteTarget && <ConfirmAction key={deleteTarget.id} title="İşlemi Sil" description={`${deleteTarget.symbol} işlem kaydı kalıcı olarak silinecek.`} onClose={() => setDeleteTarget(null)} onConfirm={async () => { return await deleteTransaction(deleteTarget.id); }} />}
-      {/* Manual Transaction Modal */}
+      {/* Manual & Brokerage Transaction Modal */}
       <TransactionModal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
+        initialSymbol={tradeModalSymbol}
+        initialMode={tradeModalMode}
       />
 
       {/* Excel / CSV Import Modal */}

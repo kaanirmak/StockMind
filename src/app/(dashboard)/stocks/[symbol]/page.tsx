@@ -13,6 +13,7 @@ import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/compone
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { BROKERS, Broker } from '@/lib/data/brokers';
+import { BrokerDirectory } from '@/components/portfolio/BrokerDirectory';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 
 export default function StockDetailPage({
@@ -582,7 +583,7 @@ export default function StockDetailPage({
                 setIsTradeModalOpen(true);
               }}
             >
-              İşlem
+              İşlem Yap
             </Button>
           )}
         </div>
@@ -651,168 +652,7 @@ export default function StockDetailPage({
 
           {/* Brokerage Tab Content */}
           {tradeModalTab === 'broker' ? (
-            <div className="space-y-3 pt-1">
-              {/* Search & Filter Bar */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Aracı kurum ara (örn: Midas, İş, Garanti, Piapiri)..."
-                  value={brokerSearchQuery}
-                  onChange={(e) => setBrokerSearchQuery(e.target.value)}
-                  className="w-full py-2 pl-9 pr-8 bg-bg-secondary text-text-primary rounded-xl border border-border text-xs focus:outline-hidden focus:border-accent transition-colors placeholder:text-text-muted"
-                />
-                <svg className="w-4 h-4 text-text-muted absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                {brokerSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setBrokerSearchQuery('')}
-                    className="absolute right-2.5 top-2.5 text-text-muted hover:text-text-primary text-xs cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-
-              {/* Category Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px] font-medium">
-                <button
-                  type="button"
-                  onClick={() => setBrokerCategoryFilter('ALL')}
-                  className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-                    brokerCategoryFilter === 'ALL'
-                      ? 'bg-accent text-white font-bold'
-                      : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-                  }`}
-                >
-                  Tümü ({BROKERS.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBrokerCategoryFilter('POPULAR')}
-                  className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-                    brokerCategoryFilter === 'POPULAR'
-                      ? 'bg-accent text-white font-bold'
-                      : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-                  }`}
-                >
-                   Popüler ({BROKERS.filter((b) => b.popular).length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBrokerCategoryFilter('Dijital / FinTech')}
-                  className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-                    brokerCategoryFilter === 'Dijital / FinTech'
-                      ? 'bg-accent text-white font-bold'
-                      : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-                  }`}
-                >
-                   FinTech ({BROKERS.filter((b) => b.category === 'Dijital / FinTech').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBrokerCategoryFilter('Banka İştiraki')}
-                  className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-                    brokerCategoryFilter === 'Banka İştiraki'
-                      ? 'bg-accent text-white font-bold'
-                      : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-                  }`}
-                >
-                   Bankalar ({BROKERS.filter((b) => b.category === 'Banka İştiraki').length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBrokerCategoryFilter('Bağımsız Kurum')}
-                  className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-                    brokerCategoryFilter === 'Bağımsız Kurum'
-                      ? 'bg-accent text-white font-bold'
-                      : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-                  }`}
-                >
-                   Bağımsız ({BROKERS.filter((b) => b.category === 'Bağımsız Kurum').length})
-                </button>
-              </div>
-
-              {/* Broker List */}
-              <div className="max-h-[340px] sm:max-h-[380px] overflow-y-auto pr-1 space-y-2.5">
-                {(() => {
-                  const filtered = BROKERS.filter((b) => {
-                    if (brokerCategoryFilter === 'POPULAR' && !b.popular) return false;
-                    if (
-                      brokerCategoryFilter !== 'ALL' &&
-                      brokerCategoryFilter !== 'POPULAR' &&
-                      b.category !== brokerCategoryFilter
-                    )
-                      return false;
-                    if (brokerSearchQuery.trim()) {
-                      const q = brokerSearchQuery.toLowerCase();
-                      return (
-                        b.name.toLowerCase().includes(q) ||
-                        b.shortName.toLowerCase().includes(q) ||
-                        b.description.toLowerCase().includes(q)
-                      );
-                    }
-                    return true;
-                  });
-
-                  if (filtered.length === 0) {
-                    return (
-                      <div className="p-8 text-center text-text-muted text-xs bg-bg-secondary/40 rounded-xl border border-dashed border-border">
-                        Aramanıza uygun aracı kurum bulunamadı.
-                      </div>
-                    );
-                  }
-
-                  return filtered.map((b) => (
-                    <div
-                      key={b.id}
-                      onClick={() => handleOpenBroker(b)}
-                      className="group relative p-3 sm:p-3.5 rounded-2xl border border-border/80 bg-gradient-to-r from-bg-card via-bg-secondary to-bg-card hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 transition-all cursor-pointer overflow-hidden"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`w-11 h-11 rounded-xl bg-gradient-to-br ${b.gradient} flex items-center justify-center text-white font-black text-lg shadow-md shrink-0`}
-                          >
-                            {b.letter}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-sm text-text-primary group-hover:text-accent transition-colors">
-                                {b.shortName}
-                              </span>
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
-                                {b.badge}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-text-muted mt-0.5 line-clamp-1 sm:line-clamp-2 leading-relaxed">
-                              {b.description}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-bg-tertiary group-hover:bg-accent group-hover:text-white text-text-muted transition-all">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                            </svg>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-
-              {/* Disclaimer */}
-              <div className="p-3 bg-bg-tertiary/60 rounded-xl border border-border/50 text-[11px] text-text-muted leading-relaxed flex items-start gap-2">
-                <span className="text-sm shrink-0"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                <span>
-                  <strong>Yasal Bilgilendirme:</strong> StockMind doğrudan emir iletimi veya aracılık yapmaz. Tüm işlemler seçtiğiniz SPK lisanslı yetkili aracı kurumun kendi resmi arayüzü üzerinden gerçekleştirilir.
-                </span>
-              </div>
-            </div>
+            <BrokerDirectory selectedSymbol={symbol} onSelectBroker={handleOpenBroker} />
           ) : (
             /* Virtual Portfolio Tab Content */
             <form onSubmit={handleTradeSubmit} className="space-y-4">

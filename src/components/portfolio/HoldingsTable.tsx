@@ -23,9 +23,10 @@ function getAssetBadgeInfo(h: Holding) {
 export interface HoldingsTableProps {
   holdings: Holding[];
   onAddTransaction: () => void;
+  onTrade?: (symbol: string) => void;
 }
 
-export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTransaction }) => {
+export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTransaction, onTrade }) => {
   const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(new Set());
 
   const toggleExpand = (sym: string) => {
@@ -144,20 +145,28 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                   </div>
                 </div>
 
-                {(
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => (onTrade ? onTrade(h.symbol) : onAddTransaction())}
+                    className="flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-white hover:bg-accent px-2 py-0.5 rounded-lg border border-accent/30 transition-all cursor-pointer shadow-xs active:scale-95"
+                    title={`${h.symbol} ile Midas veya Aracı Kurumda İşlem Yap`}
+                  >
+                    <span>⚡ İşlem Yap</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => toggleExpand(h.symbol)}
                     aria-expanded={isExpanded}
                     aria-label={`${h.symbol} lot ve maliyet detayları`}
-                    className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline cursor-pointer"
+                    className="flex items-center gap-1 text-[11px] font-medium text-text-muted hover:text-text-primary cursor-pointer"
                   >
                     <span>{isExpanded ? 'Daralt' : 'Lot & Maliyet'}</span>
                     <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                )}
+                </div>
               </div>
 
               {isExpanded && <div className="text-xs grid grid-cols-2 gap-2 p-3 bg-bg-tertiary rounded-xl"><span>Adet: {h.totalQuantity.toLocaleString('tr-TR')}</span><span>Ort. maliyet: ₺{h.averageCost.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}</span></div>}
@@ -215,10 +224,11 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
               <th className="py-3.5 px-3 font-semibold text-right">Piyasa Değeri</th>
               <th className="py-3.5 px-3 font-semibold text-right">Kar / Zarar</th>
               <th className="py-3.5 px-3 font-semibold text-right">Ağırlık</th>
+              <th className="py-3.5 px-3 font-semibold text-center w-28">İşlem</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            <WindowedRows columns={8}>{holdings.map((h) => {
+            <WindowedRows columns={9}>{holdings.map((h) => {
               const isProfit = h.pnl >= 0;
               const link = h.assetType === 'stock' ? `/stocks/${h.symbol}` : `/funds/${h.symbol}`;
               const dailyChange = h.dailyChangePercent || 0;
@@ -351,12 +361,24 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                     <td className="py-3.5 px-3 text-right font-mono text-text-secondary font-semibold">
                       %{h.weight.toFixed(1)}
                     </td>
+
+                    {/* Trade Action */}
+                    <td className="py-3.5 px-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => (onTrade ? onTrade(h.symbol) : onAddTransaction())}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-white hover:bg-accent px-2 py-1 rounded-lg border border-accent/30 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                        title={`${h.symbol} ile Midas veya Aracı Kurumda İşlem Yap`}
+                      >
+                        <span>⚡ İşlem Yap</span>
+                      </button>
+                    </td>
                   </tr>
 
                   {/* FIFO Lots Expansion Row */}
                   {isExpanded && hasLots && (
                     <tr className="bg-bg-tertiary/40 border-b border-border/60">
-                      <td colSpan={11} className="py-3 px-6">
+                      <td colSpan={12} className="py-3 px-6">
                         <div className="rounded-xl border border-border/60 bg-bg-card/90 p-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
