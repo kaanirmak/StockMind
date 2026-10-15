@@ -1,7 +1,6 @@
 'use client';
 
 import { create } from 'zustand';
-import { createClient } from '@/lib/supabase/client';
 
 export type PriceAlertType = 'price' | 'percent_up' | 'percent_down' | 'percent_both';
 
@@ -167,6 +166,9 @@ function saveLocalWatchlist(userId: string | null | undefined, items: WatchlistI
 }
 
 async function getServerWatchlistId(userId: string): Promise<string | null> {
+  // Keep the browser client lazy so pure portfolio/alert calculations can be
+  // imported in native test runners without loading the SSR auth package.
+  const { createClient } = await import('@/lib/supabase/client');
   const supabase = createClient();
   const existing = await supabase.from('watchlists').select('id').eq('user_id', userId).order('created_at').limit(1).maybeSingle();
   if (existing.error) throw existing.error;
