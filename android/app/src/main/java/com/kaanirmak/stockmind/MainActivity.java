@@ -655,7 +655,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fullUrl));
-                request.setTitle("StockMind v1.2.1 Güncellemesi");
+                request.setTitle("StockMind v1.3.0 Güncellemesi");
                 request.setDescription("Yeni StockMind sürümü indiriliyor...");
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 
