@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -102,7 +104,7 @@ export default function PortfolioSummary() {
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).StockMindAndroid && summary.totalValue > 0) {
       try {
-        const sign = periodData.pnl >= 0 ? '↗ +' : '↘ ';
+        const sign = periodData.pnl >= 0 ? " +" : " ";
         const pnlStr = `${sign}${formatCurrency(Math.abs(periodData.pnl))}`;
         const pnlPctStr = `(%${periodData.pnlPercent >= 0 ? '+' : ''}${periodData.pnlPercent.toFixed(2)})`;
         const costStr = usdTry
@@ -133,7 +135,8 @@ export default function PortfolioSummary() {
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
             handleCardClick();
           }
         }}
@@ -147,8 +150,8 @@ export default function PortfolioSummary() {
         <div
           className={`absolute inset-0 transition-colors duration-700 ${
             isPositive
-              ? 'bg-gradient-to-br from-[#24114f] via-[#10272b] to-[#071318]'
-              : 'bg-gradient-to-br from-[#280f3a] via-[#260e1d] to-[#12050e]'
+              ? 'bg-gradient-to-br from-[var(--palette-color24114f)] via-[var(--palette-color10272b)] to-[var(--palette-color071318)]'
+              : 'bg-gradient-to-br from-[var(--palette-color280f3a)] via-[var(--palette-color260e1d)] to-[var(--palette-color12050e)]'
           }`}
         />
 
@@ -269,7 +272,7 @@ export default function PortfolioSummary() {
                   }}
                   className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15 active:scale-95 cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>📥</span>
+                  <span><UIIcon name="download" className="w-4 h-4" /></span>
                   <span>Excel / Ekstre Yükle</span>
                 </button>
 
@@ -277,11 +280,11 @@ export default function PortfolioSummary() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    router.push('/markets');
+                    router.push('/piyasalar');
                   }}
                   className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-all border border-white/10 active:scale-95 cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>📈</span>
+                  <span><UIIcon name="chart" className="w-4 h-4" /></span>
                   <span>Piyasaları İncele</span>
                 </button>
               </div>
@@ -325,7 +328,7 @@ export default function PortfolioSummary() {
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <span>Maliyet: {formatCurrency(summary.totalCost)}</span>
+                  <span>{summary.cash?.configured ? 'Net Yatırılan' : 'Maliyet'}: {formatCurrency(summary.totalCost)}</span>
                   {usdTry && usdTry > 0 ? (
                     <>
                       <span>•</span>
@@ -344,10 +347,12 @@ export default function PortfolioSummary() {
                 </span>
               </div>
 
+              {summary.cash?.configured && summary.cash.hasDeficit && <p role="alert" className="mt-2 p-2 rounded-xl bg-warning/15 text-white text-xs">Nakit açığı var; geçmiş para girişlerini kontrol edin.</p>}
+              {!!summary.cash?.missingRates.length && <p role="alert" className="mt-2 p-2 rounded-xl bg-warning/15 text-white text-xs">Nakit için güncel kur alınamadı; toplam değer eksik olabilir.</p>}
               {/* Valuation Warning Banner if any live quotes were missing */}
               {summary.valuationStatus?.hasMissingPrices && (
                 <div className="mt-2.5 py-1.5 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-medium flex items-center gap-1.5">
-                  <span className="shrink-0">⚠️</span>
+                  <span className="shrink-0"><UIIcon name="warning" className="w-4 h-4" /></span>
                   <span>Bazı varlıkların anlık piyasa fiyatı henüz alınamadı; değerlemede son maliyet fiyatı kullanılıyor.</span>
                 </div>
               )}

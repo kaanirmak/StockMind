@@ -1,3 +1,4 @@
+import { palette } from '@/theme/palette';
 // StockMind Quant Lab - İleri Seviye Temel & Kantitatif Değerleme Modelleri
 
 export interface DCFParams {
@@ -235,14 +236,14 @@ export function evaluatePiotroski(symbol: string, livePrice?: number): Piotroski
 
   const score = items.filter((i) => i.passed).length;
   let verdict: PiotroskiResult['verdict'] = 'Zayıf / Riskli';
-  let color = '#ef4444';
+  let color: string = palette.danger;
 
   if (score >= 8) {
     verdict = 'Çok Güçlü';
-    color = '#10b981';
+    color = palette.success;
   } else if (score >= 5) {
     verdict = 'Dengeli';
-    color = '#f59e0b';
+    color = palette.warning;
   }
 
   return {
@@ -289,16 +290,16 @@ export function evaluateAltmanZ(symbol: string, livePrice?: number): AltmanResul
   const zScore = Number((w1 + w2 + w3 + w4 + w5).toFixed(2));
 
   let zone: AltmanResult['zone'] = 'Sıkıntı Bölgesi (Distress)';
-  let color = '#ef4444';
+  let color: string = palette.danger;
   let interpretation = 'Şirket önümüzdeki 2 yıl içinde likidite ve borç çevirme riskleriyle karşılaşabilir. Dikkatli izlenmeli.';
 
   if (zScore > 2.99) {
     zone = 'Güvenli Bölge (Safe)';
-    color = '#10b981';
+    color = palette.success;
     interpretation = 'Şirketin bilançosu son derece sağlam. İflas riski sıfıra yakın, nakit yaratma gücü yüksek.';
   } else if (zScore >= 1.81) {
     zone = 'Gri Bölge (Grey)';
-    color = '#f59e0b';
+    color = palette.warning;
     interpretation = 'Orta seviye risk. Şirketin borçluluğu makul fakat makroekonomik faiz dalgalanmalarına karşı duyarlı.';
   }
 
@@ -431,21 +432,21 @@ export function runMonteCarloSimulation(currentPrice: number, volatility = 0.32,
         name: 'Dolar Kuru Şoku (+%25 USD/TRY)',
         scenario: 'Döviz kurunda ani %25 artış durumunda',
         impactPercent: +18.5,
-        impactColor: '#10b981',
+        impactColor: palette.success,
         notes: 'Şirketin döviz bazlı ihracat gelirleri yüksek olduğundan kârlılık pozitif etkilenir.',
       },
       {
         name: 'Merkez Bankası Faiz Şoku (+500 bps)',
         scenario: 'Politika faizinin 500 baz puan artırılması',
         impactPercent: -7.2,
-        impactColor: '#ef4444',
+        impactColor: palette.danger,
         notes: 'Kısa vadeli borçlanma maliyetleri yükselir, iç talepte yavaşlama beklenir.',
       },
       {
         name: 'Küresel Resesyon & Talep Daralması',
         scenario: 'Küresel ekonomide %20 hacim daralması',
         impactPercent: -12.8,
-        impactColor: '#ef4444',
+        impactColor: palette.danger,
         notes: 'Faaliyet kâr marjında daralma ve navlun/hammadde talebinde düşüş öngörülür.',
       },
     ],

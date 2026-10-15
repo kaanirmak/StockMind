@@ -1,0 +1,77 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const ts = require('typescript');
+function load(file, globals = {}) {
+  const module = { exports: {} };
+  const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  vm.runInNewContext(source, { module, exports: module.exports, Date, Map, Set, Symbol, console, ...globals });
+  return module.exports;
+}
+test('Nested overlays keep background locked until the last overlay closes and restore scroll/style', () => {
+  const cleanups = [];
+  const body = { style: { position: 'relative', top: '', width: '80%', overflow: 'auto', paddingRight: '2px' } };
+  const html = { style: { overflow: 'clip' }, clientWidth: 380, dataset: {} };
+  const scrolls = [];
+  const { useScrollLock } = load('src/hooks/useScrollLock.ts', { require: () => ({ useEffect: (effect) => cleanups.push(effect()) }), document: { body, documentElement: html }, window: { scrollY: 420, innerWidth: 390, scrollTo: (args) => scrolls.push(args) } });
+  useScrollLock(true);
+  useScrollLock(true);
+  useScrollLock(false);
+  assert.equal(body.style.position, 'fixed');
+  assert.equal(body.style.top, '-420px');
+  cleanups[0]();
+  assert.equal(body.style.overflow, 'hidden');
+  cleanups[1]();
+  assert.equal(body.style.position, 'relative');
+  assert.equal(body.style.width, '80%');
+  assert.equal(body.style.overflow, 'auto');
+  assert.equal(body.style.paddingRight, '2px');
+  assert.equal(html.style.overflow, 'clip');
+  assert.equal(html.dataset.scrollLocked, undefined);
+  assert.equal(scrolls[0].top, 420);
+});
+test('Public market requests are deduplicated, cached, and explicitly refreshable', async () => {
+  let requests = 0;
+  let resolve;
+  const { marketJson } = load('src/lib/api/clientCache.ts', { fetch: () => { requests++; return new Promise((r) => { resolve = () => r({ ok: true, json: async () => ({ success: true, data: requests }) }); }); } });
+  const a = marketJson('/api/stocks');
+  const b = marketJson('/api/stocks');
+  assert.equal(requests, 1);
+  resolve();
+  assert.equal((await a).data, (await b).data);
+  assert.equal((await marketJson('/api/stocks')).data, 1);
+  assert.equal(requests, 1);
+  const forced = marketJson('/api/stocks', 30_000, true);
+  assert.equal(requests, 2);
+  resolve();
+  assert.equal((await forced).data, 2);
+});
+test('Failed market requests are never cached and can be retried', async () => {
+  let requests = 0;
+  const { marketJson } = load('src/lib/api/clientCache.ts', { fetch: async () => ({ ok: ++requests > 1, json: async () => ({ success: true }) }) });
+  await assert.rejects(marketJson('/api/stocks'));
+  await marketJson('/api/stocks');
+  assert.equal(requests, 2);
+});
+test('Notification inbox migrates old alarm fields and refuses external navigation', () => {
+  let stored = JSON.stringify([{ id: 'old', title: 'Alarm', route: '/stocks/THYAO', category: 'price', timestamp: 'Az önce', read: false }, { id: 'unsafe', route: 'https://example.com' }]);
+  const events = [];
+  const { readInbox, saveInbox, safeInboxLink } = load('src/lib/notifications/inbox.ts', { localStorage: { getItem: () => stored, setItem: (_, value) => { stored = value; } }, window: { dispatchEvent: (e) => events.push(e.type) }, Event: class { constructor(type) { this.type = type; } } });
+  const items = readInbox();
+  assert.equal(items[0].link, '/stocks/THYAO');
+  assert.equal(items[0].category, 'market');
+  assert.equal(items[0].time, 'Az önce');
+  assert.equal(items[1].link, undefined);
+  assert.equal(safeInboxLink('//evil.com'), undefined);
+  assert.equal(safeInboxLink('/stocks/\\evil'), undefined);
+  saveInbox(items.map((n) => ({ ...n, archived: true, read: true })));
+  assert.equal(readInbox()[0].archived, true);
+  assert.deepEqual(events, ['stockmind:inbox']);
+});
+test('Losses have an explicit minus sign so meaning does not depend on color', () => {
+  const { getPnLSign } = load('src/lib/utils/format.ts');
+  assert.equal(getPnLSign(-12.4), '-');
+  assert.equal(getPnLSign(12.4), '+');
+  assert.equal(getPnLSign(0), '');
+});

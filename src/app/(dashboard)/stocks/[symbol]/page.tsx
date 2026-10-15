@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, use } from 'react';
 import Link from 'next/link';
@@ -82,7 +84,7 @@ export default function StockDetailPage({
 
     showToast({
       type: 'success',
-      title: added ? 'Takip Listesine Eklendi ⭐' : 'Takip Listesinden Çıkarıldı',
+      title: added ? "Takip Listesine Eklendi " : 'Takip Listesinden Çıkarıldı',
       message: `${symbol} favori listenize ${added ? 'eklendi' : 'çıkarıldı'}.`,
     });
   };
@@ -236,8 +238,14 @@ export default function StockDetailPage({
         </div>
       </div>
 
+      <div className="sm:hidden sticky top-14 z-20 flex items-center gap-2 p-2 rounded-xl border border-border bg-bg-card shadow-card">
+        <span className="text-xs font-bold truncate max-w-16">{symbol}</span>
+        <span className="text-base font-bold tabular-nums flex-1 truncate">{currSymbol}{currentPrice.toLocaleString('tr-TR', { maximumFractionDigits: currentPrice < 1 ? 4 : 2 })}</span>
+        <span className={`text-xs font-semibold tabular-nums ${isPositive ? 'text-success' : 'text-danger'}`}>{isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2)}</span>
+        <button type="button" aria-label={isWatchlisted ? 'Takip listesinden çıkar' : 'Takip listesine ekle'} aria-pressed={isWatchlisted} onClick={handleWatchlistToggle} className={`min-w-11 inline-flex items-center justify-center ${isWatchlisted ? 'text-warning' : 'text-text-secondary'}`}><svg viewBox="0 0 24 24" className="w-5 h-5" fill={isWatchlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.75"><path d="m12 3 3 6 6 .8-4.5 4.5 1.1 6.3L12 17.5l-5.6 3.1 1.1-6.3L3 9.8 9 9l3-6Z" /></svg></button>
+      </div>
       {/* Midas-Style Symbol & Price Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="hidden sm:flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           {/* Symbol & Market Status Badge */}
           <div className="flex items-center gap-2.5">
@@ -555,7 +563,7 @@ export default function StockDetailPage({
             )}`}
           >
             <Button variant="secondary" size="sm">
-              ⚡ AI
+               AI
             </Button>
           </Link>
 
@@ -624,7 +632,7 @@ export default function StockDetailPage({
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              <span>🏛️</span>
+              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span>Aracı Kurumlar</span>
             </button>
             <button
@@ -636,7 +644,7 @@ export default function StockDetailPage({
                   : 'text-text-muted hover:text-text-primary'
               }`}
             >
-              <span>📝</span>
+              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span>Sanal Portföy</span>
             </button>
           </div>
@@ -689,7 +697,7 @@ export default function StockDetailPage({
                       : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
                   }`}
                 >
-                  ⭐ Popüler ({BROKERS.filter((b) => b.popular).length})
+                   Popüler ({BROKERS.filter((b) => b.popular).length})
                 </button>
                 <button
                   type="button"
@@ -700,7 +708,7 @@ export default function StockDetailPage({
                       : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
                   }`}
                 >
-                  📱 FinTech ({BROKERS.filter((b) => b.category === 'Dijital / FinTech').length})
+                   FinTech ({BROKERS.filter((b) => b.category === 'Dijital / FinTech').length})
                 </button>
                 <button
                   type="button"
@@ -711,7 +719,7 @@ export default function StockDetailPage({
                       : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
                   }`}
                 >
-                  🏦 Bankalar ({BROKERS.filter((b) => b.category === 'Banka İştiraki').length})
+                   Bankalar ({BROKERS.filter((b) => b.category === 'Banka İştiraki').length})
                 </button>
                 <button
                   type="button"
@@ -722,7 +730,7 @@ export default function StockDetailPage({
                       : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
                   }`}
                 >
-                  📈 Bağımsız ({BROKERS.filter((b) => b.category === 'Bağımsız Kurum').length})
+                   Bağımsız ({BROKERS.filter((b) => b.category === 'Bağımsız Kurum').length})
                 </button>
               </div>
 
@@ -799,7 +807,7 @@ export default function StockDetailPage({
 
               {/* Disclaimer */}
               <div className="p-3 bg-bg-tertiary/60 rounded-xl border border-border/50 text-[11px] text-text-muted leading-relaxed flex items-start gap-2">
-                <span className="text-sm shrink-0">🛡️</span>
+                <span className="text-sm shrink-0"><UIIcon name="sparkles" className="w-4 h-4" /></span>
                 <span>
                   <strong>Yasal Bilgilendirme:</strong> StockMind doğrudan emir iletimi veya aracılık yapmaz. Tüm işlemler seçtiğiniz SPK lisanslı yetkili aracı kurumun kendi resmi arayüzü üzerinden gerçekleştirilir.
                 </span>

@@ -1,3 +1,4 @@
+import { palette } from '@/theme/palette';
 // Application Constants
 
 export const APP_NAME = 'StockMind';
@@ -42,13 +43,13 @@ export const TECHNICAL_INDICATORS = [
 
 // Risk levels for funds
 export const RISK_LEVELS = {
-  1: { label: 'Çok Düşük', color: '#22c55e' },
-  2: { label: 'Düşük', color: '#84cc16' },
-  3: { label: 'Düşük-Orta', color: '#eab308' },
-  4: { label: 'Orta', color: '#f97316' },
-  5: { label: 'Orta-Yüksek', color: '#ef4444' },
-  6: { label: 'Yüksek', color: '#dc2626' },
-  7: { label: 'Çok Yüksek', color: '#991b1b' },
+  1: { label: 'Çok Düşük', color: palette.color22c55e },
+  2: { label: 'Düşük', color: palette.color84cc16 },
+  3: { label: 'Düşük-Orta', color: palette.coloreab308 },
+  4: { label: 'Orta', color: palette.colorf97316 },
+  5: { label: 'Orta-Yüksek', color: palette.danger },
+  6: { label: 'Yüksek', color: palette.colordc2626 },
+  7: { label: 'Çok Yüksek', color: palette.color991b1b },
 } as const;
 
 // Navigation items

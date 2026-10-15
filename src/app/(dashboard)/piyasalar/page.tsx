@@ -1,11 +1,13 @@
 'use client';
+import { Icon as MarketIcon } from '@/components/ui/Icon';
+import { WindowedRows } from '@/components/ui/WindowedRows';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
-import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo } from '@/components/ui';
+import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -35,7 +37,7 @@ function PiyasalarContent() {
   const router = useRouter();
 
   const rawParam = (searchParams.get('market') || searchParams.get('tab') || searchParams.get('exchange') || 'ALL').toUpperCase();
-  const initialMarket: MarketId = 
+  const initialMarket: MarketId =
     rawParam === 'ALL' || rawParam === 'OZET' || rawParam === 'TUMU' ? 'ALL' :
     rawParam === 'FUNDS' || rawParam === 'TEFAS' ? 'TEFAS' :
     rawParam === 'COMMODITY' || rawParam === 'EMTIA' || rawParam === 'ALTIN' ? 'COMMODITY' :
@@ -63,7 +65,7 @@ function PiyasalarContent() {
   const [stockSearch, setStockSearch] = useState<string>(initialSearch);
   const [stockSortBy, setStockSortBy] = useState<'changePercent' | 'price' | 'volume' | 'marketCap'>('marketCap');
   const [stockSortOrder, setStockSortOrder] = useState<'asc' | 'desc'>('desc');
-  
+
   // Infinite scroll / lazy loading for stocks (loads in chunks of 30)
   const [stockLimit, setStockLimit] = useState<number>(30);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,7 @@ function PiyasalarContent() {
   const [fundSortOrder, setFundSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Shared view mode
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   const { showToast } = useToast();
@@ -128,7 +131,7 @@ function PiyasalarContent() {
 
   // Stocks data (active when activeMarket is BIST, COMMODITY, CRYPTO, FOREX, INDEX, NASDAQ, or NYSE)
   const isStocksMarket = activeMarket !== 'TEFAS' && activeMarket !== 'ALL';
-  const { stocks, loading: stocksLoading, error: stocksError } = useStocks(
+  const { stocks, loading: stocksLoading, error: stocksError, updatedAt: stocksUpdatedAt, refetch: refetchStocks } = useStocks(
     isStocksMarket
       ? {
           exchange: activeMarket,
@@ -175,7 +178,7 @@ function PiyasalarContent() {
     return Number(item[key]) || 0;
   };
 
-  const sortedStocks = [...stocks].sort((a, b) => {
+  const sortedStocks = stocks.filter((s) => !watchlistOnly || checkWatchlisted(s.symbol)).sort((a, b) => {
     const valA = getNormalizedValue(a, stockSortBy);
     const valB = getNormalizedValue(b, stockSortBy);
 
@@ -217,7 +220,7 @@ function PiyasalarContent() {
   };
 
   // Funds data
-  const { funds, loading: fundsLoading, error: fundsError } = useFunds(
+  const { funds, loading: fundsLoading, error: fundsError, refetch: refetchFunds } = useFunds(
     {
       category: selectedCategory,
       search: fundSearch,
@@ -255,42 +258,42 @@ function PiyasalarContent() {
 
   const indexCategories = [
     { id: 'ALL', label: 'Tüm Endeksler' },
-    { id: 'BIST', label: '🇹🇷 BIST Endeksleri' },
-    { id: 'US', label: '🇺🇸 ABD (S&P, Nasdaq, Dow)' },
-    { id: 'EU', label: '🇪🇺 Avrupa (DAX, FTSE, CAC)' },
-    { id: 'ASIA', label: '🌏 Asya & Pasifik' },
+    { id: 'BIST', label: " BIST Endeksleri" },
+    { id: 'US', label: " ABD (S&P, Nasdaq, Dow)" },
+    { id: 'EU', label: " Avrupa (DAX, FTSE, CAC)" },
+    { id: 'ASIA', label: " Asya & Pasifik" },
   ];
 
   const commodityCategories = [
     { id: 'ALL', label: 'Tüm Emtialar' },
-    { id: 'GOLD_TR', label: '🪙 Altın & Kıymetli (TL)' },
-    { id: 'METALS', label: '🥈 Küresel Metaller ($)' },
-    { id: 'ENERGY', label: '⚡ Enerji & Petrol' },
-    { id: 'AGRI', label: '🌾 Tarım & Gıda' },
+    { id: 'GOLD_TR', label: " Altın & Kıymetli (TL)" },
+    { id: 'METALS', label: " Küresel Metaller ($)" },
+    { id: 'ENERGY', label: " Enerji & Petrol" },
+    { id: 'AGRI', label: " Tarım & Gıda" },
   ];
 
   const forexCategories = [
     { id: 'ALL', label: 'Tüm Kurlar' },
-    { id: 'TRY', label: '🇹🇷 Türk Lirası Kurları' },
-    { id: 'MAJOR', label: '🌐 Majör Pariteler' },
+    { id: 'TRY', label: " Türk Lirası Kurları" },
+    { id: 'MAJOR', label: " Majör Pariteler" },
   ];
 
   const cryptoCategories = [
     { id: 'ALL', label: 'Tüm Kriptolar' },
-    { id: 'MAJOR', label: '⭐ Majör Kriptolar' },
-    { id: 'ALT', label: '🚀 Altcoinler' },
+    { id: 'MAJOR', label: " Majör Kriptolar" },
+    { id: 'ALT', label: " Altcoinler" },
   ];
 
   const sectors = ['ALL', 'Bankacılık', 'Havacılık', 'Savunma', 'Sanayi', 'Perakende', 'Teknoloji', 'Enerji', 'Holding'];
 
   const fundCategories = [
     { id: 'ALL', label: 'Tüm Fonlar' },
-    { id: 'Hisse Senedi Fonu', label: '📈 Hisse' },
-    { id: 'Değişken Fon', label: '⚖️ Değişken' },
-    { id: 'Fon Sepeti Fonu', label: '🌐 Yabancı' },
-    { id: 'Kıymetli Madenler Fonu', label: '🥇 Altın' },
-    { id: 'Para Piyasası Fonu', label: '💵 Para Piy.' },
-    { id: 'Borçlanma Araçları Fonu', label: '🏦 Borçlanma' },
+    { id: 'Hisse Senedi Fonu', label: " Hisse" },
+    { id: 'Değişken Fon', label: " Değişken" },
+    { id: 'Fon Sepeti Fonu', label: " Yabancı" },
+    { id: 'Kıymetli Madenler Fonu', label: " Altın" },
+    { id: 'Para Piyasası Fonu', label: " Para Piy." },
+    { id: 'Borçlanma Araçları Fonu', label: " Borçlanma" },
   ];
 
   const getBadgeVariant = (ex: string) => {
@@ -359,7 +362,7 @@ function PiyasalarContent() {
             });
             showToast({
               type: 'success',
-              title: added ? 'Takip Listesine Eklendi ⭐' : 'Listeden Çıkarıldı',
+              title: added ? "Takip Listesine Eklendi " : 'Listeden Çıkarıldı',
               message: `${item.symbol} ${added ? 'eklendi' : 'çıkarıldı'}.`,
             });
           }}
@@ -429,7 +432,7 @@ function PiyasalarContent() {
                   : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border/60'
               }`}
             >
-              <span className="text-sm sm:text-base">{m.icon}</span>
+              <MarketIcon name={m.id === 'TEFAS' ? 'layers' : m.id === 'FOREX' ? 'wallet' : 'chart'} />
               <span>{m.label}</span>
             </button>
           );
@@ -458,7 +461,7 @@ function PiyasalarContent() {
                     className="glass-card min-w-[148px] snap-start p-3.5 hover:border-accent/40 transition-all cursor-pointer group sm:min-w-0"
                   >
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className="text-base">{t.flag}</span>
+                      <MarketIcon name="chart" />
                       <span className="text-xs font-bold text-text-primary truncate group-hover:text-accent transition-colors">
                         {t.name}
                       </span>
@@ -484,7 +487,7 @@ function PiyasalarContent() {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
-                      <span>🪙 Kıymetli Madenler & Altın</span>
+                      <span> Kıymetli Madenler & Altın</span>
                     </h3>
                     <button
                       onClick={() => handleMarketChange('COMMODITY')}
@@ -504,7 +507,7 @@ function PiyasalarContent() {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
-                      <span>💱 Döviz & Para Kurları</span>
+                      <span> Döviz & Para Kurları</span>
                     </h3>
                     <button
                       onClick={() => handleMarketChange('FOREX')}
@@ -544,7 +547,7 @@ function PiyasalarContent() {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
-                      <span>🌍 Küresel Borsa Endeksleri</span>
+                      <span> Küresel Borsa Endeksleri</span>
                     </h3>
                     <button
                       onClick={() => handleMarketChange('INDEX')}
@@ -564,7 +567,7 @@ function PiyasalarContent() {
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
-                      <span>🇹🇷 Borsa İstanbul Trend Hisseleri</span>
+                      <span> Borsa İstanbul Trend Hisseleri</span>
                     </h3>
                     <button
                       onClick={() => handleMarketChange('BIST')}
@@ -590,8 +593,12 @@ function PiyasalarContent() {
       {/* ═══════════════════ 2. SPECIFIC STOCKS & MARKETS TABS ═══════════════════ */}
       {isStocksMarket && (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
+            <button type="button" aria-pressed={watchlistOnly} onClick={() => setWatchlistOnly(!watchlistOnly)} className={`px-3 rounded-xl border ${watchlistOnly ? 'bg-accent/15 border-accent text-accent' : 'border-border'}`}>{watchlistOnly ? 'Takip Ettiklerim' : 'Tüm Varlıklar'} · Filtreyi Değiştir</button>
+            <span>{stocksUpdatedAt ? `Son kontrol: ${stocksUpdatedAt.toLocaleTimeString('tr-TR')}` : 'Fiyatlar yükleniyor'}</span>
+          </div>
           {/* Filters */}
-          <div className="glass-card p-3 sm:p-4 space-y-3">
+          <div className="glass-card p-3 sm:p-4 space-y-3 sticky top-14 sm:static z-20 !bg-bg-card">
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
               {/* Search */}
               <div className="flex-1">
@@ -655,6 +662,9 @@ function PiyasalarContent() {
                 </button>
               </div>
             </div>
+            <details className="rounded-xl border border-border px-3">
+              <summary className="min-h-11 flex items-center text-xs font-semibold text-text-secondary cursor-pointer">Gelişmiş Filtreler</summary>
+              <div className="space-y-2 pb-2">
             {/* Sub-Category / Sector Filter Chips */}
             {activeMarket === 'INDEX' && (
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
@@ -746,13 +756,15 @@ function PiyasalarContent() {
                 ))}
               </div>
             )}
+              </div>
+            </details>
           </div>
 
           {/* Stocks Content */}
           {stocksLoading ? (
             <div className="glass-card p-6"><TableSkeleton rows={8} cols={6} /></div>
           ) : stocksError ? (
-            <div className="glass-card p-8 text-center text-danger"><p>{stocksError}</p></div>
+            <StateView kind="error" title="Fiyatlar yüklenemedi" description={stocksError} action={<Button onClick={() => void refetchStocks()}>Tekrar Dene</Button>} />
           ) : sortedStocks.length === 0 ? (
             <div className="glass-card p-12 text-center text-text-muted space-y-2">
               <svg className="w-12 h-12 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -783,7 +795,7 @@ function PiyasalarContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {visibleStocks.map((stock) => {
+                    <WindowedRows columns={8}>{visibleStocks.map((stock) => {
                       const isPositive = (stock.changePercent || 0) >= 0;
                       const curr = (stock.currency as string) === 'TRY' ? '₺' : (stock.currency as string) === 'EUR' ? '€' : '$';
                       const badgeVariant = getBadgeVariant(stock.exchange);
@@ -854,7 +866,7 @@ function PiyasalarContent() {
                                 onClick={(e) => {
                                   e.preventDefault(); e.stopPropagation();
                                   const added = toggleWatchlist({ symbol: stock.symbol, name: stock.name, assetType: 'stock', price: stock.price, changePercent: stock.changePercent, exchange: stock.exchange });
-                                  showToast({ type: 'success', title: added ? 'Takip Listesine Eklendi ⭐' : 'Listeden Çıkarıldı', message: `${stock.symbol} ${added ? 'eklendi' : 'çıkarıldı'}.` });
+                                  showToast({ type: 'success', title: added ? "Takip Listesine Eklendi " : 'Listeden Çıkarıldı', message: `${stock.symbol} ${added ? 'eklendi' : 'çıkarıldı'}.` });
                                 }}
                                 className={`p-1 sm:p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(stock.symbol) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
                               >
@@ -871,7 +883,7 @@ function PiyasalarContent() {
                           </td>
                         </tr>
                       );
-                    })}
+                    })}</WindowedRows>
                   </tbody>
                 </table>
               </div>
@@ -998,7 +1010,7 @@ function PiyasalarContent() {
           {fundsLoading ? (
             <div className="glass-card p-6"><TableSkeleton rows={8} cols={6} /></div>
           ) : fundsError ? (
-            <div className="glass-card p-8 text-center text-danger"><p>{fundsError}</p></div>
+            <StateView kind="error" title="Fonlar yüklenemedi" description={fundsError} action={<Button onClick={() => void refetchFunds()}>Tekrar Dene</Button>} />
           ) : sortedFunds.length === 0 ? (
             <div className="glass-card p-12 text-center text-text-muted space-y-2">
               <svg className="w-12 h-12 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -1031,7 +1043,7 @@ function PiyasalarContent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {visibleFunds.map((fund) => {
+                    <WindowedRows columns={8}>{visibleFunds.map((fund) => {
                       const dailyPos = (fund.dailyReturn || 0) >= 0;
                       const yearlyPos = (fund.yearlyReturn || 0) >= 0;
                       return (
@@ -1072,7 +1084,7 @@ function PiyasalarContent() {
                                 onClick={(e) => {
                                   e.preventDefault(); e.stopPropagation();
                                   const added = toggleWatchlist({ symbol: fund.code, name: fund.name, assetType: 'fund', price: fund.price || 0, changePercent: fund.dailyReturn || 0, exchange: 'TEFAS' as any });
-                                  showToast({ type: 'success', title: added ? 'Takip Listesine Eklendi ⭐' : 'Listeden Çıkarıldı', message: `${fund.code} ${added ? 'eklendi' : 'çıkarıldı'}.` });
+                                  showToast({ type: 'success', title: added ? "Takip Listesine Eklendi " : 'Listeden Çıkarıldı', message: `${fund.code} ${added ? 'eklendi' : 'çıkarıldı'}.` });
                                 }}
                                 className={`p-1 sm:p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(fund.code) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
                               >
@@ -1089,7 +1101,7 @@ function PiyasalarContent() {
                           </td>
                         </tr>
                       );
-                    })}
+                    })}</WindowedRows>
                   </tbody>
                 </table>
               </div>

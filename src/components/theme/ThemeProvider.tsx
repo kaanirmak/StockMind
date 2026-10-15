@@ -65,6 +65,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       document.head.appendChild(metaTag);
     }
     metaTag.content = resolved;
+    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = getComputedStyle(root).getPropertyValue('--bg-primary').trim();
 
     try {
       localStorage.setItem(STORAGE_KEY, theme);
@@ -77,6 +79,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setResolvedTheme(newResolved);
         root.classList.remove('light', 'dark');
         root.classList.add(newResolved);
+        metaTag.content = newResolved;
+        if (themeColor) themeColor.content = getComputedStyle(root).getPropertyValue('--bg-primary').trim();
       }
     };
 

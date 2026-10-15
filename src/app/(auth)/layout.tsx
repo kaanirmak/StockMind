@@ -44,12 +44,12 @@ export default function AuthLayout({
       </div>
 
       {/* Left Side — Branding Hero Panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center border-r border-slate-200/80 dark:border-white/5 bg-gradient-to-br from-violet-50/90 via-slate-50 to-indigo-50/80 dark:from-[#0a0e1a] dark:via-[#0f1a2e] dark:to-[#1a1040]">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center border-r border-slate-200/80 dark:border-white/5 bg-gradient-to-br from-violet-50/90 via-slate-50 to-indigo-50/80 dark:from-[var(--palette-color0a0e1a)] dark:via-[var(--palette-color0f1a2e)] dark:to-[var(--palette-color1a1040)]">
         {/* Ambient Glowing Orbs */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-violet-400/20 dark:bg-accent/15 rounded-full blur-[120px] animate-float pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-fuchsia-400/20 dark:bg-accent-secondary/15 rounded-full blur-[100px] animate-float pointer-events-none" style={{ animationDelay: '1.5s' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-400/15 dark:bg-success/5 rounded-full blur-[90px] pointer-events-none" />
-        
+
         {/* Subtle Decorative Grid Pattern */}
         <div
           className="absolute inset-0 opacity-[0.04] dark:opacity-[0.03] pointer-events-none"
@@ -75,7 +75,7 @@ export default function AuthLayout({
               className="h-12 lg:h-14 w-auto object-contain hidden dark:block group-hover:scale-105 transition-transform drop-shadow-[0_0_24px_rgba(139,92,246,0.35)]"
             />
           </Link>
-          
+
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white leading-tight mb-4 tracking-tight">
             Akıllı Yatırım
             <br />
@@ -84,9 +84,9 @@ export default function AuthLayout({
             </span>{' '}
             Alın
           </h1>
-          
+
           <p className="text-slate-600 dark:text-slate-300 text-base lg:text-lg leading-relaxed mb-8">
-            BIST, NYSE, NASDAQ ve TEFAS fonlarını tek platformdan takip edin. 
+            BIST, NYSE, NASDAQ ve TEFAS fonlarını tek platformdan takip edin.
             AI destekli analizlerle portföyünüzü optimize edin.
           </p>
 

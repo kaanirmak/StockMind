@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -9,6 +11,7 @@ export interface ModalProps {
   description?: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  presentation?: 'dialog' | 'sheet' | 'drawer';
   showCloseButton?: boolean;
 }
 
@@ -19,17 +22,21 @@ export const Modal: React.FC<ModalProps> = ({
   description,
   children,
   size = 'md',
+  presentation = 'dialog',
   showCloseButton = true,
 }) => {
   const dialogRef = React.useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = React.useRef<HTMLElement | null>(null);
+  const closeRef = React.useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
+  useScrollLock(isOpen);
   const titleId = React.useId();
   const descriptionId = React.useId();
 
   useEffect(() => {
     if (isOpen) {
       previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
-      document.body.style.overflow = 'hidden';
+
 
       // Focus first interactive element or dialog body
       const timer = setTimeout(() => {
@@ -38,19 +45,20 @@ export const Modal: React.FC<ModalProps> = ({
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
           );
           if (focusable.length > 0) {
-            focusable[0].focus();
+            focusable[0].focus({ preventScroll: true });
           } else {
-            dialogRef.current.focus();
+            dialogRef.current.focus({ preventScroll: true });
           }
         }
       }, 50);
 
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-          onClose();
+          if (dialogRef.current?.closest('[role="dialog"]') === Array.from(document.querySelectorAll('[role="dialog"]')).at(-1)) closeRef.current();
           return;
         }
 
+        if (dialogRef.current?.closest('[role="dialog"]') !== Array.from(document.querySelectorAll('[role="dialog"]')).at(-1)) return;
         if (e.key === 'Tab' && dialogRef.current) {
           const focusable = Array.from(
             dialogRef.current.querySelectorAll<HTMLElement>(
@@ -80,18 +88,16 @@ export const Modal: React.FC<ModalProps> = ({
 
       return () => {
         clearTimeout(timer);
-        document.body.style.overflow = 'unset';
+
         window.removeEventListener('keydown', handleKeyDown);
-        if (previouslyFocusedElementRef.current && previouslyFocusedElementRef.current.focus) {
+        if (previouslyFocusedElementRef.current?.isConnected && previouslyFocusedElementRef.current.focus) {
           previouslyFocusedElementRef.current.focus();
         }
       };
-    } else {
-      document.body.style.overflow = 'unset';
     }
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const sizeClasses = {
     sm: 'max-w-md',
@@ -101,13 +107,13 @@ export const Modal: React.FC<ModalProps> = ({
     full: 'max-w-6xl',
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
       aria-describedby={description ? descriptionId : undefined}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 pt-3 sm:p-6 overflow-y-auto"
+      className={`fixed inset-0 z-50 flex items-end ${presentation === 'dialog' ? 'sm:items-center' : 'sm:items-end'} justify-center px-0 pt-3 sm:p-6 overflow-y-auto ${presentation === 'drawer' ? 'md:justify-end md:p-0 md:items-stretch' : ''}`}
     >
       {/* Backdrop */}
       <div
@@ -120,7 +126,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} bg-bg-card border border-border/80 rounded-t-2xl sm:rounded-2xl shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-slide-up sm:animate-scale-in mt-auto sm:my-8 max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] flex flex-col focus:outline-none`}
+        className={`relative w-full ${sizeClasses[size]} ${presentation === 'drawer' ? 'md:h-dvh md:max-h-dvh md:rounded-none md:my-0 md:animate-slide-in-right' : ''} bg-bg-card border border-border/80 rounded-t-2xl ${presentation === 'dialog' ? 'sm:rounded-2xl' : 'sm:rounded-t-2xl'} shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-slide-up sm:animate-scale-in mt-auto ${presentation === 'dialog' ? 'sm:my-8' : 'sm:my-0'} max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] flex flex-col focus:outline-none`}
       >
         {/* Modal Header */}
         {(title || showCloseButton) && (
@@ -153,8 +159,9 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Modal Content */}
-        <div className="px-4 sm:px-6 pt-4 sm:py-5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] overflow-y-auto overscroll-contain flex-1">{children}</div>
+        <div className="px-4 sm:px-6 pt-4 sm:py-5 pb-[max(1rem,env(safe-area-inset-bottom,0px))] overflow-y-auto overscroll-contain min-h-0 flex-1">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

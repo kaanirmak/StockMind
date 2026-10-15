@@ -77,6 +77,7 @@ export interface ValuationStatus {
 }
 
 export interface PortfolioSummary {
+  cash?: CashLedger;
   totalValue: number;
   totalCost: number;
   totalPnL: number;
@@ -110,4 +111,28 @@ export interface TransactionFormData {
   transactionDate: string;
   exchange: Exchange | 'TEFAS' | null;
   notes: string;
+}
+
+export interface CashMovement {
+  id: string;
+  portfolioId: string;
+  userId: string;
+  movementType: 'deposit' | 'withdrawal';
+  amount: number;
+  currency: string;
+  exchangeRate: number;
+  movementDate: string;
+  notes?: string;
+  createdAt: string;
+}
+export interface CashLedger {
+  configured: boolean;
+  balances: { currency: string; amount: number; value: number | null }[];
+  totalValue: number;
+  netContributions: number;
+  missingRates: string[];
+  hasDeficit: boolean;
+  historicalDeficit: boolean;
+  dailyFxPnL: number;
+  todayNetFlows: number;
 }

@@ -100,7 +100,7 @@ function getTileColor(percent: number) {
   }
   if (percent > 0.2) {
     return {
-      bg: 'from-emerald-800/60 via-emerald-900/60 to-[#0d2a23]',
+      bg: 'from-emerald-800/60 via-emerald-900/60 to-[var(--palette-color0d2a23)]',
       border: 'border-emerald-600/30',
       text: 'text-emerald-300',
       glow: '',
@@ -116,7 +116,7 @@ function getTileColor(percent: number) {
   }
   if (percent >= -2) {
     return {
-      bg: 'from-rose-900/60 via-rose-950/70 to-[#2a0e16]',
+      bg: 'from-rose-900/60 via-rose-950/70 to-[var(--palette-color2a0e16)]',
       border: 'border-rose-600/30',
       text: 'text-rose-300',
       glow: '',
@@ -298,14 +298,14 @@ export default function HeatmapWidget({
       className={`relative w-full rounded-3xl p-4 sm:p-5 transition-all duration-300 overflow-hidden select-none border ${
         transparent
           ? 'bg-transparent border-white/10'
-          : 'bg-[#0f1422] border-white/10 shadow-2xl'
+          : 'bg-[var(--palette-color0f1422)] border-white/10 shadow-2xl'
       }`}
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-accent/20 text-accent flex items-center justify-center font-bold text-xs">
-            📊
+
           </div>
           <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight flex items-center gap-1.5">
             <span>Isı Haritası</span>

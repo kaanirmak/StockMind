@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { ReorderHandle } from '@/components/watchlist/ReorderHandle';
+import { Icon } from '@/components/ui/Icon';
 import { useWatchlistStore, WatchlistItem } from '@/store/useWatchlistStore';
 import { Badge, Button, Input, Modal, useToast, InstrumentLogo } from '@/components/ui';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
@@ -9,7 +11,7 @@ import { POPULAR_FUNDS } from '@/lib/constants/funds';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 
 export default function WatchlistPage() {
-  const { items, addItem, removeItem } = useWatchlistStore();
+  const { items, addItem, removeItem, syncStatus, retrySync, refreshFromServer } = useWatchlistStore();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [selectedItemForAlert, setSelectedItemForAlert] = useState<WatchlistItem | null>(null);
@@ -35,21 +37,11 @@ export default function WatchlistPage() {
             symbol: sym,
             name: data.data.name || sym,
             assetType: 'stock',
-            price: data.data.price || 100,
+            price: data.data.price || 0,
             changePercent: data.data.changePercent || 0,
             exchange: data.data.exchange || 'BIST',
           });
-        } else {
-          const stock = POPULAR_STOCKS.find((s) => s.symbol === sym);
-          addItem({
-            symbol: sym,
-            name: stock ? stock.name : sym,
-            assetType: 'stock',
-            price: stock ? stock.basePrice : 100,
-            changePercent: 0,
-            exchange: 'BIST',
-          });
-        }
+        } else { throw new Error('Fiyat alınamadı'); }
       } else {
         const res = await fetch(`/api/funds/${sym}`);
         const data = await res.json();
@@ -58,26 +50,16 @@ export default function WatchlistPage() {
             symbol: sym,
             name: data.data.name || sym,
             assetType: 'fund',
-            price: data.data.price || 5.0,
+            price: data.data.price || 0,
             changePercent: data.data.dailyReturn || 0,
             exchange: 'TEFAS',
           });
-        } else {
-          const fund = POPULAR_FUNDS.find((f) => f.code === sym);
-          addItem({
-            symbol: sym,
-            name: fund ? fund.name : sym,
-            assetType: 'fund',
-            price: 5.0,
-            changePercent: 0,
-            exchange: 'TEFAS',
-          });
-        }
+        } else { throw new Error('Fon fiyatı alınamadı'); }
       }
 
       showToast({
         type: 'success',
-        title: 'Takip Listesine Eklendi ⭐',
+        title: 'Takip Listesine Eklendi',
         message: `${sym} takip listenize eklendi.`,
       });
       setIsAddModalOpen(false);
@@ -111,7 +93,7 @@ export default function WatchlistPage() {
         <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div className="min-w-0">
             <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-success">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" /> Hesapla senkronize
+              <span className="h-1.5 w-1.5 rounded-full bg-current" /> {syncStatus === 'synced' ? 'Hesapla senkronize' : syncStatus === 'syncing' ? 'Senkronize ediliyor' : syncStatus === 'error' ? 'Senkronizasyon bekliyor' : 'Bu cihazda kayıtlı'}
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">Takip Listem</h1>
@@ -138,6 +120,7 @@ export default function WatchlistPage() {
         </div>
       </div>
 
+      {syncStatus === 'error' && <div role="alert" className="rounded-xl p-3 bg-warning/10 text-warning text-sm flex items-center justify-between gap-2"><p>Değişiklikleriniz henüz hesabınıza kaydedilemedi.</p><Button variant="secondary" onClick={() => { retrySync(); void refreshFromServer(); }}>Tekrar Dene</Button></div>}
       {/* Watchlist Mobile Card View (md:hidden) */}
       <div className="md:hidden space-y-3">
         {items.length === 0 ? (
@@ -157,6 +140,7 @@ export default function WatchlistPage() {
             return (
               <div
                 key={`m-wl-${item.id}`}
+                data-watchlist-id={item.id}
                 className="glass-card p-4 rounded-3xl border border-border/80 shadow-xs hover:border-accent/40 transition-all flex flex-col gap-3"
               >
                 {/* Header: Logo, Symbol, Name & Market Badge */}
@@ -178,6 +162,7 @@ export default function WatchlistPage() {
                     </div>
                   </Link>
 
+                  <ReorderHandle id={item.id} symbol={item.symbol} />
                   {/* Remove Button */}
                   <button
                     onClick={() => handleRemoveItem(item.id, item.symbol)}
@@ -221,7 +206,7 @@ export default function WatchlistPage() {
                         className="inline-flex items-center gap-1.5 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-1 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer"
                         title="Alarmı düzenle veya kaldır"
                       >
-                        <span>🔔</span>
+                        <Icon name="bell" className="h-4 w-4" />
                         <span>
                           {item.alertType === 'percent_up'
                             ? `+%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
@@ -241,7 +226,7 @@ export default function WatchlistPage() {
                         }}
                         className="text-xs text-text-muted hover:text-accent font-medium flex items-center gap-1 transition-colors cursor-pointer py-1"
                       >
-                        <span>🔔</span>
+                        <Icon name="bell" className="h-4 w-4" />
                         <span>Alarm Kur</span>
                       </button>
                     )}
@@ -292,7 +277,7 @@ export default function WatchlistPage() {
                   const link = item.assetType === 'stock' ? `/stocks/${item.symbol}` : `/funds/${item.symbol}`;
 
                   return (
-                    <tr key={item.id} className="hover:bg-bg-hover/60 transition-colors group">
+                    <tr key={item.id} data-watchlist-id={item.id} className="hover:bg-bg-hover/60 transition-colors group">
                       <td className="py-3.5 px-4">
                         <Link href={link} className="flex items-center gap-3">
                           <InstrumentLogo symbol={item.symbol} name={item.name} size="md" />
@@ -336,7 +321,7 @@ export default function WatchlistPage() {
                             className="inline-flex items-center gap-1.5 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded text-xs font-semibold transition-colors cursor-pointer"
                             title="Alarmı düzenle veya kaldır"
                           >
-                            <span>🔔</span>
+                            <Icon name="bell" className="h-4 w-4" />
                             <span>
                               {item.alertType === 'percent_up'
                                 ? `+%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
@@ -362,6 +347,7 @@ export default function WatchlistPage() {
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <ReorderHandle id={item.id} symbol={item.symbol} />
                           <Link href={link}>
                             <Button variant="ghost" size="sm">
                               Grafik &rarr;

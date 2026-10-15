@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -128,7 +130,7 @@ export default function DCFValuationTab({
 
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar shrink-0">
             <span className="text-xs font-bold text-accent uppercase tracking-wider mr-1 shrink-0">
-              {portfolioStocks.length > 0 ? '💼 Portföy Hisseleriniz:' : 'Şirket:'}
+              {portfolioStocks.length > 0 ? " Portföy Hisseleriniz:" : 'Şirket:'}
             </span>
 
             {portfolioStocks.length > 0
@@ -178,7 +180,7 @@ export default function DCFValuationTab({
         {activeHolding && (
           <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-base">💼</span>
+              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <div>
                 <span className="font-bold text-accent">{activeHolding.symbol}</span>
                 <span className="text-text-secondary ml-1">portföyünüzde mevcut:</span>

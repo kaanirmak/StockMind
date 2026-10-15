@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -131,7 +133,7 @@ export default function Sidebar() {
         <div className="mx-3 mb-2 p-2.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-500/25 relative overflow-hidden group">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-extrabold text-emerald-400 flex items-center gap-1">
-              <span>📱</span> ANDROID APP
+              <span><UIIcon name="phone" className="w-4 h-4" /></span> ANDROID APP
             </span>
             <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               v1.0.0

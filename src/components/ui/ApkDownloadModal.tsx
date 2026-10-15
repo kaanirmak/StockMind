@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useEffect } from 'react';
 
@@ -39,7 +41,7 @@ export default function ApkDownloadModal({ isOpen, onClose }: ApkDownloadModalPr
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-lg bg-[#0e131f] border border-white/10 rounded-3xl shadow-2xl overflow-hidden z-10 animate-scale-in">
+      <div className="relative w-full max-w-lg bg-[var(--palette-color0e131f)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden z-10 animate-scale-in">
         {/* Glow gradients */}
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
@@ -93,7 +95,7 @@ export default function ApkDownloadModal({ isOpen, onClose }: ApkDownloadModalPr
                 />
               </div>
               <span className="text-[11px] font-medium text-emerald-400 mt-2 flex items-center gap-1">
-                <span>📱</span> Kamerayla Tara & İndir
+                <span><UIIcon name="phone" className="w-4 h-4" /></span> Kamerayla Tara & İndir
               </span>
             </div>
 
@@ -148,7 +150,7 @@ export default function ApkDownloadModal({ isOpen, onClose }: ApkDownloadModalPr
           {/* Quick Installation Guide (3 Easy Steps) */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <span>🛠️</span> 3 Adımda Kolay Kurulum
+              <span><UIIcon name="sparkles" className="w-4 h-4" /></span> 3 Adımda Kolay Kurulum
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -187,7 +189,7 @@ export default function ApkDownloadModal({ isOpen, onClose }: ApkDownloadModalPr
           {/* Highlights */}
           <div className="p-3.5 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-lg">⚡</span>
+              <span className="text-lg"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span className="text-violet-200">
                 Tam ekran akıcı deneyim, anlık BIST & TEFAS bildirimleri ve yapay zeka analizleri parmaklarınızın ucunda.
               </span>

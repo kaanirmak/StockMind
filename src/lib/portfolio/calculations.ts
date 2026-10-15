@@ -1,3 +1,4 @@
+import { palette } from '@/theme/palette';
 import { Holding, PortfolioSummary, Transaction, ValuationStatus } from '@/types/portfolio';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { cleanSymbol, normalizeSymbolKey } from '@/lib/utils/symbol';
@@ -439,7 +440,7 @@ export function calculatePortfolioHoldings(
   return processPortfolioTransactions(transactions, livePrices).holdings;
 }
 
-const PALETTE = ['#10b981', '#6366f1', '#8b5cf6', '#f59e0b', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
+const PALETTE = [palette.success, palette.color6366f1, palette.primaryDark, palette.warning, palette.info, palette.colorec4899, palette.color14b8a6, palette.colorf97316];
 
 export function calculatePortfolioSummary(
   transactions: Transaction[],

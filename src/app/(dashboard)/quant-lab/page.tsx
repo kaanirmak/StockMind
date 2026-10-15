@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
@@ -140,7 +142,7 @@ export default function QuantLabPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center text-accent shrink-0">
-              <span className="text-sm">💼</span>
+              <span className="text-sm"><UIIcon name="sparkles" className="w-4 h-4" /></span>
             </div>
             <div>
               <div className="flex items-center gap-2">

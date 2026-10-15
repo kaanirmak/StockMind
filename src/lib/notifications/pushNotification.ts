@@ -1,3 +1,4 @@
+import { readInbox, saveInbox } from './inbox';
 /**
  * StockMind Push & Native Phone Notification Service
  * Manages mobile push notifications via StockMind Android Bridge and Web Notifications API.
@@ -5,6 +6,7 @@
 
 export interface PushNotificationPreferences {
   enabled: boolean;
+  inAppEnabled: boolean;
   priceAlerts: boolean;
   dailyReport: boolean;
   portfolioMoves: boolean;
@@ -13,6 +15,7 @@ export interface PushNotificationPreferences {
 
 export const DEFAULT_PUSH_PREFERENCES: PushNotificationPreferences = {
   enabled: true,
+  inAppEnabled: true,
   priceAlerts: true,
   dailyReport: true,
   portfolioMoves: true,
@@ -150,10 +153,7 @@ export function sendPushNotification(title: string, message: string, route: stri
   if (typeof window === 'undefined') return false;
 
   const prefs = loadPushPreferences();
-  if (!prefs.enabled) {
-    console.log('Push notifications are disabled in settings.');
-    return false;
-  }
+  if (!prefs.enabled && !prefs.inAppEnabled) return false;
 
   // Anti-spam cooldown: suppress identical alerts sent within 4 minutes
   const notifFingerprint = `${title}::${message}`;
@@ -167,7 +167,7 @@ export function sendPushNotification(title: string, message: string, route: stri
 
   // 1. Android Native Push Notification
   const bridge = (window as any).StockMindAndroid;
-  if (bridge && typeof bridge.sendNativeNotification === 'function') {
+  if (prefs.enabled && bridge && typeof bridge.sendNativeNotification === 'function') {
     try {
       bridge.sendNativeNotification(title, message, route);
       sent = true;
@@ -177,7 +177,7 @@ export function sendPushNotification(title: string, message: string, route: stri
   }
 
   // 2. Browser Web Notification fallback
-  if (!sent && 'Notification' in window && Notification.permission === 'granted') {
+  if (prefs.enabled && !sent && 'Notification' in window && Notification.permission === 'granted') {
     try {
       const notif = new Notification(title, {
         body: message,
@@ -195,20 +195,19 @@ export function sendPushNotification(title: string, message: string, route: stri
     }
   }
 
-  // 3. Save to In-App Notification list (Header bell dropdown)
-  try {
-    const raw = localStorage.getItem('stockmind_notifications');
-    const list = raw ? JSON.parse(raw) : [];
+  // 3. The inbox is independent of device push permission and preference.
+  if (prefs.inAppEnabled) try {
+    const list = readInbox();
     list.unshift({
       id: 'push-' + Date.now(),
       title,
       description: message,
-      timestamp: 'Az önce',
+      time: new Date().toLocaleString('tr-TR'),
       read: false,
-      category: 'price',
-      route,
+      category: 'market',
+      link: route,
     });
-    localStorage.setItem('stockmind_notifications', JSON.stringify(list.slice(0, 30)));
+    saveInbox(list);
     // Dispatch storage event to immediately update Header badge
     window.dispatchEvent(new Event('storage'));
   } catch (err) {

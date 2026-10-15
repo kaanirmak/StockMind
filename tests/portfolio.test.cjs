@@ -631,3 +631,81 @@ test('ALERT-03: İki yönlü sapma (±%) alarmı her iki kırılımda da tetikle
 
 
 
+
+const { calculateCashLedger, includeCashInSummary } = loadModule('src/lib/portfolio/cash.ts');
+function cashMovement(amount, movementType = 'deposit', currency = 'TRY', exchangeRate = 1, movementDate = '2026-10-14') {
+  return { id: Math.random().toString(), portfolioId: 'p-1', userId: 'u-1', amount, movementType, currency, exchangeRate, movementDate, createdAt: movementDate };
+}
+function cashTrade(transactionType, quantity, price, commission = 0, currency = 'TRY') {
+  return { id: Math.random().toString(), portfolioId: 'p-1', userId: 'u-1', symbol: 'TEST', assetType: 'stock', transactionType, quantity, price, commission, currency, exchange: currency === 'USD' ? 'NASDAQ' : 'BIST', transactionDate: '2026-10-14', createdAt: '2026-10-14' };
+}
+test('CASH-01: buys, sells, dividends and fees reconcile cash without counting stock splits as cash flows', () => {
+  const txs = [cashTrade('buy', 5, 100, 5), cashTrade('sell', 2, 120, 2), cashTrade('dividend', 2, 3), cashTrade('fee', 1, 5), cashTrade('split', 2, 0)];
+  const ledger = calculateCashLedger(txs, [cashMovement(1000)], {}, '2026-10-15');
+  assert.equal(ledger.totalValue, 734);
+  assert.equal(ledger.netContributions, 1000);
+  assert.equal(ledger.hasDeficit, false);
+});
+test('CASH-02: deposits and withdrawals change account equity but are never investment profit', () => {
+  const txs = [cashTrade('buy', 5, 100, 5), cashTrade('sell', 2, 120, 2), cashTrade('dividend', 2, 3), cashTrade('fee', 1, 5)];
+  const summary = calculatePortfolioSummary(txs, { TEST: { price: 120, changePercent: 0 } });
+  const before = includeCashInSummary(summary, calculateCashLedger(txs, [cashMovement(1000)], {}, '2026-10-15'));
+  const after = includeCashInSummary(summary, calculateCashLedger(txs, [cashMovement(1000), cashMovement(200, 'withdrawal')], {}, '2026-10-15'));
+  assert.equal(before.totalValue, 1094);
+  assert.equal(before.totalPnL, 94);
+  assert.equal(after.totalValue, 894);
+  assert.equal(after.totalPnL, 94);
+  assert.equal(after.totalCost, 800);
+});
+test('CASH-03: today deposit does not inflate the daily return denominator', () => {
+  const txs = [cashTrade('buy', 10, 100)];
+  const summary = calculatePortfolioSummary(txs, { TEST: { price: 110, changePercent: 10 } });
+  const ledger = calculateCashLedger(txs, [cashMovement(1000), cashMovement(1000, 'deposit', 'TRY', 1, '2026-10-15')], {}, '2026-10-15');
+  const result = includeCashInSummary(summary, ledger);
+  assert.equal(result.totalValue, 2100);
+  assert.equal(result.totalPnL, 100);
+  assert.equal(result.dailyPnL, 100);
+  assert.equal(result.dailyPnLPercent, 10);
+});
+test('CASH-04: foreign cash uses real live rates; missing rates remain explicitly incomplete', () => {
+  const movements = [cashMovement(100, 'deposit', 'USD', 40)];
+  const txs = [cashTrade('buy', 1, 50, 0, 'USD')];
+  const ledger = calculateCashLedger(txs, movements, { USDTRY: { price: 42, changePercent: (42 / 41 - 1) * 100 } }, '2026-10-15');
+  assert.equal(ledger.balances[0].amount, 50);
+  assert.equal(ledger.totalValue, 2100);
+  assert.equal(ledger.netContributions, 4000);
+  assert.ok(Math.abs(ledger.dailyFxPnL - 50) < 0.00001);
+  const unavailable = calculateCashLedger(txs, movements, {}, '2026-10-15');
+  assert.equal(unavailable.balances[0].value, null);
+  assert.equal(unavailable.missingRates[0], 'USD');
+});
+test('CASH-05: legacy portfolios do not get an invented opening deposit or silently negative equity', () => {
+  const txs = [cashTrade('buy', 1, 100)];
+  const original = calculatePortfolioSummary(txs, { TEST: 110 });
+  const ledger = calculateCashLedger(txs, [], {}, '2026-10-15');
+  const result = includeCashInSummary(original, ledger);
+  assert.equal(ledger.configured, false);
+  assert.equal(ledger.hasDeficit, true);
+  assert.equal(result.totalValue, original.totalValue);
+});
+test('CASH-06: future cash movements and trades do not change current available cash', () => {
+  const ledger = calculateCashLedger([{ ...cashTrade('buy', 1, 100), transactionDate: '2026-10-20' }], [cashMovement(1000), cashMovement(500, 'deposit', 'TRY', 1, '2026-10-20')], {}, '2026-10-15');
+  assert.equal(ledger.totalValue, 1000);
+  assert.equal(ledger.netContributions, 1000);
+});
+test('CASH-07: FX appreciation after a same-day foreign deposit is profit, not a second contribution', () => {
+  const ledger = calculateCashLedger([], [cashMovement(100, 'deposit', 'USD', 40, '2026-10-15')], { USDTRY: 42 }, '2026-10-15');
+  const result = includeCashInSummary(calculatePortfolioSummary([], {}), ledger);
+  assert.equal(result.totalValue, 4200);
+  assert.equal(result.totalCost, 4000);
+  assert.equal(result.totalPnL, 200);
+  assert.equal(result.dailyPnL, 200);
+  assert.equal(result.dailyPnLPercent, 5);
+});
+test('CASH-08: a positive final balance does not hide missing historical funding', () => {
+  const txs = [{ ...cashTrade('buy', 1, 100), transactionDate: '2026-10-12' }, { ...cashTrade('sell', 1, 200), transactionDate: '2026-10-13' }];
+  const ledger = calculateCashLedger(txs, [cashMovement(50, 'withdrawal')], {}, '2026-10-15');
+  assert.equal(ledger.totalValue, 50);
+  assert.equal(ledger.hasDeficit, false);
+  assert.equal(ledger.historicalDeficit, true);
+});

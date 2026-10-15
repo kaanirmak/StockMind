@@ -245,7 +245,7 @@ export default function InvestmentCommitteeTab({
         <div className="mt-4 pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-xs font-bold text-accent uppercase tracking-wider">
-              {portfolioStocks.length > 0 ? '💼 Portföy Hisseleriniz:' : 'Gösterge Hisseleri:'}
+              {portfolioStocks.length > 0 ? " Portföy Hisseleriniz:" : 'Gösterge Hisseleri:'}
             </span>
           </div>
 

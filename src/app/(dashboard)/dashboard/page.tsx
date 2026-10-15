@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { Icon } from '@/components/ui/Icon';
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import MarketOverview from '@/components/dashboard/MarketOverview';
@@ -27,6 +29,7 @@ export default function DashboardPage() {
     <div className="dashboard-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(4rem+env(safe-area-inset-bottom))]">
       {/* Portfolio Hero Card */}
       <PortfolioSummary />
+      <QuickActions />
 
       {/* Portfolio Heatmap */}
       <PortfolioHeatmap />
@@ -35,7 +38,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl glass-card border border-border shadow-sm">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/25 text-accent flex items-center justify-center font-bold text-sm shrink-0">
-            🧩
+            <Icon name="layers" />
           </div>
           <div className="min-w-0">
             <span className="text-xs font-bold text-text-primary block truncate">
@@ -60,7 +63,7 @@ export default function DashboardPage() {
               onClick={() => setShowApkModal(true)}
               className="hidden sm:inline-flex px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-bold text-xs transition-all cursor-pointer text-center"
             >
-              📱 APK İndir
+              APK İndir
             </button>
           )}
         </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'glass';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'destructive' | 'success' | 'glass';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -27,7 +27,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex min-w-0 items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]';
 
     const sizeStyles = {
-      sm: 'text-xs px-3 py-2 min-h-10 rounded-lg gap-1.5',
+      sm: 'text-xs px-3 py-2 min-h-11 rounded-lg gap-1.5',
       md: 'text-sm px-4 py-2.5 min-h-11 rounded-xl gap-2',
       lg: 'text-base px-6 py-3.5 rounded-xl gap-2.5 font-semibold',
     };
@@ -41,16 +41,18 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         'bg-transparent text-text-primary border border-border hover:border-accent hover:text-accent focus:ring-accent/50',
       ghost:
         'bg-transparent text-text-secondary hover:text-text-primary hover:bg-bg-hover focus:ring-accent/30',
+      destructive: 'bg-danger hover:brightness-110 text-white dark:text-text-inverse focus:ring-danger',
       danger:
-        'bg-danger/90 hover:bg-danger text-white shadow-lg shadow-danger/25 focus:ring-danger',
+        'bg-danger/90 hover:bg-danger text-white dark:text-text-inverse shadow-lg shadow-danger/25 focus:ring-danger',
       success:
-        'bg-success/90 hover:bg-success text-white shadow-lg shadow-success/25 focus:ring-success',
+        'bg-success/90 hover:bg-success text-white dark:text-text-inverse shadow-lg shadow-success/25 focus:ring-success',
       glass:
         'bg-white/5 backdrop-blur-md border border-white/10 text-text-primary hover:bg-white/10 hover:border-white/20 focus:ring-accent/40',
     };
 
     return (
       <button
+        type="button"
         ref={ref}
         disabled={disabled || isLoading}
         aria-busy={isLoading || undefined}

@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useEffect } from 'react';
 import { isAndroidApp, sendPushNotification } from '@/lib/notifications/pushNotification';
@@ -60,7 +62,7 @@ export function AppUpdateNotifier() {
             if (!localStorage.getItem(notifSentKey)) {
               localStorage.setItem(notifSentKey, 'true');
               sendPushNotification(
-                `🚀 Yeni StockMind Güncellemesi Mevcut (v${data.version})`,
+                ` Yeni StockMind Güncellemesi Mevcut (v${data.version})`,
                 'StockMind yeni sürümü hazır! Performans, logolar ve kapalıyken fiyat alarmları için hemen güncelleyin.',
                 '/settings'
               );
@@ -76,7 +78,7 @@ export function AppUpdateNotifier() {
             if (!localStorage.getItem(bcKey)) {
               localStorage.setItem(bcKey, 'true');
               sendPushNotification(
-                data.broadcast.title || 'StockMind 📢',
+                data.broadcast.title || "StockMind ",
                 data.broadcast.message,
                 data.broadcast.route || '/dashboard'
               );
@@ -155,7 +157,7 @@ export function AppUpdateNotifier() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent/20 border border-accent/40 flex items-center justify-center shrink-0 text-lg shadow-inner">
-              🚀
+
             </div>
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 flex-wrap">
@@ -170,7 +172,7 @@ export function AppUpdateNotifier() {
                 {versionInfo.releaseNotes}
               </p>
               <p className="text-[11px] text-emerald-400 font-medium">
-                💡 Mevcut uygulamayı silmenize gerek yoktur. Güncelleme oturum ve verilerinizi korur.
+                 Mevcut uygulamayı silmenize gerek yoktur. Güncelleme oturum ve verilerinizi korur.
               </p>
             </div>
           </div>
@@ -216,7 +218,7 @@ export function AppUpdateNotifier() {
           <div className="bg-bg-card border border-border w-full max-w-md rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xl relative">
             <div className="flex items-center justify-between border-b border-border/50 pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🚀</span>
+                <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
                 <h3 className="text-base font-bold text-text-primary">
                   StockMind v{versionInfo.version} Güncellemesi
                 </h3>
@@ -232,7 +234,7 @@ export function AppUpdateNotifier() {
 
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 space-y-1">
               <p className="font-bold flex items-center gap-1.5">
-                <span>✅</span> İndirme başlatıldı!
+                <span><UIIcon name="check" className="w-4 h-4" /></span> İndirme başlatıldı!
               </p>
               <p className="text-[11px] text-text-secondary">
                 Telefonunuzun üst bildirim çubuğunda indirme ilerlemesini görebilirsiniz. İndirme bittiğinde bildirime dokunarak <strong>Güncelle</strong> demeniz yeterlidir.
@@ -270,13 +272,13 @@ export function AppUpdateNotifier() {
                 onClick={handleCopyDownloadUrl}
                 className="w-full py-2 px-3 rounded-xl bg-bg-secondary border border-border text-text-primary text-center block text-xs font-medium hover:bg-bg-hover transition-colors cursor-pointer"
               >
-                🌐 İndirme Bağlantısını Panoya Kopyala
+                 İndirme Bağlantısını Panoya Kopyala
               </button>
             </div>
 
             {/* Step-by-Step Info */}
             <div className="p-3 rounded-xl bg-bg-secondary/60 border border-border/60 text-[11px] text-text-secondary space-y-1.5">
-              <p className="font-semibold text-text-primary">📌 Güncelleme Adımları:</p>
+              <p className="font-semibold text-text-primary"> Güncelleme Adımları:</p>
               <ol className="list-decimal list-inside space-y-1 pl-1">
                 <li>İndirilen <strong className="text-text-primary">StockMind.apk</strong> dosyasına dokunun.</li>
                 <li>Ekrana gelen pencerede <strong className="text-emerald-400">Güncelle</strong> seçeneğini seçin.</li>

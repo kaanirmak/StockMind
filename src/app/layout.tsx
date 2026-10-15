@@ -1,3 +1,4 @@
+import { palette } from '@/theme/palette';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ToastProvider } from '@/components/ui';
@@ -6,10 +7,9 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  userScalable: true,
   viewportFit: 'cover',
-  themeColor: '#0A0E1A',
+  themeColor: palette.color0a0e1a,
 };
 
 export const metadata: Metadata = {
@@ -64,7 +64,7 @@ export default function RootLayout({
               (function() {
                 try {
                   var stored = localStorage.getItem('stockmind_theme');
-                  var theme = stored === 'light' ? 'light' : 'dark';
+                  var theme = stored === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : stored === 'light' ? 'light' : 'dark';
                   document.documentElement.classList.remove('light', 'dark');
                   document.documentElement.classList.add(theme);
                 } catch(e) {}

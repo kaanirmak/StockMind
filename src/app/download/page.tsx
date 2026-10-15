@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -76,7 +78,7 @@ export default function DownloadPage() {
                   : 'text-text-muted hover:text-white'
               }`}
             >
-              <span>🤖 Android (APK)</span>
+              <span> Android (APK)</span>
             </button>
             <button
               type="button"
@@ -87,7 +89,7 @@ export default function DownloadPage() {
                   : 'text-text-muted hover:text-white'
               }`}
             >
-              <span>🍎 iOS (iPhone & iPad)</span>
+              <span> iOS (iPhone & iPad)</span>
             </button>
           </div>
         </div>
@@ -156,7 +158,7 @@ export default function DownloadPage() {
                       onClick={() => handleCopyLink(downloadUrl)}
                       className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white text-xs font-semibold flex items-center justify-center gap-2 border border-white/10 transition-all cursor-pointer"
                     >
-                      {copied ? '✅ Bağlantı Panoya Kopyalandı!' : '📋 İndirme Bağlantısını Kopyala'}
+                      {copied ? " Bağlantı Panoya Kopyalandı!" : " İndirme Bağlantısını Kopyala"}
                     </button>
                   </div>
                 </>
@@ -165,7 +167,7 @@ export default function DownloadPage() {
                 <>
                   <div className="flex items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-500/15 shrink-0 text-3xl">
-                      🍎
+
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-white">StockMind iOS PWA</h2>
@@ -184,7 +186,7 @@ export default function DownloadPage() {
                       href="/dashboard"
                       className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-purple-500 via-accent to-purple-600 hover:opacity-95 text-white font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-accent/25 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      <span>🚀 Safari'de Şimdi Başlat</span>
+                      <span> Safari'de Şimdi Başlat</span>
                     </Link>
 
                     <button
@@ -192,7 +194,7 @@ export default function DownloadPage() {
                       onClick={() => handleCopyLink(webAppUrl)}
                       className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-text-secondary hover:text-white text-xs font-semibold flex items-center justify-center gap-2 border border-white/10 transition-all cursor-pointer"
                     >
-                      {copied ? '✅ Web Bağlantısı Kopyalandı!' : '📋 Safari Açılış Linkini Kopyala'}
+                      {copied ? " Web Bağlantısı Kopyalandı!" : " Safari Açılış Linkini Kopyala"}
                     </button>
                   </div>
                 </>
@@ -227,7 +229,7 @@ export default function DownloadPage() {
 
               <div className="mt-4 space-y-1">
                 <p className="text-sm font-bold text-white flex items-center justify-center gap-1.5">
-                  <span>📷</span> Telefonunuzun Kamerasıyla Taratın
+                  <span><UIIcon name="sparkles" className="w-4 h-4" /></span> Telefonunuzun Kamerasıyla Taratın
                 </p>
                 <p className="text-xs text-text-muted max-w-xs">
                   {selectedPlatform === 'android'
@@ -283,7 +285,7 @@ export default function DownloadPage() {
                     1
                   </div>
                   <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                    <span>🧭</span> Safari'de Açın
+                    <span><UIIcon name="sparkles" className="w-4 h-4" /></span> Safari'de Açın
                   </p>
                   <p className="text-xs text-text-muted leading-relaxed">
                     StockMind'ı iPhone'unuzda <strong>Safari</strong> tarayıcısında açtığınızdan emin olun.
@@ -295,7 +297,7 @@ export default function DownloadPage() {
                     2
                   </div>
                   <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                    <span>📤</span> "Paylaş" İkonuna Basın
+                    <span><UIIcon name="sparkles" className="w-4 h-4" /></span> "Paylaş" İkonuna Basın
                   </p>
                   <p className="text-xs text-text-muted leading-relaxed">
                     Safari ekranının altındaki <strong>kutu içinden yukarı ok</strong> (Paylaş) simgesine dokunun.
@@ -307,7 +309,7 @@ export default function DownloadPage() {
                     3
                   </div>
                   <p className="text-sm font-bold text-white flex items-center gap-1.5">
-                    <span>📲</span> "Ana Ekrana Ekle"
+                    <span><UIIcon name="sparkles" className="w-4 h-4" /></span> "Ana Ekrana Ekle"
                   </p>
                   <p className="text-xs text-text-muted leading-relaxed">
                     Açılan menüde aşağı kaydırıp <strong>"Ana Ekrana Ekle"</strong> seçeneğini seçin ve sağ üstteki <strong>"Ekle"</strong> butonuna basın!
@@ -321,7 +323,7 @@ export default function DownloadPage() {
 
       {/* Footer */}
       <footer className="relative z-10 max-w-6xl mx-auto w-full px-6 py-6 text-center text-xs text-text-muted border-t border-white/5">
-        © 2026 StockMind Platform. Android & iOS PWA Engine v1.0.4.
+         2026 StockMind Platform. Android & iOS PWA Engine v1.0.4.
       </footer>
     </div>
   );

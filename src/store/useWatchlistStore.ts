@@ -20,6 +20,8 @@ export interface WatchlistItem extends WatchlistAlertConfig {
   changePercent: number;
   exchange?: string;
   addedAt?: string;
+  position?: number;
+  serverId?: string;
 }
 
 export function calculateTargetPriceFromPercent(
@@ -109,6 +111,10 @@ export function isPriceAlertTriggered(
 interface WatchlistState {
   items: WatchlistItem[];
   currentUserId: string | null;
+  syncStatus: 'local' | 'syncing' | 'synced' | 'error';
+  refreshFromServer: () => Promise<void>;
+  retrySync: () => void;
+  reorderItems: (fromId: string, toId: string) => void;
   loadUserWatchlist: (userId?: string | null) => void;
   resetWatchlist: () => void;
   addItem: (item: Omit<WatchlistItem, 'id'>) => void;
@@ -182,6 +188,8 @@ async function getServerWatchlistId(userId: string): Promise<string | null> {
   return created.data.id;
 }
 
+let supportsPosition = true;
+
 function toServerRow(item: WatchlistItem, watchlistId: string) {
   return {
     watchlist_id: watchlistId,
@@ -194,13 +202,15 @@ function toServerRow(item: WatchlistItem, watchlistId: string) {
     alert_percent: item.alertPercent ?? null,
     alert_base_price: item.alertBasePrice ?? null,
     updated_at: new Date().toISOString(),
+    ...(supportsPosition ? { position: item.position ?? 0 } : {}),
   };
 }
 
 function fromServerRow(row: any, localBySymbol: Map<string, WatchlistItem>): WatchlistItem {
   const previous = localBySymbol.get(String(row.symbol).toUpperCase());
   return {
-    id: `server-${row.id}`,
+    id: previous?.id || `server-${row.id}`,
+    serverId: row.id,
     symbol: String(row.symbol).toUpperCase(),
     name: row.name || previous?.name || row.symbol,
     assetType: row.asset_type === 'fund' ? 'fund' : 'stock',
@@ -208,6 +218,7 @@ function fromServerRow(row: any, localBySymbol: Map<string, WatchlistItem>): Wat
     changePercent: previous?.changePercent || 0,
     exchange: row.exchange || previous?.exchange,
     addedAt: row.added_at,
+    position: row.position ?? 0,
     targetPrice: row.target_price ?? undefined,
     alertType: row.alert_type ?? undefined,
     alertPercent: row.alert_percent ?? undefined,
@@ -234,44 +245,123 @@ async function saveServerWatchlist(userId: string | null, items: WatchlistItem[]
   }
 }
 
-async function loadServerWatchlist(userId: string, localItems: WatchlistItem[]): Promise<WatchlistItem[]> {
+async function saveWatchlistChanges(userId: string, before: WatchlistItem[], after: WatchlistItem[]) {
+  const supabase = await getSupabaseClient();
+  const watchlistId = await getServerWatchlistId(userId);
+  if (!watchlistId) throw new Error('Takip listesi bulunamadı');
+  const bySymbol = new Map(before.map((i) => [i.symbol, i]));
+  for (const item of before.filter((i) => !after.some((n) => n.symbol === i.symbol))) {
+    const { error } = await supabase.from('watchlist_items').delete().eq('watchlist_id', watchlistId).eq('symbol', item.symbol);
+    if (error) throw error;
+  }
+  if (!supportsPosition && after.some((i) => (i.position ?? 0) !== (bySymbol.get(i.symbol)?.position ?? 0))) throw new Error('Sıralama güncellemesi sunucuda henüz etkin değil');
+  const changed = after.filter((i) => JSON.stringify(i) !== JSON.stringify(bySymbol.get(i.symbol)));
+  for (const item of changed) {
+    const payload = toServerRow(item, watchlistId);
+    const result = item.serverId
+      ? await supabase.from('watchlist_items').update(payload).eq('watchlist_id', watchlistId).eq('id', item.serverId)
+      : await supabase.from('watchlist_items').upsert(payload, { onConflict: 'watchlist_id,symbol,exchange' });
+    if (result.error) throw result.error;
+  }
+}
+
+async function loadServerWatchlist(userId: string, localItems: WatchlistItem[], migrate = false): Promise<WatchlistItem[]> {
   const supabase = await getSupabaseClient();
   const watchlistId = await getServerWatchlistId(userId);
   if (!watchlistId) return [];
-  const { data, error } = await supabase.from('watchlist_items').select('*').eq('watchlist_id', watchlistId).order('added_at', { ascending: false });
+  let result = await supabase.from('watchlist_items').select('*').eq('watchlist_id', watchlistId).order('position', { ascending: true }).order('added_at', { ascending: false });
+  if (result.error?.code === '42703' || result.error?.code === 'PGRST204') {
+    supportsPosition = false;
+    result = await supabase.from('watchlist_items').select('*').eq('watchlist_id', watchlistId).order('added_at', { ascending: false });
+  } else if (!result.error) supportsPosition = true;
+  const { data, error } = result;
   if (error) throw error;
   const localBySymbol = new Map(localItems.map((item) => [item.symbol.toUpperCase(), item]));
   const serverItems = (data || []).map((row) => fromServerRow(row, localBySymbol));
   // One-time migration for existing devices: only upload local data when the server list is empty.
-  if (serverItems.length === 0 && localItems.length > 0) {
+  const migrationKey = `stockmind_watchlist_migrated_${userId}`;
+  if (migrate && !localStorage.getItem(migrationKey) && serverItems.length === 0 && localItems.length > 0) {
     await saveServerWatchlist(userId, localItems);
+    localStorage.setItem(migrationKey, 'true');
     return localItems;
   }
+  if (migrate) localStorage.setItem(migrationKey, 'true');
   return serverItems;
 }
 
 export const useWatchlistStore = create<WatchlistState>((set, get) => {
+  const queue: { userId: string; before: WatchlistItem[]; after: WatchlistItem[] }[] = [];
+  let saving = false;
+  let revision = 0;
+  async function flush() {
+    if (saving) return;
+    saving = true;
+    while (queue.length) {
+      const job = queue[0];
+      if (job.userId !== get().currentUserId) { queue.shift(); continue; }
+      if (get().currentUserId === job.userId) set({ syncStatus: 'syncing' });
+      try {
+        await saveWatchlistChanges(job.userId, job.before, job.after);
+        queue.shift();
+        if (get().currentUserId === job.userId) set({ syncStatus: 'synced' });
+      } catch {
+        if (get().currentUserId === job.userId) set({ syncStatus: 'error' });
+        break;
+      }
+    }
+    saving = false;
+  }
+  function persist(userId: string | null, before: WatchlistItem[], after: WatchlistItem[]) {
+    revision++;
+    saveLocalWatchlist(userId, after);
+    if (!userId || userId === 'guest') return;
+    queue.push({ userId, before, after });
+    void flush();
+  }
   return {
     items: [],
     currentUserId: null,
+    syncStatus: 'local',
+    retrySync: () => { void flush(); },
+    refreshFromServer: async () => {
+      const { currentUserId, items } = get();
+      if (!currentUserId || currentUserId === 'guest' || saving || queue.some((q) => q.userId === currentUserId)) return;
+      try {
+        const data = await loadServerWatchlist(currentUserId, items);
+        if (get().currentUserId !== currentUserId || saving || queue.some((q) => q.userId === currentUserId)) return;
+        set({ items: data, syncStatus: 'synced' });
+        saveLocalWatchlist(currentUserId, data);
+      } catch { if (get().currentUserId === currentUserId) set({ syncStatus: 'error' }); }
+    },
+    reorderItems: (fromId, toId) => {
+      const { items, currentUserId } = get();
+      const from = items.findIndex((i) => i.id === fromId);
+      const to = items.findIndex((i) => i.id === toId);
+      if (from < 0 || to < 0 || from === to) return;
+      const updated = [...items];
+      updated.splice(to, 0, updated.splice(from, 1)[0]);
+      const ordered = updated.map((item, position) => ({ ...item, position }));
+      set({ items: ordered }); persist(currentUserId, items, ordered);
+    },
 
     loadUserWatchlist: (userId) => {
       const localItems = loadLocalWatchlist(userId);
-      set({ items: localItems, currentUserId: userId || null });
+      const initialRevision = revision;
+      set({ items: localItems, currentUserId: userId || null, syncStatus: userId && userId !== 'guest' ? 'syncing' : 'local' });
       syncNativeWatchlist(localItems);
       if (userId && userId !== 'guest') {
-        void loadServerWatchlist(userId, localItems).then((serverItems) => {
-          if (get().currentUserId !== userId) return;
-          set({ items: serverItems });
+        void loadServerWatchlist(userId, localItems, true).then((serverItems) => {
+          if (get().currentUserId !== userId || queue.some((q) => q.userId === userId) || revision !== initialRevision) return;
+          set({ items: serverItems, syncStatus: 'synced' });
           saveLocalWatchlist(userId, serverItems);
           syncNativeWatchlist(serverItems);
-        }).catch((error) => console.warn('Failed to load server watchlist:', error));
+        }).catch(() => { if (get().currentUserId === userId) set({ syncStatus: 'error' }); });
       }
     },
 
     resetWatchlist: () => {
       const guestItems = loadLocalWatchlist(null);
-      set({ items: guestItems, currentUserId: null });
+      set({ items: guestItems, currentUserId: null, syncStatus: 'local' });
     },
 
     addItem: (item) => {
@@ -287,16 +377,14 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       };
       const updated = [newItem, ...items];
       set({ items: updated });
-      saveLocalWatchlist(currentUserId, updated);
-      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+      persist(currentUserId, items, updated);
     },
 
     removeItem: (id) => {
       const { currentUserId, items } = get();
       const updated = items.filter((i) => i.id !== id);
       set({ items: updated });
-      saveLocalWatchlist(currentUserId, updated);
-      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+      persist(currentUserId, items, updated);
     },
 
     removeBySymbol: (symbol) => {
@@ -304,8 +392,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       const sym = symbol.toUpperCase();
       const updated = items.filter((i) => i.symbol.toUpperCase() !== sym);
       set({ items: updated });
-      saveLocalWatchlist(currentUserId, updated);
-      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+      persist(currentUserId, items, updated);
     },
 
     toggleWatchlist: (item) => {
@@ -316,8 +403,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       if (exists) {
         const updated = items.filter((i) => i.symbol.toUpperCase() !== sym);
         set({ items: updated });
-        saveLocalWatchlist(currentUserId, updated);
-        void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+        persist(currentUserId, items, updated);
         return false; // removed
       } else {
         const newItem: WatchlistItem = {
@@ -327,8 +413,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
         };
         const updated = [newItem, ...items];
         set({ items: updated });
-        saveLocalWatchlist(currentUserId, updated);
-        void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+        persist(currentUserId, items, updated);
         return true; // added
       }
     },
@@ -342,8 +427,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       const { currentUserId, items } = get();
       const updated = items.map((i) => (i.id === id ? { ...i, targetPrice } : i));
       set({ items: updated });
-      saveLocalWatchlist(currentUserId, updated);
-      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+      persist(currentUserId, items, updated);
     },
 
     setAlert: (symbolOrId, alert, stockMeta) => {
@@ -372,8 +456,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       }
 
       set({ items: updated });
-      saveLocalWatchlist(currentUserId, updated);
-      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+      persist(currentUserId, items, updated);
     },
 
     removeAlert: (symbolOrId) => {
@@ -391,8 +474,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
         return i;
       });
       set({ items: updated });
-      saveLocalWatchlist(currentUserId, updated);
-      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
+      persist(currentUserId, items, updated);
     },
 
     getAlert: (symbol) => {

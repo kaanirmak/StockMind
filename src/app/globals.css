@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../theme/tokens.css";
 
 html {
   max-width: 100%;
@@ -43,150 +44,6 @@ canvas {
    StockMind Design System — Dual Theme (Siyah & Beyaz Planlar)
    ═══════════════════════════════════════════ */
 
-@theme inline {
-  /* Background colors mapped to dynamic CSS variables */
-  --color-bg-primary: var(--bg-primary);
-  --color-bg-secondary: var(--bg-secondary);
-  --color-bg-tertiary: var(--bg-tertiary);
-  --color-bg-card: var(--bg-card);
-  --color-bg-hover: var(--bg-hover);
-  --color-bg-input: var(--bg-input);
-
-  /* Accent colors */
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-secondary: var(--accent-secondary);
-  --color-accent-glow: var(--accent-glow);
-
-  /* Semantic colors */
-  --color-success: #10b981;
-  --color-success-light: rgba(16, 185, 129, 0.16);
-  --color-danger: #ef4444;
-  --color-danger-light: rgba(239, 68, 68, 0.16);
-  --color-warning: #f59e0b;
-  --color-warning-light: rgba(245, 158, 11, 0.16);
-  --color-info: #3b82f6;
-
-  /* Text colors */
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-muted: var(--text-muted);
-  --color-text-inverse: var(--text-inverse);
-
-  /* Border colors */
-  --color-border: var(--border);
-  --color-border-hover: var(--border-hover);
-  --color-border-accent: var(--border-accent);
-
-  /* Shadows */
-  --shadow-glow: var(--shadow-glow);
-  --shadow-card: var(--shadow-card);
-  --shadow-elevated: var(--shadow-elevated);
-  --shadow-purple: var(--shadow-purple);
-
-  /* Font */
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-
-  /* Border radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
-  --radius-full: 9999px;
-
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* ═══════════════════════════════════════════
-   Light Theme (Beyaz Plan) — Fresh, Clean, High Contrast
-   ═══════════════════════════════════════════ */
-:root,
-html.light {
-  color-scheme: light;
-
-  /* Backgrounds */
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f1f5f9;
-  --bg-card: #ffffff;
-  --bg-hover: #f1f5f9;
-  --bg-input: #ffffff;
-
-  /* Accent */
-  --accent: #7c3aed;
-  --accent-hover: #6d28d9;
-  --accent-secondary: #9333ea;
-  --accent-glow: rgba(124, 58, 237, 0.2);
-
-  /* Text */
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #64748b;
-  --text-inverse: #ffffff;
-
-  /* Border */
-  --border: #e2e8f0;
-  --border-hover: #cbd5e1;
-  --border-accent: rgba(124, 58, 237, 0.35);
-
-  /* Shadows */
-  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.15), 0 0 40px rgba(124, 58, 237, 0.08);
-  --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-  --shadow-elevated: 0 12px 36px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
-  --shadow-purple: 0 8px 30px -4px rgba(124, 58, 237, 0.15);
-
-  /* Scrollbar */
-  --scrollbar-thumb: #cbd5e1;
-  --scrollbar-thumb-hover: #94a3b8;
-}
-
-/* ═══════════════════════════════════════════
-   Dark Theme (Siyah Plan) — Sleek, Violet Glassmorphic
-   ═══════════════════════════════════════════ */
-html.dark {
-  color-scheme: dark;
-
-  /* Backgrounds — True OLED Pitch Black */
-  --bg-primary: #000000;
-  --bg-secondary: #08080a;
-  --bg-tertiary: #101014;
-  --bg-card: #0c0d12;
-  --bg-hover: #151620;
-  --bg-input: #060608;
-
-  /* Accent */
-  --accent: #8b5cf6;
-  --accent-hover: #a78bfa;
-  --accent-secondary: #c084fc;
-  --accent-glow: rgba(139, 92, 246, 0.3);
-
-  /* Text */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-inverse: #000000;
-
-  /* Border */
-  --border: rgba(255, 255, 255, 0.09);
-  --border-hover: rgba(255, 255, 255, 0.18);
-  --border-accent: rgba(139, 92, 246, 0.35);
-
-  /* Shadows */
-  --shadow-glow: 0 0 24px rgba(139, 92, 246, 0.2), 0 0 60px rgba(139, 92, 246, 0.08);
-  --shadow-card: 0 4px 28px rgba(0, 0, 0, 0.75), 0 1px 4px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 10px 48px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.5);
-  --shadow-purple: 0 0 35px rgba(139, 92, 246, 0.25), 0 0 90px rgba(139, 92, 246, 0.12);
-
-  /* Scrollbar */
-  --scrollbar-thumb: #232433;
-  --scrollbar-thumb-hover: #35374d;
-}
-
 /* ═══════════════════════════════════════════
    Base Styles
    ═══════════════════════════════════════════ */
@@ -224,7 +81,7 @@ body {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   transition: background-color var(--transition-base), color var(--transition-base);
 }
 
@@ -333,7 +190,7 @@ html.dark .glass-purple {
 @keyframes flashGreenAnim {
   0% {
     background-color: rgba(16, 185, 129, 0.4);
-    color: #34d399 !important;
+    color: var(--palette-color34d399) !important;
     text-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
   }
   100% {
@@ -344,7 +201,7 @@ html.dark .glass-purple {
 @keyframes flashRedAnim {
   0% {
     background-color: rgba(239, 68, 68, 0.4);
-    color: #f87171 !important;
+    color: var(--palette-colorf87171) !important;
     text-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
   }
   100% {
@@ -369,7 +226,7 @@ html.dark .glass-purple {
    ═══════════════════════════════════════════ */
 
 .gradient-accent {
-  background: linear-gradient(135deg, #8b5cf6, #c084fc);
+  background: linear-gradient(135deg, var(--palette-primaryDark), var(--palette-colorc084fc));
 }
 
 .gradient-accent-soft {
@@ -377,15 +234,15 @@ html.dark .glass-purple {
 }
 
 .gradient-success {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, var(--palette-success), var(--palette-color059669));
 }
 
 .gradient-danger {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  background: linear-gradient(135deg, var(--palette-danger), var(--palette-colordc2626));
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #8b5cf6, #c084fc, #e879f9);
+  background: linear-gradient(135deg, var(--palette-primaryDark), var(--palette-colorc084fc), var(--palette-colore879f9));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -404,7 +261,7 @@ html.dark .glass-purple {
   padding: 1px;
   border-radius: inherit;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(192, 132, 252, 0.15), transparent);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(var(--palette-whiteShort) 0 0) content-box, linear-gradient(var(--palette-whiteShort) 0 0);
   mask-composite: exclude;
   -webkit-mask-composite: xor;
   pointer-events: none;
@@ -1011,3 +868,22 @@ button, a {
     scroll-behavior: auto !important;
   }
 }
+
+/* Shared interaction and accessibility rules. Native horizontal scrolling keeps
+   vertical panning available; chart inspection opts out explicitly. */
+.overflow-x-auto, [class*="overflow-x-auto"] {
+  touch-action: pan-x pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+}
+:where(button, [role="button"], input:not([type="checkbox"]):not([type="radio"]), select) {
+  min-height: 2.75rem;
+}
+:where(button:has(> svg:only-child), button[aria-label]) { min-width: 2.75rem; }
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+[hidden] { display: none !important; }

@@ -1,3 +1,4 @@
+import { WindowedRows } from '@/components/ui/WindowedRows';
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Holding } from '@/types/portfolio';
@@ -8,7 +9,7 @@ function MiniSparkline({ changePercent }: { changePercent: number }) {
   const path = positive ? 'M0 20 Q18 18 34 13 T70 5' : 'M0 6 Q18 8 34 13 T70 22';
   return (
     <svg className="w-16 h-7 shrink-0" viewBox="0 0 70 26" aria-hidden="true">
-      <path d={path} fill="none" stroke={positive ? '#10b981' : '#f43f5e'} strokeWidth="1.8" strokeLinecap="round" />
+      <path d={path} fill="none" stroke={positive ? 'var(--color-success)' : 'var(--color-danger)'} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -124,9 +125,9 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] text-text-muted block font-sans">Ort. Maliyet</span>
+                  <span className="text-[10px] text-text-muted block font-sans">Güncel Değer</span>
                   <span className="text-text-secondary font-medium mt-0.5 block">
-                    ₺{h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
+                    ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
                   </span>
                 </div>
               </div>
@@ -143,13 +144,15 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                   </div>
                 </div>
 
-                {hasLots && (
+                {(
                   <button
                     type="button"
                     onClick={() => toggleExpand(h.symbol)}
+                    aria-expanded={isExpanded}
+                    aria-label={`${h.symbol} lot ve maliyet detayları`}
                     className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline cursor-pointer"
                   >
-                    <span>{isExpanded ? 'Lotları Gizle' : `FIFO (${h.lots!.length} Lot)`}</span>
+                    <span>{isExpanded ? 'Daralt' : 'Lot & Maliyet'}</span>
                     <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -157,6 +160,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                 )}
               </div>
 
+              {isExpanded && <div className="text-xs grid grid-cols-2 gap-2 p-3 bg-bg-tertiary rounded-xl"><span>Adet: {h.totalQuantity.toLocaleString('tr-TR')}</span><span>Ort. maliyet: ₺{h.averageCost.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}</span></div>}
               {/* Mobile Accordion: FIFO Lots Breakdown */}
               {isExpanded && hasLots && (
                 <div className="mt-3 p-3 rounded-xl bg-bg-tertiary/70 border border-border/60 text-xs space-y-2">
@@ -214,7 +218,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            {holdings.map((h) => {
+            <WindowedRows columns={8}>{holdings.map((h) => {
               const isProfit = h.pnl >= 0;
               const link = h.assetType === 'stock' ? `/stocks/${h.symbol}` : `/funds/${h.symbol}`;
               const dailyChange = h.dailyChangePercent || 0;
@@ -420,7 +424,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                   )}
                 </React.Fragment>
               );
-            })}
+            })}</WindowedRows>
           </tbody>
           <tfoot className="bg-bg-secondary/90 border-t-2 border-border text-xs font-semibold text-text-primary">
             <tr>

@@ -1,3 +1,4 @@
+import { palette } from '@/theme/palette';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 
@@ -55,25 +56,25 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
   <meta charset="utf-8">
   <title>StockMind ${isDaily ? 'Günlük Piyasa Kapanış Bülteni (18:30)' : 'Portföy ve Piyasa Bildirimi'}</title>
   <style>
-    body { margin: 0; padding: 0; background-color: #060913; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f1f5f9; }
+    body { margin: 0; padding: 0; background-color: ${palette.color060913}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: ${palette.colorf1f5f9}; }
     .container { max-width: 600px; margin: 0 auto; padding: 32px 20px; }
-    .card { background: linear-gradient(135deg, #0d1527 0%, #111a33 100%); border: 1px solid #1e293b; border-radius: 20px; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-    .logo { font-size: 24px; font-weight: 900; background: linear-gradient(to right, #6366f1, #8b5cf6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
-    .badge { display: inline-block; padding: 4px 12px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 100px; font-size: 11px; font-weight: 700; color: #818cf8; margin-top: 8px; }
-    .badge-daily { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #34d399; }
-    .title { font-size: 20px; font-weight: 800; color: #ffffff; margin-top: 24px; margin-bottom: 8px; }
-    .text { font-size: 14px; line-height: 1.6; color: #94a3b8; margin-bottom: 24px; }
+    .card { background: linear-gradient(135deg, ${palette.color0d1527} 0%, ${palette.color111a33} 100%); border: 1px solid ${palette.color1e293b}; border-radius: 20px; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .logo { font-size: 24px; font-weight: 900; background: linear-gradient(to right, ${palette.color6366f1}, ${palette.primaryDark}, ${palette.color06b6d4}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
+    .badge { display: inline-block; padding: 4px 12px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 100px; font-size: 11px; font-weight: 700; color: ${palette.color818cf8}; margin-top: 8px; }
+    .badge-daily { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: ${palette.color34d399}; }
+    .title { font-size: 20px; font-weight: 800; color: ${palette.colorffffff}; margin-top: 24px; margin-bottom: 8px; }
+    .text { font-size: 14px; line-height: 1.6; color: ${palette.color94a3b8}; margin-bottom: 24px; }
     .metrics-grid { display: table; width: 100%; margin-bottom: 16px; }
     .metric-cell { display: table-cell; width: 50%; padding: 12px 14px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; }
     .metric-cell:first-child { border-right: 6px solid transparent; }
     .metric-cell:last-child { border-left: 6px solid transparent; }
-    .metric-label { font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
-    .metric-val { font-size: 17px; font-weight: 800; font-family: monospace; color: #f8fafc; }
-    .positive { color: #10b981; }
+    .metric-label { font-size: 11px; color: ${palette.color64748b}; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+    .metric-val { font-size: 17px; font-weight: 800; font-family: monospace; color: ${palette.colorf8fafc}; }
+    .positive { color: ${palette.success}; }
     .portfolio-box { background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
-    .ai-box { background: rgba(99, 102, 241, 0.08); border-left: 3px solid #6366f1; padding: 14px 16px; border-radius: 8px; margin-bottom: 24px; }
-    .btn { display: inline-block; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 12px; font-size: 14px; font-weight: 700; text-align: center; margin-top: 8px; }
-    .footer { text-align: center; font-size: 11px; color: #475569; margin-top: 28px; line-height: 1.5; }
+    .ai-box { background: rgba(99, 102, 241, 0.08); border-left: 3px solid ${palette.color6366f1}; padding: 14px 16px; border-radius: 8px; margin-bottom: 24px; }
+    .btn { display: inline-block; background: linear-gradient(135deg, ${palette.color6366f1}, ${palette.color4f46e5}); color: ${palette.colorffffff}; text-decoration: none; padding: 12px 28px; border-radius: 12px; font-size: 14px; font-weight: 700; text-align: center; margin-top: 8px; }
+    .footer { text-align: center; font-size: 11px; color: ${palette.color475569}; margin-top: 28px; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -94,15 +95,15 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
 
       <!-- Portfolio Section -->
       <div class="portfolio-box">
-        <div style="font-size: 11px; font-weight: 700; color: #34d399; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">💼 Günlük Portföy Durumu (18:30 Kapanış)</div>
+        <div style="font-size: 11px; font-weight: 700; color: ${palette.color34d399}; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">💼 Günlük Portföy Durumu (18:30 Kapanış)</div>
         <div style="display: table; width: 100%;">
           <div style="display: table-cell; width: 50%;">
-            <div style="font-size: 11px; color: #64748b;">Toplam Portföy Değeri</div>
-            <div style="font-size: 19px; font-weight: 800; font-family: monospace; color: #ffffff;">₺${pSummary.totalValue?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+            <div style="font-size: 11px; color: ${palette.color64748b};">Toplam Portföy Değeri</div>
+            <div style="font-size: 19px; font-weight: 800; font-family: monospace; color: ${palette.colorffffff};">₺${pSummary.totalValue?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
           </div>
           <div style="display: table-cell; width: 50%; text-align: right;">
-            <div style="font-size: 11px; color: #64748b;">Net Günlük Kâr / Getiri</div>
-            <div style="font-size: 19px; font-weight: 800; font-family: monospace; color: #10b981;">
+            <div style="font-size: 11px; color: ${palette.color64748b};">Net Günlük Kâr / Getiri</div>
+            <div style="font-size: 19px; font-weight: 800; font-family: monospace; color: ${palette.success};">
               +₺${pSummary.totalPnL?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} (+%${pSummary.totalPnLPercent?.toFixed(2)})
             </div>
           </div>
@@ -134,10 +135,10 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
 
       <!-- Technical Analysis Levels Section -->
       <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
-        <div style="font-size: 12px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📊 18:30 Kapanış Teknik Seviyeleri (AI Özeti)</div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #cbd5e1;">
+        <div style="font-size: 12px; font-weight: 700; color: ${palette.color38bdf8}; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📊 18:30 Kapanış Teknik Seviyeleri (AI Özeti)</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: ${palette.colorcbd5e1};">
           <thead>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: #64748b; font-size: 11px; text-align: left;">
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: ${palette.color64748b}; font-size: 11px; text-align: left;">
               <th style="padding: 6px 4px;">Varlık</th>
               <th style="padding: 6px 4px;">Destek (S1)</th>
               <th style="padding: 6px 4px;">Pivot (PP)</th>
@@ -147,25 +148,25 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
           </thead>
           <tbody>
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-              <td style="padding: 8px 4px; font-weight: 700; color: #ffffff;">Gram Altın</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: #34d399;">₺${((gramAltin * 0.985)).toFixed(2)}</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.colorffffff};">Gram Altın</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.color34d399};">₺${((gramAltin * 0.985)).toFixed(2)}</td>
               <td style="padding: 8px 4px; font-family: monospace;">₺${gramAltin.toFixed(2)}</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: #f59e0b;">₺${((gramAltin * 1.025)).toFixed(2)}</td>
-              <td style="padding: 8px 4px; font-weight: 700; color: #34d399;">GÜÇLÜ AL</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.warning};">₺${((gramAltin * 1.025)).toFixed(2)}</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.color34d399};">GÜÇLÜ AL</td>
             </tr>
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-              <td style="padding: 8px 4px; font-weight: 700; color: #ffffff;">BIST 100 (XU100)</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: #34d399;">9.820</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.colorffffff};">BIST 100 (XU100)</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.color34d399};">9.820</td>
               <td style="padding: 8px 4px; font-family: monospace;">10.050</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: #f59e0b;">10.280</td>
-              <td style="padding: 8px 4px; font-weight: 700; color: #38bdf8;">POZİTİF</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.warning};">10.280</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.color38bdf8};">POZİTİF</td>
             </tr>
             <tr>
-              <td style="padding: 8px 4px; font-weight: 700; color: #ffffff;">Ons Altın (XAU)</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: #34d399;">$${((goldPrice * 0.985)).toFixed(1)}</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.colorffffff};">Ons Altın (XAU)</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.color34d399};">$${((goldPrice * 0.985)).toFixed(1)}</td>
               <td style="padding: 8px 4px; font-family: monospace;">$${goldPrice.toFixed(1)}</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: #f59e0b;">$${((goldPrice * 1.025)).toFixed(1)}</td>
-              <td style="padding: 8px 4px; font-weight: 700; color: #34d399;">AL</td>
+              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.warning};">$${((goldPrice * 1.025)).toFixed(1)}</td>
+              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.color34d399};">AL</td>
             </tr>
           </tbody>
         </table>
@@ -173,20 +174,20 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
 
       <!-- Critical Market News Section -->
       <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
-        <div style="font-size: 12px; font-weight: 700; color: #818cf8; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📰 Günün Öne Çıkan Piyasa & Finans Gelişmeleri</div>
+        <div style="font-size: 12px; font-weight: 700; color: ${palette.color818cf8}; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📰 Günün Öne Çıkan Piyasa & Finans Gelişmeleri</div>
         <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-          <div style="font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 2px;">• BIST Kapanışında Sanayi ve Bankacılık Hisselerinde Alım Hacmi Arttı</div>
-          <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">BIST 100 endeksi günü yabancı para girişlerinin desteğiyle kritik direnç testinde kapattı. AI duyarlılığı: <span style="color: #34d399; font-weight: 700;">Pozitif</span></div>
+          <div style="font-size: 13px; font-weight: 700; color: ${palette.colorffffff}; margin-bottom: 2px;">• BIST Kapanışında Sanayi ve Bankacılık Hisselerinde Alım Hacmi Arttı</div>
+          <div style="font-size: 11px; color: ${palette.color94a3b8}; line-height: 1.4;">BIST 100 endeksi günü yabancı para girişlerinin desteğiyle kritik direnç testinde kapattı. AI duyarlılığı: <span style="color: ${palette.color34d399}; font-weight: 700;">Pozitif</span></div>
         </div>
         <div>
-          <div style="font-size: 13px; font-weight: 700; color: #ffffff; margin-bottom: 2px;">• Küresel Merkez Bankaları ve Altın Fiyatlarında Rekor Seviyeler Korunuyor</div>
-          <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">Fed faiz indirimi beklentileri ve jeopolitik gelişmeler ons ve gram altında güvenli liman talebini canlı tutuyor. AI duyarlılığı: <span style="color: #34d399; font-weight: 700;">Pozitif</span></div>
+          <div style="font-size: 13px; font-weight: 700; color: ${palette.colorffffff}; margin-bottom: 2px;">• Küresel Merkez Bankaları ve Altın Fiyatlarında Rekor Seviyeler Korunuyor</div>
+          <div style="font-size: 11px; color: ${palette.color94a3b8}; line-height: 1.4;">Fed faiz indirimi beklentileri ve jeopolitik gelişmeler ons ve gram altında güvenli liman talebini canlı tutuyor. AI duyarlılığı: <span style="color: ${palette.color34d399}; font-weight: 700;">Pozitif</span></div>
         </div>
       </div>
 
       <div class="ai-box">
-        <div style="font-size: 12px; font-weight: 700; color: #a5b4fc; margin-bottom: 4px;">🧠 StockMind Finansal Zeka Notu</div>
-        <div style="font-size: 12px; color: #cbd5e1; line-height: 1.5;">
+        <div style="font-size: 12px; font-weight: 700; color: ${palette.colora5b4fc}; margin-bottom: 4px;">🧠 StockMind Finansal Zeka Notu</div>
+        <div style="font-size: 12px; color: ${palette.colorcbd5e1}; line-height: 1.5;">
           Tüm teknik seviyeler, varlık kurları ve TEFAS fon değerlemeleri Takasbank ve TradingView canlı veri ağından anlık olarak doğrulanmıştır. Her iş günü 18:30'da otomatik bülteniniz gönderilmeye devam edecektir.
         </div>
       </div>

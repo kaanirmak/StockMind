@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { readInbox, saveInbox } from '@/lib/notifications/inbox';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
@@ -15,6 +17,7 @@ export interface NotificationItem {
   read: boolean;
   category: 'portfolio' | 'market' | 'ai' | 'system';
   link?: string;
+  archived?: boolean;
 }
 
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
@@ -77,28 +80,19 @@ export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+  useScrollLock(showNotifications || showUserMenu);
   const notificationRef = useRef<HTMLDivElement>(null);
 
-  // Load and persist notifications
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('stockmind_notifications');
-      if (saved) {
-        setNotifications(JSON.parse(saved));
-      } else {
-        setNotifications([]);
-      }
-    } catch (_) {
-      setNotifications([]);
-    }
+    const reload = () => setNotifications(readInbox());
+    reload();
+    window.addEventListener('storage', reload);
+    window.addEventListener('stockmind:inbox', reload);
+    return () => { window.removeEventListener('storage', reload); window.removeEventListener('stockmind:inbox', reload); };
   }, []);
 
-  const saveNotifications = (items: NotificationItem[]) => {
-    setNotifications(items);
-    try {
-      localStorage.setItem('stockmind_notifications', JSON.stringify(items));
-    } catch (_) {}
-  };
+  const saveNotifications = (items: NotificationItem[]) => { setNotifications(items); saveInbox(items); };
 
   const markAllAsRead = () => {
     const updated = notifications.map((n) => ({ ...n, read: true }));
@@ -106,7 +100,7 @@ export default function Header() {
   };
 
   const clearAllNotifications = () => {
-    saveNotifications([]);
+    saveNotifications(notifications.map((n) => ({ ...n, read: true, archived: true })));
   };
 
   const deleteNotification = (id: string, e: React.MouseEvent) => {
@@ -123,10 +117,8 @@ export default function Header() {
     }
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const displayedNotifications = filterUnreadOnly
-    ? notifications.filter((n) => !n.read)
-    : notifications;
+  const unreadCount = notifications.filter((n) => !n.read && !n.archived).length;
+  const displayedNotifications = notifications.filter((n) => Boolean(n.archived) === showArchive && (!filterUnreadOnly || !n.read));
 
   // Close menus on outside click
   useEffect(() => {
@@ -225,7 +217,7 @@ export default function Header() {
   };
 
   return (
-    <header className="h-14 sm:h-16 bg-white/98 dark:bg-[#0f1021]/98 backdrop-blur-xl border-b border-border shadow-xs flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
+    <header className="h-14 sm:h-16 bg-bg-card/98 backdrop-blur-xl border-b border-border shadow-xs flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
       {/* Mobile Brand Logo + Search Container */}
       <div className="flex items-center gap-2 flex-1 max-w-lg min-w-0 mr-2 sm:mr-4">
         <Link
@@ -284,7 +276,7 @@ export default function Header() {
             }}
             onKeyDown={handleSearchSubmit}
             placeholder="Hisse veya fon ara..."
-            className="w-full min-h-10 pl-9 sm:pl-10 pr-3 sm:pr-12 py-2 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
+            className="w-full min-h-11 pl-9 sm:pl-10 pr-3 sm:pr-12 py-2 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
           />
           <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-text-muted bg-bg-tertiary border border-border">
             ⌘K
@@ -491,7 +483,7 @@ export default function Header() {
         {/* Notifications Dropdown */}
         <div className="relative" ref={notificationRef}>
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => { setShowUserMenu(false); setShowNotifications(!showNotifications); }}
             className={`relative p-2 min-h-11 min-w-11 flex items-center justify-center rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer ${
               showNotifications ? 'bg-bg-hover text-text-primary' : ''
             }`}
@@ -547,7 +539,7 @@ export default function Header() {
               {/* Filter Tabs */}
               <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 border-b border-border/40 text-xs">
                 <button
-                  onClick={() => setFilterUnreadOnly(false)}
+                  onClick={() => { setFilterUnreadOnly(false); setShowArchive(false); }}
                   className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
                     !filterUnreadOnly
                       ? 'bg-accent/20 text-accent font-semibold'
@@ -557,7 +549,7 @@ export default function Header() {
                   Tümü ({notifications.length})
                 </button>
                 <button
-                  onClick={() => setFilterUnreadOnly(true)}
+                  onClick={() => { setFilterUnreadOnly(true); setShowArchive(false); }}
                   className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
                     filterUnreadOnly
                       ? 'bg-accent/20 text-accent font-semibold'
@@ -568,6 +560,10 @@ export default function Header() {
                 </button>
               </div>
 
+              <div className="px-4 flex justify-between text-xs">
+                <button onClick={() => { setShowArchive(!showArchive); setFilterUnreadOnly(false); }} className="text-accent">{showArchive ? 'Gelen kutusu' : 'Arşiv'}</button>
+                <Link href="/settings#notifications" onClick={() => setShowNotifications(false)} className="inline-flex items-center min-h-11 text-text-secondary">Bildirim tercihleri</Link>
+              </div>
               {/* Notifications List */}
               <div className="max-h-[340px] overflow-y-auto divide-y divide-border/40">
                 {displayedNotifications.length === 0 ? (
@@ -584,6 +580,9 @@ export default function Header() {
                   displayedNotifications.map((item) => (
                     <div
                       key={item.id}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleNotificationClick(item); }}
                       onClick={() => handleNotificationClick(item)}
                       className={`p-3 sm:px-4 hover:bg-bg-hover transition-colors cursor-pointer flex items-start gap-3 relative group ${
                         !item.read ? 'bg-accent/[0.04]' : ''
@@ -612,10 +611,11 @@ export default function Header() {
                         <span className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0 animate-pulse" />
                       )}
 
+                      <button type="button" title="Bildirim tercihini düzenle" aria-label={`${item.title} bildirim tercihini düzenle`} onClick={(e) => { e.stopPropagation(); setShowNotifications(false); router.push('/settings#notifications'); }} className="min-w-11 text-text-muted hover:text-accent"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth="2" d="m16 3 5 5-12 12-6 1 1-6L16 3Z" /></svg></button>
                       {/* Delete button on hover */}
                       <button
                         onClick={(e) => deleteNotification(item.id, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-danger rounded hover:bg-bg-secondary transition-all shrink-0 cursor-pointer"
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 p-1 text-text-muted hover:text-danger rounded hover:bg-bg-secondary transition-all shrink-0 cursor-pointer"
                         title="Sil"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -634,12 +634,12 @@ export default function Header() {
                     onClick={clearAllNotifications}
                     className="text-text-muted hover:text-danger transition-colors cursor-pointer text-[11px]"
                   >
-                    Tümünü Temizle
+                    Tümünü Arşivle
                   </button>
                 ) : <span />}
 
                 <Link
-                  href="/settings"
+                  href="/settings#notifications"
                   onClick={() => setShowNotifications(false)}
                   className="text-accent hover:underline font-medium text-[11px] inline-flex items-center gap-1"
                 >
@@ -657,7 +657,7 @@ export default function Header() {
         {/* User Menu */}
         <div className="relative" ref={menuRef}>
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={() => { setShowNotifications(false); setShowUserMenu(!showUserMenu); }}
             className="flex min-h-11 items-center gap-1 sm:gap-2 px-1.5 sm:px-2 py-1.5 rounded-xl hover:bg-bg-hover transition-all duration-200 cursor-pointer"
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-semibold shadow-sm overflow-hidden flex-shrink-0 ${
@@ -731,7 +731,7 @@ export default function Header() {
                     )}
                   </div>
                   <p className="text-xs text-text-muted truncate mt-0.5">
-                    {profile?.username || 'Giriş Yapılmadı'} • {profile?.isPro ? '⭐ Pro Üye' : 'Standart'}
+                    {profile?.username || 'Giriş Yapılmadı'} • {profile?.isPro ? " Pro Üye" : 'Standart'}
                   </p>
                 </div>
               </div>

@@ -1,3 +1,4 @@
+import { palette } from '@/theme/palette';
 // StockMind Yatırım Komitesi - Çoklu AI Ajan Simülasyonu Motoru
 
 export interface CommitteeAgent {
@@ -31,7 +32,7 @@ export const COMMITTEE_AGENTS_CONFIG = [
     name: 'Warren Buffett',
     role: 'Değer & Hendek (Moat) Ajanı',
     avatar: '👴🏻',
-    color: '#3b82f6',
+    color: palette.info,
     accentBg: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
     focus: 'Ekonomik Hendek, Serbest Nakit Akışı, F/K, Sermaye Kârlılığı (ROE)',
   },
@@ -40,7 +41,7 @@ export const COMMITTEE_AGENTS_CONFIG = [
     name: 'Peter Lynch',
     role: 'Büyüme & Trend Ajanı',
     avatar: '📈',
-    color: '#10b981',
+    color: palette.success,
     accentBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
     focus: 'Büyüme Potansiyeli, PEG Oranı, Müşteri Sadakati, 10-Bagger Potansiyeli',
   },
@@ -49,7 +50,7 @@ export const COMMITTEE_AGENTS_CONFIG = [
     name: 'Jim Simons (Quant)',
     role: 'Algoritmik & Matematiksel Ajan',
     avatar: '📐',
-    color: '#8b5cf6',
+    color: palette.primaryDark,
     accentBg: 'bg-violet-500/10 border-violet-500/30 text-violet-400',
     focus: 'Momentum, RSI/MACD, Volatilite, İstatistiksel Sapma & Olasılık',
   },
@@ -58,7 +59,7 @@ export const COMMITTEE_AGENTS_CONFIG = [
     name: 'Michael Burry',
     role: 'Risk Yöneticisi (Ayı Senaryosu)',
     avatar: '🐻',
-    color: '#f43f5e',
+    color: palette.colorf43f5e,
     accentBg: 'bg-rose-500/10 border-rose-500/30 text-rose-400',
     focus: 'Makro Kriz Riskleri, Borç Vadesi, Kur Riski, Aşırı Değerleme İpuçları',
   },

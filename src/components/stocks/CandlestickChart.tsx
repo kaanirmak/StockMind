@@ -1,4 +1,8 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
+import { palette } from '@/theme/palette';
+
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -10,6 +14,7 @@ import {
   AreaSeries,
   HistogramSeries,
 } from 'lightweight-charts';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { Candle, BollingerBandsResult, calculateSMA, calculateBollingerBands } from '@/lib/indicators';
 
@@ -49,6 +54,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const [chartType, setChartType] = useState<'candles' | 'line'>('line');
   const [touchInspectMode, setTouchInspectMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  useScrollLock(isFullscreen);
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape' && !document.querySelector('[role="dialog"]')) setIsFullscreen(false); };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [isFullscreen]);
   const [hoveredCandle, setHoveredCandle] = useState<Candle | null>(null);
   const { resolvedTheme } = useTheme();
 
@@ -136,10 +148,10 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
     const container = chartContainerRef.current;
     const isDark = resolvedTheme !== 'light';
-    const textColor = isDark ? '#94a3b8' : '#475569';
+    const textColor = isDark ? palette.color94a3b8 : palette.color475569;
     const gridColor = isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(226, 232, 240, 0.7)';
-    const borderColor = isDark ? '#1e293b' : '#e2e8f0';
-    const labelBg = isDark ? '#1e293b' : '#334155';
+    const borderColor = isDark ? palette.color1e293b : palette.colore2e8f0;
+    const labelBg = isDark ? palette.color1e293b : palette.color334155;
 
     const effectiveHeight = isFullscreen ? window.innerHeight - 80 : getResponsiveHeight();
 
@@ -157,13 +169,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       },
       crosshair: {
         vertLine: {
-          color: isDark ? '#8b5cf6' : '#7c3aed',
+          color: isDark ? palette.primaryDark : palette.primaryLight,
           width: 1,
           style: 3,
           labelBackgroundColor: labelBg,
         },
         horzLine: {
-          color: isDark ? '#8b5cf6' : '#7c3aed',
+          color: isDark ? palette.primaryDark : palette.primaryLight,
           width: 1,
           style: 3,
           labelBackgroundColor: labelBg,
@@ -219,21 +231,21 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         // Candlestick Series
         if (typeof (chart as any).addCandlestickSeries === 'function') {
           mainSeries = (chart as any).addCandlestickSeries({
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderUpColor: '#10b981',
-            borderDownColor: '#ef4444',
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
+            upColor: palette.success,
+            downColor: palette.danger,
+            borderUpColor: palette.success,
+            borderDownColor: palette.danger,
+            wickUpColor: palette.success,
+            wickDownColor: palette.danger,
           });
         } else if (CandlestickSeries) {
           mainSeries = (chart as any).addSeries(CandlestickSeries, {
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderUpColor: '#10b981',
-            borderDownColor: '#ef4444',
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
+            upColor: palette.success,
+            downColor: palette.danger,
+            borderUpColor: palette.success,
+            borderDownColor: palette.danger,
+            wickUpColor: palette.success,
+            wickDownColor: palette.danger,
           });
         }
         if (mainSeries && formattedCandles.length > 0) {
@@ -243,7 +255,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         // Area Series for ultra-clean mobile reading with futuristic glowing gradient
         const areaData = formattedCandles.map((c) => ({ time: c.time, value: c.close }));
         const areaOptions = {
-          lineColor: '#8b5cf6',
+          lineColor: palette.primaryDark,
           topColor: 'rgba(139, 92, 246, 0.35)',
           bottomColor: 'rgba(139, 92, 246, 0.00)',
           lineWidth: 2.5,
@@ -255,9 +267,9 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         } else if (AreaSeries) {
           mainSeries = (chart as any).addSeries(AreaSeries, areaOptions);
         } else if (typeof (chart as any).addLineSeries === 'function') {
-          mainSeries = (chart as any).addLineSeries({ color: '#8b5cf6', lineWidth: 2.5 });
+          mainSeries = (chart as any).addLineSeries({ color: palette.primaryDark, lineWidth: 2.5 });
         } else if (LineSeries) {
-          mainSeries = (chart as any).addSeries(LineSeries, { color: '#8b5cf6', lineWidth: 2.5 });
+          mainSeries = (chart as any).addSeries(LineSeries, { color: palette.primaryDark, lineWidth: 2.5 });
         }
         if (mainSeries && areaData.length > 0) {
           mainSeries.setData(areaData);
@@ -313,13 +325,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
         if (typeof (chart as any).addLineSeries === 'function') {
           smaSeries = (chart as any).addLineSeries({
-            color: '#f59e0b',
+            color: palette.warning,
             lineWidth: 1.5,
             title: `SMA ${period}`,
           });
         } else if (LineSeries) {
           smaSeries = (chart as any).addSeries(LineSeries, {
-            color: '#f59e0b',
+            color: palette.warning,
             lineWidth: 1.5,
             title: `SMA ${period}`,
           });
@@ -340,13 +352,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
         if (typeof (chart as any).addLineSeries === 'function') {
           smaSeries = (chart as any).addLineSeries({
-            color: '#3b82f6',
+            color: palette.info,
             lineWidth: 1.5,
             title: `SMA ${period}`,
           });
         } else if (LineSeries) {
           smaSeries = (chart as any).addSeries(LineSeries, {
-            color: '#3b82f6',
+            color: palette.info,
             lineWidth: 1.5,
             title: `SMA ${period}`,
           });
@@ -524,7 +536,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             }`}
             title={touchInspectMode ? 'İnceleme Modu Açık' : 'Sayfa Kaydırma Serbest (İncelemek için tıklayın)'}
           >
-            <span>{touchInspectMode ? '📍 İncele' : '👆 Kaydır'}</span>
+            <span>{touchInspectMode ? 'İncele' : 'Kaydır'}</span>
           </button>
 
           {/* Chart Style Toggle (Candles vs Line) */}
@@ -538,7 +550,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
               }`}
               title="Çizgi / Alan Grafiği"
             >
-              📈 Çizgi
+               Çizgi
             </button>
             <button
               onClick={() => handleChartTypeSwitch('candles')}
@@ -549,7 +561,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
               }`}
               title="Mum Grafiği"
             >
-              📊 Mum
+               Mum
             </button>
           </div>
 
@@ -559,7 +571,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             className="p-1.5 rounded-lg bg-bg-secondary border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer text-xs"
             title="Ölçeği Sıfırla"
           >
-            🎯
+
           </button>
 
           {/* Fullscreen Button */}
@@ -576,7 +588,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       {/* Touch Inspect Mode Warning Banner */}
       {touchInspectMode && (
         <div className="flex items-center justify-between mb-2 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-400 animate-fade-in">
-          <span>📍 <strong>İnceleme Modu:</strong> Grafiğe dokunarak mumları inceleyin. Sayfayı kaydırmak için iki parmak kullanın veya modu kapatın.</span>
+          <span> <strong>İnceleme Modu:</strong> Grafiğe dokunarak mumları inceleyin. Sayfayı kaydırmak için iki parmak kullanın veya modu kapatın.</span>
           <button type="button" onClick={() => setTouchInspectMode(false)} className="underline ml-2 cursor-pointer font-bold">Kapat</button>
         </div>
       )}
@@ -584,6 +596,8 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       {/* Chart Canvas with Non-locking Mobile Touch Action */}
       <div
         ref={chartContainerRef}
+        role="img"
+        aria-label={`${symbol} fiyat grafiği, ${candles.length} veri noktası${candles.length ? `, son kapanış ${candles[candles.length - 1].close}` : ''}`}
         className="w-full relative"
         style={{ touchAction: touchInspectMode ? 'none' : 'pan-y' }}
       />
@@ -598,7 +612,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       {/* Mobile Touch Tip Indicator */}
       <div className="flex items-center justify-between mt-2 pt-1 text-[10px] text-text-muted/70">
         <span className="flex items-center gap-1">
-          <span>👆</span>
+          <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
           <span>Yakınlaştırmak için iki parmakla sıkıştırın, fiyat görmek için basılı tutun</span>
         </span>
         <div className="flex items-center gap-2 font-medium">

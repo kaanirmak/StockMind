@@ -1,4 +1,7 @@
 import type { Metadata } from 'next';
+import { WatchlistQuotes } from '@/components/watchlist/WatchlistQuotes';
+import { WatchlistSync } from '@/components/watchlist/WatchlistSync';
+import { QuickTransaction } from '@/components/layout/QuickTransaction';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import MobileNav from '@/components/layout/MobileNav';
@@ -25,11 +28,14 @@ export default function DashboardLayout({
         <Header />
         <AppUpdateNotifier />
         <WatchlistAlertWatcher />
+        <WatchlistSync />
+        <WatchlistQuotes />
         <main className="flex-1 min-w-0 max-w-full overflow-x-clip p-3 sm:p-4 lg:p-6 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 has-[.ai-chat-container]:p-0">
           {children}
         </main>
       </div>
       <MobileNav />
+      <QuickTransaction />
     </div>
   );
 }

@@ -124,7 +124,7 @@ export default function ReportsPage() {
       if (data.success) {
         showToast({
           type: 'success',
-          title: 'Rapor E-postayla Gönderildi! 📨',
+          title: "Rapor E-postayla Gönderildi! ",
           message: data.message || `Portföy raporunuz ${recipientEmail} adresine iletildi.`,
         });
       } else if (data.requiresSmtpConfig) {

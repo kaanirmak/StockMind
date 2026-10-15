@@ -1,5 +1,10 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
 
+import { palette } from '@/theme/palette';
+
+
+import { PortfolioDangerZone } from '@/components/portfolio/PortfolioDangerZone';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
@@ -22,17 +27,23 @@ import {
 } from '@/lib/notifications/pushNotification';
 
 const AVATAR_PRESETS: Array<{ label: string; icon: string; colors: [string, string] }> = [
-  { label: 'Boğa (Bull)', icon: '🐂', colors: ['#059669', '#10b981'] },
-  { label: 'Ayı (Bear)', icon: '🐻', colors: ['#b45309', '#d97706'] },
-  { label: 'Roket (Rocket)', icon: '🚀', colors: ['#4f46e5', '#7c3aed'] },
-  { label: 'Elmas (Diamond)', icon: '💎', colors: ['#0284c7', '#38bdf8'] },
-  { label: 'Yapay Zeka (AI)', icon: '🤖', colors: ['#9333ea', '#c084fc'] },
-  { label: 'Aslan (Lion)', icon: '🦁', colors: ['#d97706', '#fbbf24'] },
-  { label: 'Grafik (Trend)', icon: '📈', colors: ['#0d9488', '#14b8a6'] },
-  { label: 'Para Çantası', icon: '💰', colors: ['#15803d', '#84cc16'] },
+  { label: 'Boğa (Bull)', icon: '🐂', colors: [palette.color059669, palette.success] },
+  { label: 'Ayı (Bear)', icon: '🐻', colors: [palette.colorb45309, palette.colord97706] },
+  { label: 'Roket (Rocket)', icon: '🚀', colors: [palette.color4f46e5, palette.primaryLight] },
+  { label: 'Elmas (Diamond)', icon: '💎', colors: [palette.color0284c7, palette.color38bdf8] },
+  { label: 'Yapay Zeka (AI)', icon: '🤖', colors: [palette.color9333ea, palette.colorc084fc] },
+  { label: 'Aslan (Lion)', icon: '🦁', colors: [palette.colord97706, palette.colorfbbf24] },
+  { label: 'Grafik (Trend)', icon: '📈', colors: [palette.color0d9488, palette.color14b8a6] },
+  { label: 'Para Çantası', icon: '💰', colors: [palette.color15803d, palette.color84cc16] },
 ];
 
 export default function SettingsPage() {
+  const [settingsSection, setSettingsSection] = useState('profile');
+  useEffect(() => {
+    const syncHash = () => { const hash = window.location.hash.slice(1); if (['profile', 'notifications', 'appearance', 'ai-settings'].includes(hash)) setSettingsSection(hash); else if (hash === 'mobile') setSettingsSection('appearance'); };
+    syncHash(); window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
+  }, []);
   const { showToast } = useToast();
   const { user, profile, loading: authLoading, updateProfile } = useAuth();
   const { theme, resolvedTheme, setTheme } = useTheme();
@@ -133,7 +144,7 @@ export default function SettingsPage() {
     if (granted) {
       showToast({
         type: 'success',
-        title: 'Bildirim İzni Verildi 🔔',
+        title: "Bildirim İzni Verildi ",
         message: 'Telefon push bildirimleri başarıyla aktif edildi.',
       });
     } else {
@@ -157,7 +168,7 @@ export default function SettingsPage() {
   const handleSendTestPush = () => {
     setIsSendingTestPush(true);
     sendPushNotification(
-      'StockMind: Bildirim Servisi Aktif! 🚀',
+      "StockMind: Bildirim Servisi Aktif! ",
       'Fiyat alarmları ve portföy bildirimleriniz başarıyla telefonunuza iletilecektir.',
       '/settings'
     );
@@ -165,7 +176,7 @@ export default function SettingsPage() {
       setIsSendingTestPush(false);
       showToast({
         type: 'success',
-        title: 'Test Bildirimi Gönderildi 📱',
+        title: "Test Bildirimi Gönderildi ",
         message: 'Telefonunuzun bildirim çubuğunu veya kilit ekranını kontrol edin.',
       });
     }, 350);
@@ -181,9 +192,9 @@ export default function SettingsPage() {
         setRemoteVersionName(data.version);
         setRemoteVersionCode(data.versionCode);
         if (appVersionCode < data.versionCode) {
-          setUpdateStatus(`🚀 Yeni sürüm mevcut: v${data.version} (Build ${data.versionCode}). En güncel performansı ve kesintisiz arka plan fiyat bildirimlerini almak için aşağıdaki butona dokunarak güncelleyin.`);
+          setUpdateStatus(` Yeni sürüm mevcut: v${data.version} (Build ${data.versionCode}). En güncel performansı ve kesintisiz arka plan fiyat bildirimlerini almak için aşağıdaki butona dokunarak güncelleyin.`);
         } else {
-          setUpdateStatus(`✅ Uygulamanız tamamen güncel! En son sürümü kullanıyorsunuz (v${appVersionName}).`);
+          setUpdateStatus(` Uygulamanız tamamen güncel! En son sürümü kullanıyorsunuz (v${appVersionName}).`);
         }
       }
     } catch {
@@ -417,7 +428,7 @@ export default function SettingsPage() {
 
       showToast({
         type: 'success',
-        title: 'E-posta & Bildirim Ayarları Kaydedildi 🎉',
+        title: "E-posta & Bildirim Ayarları Kaydedildi ",
         message: 'Bildirim tercihleriniz ve alıcı e-posta adresiniz başarıyla güncellendi.',
       });
     } catch (e) {
@@ -495,7 +506,7 @@ export default function SettingsPage() {
       if (data.success) {
         showToast({
           type: 'success',
-          title: '18:30 Bülteni Gönderildi! 📬',
+          title: "18:30 Bülteni Gönderildi! ",
           message: data.message || `Günlük piyasa kapanış ve portföy bülteni ${user?.email || targetEmail} adresine gönderildi.`,
         });
         if (data.previewUrl) {
@@ -546,7 +557,7 @@ export default function SettingsPage() {
       if (data.success) {
         showToast({
           type: 'success',
-          title: 'E-posta Gönderildi! 📨',
+          title: "E-posta Gönderildi! ",
           message: data.message || `Test e-postası ${targetEmail} adresine iletildi. (${data.method || 'smtp'})`,
         });
         if (data.previewUrl) {
@@ -605,25 +616,18 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <nav aria-label="Ayar bölümleri" className="sticky top-[3.5rem] sm:top-[4.25rem] z-20 flex items-center gap-1.5 p-1.5 rounded-2xl bg-bg-primary/95 backdrop-blur-xl border border-border/80 shadow-sm overflow-x-auto overscroll-x-contain touch-pan-x no-scrollbar">
+      <nav aria-label="Ayar bölümleri" className="sticky top-14 z-20 flex gap-2 p-2 rounded-2xl bg-bg-card border border-border overflow-x-auto">
         {[
-          ['#appearance', 'Görünüm', '◐'],
-          ['#profile', 'Profil', '◎'],
-          ['#notifications', 'Bildirimler', '◉'],
-          ['#mobile', 'Mobil', '◇'],
-          ['#ai-settings', 'AI & Kota', '✦'],
-        ].map(([href, label, icon]) => (
-          <a key={href} href={href} className="min-h-10 px-3 sm:px-3.5 rounded-xl inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors whitespace-nowrap active:scale-[0.98]">
-            <span className="text-accent">{icon}</span>{label}
-          </a>
-        ))}
+          ['profile', 'Hesap & Güvenlik'], ['notifications', 'Bildirim Tercihleri'],
+          ['appearance', 'Görünüm & Tema'], ['ai-settings', 'AI Ayarları'],
+        ].map(([key, label]) => <button type="button" key={key} aria-pressed={settingsSection === key} onClick={() => { setSettingsSection(key); window.history.replaceState(null, '', `#${key}`); }} className={`min-h-11 px-3 rounded-xl text-xs font-semibold whitespace-nowrap ${settingsSection === key ? 'bg-accent/15 text-accent' : 'text-text-secondary hover:bg-bg-hover'}`}>{label}</button>)}
       </nav>
 
       {/* Guest vs Logged in Account Banner */}
       {!user ? (
         <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">👤</span>
+            <span className="text-2xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <div>
               <p className="text-sm font-bold text-amber-400">Misafir Modundasınız</p>
               <p className="text-xs text-text-muted">
@@ -642,7 +646,7 @@ export default function SettingsPage() {
       ) : (
         <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🔒</span>
+            <span className="text-2xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-bold text-emerald-400">Kişisel Hesabınızdasınız</p>
@@ -659,7 +663,7 @@ export default function SettingsPage() {
       )}
 
       {/* Theme Selection Card (Görünüm ve Plan Tercihi) */}
-      <div id="appearance" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4">
+      <div hidden={settingsSection !== 'appearance'} id="appearance" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">Görünüm & Tema (Plan Seçimi)</h3>
@@ -683,7 +687,7 @@ export default function SettingsPage() {
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🌙</span>
+                <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
                 <span className="font-bold text-sm text-text-primary">Siyah Plan</span>
               </div>
               {resolvedTheme === 'dark' ? (
@@ -699,14 +703,14 @@ export default function SettingsPage() {
             </div>
 
             {/* Dark Mode Miniature Preview */}
-            <div className="h-16 rounded-xl bg-[#0a0b14] border border-[#1e1f3a] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
+            <div className="h-16 rounded-xl bg-[var(--palette-color0a0b14)] border border-[var(--palette-color1e1f3a)] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-2 rounded bg-violet-500/40" />
                 <div className="w-4 h-2 rounded bg-emerald-500/40" />
               </div>
               <div className="flex gap-1.5">
-                <div className="h-6 flex-1 rounded bg-[#12142a] border border-[#2d2f55]" />
-                <div className="h-6 flex-1 rounded bg-[#12142a] border border-[#2d2f55]" />
+                <div className="h-6 flex-1 rounded bg-[var(--palette-color12142a)] border border-[var(--palette-color2d2f55)]" />
+                <div className="h-6 flex-1 rounded bg-[var(--palette-color12142a)] border border-[var(--palette-color2d2f55)]" />
               </div>
             </div>
 
@@ -727,7 +731,7 @@ export default function SettingsPage() {
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xl">☀️</span>
+                <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
                 <span className="font-bold text-sm text-text-primary">Beyaz Plan</span>
               </div>
               {resolvedTheme === 'light' ? (
@@ -743,14 +747,14 @@ export default function SettingsPage() {
             </div>
 
             {/* Light Mode Miniature Preview */}
-            <div className="h-16 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
+            <div className="h-16 rounded-xl bg-[var(--palette-colorf8fafc)] border border-[var(--palette-colore2e8f0)] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-2 rounded bg-violet-600/40" />
                 <div className="w-4 h-2 rounded bg-emerald-600/40" />
               </div>
               <div className="flex gap-1.5">
-                <div className="h-6 flex-1 rounded bg-white border border-[#cbd5e1] shadow-xs" />
-                <div className="h-6 flex-1 rounded bg-white border border-[#cbd5e1] shadow-xs" />
+                <div className="h-6 flex-1 rounded bg-white border border-[var(--palette-colorcbd5e1)] shadow-xs" />
+                <div className="h-6 flex-1 rounded bg-white border border-[var(--palette-colorcbd5e1)] shadow-xs" />
               </div>
             </div>
 
@@ -759,10 +763,11 @@ export default function SettingsPage() {
             </p>
           </button>
         </div>
+        <Button variant={theme === 'system' ? 'primary' : 'secondary'} aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>Cihaz Temasını Otomatik İzle</Button>
       </div>
 
       {/* Default Chart Type Selection Card */}
-      <div className="settings-panel p-4 sm:p-6 space-y-6">
+      <div hidden={settingsSection !== 'appearance'} className="settings-panel p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">Grafik Görünümü & Varsayılan Tip</h3>
@@ -771,7 +776,7 @@ export default function SettingsPage() {
             </p>
           </div>
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-accent/15 border border-accent/30 text-accent">
-            {defaultChartType === 'line' ? '📈 Çizgi / Alan' : '🕯️ Mum Grafiği'}
+            {defaultChartType === 'line' ? " Çizgi / Alan" : " Mum Grafiği"}
           </span>
         </div>
 
@@ -788,7 +793,7 @@ export default function SettingsPage() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-lg">📈</span>
+                <span className="text-lg"><UIIcon name="chart" className="w-4 h-4" /></span>
                 <span className="text-sm font-bold text-text-primary">Çizgi / Alan Grafiği</span>
               </div>
               {defaultChartType === 'line' && (
@@ -814,7 +819,7 @@ export default function SettingsPage() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🕯️</span>
+                <span className="text-lg"><UIIcon name="sparkles" className="w-4 h-4" /></span>
                 <span className="text-sm font-bold text-text-primary">Mum Grafiği (Candlestick)</span>
               </div>
               {defaultChartType === 'candles' && (
@@ -831,7 +836,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Mobile App & APK Card */}
-      <div id="mobile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4 !border-emerald-500/25">
+      <div hidden={settingsSection !== 'appearance'} id="mobile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4 !border-emerald-500/25">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
@@ -876,7 +881,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Card */}
-      <div id="profile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
+      <div hidden={settingsSection !== 'profile'} id="profile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">Profil Bilgileri</h3>
@@ -885,7 +890,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2">
             {(profile?.isPro ?? true) && (
               <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-600/15 via-accent/15 to-fuchsia-600/15 border border-accent/35 text-accent font-bold text-xs flex items-center gap-1.5 shadow-xs">
-                <span>⭐</span> StockMind PRO
+                <span><UIIcon name="star" className="w-4 h-4" /></span> StockMind PRO
               </span>
             )}
             <Badge variant="purple" size="sm">
@@ -1031,8 +1036,8 @@ export default function SettingsPage() {
                 onChange={(e) => setLanguage(e.target.value as any)}
                 className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
               >
-                <option value="tr">🇹🇷 Türkçe (Aktif / Varsayılan)</option>
-                <option value="en" disabled>🇬🇧 English (Çok Yakında)</option>
+                <option value="tr"> Türkçe (Aktif / Varsayılan)</option>
+                <option value="en" disabled> English (Çok Yakında)</option>
               </select>
               <p className="text-[11px] text-text-muted mt-1">Şu anda tüm borsa, TEFAS ve AI analizleri Türkçe olarak sunulmaktadır.</p>
             </div>
@@ -1062,11 +1067,11 @@ export default function SettingsPage() {
       {/* ═══════════════════════════════════════════
           MOBILE PHONE & PUSH NOTIFICATIONS CARD
           ═══════════════════════════════════════════ */}
-      <div id="notifications" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
+      <div hidden={settingsSection !== 'notifications'} id="notifications" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border/60 gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl">📱</span>
+              <span className="text-xl"><UIIcon name="phone" className="w-4 h-4" /></span>
               <h3 className="text-base font-bold text-text-primary">Telefon & Push Bildirimleri (Mobil Anlık Bildirim)</h3>
             </div>
             <p className="text-xs text-text-muted mt-1">
@@ -1075,10 +1080,10 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Badge variant={isAndroid ? 'success' : 'purple'} size="sm">
-              {isAndroid ? '🤖 Android Uygulama' : '🌐 Web / Tarayıcı'}
+              {isAndroid ? " Android Uygulama" : " Web / Tarayıcı"}
             </Badge>
             <Badge variant={isPermitted ? 'success' : 'warning'} size="sm">
-              {isPermitted ? '● İzin Verildi' : '⚠️ İzin Gerekli'}
+              {isPermitted ? '● İzin Verildi' : " İzin Gerekli"}
             </Badge>
           </div>
         </div>
@@ -1098,18 +1103,22 @@ export default function SettingsPage() {
               onClick={handleRequestPushPermission}
               className="border-amber-500/40 text-amber-400 hover:bg-amber-500/20 shrink-0"
             >
-              🔔 İzin İste / Etkinleştir
+               İzin İste / Etkinleştir
             </Button>
           </div>
         )}
 
         {/* Toggles */}
         <div className="space-y-2.5">
+          <label className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-bg-tertiary border border-border min-h-11 cursor-pointer">
+            <span className="text-sm text-text-primary font-semibold">Uygulama İçi Bildirim Kutusu</span>
+            <input type="checkbox" checked={pushSettings.inAppEnabled} onChange={(e) => setPushSettings({ ...pushSettings, inAppEnabled: e.target.checked })} className="w-5 h-5 accent-accent" />
+          </label>
           {/* Master Toggle */}
           <label className="flex items-center justify-between p-3.5 rounded-xl bg-accent/10 border border-accent/30 cursor-pointer transition-colors">
             <div className="pr-4">
               <span className="text-sm font-bold text-text-primary block">
-                🔔 Telefon Push Bildirimlerini Etkinleştir
+                 Telefon Push Bildirimlerini Etkinleştir
               </span>
               <span className="text-xs text-text-muted">
                 Fiyat alarmları, portföy hareketleri ve kapanış bülteninin telefon bildirim çubuğuna düşmesini sağlar.
@@ -1127,7 +1136,7 @@ export default function SettingsPage() {
           <div className={`space-y-2 pl-1 sm:pl-3 transition-opacity ${pushSettings.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block">🎯 Anlık Hedef Fiyat Alarmları</span>
+                <span className="text-sm font-semibold text-text-primary block"> Anlık Hedef Fiyat Alarmları</span>
                 <span className="text-xs text-text-muted">İzleme listenizdeki veya portföyünüzdeki hisse/fon belirlediğiniz fiyata ulaştığında doğrudan kilit ekranına bildirim gelir.</span>
               </div>
               <input
@@ -1140,7 +1149,7 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block">⏰ Günlük 18:30 Kapanış Bildirimi</span>
+                <span className="text-sm font-semibold text-text-primary block"> Günlük 18:30 Kapanış Bildirimi</span>
                 <span className="text-xs text-text-muted">Piyasa kapandığında günün kâr/zararını ve BIST 100 durumunu telefonun bildirim çubuğunda gösterir.</span>
               </div>
               <input
@@ -1153,7 +1162,7 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block">⚡ Kritik Portföy Değişimleri (±%3)</span>
+                <span className="text-sm font-semibold text-text-primary block"> Kritik Portföy Değişimleri (±%3)</span>
                 <span className="text-xs text-text-muted">Portföyünüzde gün içinde %3 veya üzeri sert hareket olduğunda anında push uyarısı gönderir.</span>
               </div>
               <input
@@ -1166,7 +1175,7 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block">📢 Önemli KAP & Piyasa Gelişmeleri</span>
+                <span className="text-sm font-semibold text-text-primary block"> Önemli KAP & Piyasa Gelişmeleri</span>
                 <span className="text-xs text-text-muted">Sahip olduğunuz hisselerle ilgili kritik KAP bildirimleri ve flaş haberleri bildir.</span>
               </div>
               <input
@@ -1182,7 +1191,7 @@ export default function SettingsPage() {
         {/* Background Service Status Info */}
         <div className="p-3.5 rounded-xl bg-accent/5 border border-accent/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-start gap-2.5">
-            <span className="text-base shrink-0">⚡</span>
+            <span className="text-base shrink-0"><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <div className="space-y-0.5">
               <span className="font-bold text-accent">Uygulama Kapalıyken Arka Plan Fiyat Denetimi</span>
               <p className="text-text-muted leading-relaxed">
@@ -1200,7 +1209,7 @@ export default function SettingsPage() {
               }}
               className="border-accent/40 text-accent hover:bg-accent/10 whitespace-nowrap shrink-0 self-start sm:self-center cursor-pointer"
             >
-              🔋 Pil Kısıtlamasını Kaldır
+               Pil Kısıtlamasını Kaldır
             </Button>
           )}
         </div>
@@ -1221,7 +1230,7 @@ export default function SettingsPage() {
                 </svg>
               }
             >
-              {isSendingTestPush ? 'Bildirim Gönderiliyor...' : '📱 Telefona Test Bildirimi Gönder'}
+              {isSendingTestPush ? 'Bildirim Gönderiliyor...' : " Telefona Test Bildirimi Gönder"}
             </Button>
 
             <Button
@@ -1232,7 +1241,7 @@ export default function SettingsPage() {
                 playNotificationSound();
                 showToast({
                   type: 'info',
-                  title: 'Özel Bildirim Sesi Çalındı 🔔',
+                  title: "Özel Bildirim Sesi Çalındı ",
                   message: 'StockMind özel bildirim sesi çalındı.',
                 });
               }}
@@ -1243,7 +1252,7 @@ export default function SettingsPage() {
                 </svg>
               }
             >
-              🔔 Sesi Dinle
+               Sesi Dinle
             </Button>
           </div>
 
@@ -1260,11 +1269,11 @@ export default function SettingsPage() {
       </div>
 
       {/* APK Version & In-App Update Management Card */}
-      <div className="settings-panel p-4 sm:p-6 space-y-5">
+      <div hidden={settingsSection !== 'appearance'} className="settings-panel p-4 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl">🚀</span>
+              <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <h3 className="text-base font-bold text-text-primary">StockMind APK Sürümü & Güncelleme Merkezi</h3>
             </div>
             <p className="text-xs text-text-muted mt-1">
@@ -1290,7 +1299,7 @@ export default function SettingsPage() {
         {/* Update Status Banner if checked */}
         {updateStatus && (
           <div className="p-3.5 rounded-xl bg-accent/10 border border-accent/30 text-xs text-text-primary flex items-start gap-2.5 animate-in fade-in duration-200">
-            <span className="text-base shrink-0">ℹ️</span>
+            <span className="text-base shrink-0"><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <p className="leading-relaxed font-medium">{updateStatus}</p>
           </div>
         )}
@@ -1299,7 +1308,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
           <div className="p-4 rounded-xl bg-bg-tertiary/40 border border-border/50 space-y-1.5">
             <div className="flex items-center gap-2 font-bold text-text-primary">
-              <span className="text-emerald-400">🛡️</span>
+              <span className="text-emerald-400"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span>Eski APK'yı Silmeli miyim?</span>
             </div>
             <p className="text-text-muted leading-relaxed">
@@ -1309,7 +1318,7 @@ export default function SettingsPage() {
 
           <div className="p-4 rounded-xl bg-bg-tertiary/40 border border-border/50 space-y-1.5">
             <div className="flex items-center gap-2 font-bold text-text-primary">
-              <span className="text-accent">🔔</span>
+              <span className="text-accent"><UIIcon name="bell" className="w-4 h-4" /></span>
               <span>Uygulama Kapalıyken Bildirim Gelir mi?</span>
             </div>
             <p className="text-text-muted leading-relaxed">
@@ -1350,7 +1359,7 @@ export default function SettingsPage() {
                 navigator.clipboard.writeText(fullUrl);
                 showToast({
                   type: 'success',
-                  title: 'Güncelleme Bağlantısı Kopyalandı! 📋',
+                  title: "Güncelleme Bağlantısı Kopyalandı! ",
                   message: 'Adres panonuza kopyalandı. Telefonunuzun Chrome tarayıcısını açıp yapıştırarak saniyeler içinde güncelleyebilirsiniz.',
                 });
               }
@@ -1366,7 +1375,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Email & Notification Settings Card */}
-      <div className="settings-panel p-4 sm:p-6 space-y-6">
+      <div hidden={settingsSection !== 'notifications'} className="settings-panel p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">E-posta Bildirimleri</h3>
@@ -1383,7 +1392,7 @@ export default function SettingsPage() {
           {/* Target Notification Email */}
           <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-base">📬</span>
+              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <h4 className="text-sm font-bold text-text-primary">Hedef Bildirim & Bülten E-postası</h4>
             </div>
             <Input
@@ -1401,7 +1410,7 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block">⏰ Günlük 18:30 Piyasa Kapanış Raporu</span>
+                <span className="text-sm font-semibold text-text-primary block"> Günlük 18:30 Piyasa Kapanış Raporu</span>
                 <span className="text-xs text-text-muted">Her iş günü kapanışta BIST, Altın, Döviz ve Portföy özetini e-posta al.</span>
               </div>
               <input
@@ -1414,7 +1423,7 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block">🎯 Hedef Fiyat & Portföy Alarmları</span>
+                <span className="text-sm font-semibold text-text-primary block"> Hedef Fiyat & Portföy Alarmları</span>
                 <span className="text-xs text-text-muted">Takip listenizdeki hisse ve fonlar hedefe ulaştığında e-posta uyarısı al.</span>
               </div>
               <input
@@ -1427,7 +1436,7 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block">📊 Haftalık Portföy Özeti</span>
+                <span className="text-sm font-semibold text-text-primary block"> Haftalık Portföy Özeti</span>
                 <span className="text-xs text-text-muted">Her Pazartesi sabahı haftalık getiri ve sektör dağılımı analizi al.</span>
               </div>
               <input
@@ -1519,7 +1528,7 @@ export default function SettingsPage() {
       </div>
 
       {/* AI Usage Quota & Cost Transparency Card (AI-07) */}
-      <div id="ai-settings" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
+      <div hidden={settingsSection !== 'ai-settings'} id="ai-settings" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/60">
           <div>
             <h3 className="text-base font-bold text-text-primary">AI Kota ve Maliyet Şeffaflığı</h3>
@@ -1534,7 +1543,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
             <div className="flex items-center gap-2">
-              <span className="text-base">💬</span>
+              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span className="text-xs font-semibold text-text-primary">AI Asistan Sohbet</span>
             </div>
             <div className="text-sm font-bold font-mono text-accent mt-2">10 istek / dk</div>
@@ -1543,7 +1552,7 @@ export default function SettingsPage() {
 
           <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
             <div className="flex items-center gap-2">
-              <span className="text-base">⚖️</span>
+              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span className="text-xs font-semibold text-text-primary">Quant Komitesi</span>
             </div>
             <div className="text-sm font-bold font-mono text-accent mt-2">2 analiz / dk</div>
@@ -1552,7 +1561,7 @@ export default function SettingsPage() {
 
           <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
             <div className="flex items-center gap-2">
-              <span className="text-base">📧</span>
+              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span className="text-xs font-semibold text-text-primary">Bülten & E-posta</span>
             </div>
             <div className="text-sm font-bold font-mono text-accent mt-2">3 gönderim / 10 dk</div>
@@ -1563,7 +1572,7 @@ export default function SettingsPage() {
         {/* Cost Guidance */}
         <div className="p-4 rounded-xl bg-bg-secondary border border-border/70 space-y-2 text-xs">
           <div className="font-semibold text-text-primary flex items-center gap-1.5">
-            <span>ℹ️</span>
+            <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <span>Model Maliyet ve Sağlayıcı Rehberi</span>
           </div>
           <p className="text-text-muted leading-relaxed">
@@ -1584,7 +1593,7 @@ export default function SettingsPage() {
             className="w-full flex items-center justify-between p-3.5 rounded-xl bg-bg-secondary hover:bg-bg-tertiary border border-border transition-all cursor-pointer text-left"
           >
             <div className="flex items-center gap-2.5">
-              <span className="text-base">⚙️</span>
+              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <div>
                 <span className="text-sm font-bold text-text-primary block">
                   İleri Seviye AI & Özel OpenRouter Anahtarı (Opsiyonel)
@@ -1623,12 +1632,12 @@ export default function SettingsPage() {
               <div className="text-xs p-2.5 rounded-xl border">
                 {openRouterKey.trim().startsWith('sk-or-') ? (
                   <p className="text-emerald-400 flex items-center gap-1.5 font-medium">
-                    <span>✅</span>
+                    <span><UIIcon name="check" className="w-4 h-4" /></span>
                     <span>Geçerli OpenRouter anahtar formatı aktif ({openRouterKey.slice(0, 8)}...{openRouterKey.slice(-4)}). Canlı Quant ve AI Asistan hazır!</span>
                   </p>
                 ) : (
                   <p className="text-amber-400 flex items-center gap-1.5">
-                    <span>⚠️</span>
+                    <span><UIIcon name="warning" className="w-4 h-4" /></span>
                     <span>
                       Girdiğiniz anahtar OpenRouter formatında (sk-or-v1-...) değil. Eğer OpenAI doğrudan anahtarı girdiyseniz, sistem OpenRouter altyapısını kullandığı için lütfen{' '}
                       <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline font-bold text-accent">
@@ -1668,7 +1677,7 @@ export default function SettingsPage() {
                   rel="noopener noreferrer"
                   className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
                 >
-                  <span>🔑 OpenRouter Key Al</span>
+                  <span> OpenRouter Key Al</span>
                 </a>
                 {openRouterKey && (
                   <button
@@ -1691,6 +1700,7 @@ export default function SettingsPage() {
           </form>
         )}
       </div>
+      <div hidden={settingsSection !== 'profile'}><PortfolioDangerZone /></div>
     </div>
   );
 }

@@ -189,7 +189,7 @@ function getTileStyle(percent: number) {
   }
   if (percent > 0) {
     return {
-      bg: 'from-emerald-900/70 via-[#0d2a20] to-[#081a14]',
+      bg: 'from-emerald-900/70 via-[var(--palette-color0d2a20)] to-[var(--palette-color081a14)]',
       border: 'border-emerald-600/30',
       text: 'text-emerald-300',
       badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-600/20',
@@ -198,7 +198,7 @@ function getTileStyle(percent: number) {
   }
   if (percent === 0) {
     return {
-      bg: 'from-[#1e1438]/80 via-[#150e28]/70 to-[#0e0a1c]/80',
+      bg: 'from-[var(--palette-color1e1438)]/80 via-[var(--palette-color150e28)]/70 to-[var(--palette-color0e0a1c)]/80',
       border: 'border-white/10',
       text: 'text-white/70',
       badge: 'bg-white/10 text-white/60 border-white/10',
@@ -207,7 +207,7 @@ function getTileStyle(percent: number) {
   }
   if (percent > -2) {
     return {
-      bg: 'from-rose-950/70 via-[#2a0e1b] to-[#1a0812]',
+      bg: 'from-rose-950/70 via-[var(--palette-color2a0e1b)] to-[var(--palette-color1a0812)]',
       border: 'border-rose-600/30',
       text: 'text-rose-300',
       badge: 'bg-rose-500/10 text-rose-400 border-rose-600/20',
@@ -216,7 +216,7 @@ function getTileStyle(percent: number) {
   }
   if (percent > -5) {
     return {
-      bg: 'from-rose-900/80 via-rose-950/70 to-[#220712]',
+      bg: 'from-rose-900/80 via-rose-950/70 to-[var(--palette-color220712)]',
       border: 'border-rose-500/35',
       text: 'text-rose-200',
       badge: 'bg-rose-500/15 text-rose-300 border-rose-500/25',

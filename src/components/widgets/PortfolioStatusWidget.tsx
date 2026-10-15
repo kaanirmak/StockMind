@@ -88,8 +88,8 @@ export default function PortfolioStatusWidget({
         transparent
           ? 'bg-transparent border-white/10'
           : isPositive
-          ? 'bg-gradient-to-br from-[#1c0f38] via-[#0d2222] to-[#061214] border-emerald-500/30 shadow-[0_12px_40px_rgba(16,185,129,0.12)]'
-          : 'bg-gradient-to-br from-[#240e32] via-[#200b1a] to-[#0e040c] border-rose-500/30 shadow-[0_12px_40px_rgba(244,63,94,0.12)]'
+          ? 'bg-gradient-to-br from-[var(--palette-color1c0f38)] via-[var(--palette-color0d2222)] to-[var(--palette-color061214)] border-emerald-500/30 shadow-[0_12px_40px_rgba(16,185,129,0.12)]'
+          : 'bg-gradient-to-br from-[var(--palette-color240e32)] via-[var(--palette-color200b1a)] to-[var(--palette-color0e040c)] border-rose-500/30 shadow-[0_12px_40px_rgba(244,63,94,0.12)]'
       }`}
     >
       {/* Ambient background glows */}
@@ -274,7 +274,7 @@ export default function PortfolioStatusWidget({
         {!hideFooter && (
           <div className="flex items-center justify-between text-[11px] text-white/40 pt-1">
             <div className="flex items-center gap-1.5">
-              <span>Maliyet: {isPrivacyMode ? '•••' : formatCurrency(summary.totalCost)}</span>
+              <span>{summary.cash?.configured ? 'Net Yatırılan' : 'Maliyet'}: {isPrivacyMode ? '•••' : formatCurrency(summary.totalCost)}</span>
               {usdTry > 0 && summary.totalValue > 0 && (
                 <>
                   <span>•</span>

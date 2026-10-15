@@ -7,12 +7,12 @@ import { InstrumentLogo } from '@/components/ui';
 
 export default function WatchlistPreview() {
   const { items } = useWatchlistStore();
-  const previewItems = items.slice(0, 5);
+  const previewItems = [...items].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 3);
 
   return (
     <div className="glass-card p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-semibold text-text-primary">Takip Listesi</h3>
+        <h3 className="text-base font-semibold text-text-primary">Takip Listesi · Öne Çıkanlar</h3>
         <Link href="/watchlist" className="text-xs text-accent hover:text-accent-hover transition-colors">
           Tümünü Gör →
         </Link>
@@ -22,7 +22,7 @@ export default function WatchlistPreview() {
         <div className="text-center py-8 text-text-muted space-y-2">
           <p className="text-xs">Takip listenizde henüz varlık yok.</p>
           <Link
-            href="/stocks"
+            href="/piyasalar"
             className="inline-block text-xs text-accent hover:underline font-medium"
           >
             + Hisseleri Keşfet ve Ekle

@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test:security": "node --test tests/security.test.cjs",
     "test:portfolio": "node --test tests/portfolio.test.cjs",
-    "test": "node --test tests/security.test.cjs tests/portfolio.test.cjs"
+    "test": "node --test tests/security.test.cjs tests/portfolio.test.cjs tests/interaction.test.cjs",
+    "test:interaction": "node --test tests/interaction.test.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

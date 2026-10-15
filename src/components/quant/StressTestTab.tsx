@@ -1,4 +1,8 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
+import { palette } from '@/theme/palette';
+
 
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -94,11 +98,11 @@ export default function StressTestTab({
   };
 
   const trajectoryColors = [
-    '#3b82f6', // blue
-    '#10b981', // emerald
-    '#f59e0b', // amber
-    '#8b5cf6', // violet
-    '#06b6d4', // cyan
+    palette.info, // blue
+    palette.success, // emerald
+    palette.warning, // amber
+    palette.primaryDark, // violet
+    palette.color06b6d4, // cyan
   ];
 
   return (
@@ -131,7 +135,7 @@ export default function StressTestTab({
 
             <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
               <span className="text-xs font-bold text-accent uppercase tracking-wider mr-1 shrink-0">
-                {portfolioStocks.length > 0 ? '💼 Portföy:' : 'Şirket:'}
+                {portfolioStocks.length > 0 ? " Portföy:" : 'Şirket:'}
               </span>
 
               {portfolioStocks.length > 0
@@ -182,7 +186,7 @@ export default function StressTestTab({
         {activeHolding && (
           <div className="p-3 rounded-xl bg-accent/10 border border-accent/20 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-base">💼</span>
+              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <div>
                 <span className="font-bold text-accent">{activeHolding.symbol}</span>
                 <span className="text-text-secondary ml-1">portföyünüzde:</span>
@@ -348,8 +352,8 @@ export default function StressTestTab({
           >
             <defs>
               <linearGradient id="corridorGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
-                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.15" />
+                <stop offset="0%" stopColor={palette.success} stopOpacity="0.15" />
+                <stop offset="100%" stopColor={palette.danger} stopOpacity="0.15" />
               </linearGradient>
             </defs>
 
@@ -376,7 +380,7 @@ export default function StressTestTab({
               y1={scaleY(currentPrice)}
               x2={chartWidth - padding.right}
               y2={scaleY(currentPrice)}
-              stroke="#64748b"
+              stroke={palette.color64748b}
               strokeWidth="1.5"
               strokeDasharray="3 3"
             />
@@ -384,7 +388,7 @@ export default function StressTestTab({
               x={chartWidth - padding.right + 5}
               y={scaleY(currentPrice) + 4}
               fontSize="10"
-              fill="#94a3b8"
+              fill={palette.color94a3b8}
               fontWeight="bold"
             >
               ₺{currentPrice.toFixed(0)}
@@ -425,7 +429,7 @@ export default function StressTestTab({
               x={padding.left}
               y={chartHeight - 8}
               fontSize="10"
-              fill="#94a3b8"
+              fill={palette.color94a3b8}
             >
               Bugün (Gün 0)
             </text>
@@ -433,7 +437,7 @@ export default function StressTestTab({
               x={chartWidth / 2}
               y={chartHeight - 8}
               fontSize="10"
-              fill="#94a3b8"
+              fill={palette.color94a3b8}
               textAnchor="middle"
             >
               6. Ay (126 Gün)
@@ -442,7 +446,7 @@ export default function StressTestTab({
               x={chartWidth - padding.right}
               y={chartHeight - 8}
               fontSize="10"
-              fill="#94a3b8"
+              fill={palette.color94a3b8}
               textAnchor="end"
             >
               1. Yıl (252 Gün)

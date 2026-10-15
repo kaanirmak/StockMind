@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -98,13 +100,13 @@ export default function NewsPage() {
     { id: 'ALL', label: 'Tüm Haberler' },
     {
       id: 'PORTFOLIO',
-      label: `💼 Portföyümdeki Varlıklar${portfolioSymbols.length > 0 ? ` (${portfolioSymbols.length})` : ''}`,
+      label: ` Portföyümdeki Varlıklar${portfolioSymbols.length > 0 ? ` (${portfolioSymbols.length})` : ''}`,
       highlight: true,
     },
-    { id: 'BIST', label: '🇹🇷 BIST & Şirketler' },
-    { id: 'KAP', label: '📢 KAP Bildirimleri' },
-    { id: 'GLOBAL', label: '🌐 Küresel Piyasalar' },
-    { id: 'MACRO', label: '📊 Makroekonomi & Emtia' },
+    { id: 'BIST', label: " BIST & Şirketler" },
+    { id: 'KAP', label: " KAP Bildirimleri" },
+    { id: 'GLOBAL', label: " Küresel Piyasalar" },
+    { id: 'MACRO', label: " Makroekonomi & Emtia" },
   ];
 
   return (
@@ -244,7 +246,7 @@ export default function NewsPage() {
       {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length === 0 && !loading ? (
         <div className="glass-card p-12 text-center space-y-4">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl">
-            💼
+
           </div>
           <div className="space-y-1 max-w-md mx-auto">
             <h3 className="text-lg font-bold text-text-primary">Portföyünüzde Henüz Varlık Bulunmuyor</h3>
@@ -312,7 +314,7 @@ export default function NewsPage() {
                       <span className="text-xs font-semibold text-accent">{item.source}</span>
                       {isPortfolioRelated && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          <span>💼</span> Portföyünüzde: {matchedPortfolioSymbols.join(', ')}
+                          <span><UIIcon name="sparkles" className="w-4 h-4" /></span> Portföyünüzde: {matchedPortfolioSymbols.join(', ')}
                         </span>
                       )}
                     </div>
@@ -390,7 +392,7 @@ export default function NewsPage() {
                       )}`}
                     >
                       <Button variant="ghost" size="sm" className="text-accent hover:text-accent text-xs">
-                        {isPortfolioRelated ? 'AI Portföy Yorumu ✨' : 'AI Yorumla →'}
+                        {isPortfolioRelated ? "AI Portföy Yorumu " : 'AI Yorumla →'}
                       </Button>
                     </Link>
                   </div>

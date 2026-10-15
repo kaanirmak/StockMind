@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useEffect } from 'react';
 
@@ -77,12 +79,12 @@ export default function WidgetEmbedModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
 
-      <div className="relative w-full max-w-xl bg-[#0f1422] border border-white/10 rounded-3xl shadow-2xl overflow-hidden z-10 animate-scale-in">
+      <div className="relative w-full max-w-xl bg-[var(--palette-color0f1422)] border border-white/10 rounded-3xl shadow-2xl overflow-hidden z-10 animate-scale-in">
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent/20 border border-accent/30 text-accent flex items-center justify-center text-lg">
-              🧩
+
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">Widget Gömme & Masaüstü Paylaşımı</h3>
@@ -116,7 +118,7 @@ export default function WidgetEmbedModal({
                 }`}
               >
                 <div className="font-bold text-xs flex items-center gap-1.5">
-                  <span>💼</span> Portföy Durumu (Günlük/Aylık)
+                  <span><UIIcon name="sparkles" className="w-4 h-4" /></span> Portföy Durumu (Günlük/Aylık)
                 </div>
                 <p className="text-[10px] text-text-muted mt-1">Toplam varlık, günlük getiri & aylık oran</p>
               </button>
@@ -131,7 +133,7 @@ export default function WidgetEmbedModal({
                 }`}
               >
                 <div className="font-bold text-xs flex items-center gap-1.5">
-                  <span>📊</span> Isı Haritası (Heatmap)
+                  <span><UIIcon name="chart" className="w-4 h-4" /></span> Isı Haritası (Heatmap)
                 </div>
                 <p className="text-[10px] text-text-muted mt-1">Hisse kutuları & ağırlık oranları</p>
               </button>
@@ -147,9 +149,9 @@ export default function WidgetEmbedModal({
               </label>
               <div className="flex gap-1.5 p-1 rounded-xl bg-white/[0.03] border border-white/10">
                 {[
-                  { key: 'dark', label: '🌙 Koyu' },
-                  { key: 'light', label: '☀️ Açık' },
-                  { key: 'transparent', label: '✨ Şeffaf' },
+                  { key: 'dark', label: " Koyu" },
+                  { key: 'light', label: " Açık" },
+                  { key: 'transparent', label: " Şeffaf" },
                 ].map((t) => (
                   <button
                     key={t.key}
@@ -199,7 +201,7 @@ export default function WidgetEmbedModal({
           <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-600/15 via-accent/15 to-emerald-500/15 border border-accent/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span>🖥️</span> Yüzen Masaüstü Penceresi Olarak Başlat
+                <span><UIIcon name="sparkles" className="w-4 h-4" /></span> Yüzen Masaüstü Penceresi Olarak Başlat
               </div>
               <p className="text-[11px] text-text-muted mt-0.5">
                 Tarayıcı kenarında veya ikinci monitörde mini widget penceresi olarak açık kalsın.
@@ -211,7 +213,7 @@ export default function WidgetEmbedModal({
               onClick={handleOpenDesktopWindow}
               className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-accent/25 transition-all cursor-pointer shrink-0"
             >
-              <span>🚀 Pencereyi Aç</span>
+              <span> Pencereyi Aç</span>
             </button>
           </div>
 
@@ -255,7 +257,7 @@ export default function WidgetEmbedModal({
               className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-text-secondary font-mono select-all focus:outline-none"
             />
             <p className="text-[11px] text-text-muted">
-              💡 <strong>Notion Kullanıcıları:</strong> Sayfada <code className="text-accent">/embed</code> yazıp bu linki yapıştırarak doğrudan etkileşimli widget ekleyebilirsiniz.
+               <strong>Notion Kullanıcıları:</strong> Sayfada <code className="text-accent">/embed</code> yazıp bu linki yapıştırarak doğrudan etkileşimli widget ekleyebilirsiniz.
             </p>
           </div>
         </div>

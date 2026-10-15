@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React from 'react';
 import { Modal, Button } from '@/components/ui';
@@ -19,7 +21,7 @@ export const LegalDisclaimerModal: React.FC<LegalDisclaimerModalProps> = ({ isOp
       <div className="space-y-4 text-xs sm:text-sm text-text-secondary leading-relaxed">
         <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-1.5">
           <p className="font-bold text-amber-400 flex items-center gap-1.5">
-            <span>⚖️</span>
+            <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <span>SPK Mevzuatı Uyarınca Yasal Uyarı</span>
           </p>
           <p className="text-xs text-text-secondary">

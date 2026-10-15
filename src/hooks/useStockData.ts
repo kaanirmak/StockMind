@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { StockMarketInfo, StockQuote } from '@/types/stock';
+import { marketJson } from '@/lib/api/clientCache';
 import { Candle } from '@/lib/indicators';
 
 export type StockWithQuote = StockMarketInfo & StockQuote;
@@ -15,7 +16,10 @@ export function useStocks(
   const [loading, setLoading] = useState(isEnabled);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStocks = useCallback(async () => {
+  const generation = useRef(0);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const fetchStocks = useCallback(async (force = false) => {
+    const current = ++generation.current;
     if (!isEnabled) {
       setLoading(false);
       return;
@@ -27,25 +31,28 @@ export function useStocks(
       if (filter?.sector && filter.sector !== 'ALL') params.append('sector', filter.sector);
       if (filter?.search) params.append('search', filter.search);
 
-      const res = await fetch(`/api/stocks?${params.toString()}`);
-      const json = await res.json();
+      const json = await marketJson<{ success: boolean; data: StockWithQuote[]; error?: string }>(`/api/stocks?${params.toString()}`, 30_000, force);
+      if (current !== generation.current) return;
+      setError(null);
       if (json.success) {
         setStocks(json.data);
+        setUpdatedAt(new Date());
       } else {
         setError(json.error || 'Hisseler yüklenemedi');
       }
     } catch (err) {
-      setError('Ağ hatası oluştu');
+      if (current === generation.current) setError('Piyasa verilerine ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.');
     } finally {
-      setLoading(false);
+      if (current === generation.current) setLoading(false);
     }
   }, [isEnabled, filter?.exchange, filter?.sector, filter?.search]);
 
   useEffect(() => {
-    fetchStocks();
+    void fetchStocks();
+    return () => { generation.current++; };
   }, [fetchStocks]);
 
-  return { stocks, loading, error, refetch: fetchStocks };
+  return { stocks, loading, error, updatedAt, refetch: () => fetchStocks(true) };
 }
 
 export function useStockDetail(symbol: string) {
@@ -59,8 +66,8 @@ export function useStockDetail(symbol: string) {
     const fetchDetail = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/stocks/${symbol}`);
-        const json = await res.json();
+        setError(null);
+        const json = await marketJson<{ success: boolean; data: StockWithQuote; error?: string }>(`/api/stocks/${encodeURIComponent(symbol)}`);
         if (isMounted) {
           if (json.success) {
             setStock(json.data);
@@ -95,8 +102,8 @@ export function useStockHistory(symbol: string, timeframe: string = '1M') {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/stocks/${symbol}/history?timeframe=${timeframe}`);
-        const json = await res.json();
+        setError(null);
+        const json = await marketJson<{ success: boolean; data: Candle[]; error?: string }>(`/api/stocks/${encodeURIComponent(symbol)}/history?timeframe=${timeframe}`, 60_000);
         if (isMounted) {
           if (json.success) {
             setCandles(json.data);
@@ -131,8 +138,8 @@ export function useStockIndicators(symbol: string, timeframe: string = '1Y') {
     const fetchIndicators = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/stocks/${symbol}/indicators?timeframe=${timeframe}`);
-        const json = await res.json();
+        setError(null);
+        const json = await marketJson<{ success: boolean; data: unknown; error?: string }>(`/api/stocks/${encodeURIComponent(symbol)}/indicators?timeframe=${timeframe}`, 60_000);
         if (isMounted) {
           if (json.success) {
             setIndicators(json.data);

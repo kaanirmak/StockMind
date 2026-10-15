@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import { useState, useEffect } from 'react';
 import { Modal, Button, Input } from '@/components/ui';
@@ -147,14 +149,14 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
 
     // Send push confirmation
     sendPushNotification(
-      `🎯 Fiyat Alarmı: ${stock.symbol}`,
+      ` Fiyat Alarmı: ${stock.symbol}`,
       `${stock.name || stock.symbol} ${descriptionText} telefonunuza anlık sesli bildirim gelecektir.`,
       '/watchlist'
     );
 
     showToast({
       type: 'success',
-      title: 'Fiyat Alarmı Kuruldu 🔔',
+      title: "Fiyat Alarmı Kuruldu ",
       message: `${stock.symbol} ${descriptionText} anlık bildirim alacaksınız.`,
     });
 
@@ -216,7 +218,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                 : 'text-text-muted hover:text-text-primary'
             }`}
           >
-            <span>📊</span>
+            <span><UIIcon name="chart" className="w-4 h-4" /></span>
             <span>Yüzdesel Değişim (%)</span>
           </button>
           <button
@@ -228,7 +230,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                 : 'text-text-muted hover:text-text-primary'
             }`}
           >
-            <span>🎯</span>
+            <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <span>Hedef Fiyat (₺)</span>
           </button>
         </div>
@@ -251,7 +253,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                       : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
                   }`}
                 >
-                  <span>📈</span>
+                  <span><UIIcon name="chart" className="w-4 h-4" /></span>
                   <span>Yükseliş (+)</span>
                 </button>
                 <button
@@ -263,7 +265,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                       : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
                   }`}
                 >
-                  <span>📉</span>
+                  <span><UIIcon name="chart" className="w-4 h-4" /></span>
                   <span>Düşüş (-)</span>
                 </button>
                 <button
@@ -275,7 +277,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                       : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
                   }`}
                 >
-                  <span>↕️</span>
+                  <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
                   <span>Sapma (±)</span>
                 </button>
               </div>
@@ -347,13 +349,13 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
               </div>
               <p className="text-[11px] text-text-muted leading-relaxed">
                 {direction === 'up' && (
-                  <>📈 {stock.symbol} fiyatı ₺{currentPrice.toFixed(2)} seviyesinden <strong>%+{activePercent}</strong> yükselerek <strong>₺{computedPercentTargetPrice.toFixed(2)}</strong> seviyesine ulaştığında alarm çalar.</>
+                  <> {stock.symbol} fiyatı ₺{currentPrice.toFixed(2)} seviyesinden <strong>%+{activePercent}</strong> yükselerek <strong>₺{computedPercentTargetPrice.toFixed(2)}</strong> seviyesine ulaştığında alarm çalar.</>
                 )}
                 {direction === 'down' && (
-                  <>📉 {stock.symbol} fiyatı ₺{currentPrice.toFixed(2)} seviyesinden <strong>%-{activePercent}</strong> gerileyerek <strong>₺{computedPercentTargetPrice.toFixed(2)}</strong> seviyesine düştüğünde alarm çalar.</>
+                  <> {stock.symbol} fiyatı ₺{currentPrice.toFixed(2)} seviyesinden <strong>%-{activePercent}</strong> gerileyerek <strong>₺{computedPercentTargetPrice.toFixed(2)}</strong> seviyesine düştüğünde alarm çalar.</>
                 )}
                 {direction === 'both' && (
-                  <>↕️ {stock.symbol} fiyatı her iki yönde <strong>%±{activePercent}</strong> kırıldığında anlık bildirim tetiklenir.</>
+                  <> {stock.symbol} fiyatı her iki yönde <strong>%±{activePercent}</strong> kırıldığında anlık bildirim tetiklenir.</>
                 )}
               </p>
             </div>
@@ -390,12 +392,12 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
 
         {/* Channels Info */}
         <div className="flex items-center gap-2 pt-1 text-[11px] text-text-muted">
-          <span>🔔 Bildirim Kanalı:</span>
+          <span> Bildirim Kanalı:</span>
           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-medium">
-            📱 Telefon Üst Bildirimi
+             Telefon Üst Bildirimi
           </span>
           <span className="px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">
-            🔔 Sesli Uyarı
+             Sesli Uyarı
           </span>
         </div>
 
@@ -409,7 +411,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
               onClick={handleRemove}
               className="text-xs"
             >
-              Alarmı Kaldır 🗑️
+              Alarmı Kaldır
             </Button>
           ) : (
             <div />
@@ -420,7 +422,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
               İptal
             </Button>
             <Button type="submit" variant="primary" size="sm" className="font-bold">
-              {hasExistingAlert ? 'Alarmı Güncelle' : 'Alarmı Kur 🔔'}
+              {hasExistingAlert ? 'Alarmı Güncelle' : "Alarmı Kur "}
             </Button>
           </div>
         </div>

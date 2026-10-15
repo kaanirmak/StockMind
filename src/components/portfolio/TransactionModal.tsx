@@ -8,6 +8,7 @@ import { cleanSymbol } from '@/lib/utils/symbol';
 export interface TransactionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  presentation?: 'dialog' | 'sheet' | 'drawer';
 }
 
 const POPULAR_STOCK_CHIPS = [
@@ -35,7 +36,7 @@ const POPULAR_FUND_CHIPS = [
   { code: 'IPB', name: 'İstanbul Portföy Birinci Değişken' },
 ];
 
-export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose }) => {
+export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, presentation = 'dialog' }) => {
   const { addTransaction, activePortfolioId, livePrices } = usePortfolioStore();
   const { showToast } = useToast();
 
@@ -343,7 +344,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   const totalInTry = isUsd ? rawTotal * fx : rawTotal;
 
   return (
-    <Modal
+    <Modal presentation={presentation}
       isOpen={isOpen}
       onClose={onClose}
       title="Yeni Portföy İşlemi Ekle"
@@ -367,7 +368,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
                 : 'text-text-muted hover:text-text-primary'
             }`}
           >
-            📈 BIST & ABD Hisseleri
+             BIST & ABD Hisseleri
           </button>
           <button
             type="button"
@@ -384,7 +385,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
                 : 'text-text-muted hover:text-text-primary'
             }`}
           >
-            🏦 TEFAS Yatırım Fonları
+             TEFAS Yatırım Fonları
           </button>
         </div>
 

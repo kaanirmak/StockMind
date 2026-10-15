@@ -1,14 +1,19 @@
 'use client';
 
 import { create } from 'zustand';
-import { Portfolio, Transaction, PortfolioSummary } from '@/types/portfolio';
+import { Portfolio, Transaction, PortfolioSummary, CashMovement } from '@/types/portfolio';
 import { calculatePortfolioSummary, normalizeSymbolKey, cleanSymbol, PriceQuote } from '@/lib/portfolio/calculations';
+import { calculateCashLedger, includeCashInSummary } from '@/lib/portfolio/cash';
 import { createClient } from '@/lib/supabase/client';
 
 interface PortfolioState {
   portfolios: Portfolio[];
   activePortfolioId: string;
   transactions: Transaction[];
+  cashMovements: CashMovement[];
+  cashError: string | null;
+  addCashMovement: (movement: Omit<CashMovement, 'id' | 'createdAt' | 'userId'>) => Promise<boolean>;
+  deleteCashMovement: (id: string) => Promise<boolean>;
   livePrices: Record<string, PriceQuote>;
   isRefreshingPrices: boolean;
   loading: boolean;
@@ -153,6 +158,13 @@ function saveLocalState(userId: string | null | undefined, state: { portfolios: 
   }
 }
 
+function loadGuestCash(): CashMovement[] {
+  try { const rows = JSON.parse(localStorage.getItem('stockmind_cash_guest') || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }
+}
+function saveGuestCash(rows: CashMovement[]) {
+  try { localStorage.setItem('stockmind_cash_guest', JSON.stringify(rows)); } catch { /* Private browsing may disable storage. */ }
+}
+
 async function ensurePortfolioInSupabase(supabase: any, user: any, portfolio: Portfolio): Promise<string> {
   try {
     if (isUuid(portfolio.id)) {
@@ -286,10 +298,13 @@ async function insertBatchTransactionsSupabase(
 }
 
 export const usePortfolioStore = create<PortfolioState>((set, get) => {
+  let fetchGeneration = 0;
   return {
     portfolios: INITIAL_PORTFOLIOS,
     activePortfolioId: 'p-default',
     transactions: [],
+    cashMovements: [],
+    cashError: null,
     livePrices: {},
     isRefreshingPrices: false,
     loading: false,
@@ -297,11 +312,14 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     currentUserId: null,
 
     resetStore: () => {
+      fetchGeneration++;
       const local = loadLocalState(null);
       set({
         portfolios: local.portfolios,
         activePortfolioId: local.activePortfolioId,
         transactions: local.transactions,
+        cashMovements: loadGuestCash(),
+        cashError: null,
         currentUserId: null,
         error: null,
       });
@@ -318,8 +336,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     },
 
     fetchLivePrices: async () => {
-      const { transactions } = get();
-      if (!transactions || transactions.length === 0) return;
+      const { transactions, cashMovements } = get();
+      if (!transactions.length && !cashMovements.length) return;
 
       const assetMap = new Map<string, { symbol: string; rawSymbol: string; assetType: 'stock' | 'fund' }>();
       for (const t of transactions) {
@@ -335,7 +353,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
       }
 
       const assets = Array.from(assetMap.values());
-      if (assets.length === 0) return;
+      if (assets.length === 0 && !cashMovements.length) return;
 
       set({ isRefreshingPrices: true });
 
@@ -360,6 +378,9 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         console.warn('[PortfolioStore] Failed to fetch live USDTRY rate:', e);
       }
 
+      if (cashMovements.some((m) => m.currency === 'EUR')) {
+        try { const response = await fetch('/api/stocks/EURTRY'); const result = await response.json(); if (result.success && result.data?.price > 0) newQuotes['EURTRY'] = { price: Number(result.data.price), changePercent: Number(result.data.changePercent || 0) }; } catch { /* Missing rates are disclosed by the cash ledger. */ }
+      }
       await Promise.all(
         assets.map(async ({ symbol, rawSymbol, assetType }) => {
           try {
@@ -444,11 +465,13 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     },
 
     fetchPortfoliosAndTransactions: async () => {
+      const generation = ++fetchGeneration;
       set({ loading: true, error: null });
       try {
         const supabase = createClient();
         const { data: authData } = await supabase.auth.getUser();
         const user = authData?.user;
+        if (generation !== fetchGeneration) return;
 
         if (!user) {
           // Guest mode: load strictly from guest storage
@@ -462,6 +485,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             portfolios: local.portfolios.length > 0 ? local.portfolios : INITIAL_PORTFOLIOS,
             activePortfolioId: activeId,
             transactions: guestTxs,
+            cashMovements: loadGuestCash(),
+            cashError: null,
             currentUserId: null,
             loading: false,
           });
@@ -469,6 +494,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           return;
         }
 
+        if (get().currentUserId !== user.id) set({ cashMovements: [], cashError: null });
         // Authenticated user mode
         const local = loadLocalState(user.id);
 
@@ -479,6 +505,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           .eq('user_id', user.id)
           .order('created_at', { ascending: true });
 
+        if (generation !== fetchGeneration) return;
         if (portError) {
           console.warn('Failed to fetch DB portfolios, falling back to user local state:', portError);
           set({
@@ -534,6 +561,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         }
 
         const mappedTransactions: Transaction[] = (dbTransactions || []).map(parseTransactionFromDb);
+        const cashResult = await supabase.from('cash_movements').select('*').eq('user_id', user.id).order('movement_date', { ascending: true });
+        const mappedCash: CashMovement[] = (cashResult.data || []).map((row) => ({ id: row.id, userId: row.user_id, portfolioId: row.portfolio_id, movementType: row.movement_type, amount: Number(row.amount), currency: row.currency, exchangeRate: Number(row.exchange_rate), movementDate: row.movement_date, notes: row.notes || '', createdAt: row.created_at }));
 
         // Determine valid activePortfolioId for this user
         const currentActive = get().activePortfolioId;
@@ -584,10 +613,13 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             .filter((t) => validPortfolioIds.has(t.portfolioId));
         }
 
+        if (generation !== fetchGeneration) return;
         set({
           portfolios: mappedPortfolios.length > 0 ? mappedPortfolios : INITIAL_PORTFOLIOS,
           activePortfolioId: validActiveId,
           transactions: effectiveTransactions,
+          cashMovements: cashResult.error ? get().cashMovements : mappedCash,
+          cashError: cashResult.error ? 'Nakit hareketleri yüklenemedi. Lütfen tekrar deneyin.' : null,
           currentUserId: user.id,
           loading: false,
         });
@@ -1126,6 +1158,45 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
       }
     },
 
+    addCashMovement: async (movement) => {
+      if (!Number.isFinite(movement.amount) || movement.amount <= 0 || movement.amount >= 1e12 || !['TRY', 'USD', 'EUR'].includes(movement.currency) || !Number.isFinite(movement.exchangeRate) || movement.exchangeRate <= 0 || movement.exchangeRate >= 1e6 || !/^\d{4}-\d{2}-\d{2}$/.test(movement.movementDate) || !Number.isFinite(Date.parse(movement.movementDate)) || new Date(movement.movementDate).toISOString().slice(0, 10) !== movement.movementDate || !['deposit', 'withdrawal'].includes(movement.movementType) || movement.movementDate > new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date()) || (movement.currency === 'TRY' && movement.exchangeRate !== 1)) return false;
+      try {
+        const client = createClient();
+        const { data: { user } } = await client.auth.getUser();
+        const owner = user?.id || null;
+        const portfolio = get().portfolios.find((p) => p.id === movement.portfolioId);
+        if (!portfolio) return false;
+        if (movement.movementType === 'withdrawal') {
+          const ledger = calculateCashLedger(get().transactions.filter((t) => t.portfolioId === movement.portfolioId), get().cashMovements.filter((m) => m.portfolioId === movement.portfolioId), get().livePrices);
+          const available = ledger.balances.find((row) => row.currency === movement.currency)?.amount || 0;
+          if (movement.amount > available + 0.000001) { set({ cashError: 'Yeterli nakit bakiyesi bulunmuyor.' }); return false; }
+        }
+        let item: CashMovement;
+        if (user) {
+          const portfolioId = await ensurePortfolioInSupabase(client, user, portfolio);
+          const { data, error } = await client.from('cash_movements').insert({ user_id: user.id, portfolio_id: portfolioId, movement_type: movement.movementType, amount: movement.amount, currency: movement.currency, exchange_rate: movement.exchangeRate, movement_date: movement.movementDate, notes: (movement.notes || '').slice(0, 500) }).select().single();
+          if (error || !data) throw error;
+          item = { ...movement, portfolioId, userId: user.id, id: data.id, createdAt: data.created_at };
+        } else {
+          item = { ...movement, userId: 'guest', id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+        }
+        if (get().currentUserId !== owner) return true;
+        set((state) => { const cashMovements = [...state.cashMovements, item]; if (!user) saveGuestCash(cashMovements); return { cashMovements, cashError: null }; });
+        return true;
+      } catch { set({ cashError: 'Nakit hareketi kaydedilemedi. Lütfen tekrar deneyin.' }); return false; }
+    },
+    deleteCashMovement: async (id) => {
+      try {
+        const client = createClient();
+        const { data: { user } } = await client.auth.getUser();
+        const owner = user?.id || null;
+        if (user) { const { error } = await client.from('cash_movements').delete().eq('id', id).eq('user_id', user.id); if (error) return false; }
+        if (get().currentUserId !== owner) return true;
+        set((state) => { const cashMovements = state.cashMovements.filter((m) => m.id !== id); if (!user) saveGuestCash(cashMovements); return { cashMovements }; });
+        return true;
+      } catch { return false; }
+    },
+
     getSummary: () => {
       const { transactions, activePortfolioId, livePrices, portfolios } = get();
       const effectiveActiveId = activePortfolioId || portfolios[0]?.id || 'p-default';
@@ -1133,7 +1204,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
       if (filtered.length === 0 && transactions.length > 0 && portfolios.length <= 1) {
         filtered = transactions;
       }
-      return calculatePortfolioSummary(filtered, livePrices);
+      const movements = get().cashMovements.filter((m) => m.portfolioId === effectiveActiveId);
+      return includeCashInSummary(calculatePortfolioSummary(filtered, livePrices), calculateCashLedger(filtered, movements, livePrices));
     },
   };
 });

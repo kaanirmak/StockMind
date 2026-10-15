@@ -12,3 +12,7 @@ export { default as ApkDownloadModal } from './ApkDownloadModal';
 export * from './AppUpdateNotifier';
 export * from './InstrumentLogo';
 export * from './LegalDisclaimerModal';
+
+export { Icon } from './Icon';
+export { StateView } from './StateView';
+export { BottomSheet } from './BottomSheet';

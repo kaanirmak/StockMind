@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useRef, useMemo } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -356,7 +358,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                 </span>
                 {invalidRows.length > 0 && (
                   <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                    ⚠ {invalidRows.length} Hatalı
+                     {invalidRows.length} Hatalı
                   </span>
                 )}
                 <Button
@@ -509,7 +511,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                     {!overwriteExisting && duplicateIndices.size > 0 && (
                       <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 text-xs text-amber-300">
                         <div className="flex items-center gap-2">
-                          <span className="text-base">⚠️</span>
+                          <span className="text-base"><UIIcon name="warning" className="w-4 h-4" /></span>
                           <span>
                             Dosyadaki <strong>{duplicateIndices.size}</strong> işlem mevcut portföyünüzdeki kayıtlarla birebir eşleşiyor.
                           </span>

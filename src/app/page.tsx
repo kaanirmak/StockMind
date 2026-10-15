@@ -1,3 +1,4 @@
+import { Icon as UIIcon } from '@/components/ui/Icon';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -33,10 +34,10 @@ export default async function LandingPage() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-b from-bg-primary via-[#0d1321] to-bg-primary" />
+      <div className="absolute inset-0 bg-gradient-to-b from-bg-primary via-[var(--palette-color0d1321)] to-bg-primary" />
       <div className="absolute top-1/3 left-1/4 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[150px]" />
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-accent-secondary/5 rounded-full blur-[130px]" />
-      
+
       {/* Grid pattern */}
       <div className="absolute inset-0 opacity-[0.02]" style={{
         backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
@@ -83,7 +84,7 @@ export default async function LandingPage() {
         </h1>
 
         <p className="mt-5 sm:mt-6 text-base sm:text-lg lg:text-xl leading-relaxed text-text-secondary max-w-2xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          StockMind ile borsa hisselerini ve TEFAS fonlarını gerçek zamanlı takip edin. 
+          StockMind ile borsa hisselerini ve TEFAS fonlarını gerçek zamanlı takip edin.
           AI destekli analizler, teknik göstergeler ve portföy yönetimi ile yatırım kararlarınızı güçlendirin.
         </p>
 
@@ -109,7 +110,7 @@ export default async function LandingPage() {
             { value: '4+', label: 'Borsa' },
             { value: '10K+', label: 'Hisse & Fon' },
             { value: '15+', label: 'Teknik Gösterge' },
-            { value: '🤖', label: 'AI Destekli' },
+            { value: "", label: 'AI Destekli' },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl lg:text-3xl font-bold gradient-text">{stat.value}</p>
@@ -189,11 +190,11 @@ export default async function LandingPage() {
               href="/download"
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold border border-emerald-500/25 transition-all"
             >
-              <span>📱</span> Android APK İndir
+              <span><UIIcon name="phone" className="w-4 h-4" /></span> Android APK İndir
             </Link>
           </div>
           <p className="text-xs text-text-muted">
-            © 2026 StockMind. Tüm hakları saklıdır.
+             2026 StockMind. Tüm hakları saklıdır.
           </p>
         </div>
       </footer>

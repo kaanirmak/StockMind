@@ -206,7 +206,7 @@ export const AIBulletinCard: React.FC<AIBulletinCardProps> = ({
               <span className="text-[11px] text-text-muted block font-medium">Trend Yönü</span>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className={`text-xs font-bold ${isUpTrend ? 'text-success' : 'text-danger'}`}>
-                  {isUpTrend ? '↗ Yükseliş Eğilimi' : '↘ Düzeltme Eğilimi'}
+                  {isUpTrend ? " Yükseliş Eğilimi" : " Düzeltme Eğilimi"}
                 </span>
                 <span className="text-[11px] text-text-muted">
                   (EMA20 {isUpTrend ? 'Üstünde' : 'Altında'})
@@ -270,7 +270,7 @@ export const AIBulletinCard: React.FC<AIBulletinCardProps> = ({
           {/* AI Synthesis Summary Box */}
           <div className="p-3 sm:p-3.5 rounded-xl bg-accent/5 border border-accent/15 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
             <div className="text-xs text-text-secondary leading-relaxed font-medium">
-              <span className="font-bold text-text-primary mr-1">💡 AI Teknik Notu:</span>
+              <span className="font-bold text-text-primary mr-1"> AI Teknik Notu:</span>
               {symbol} anlık {currSymbol}{formatPrice(currentPrice)} seviyesinde hareket ederken, {currSymbol}{formatPrice(s1)} desteği üzerinde kalıcılık yükseliş potansiyelini destekliyor. {currSymbol}{formatPrice(r1)} direncinin hacimli test edilmesi durumunda yeni zirve hareketi görülebilir.
             </div>
             <Link

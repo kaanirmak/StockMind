@@ -38,7 +38,7 @@ export default function FundDetailPage({
 
     showToast({
       type: 'success',
-      title: added ? 'Takip Listesine Eklendi ⭐' : 'Takip Listesinden Çıkarıldı',
+      title: added ? "Takip Listesine Eklendi " : 'Takip Listesinden Çıkarıldı',
       message: `${code} fonu favori listenize ${added ? 'eklendi' : 'çıkarıldı'}.`,
     });
   };
@@ -87,7 +87,7 @@ export default function FundDetailPage({
     return (
       <div className="glass-card p-12 text-center space-y-4 max-w-xl mx-auto my-8 animate-fade-in">
         <div className="w-16 h-16 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mx-auto text-2xl font-bold">
-          ⚠️
+
         </div>
         <h2 className="text-xl font-bold text-text-primary">TEFAS Fonu Bulunamadı</h2>
         <p className="text-sm text-text-secondary leading-relaxed">

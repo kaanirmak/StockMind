@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -35,7 +37,7 @@ const INITIAL_MESSAGES: Message[] = [
   {
     id: 'msg-welcome',
     role: 'assistant',
-    content: `👋 **Merhaba! Ben StockMind AI Finansal Danışmanınız.**
+    content: ` **Merhaba! Ben StockMind AI Finansal Danışmanınız.**
 
 Uygulamamızın canlı piyasa motoruna doğrudan bağlıyım. Anlık döviz kurları (USD/TRY, EUR/TRY), altın fiyatları, BIST 100 endeksi, hisse ve TEFAS fonları ile kendi portföyünüz hakkında gerçek zamanlı sorular sorabilirsiniz.
 
@@ -45,11 +47,9 @@ Aşağıdaki hızlı konulardan birini seçebilir veya aklınızdaki soruyu doğ
 ];
 
 const PROMPT_SUGGESTIONS = [
-  { label: '💵 Dolar Kaç TL?', prompt: 'Şu an güncel Dolar (USD/TRY) kuru ne kadar ve günlük değişim nasıl?' },
-  { label: '🥇 Gram Altın Fiyatı', prompt: 'Gram altın ve ons altın şu anda ne kadar? Günlük hareket nasıl?' },
-  { label: '📊 Portföyümü Analiz Et', prompt: 'Portföyümdeki varlıkların kâr/zarar durumunu ve ağırlık dağılımını analiz et.' },
-  { label: '✈️ THYAO Kaç TL?', prompt: 'THYAO hissesi şu an kaç TL ve teknik göstergeleri nasıl?' },
-  { label: '🏦 En İyi TEFAS Fonları', prompt: 'Son 1 yılda en çok kazandıran TEFAS fonları ve dengeli bir fon sepeti önerisi ver.' },
+  { label: 'Portföyümü Analiz Et', prompt: 'Portföyümdeki varlıkların kâr/zarar durumunu ve ağırlık dağılımını analiz et. Özet kartı ve karşılaştırma tablosu ekle.' },
+  { label: 'Risk Raporu Çıkar', prompt: 'Portföyümün yoğunlaşma ve varlık dağılımı risklerini tablo halinde incele. Eksik verileri açıkça belirt.' },
+  { label: 'Günün Piyasa Özeti', prompt: 'BIST, döviz, altın ve kripto piyasalarının güncel durumunu kısa özet ve tablo halinde göster.' },
 ];
 
 const SESSIONS_STORAGE_KEY = 'stockmind_ai_chat_sessions_v2';
@@ -330,13 +330,13 @@ function AIAssistantContent() {
         };
         updateCurrentSessionMessages([...newMessages, assistantMessage]);
       } else {
-        const errorText = data.error || 'AI yanıtı alınamadı.';
+        const errorText = res.status === 401 || res.status === 403 ? 'AI erişimi doğrulanamadı. Ayarlar > AI bölümünden anahtarınızı kontrol edin.' : res.status === 429 ? 'İstek sınırına ulaşıldı. Biraz bekleyip tekrar deneyin.' : 'AI şu anda yanıt veremiyor. Lütfen tekrar deneyin.';
         updateCurrentSessionMessages([
           ...newMessages,
           {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: `⚠️ **Analiz Uyarısı:** ${errorText}\n\n*Sunucu yanıt veremedi veya model meşgul.*`,
+            content: ` **Analiz Uyarısı:** ${errorText}\n\n*Sunucu yanıt veremedi veya model meşgul.*`,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -348,7 +348,7 @@ function AIAssistantContent() {
           {
             id: `stop-${Date.now()}`,
             role: 'assistant',
-            content: `⏹ **Analiz Durduruldu:** *İstek kullanıcı tarafından iptal edildi.*`,
+            content: ` **Analiz Durduruldu:** *İstek kullanıcı tarafından iptal edildi.*`,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -358,7 +358,7 @@ function AIAssistantContent() {
           {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: `⚠️ **Ağ Bağlantı Hatası:** ${err?.message || 'Sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol edin.'}`,
+            content: ` **Ağ Bağlantı Hatası:** Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.`,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -369,8 +369,18 @@ function AIAssistantContent() {
     }
   };
 
+  const [viewportHeight, setViewportHeight] = useState<number | undefined>();
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const update = () => setViewportHeight(viewport?.height || window.innerHeight);
+    update();
+    viewport?.addEventListener('resize', update);
+    window.addEventListener('resize', update);
+    return () => { viewport?.removeEventListener('resize', update); window.removeEventListener('resize', update); };
+  }, []);
+
   return (
-    <div className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]">
+    <div style={{ height: viewportHeight ? `calc(${viewportHeight}px - 3.5rem - 5rem - env(safe-area-inset-bottom, 0px))` : 'calc(100dvh - 8.5rem)' }} className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]">
       {/* Top Header - Compact for Mobile, Detailed for Desktop */}
       <div className="glass-card p-2 sm:p-3 mb-2 shrink-0 rounded-2xl border border-border shadow-sm">
         {/* Mobile Header (Single Compact Row) */}
@@ -398,7 +408,7 @@ function AIAssistantContent() {
               className="p-1.5 text-text-muted hover:text-text-primary rounded-lg border border-border hover:bg-bg-hover transition-colors text-xs cursor-pointer flex items-center gap-1"
               title="Sohbet Geçmişi"
             >
-              <span>📜</span>
+              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
             </button>
 
             {/* New Chat Button */}
@@ -408,7 +418,7 @@ function AIAssistantContent() {
               className="p-1.5 text-accent hover:text-white rounded-lg border border-accent/30 bg-accent/10 hover:bg-accent transition-colors text-xs cursor-pointer"
               title="Yeni Sohbet"
             >
-              <span>➕</span>
+              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
             </button>
 
             {/* Model Select */}
@@ -458,7 +468,7 @@ function AIAssistantContent() {
               onClick={() => setShowHistoryModal(true)}
               className="px-3 py-1.5 rounded-xl border border-border bg-bg-secondary hover:bg-bg-hover text-xs font-semibold text-text-primary flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>📜</span>
+              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span>Geçmiş Sohbetler ({sessions.length})</span>
             </button>
 
@@ -468,7 +478,7 @@ function AIAssistantContent() {
               onClick={handleCreateNewSession}
               className="px-3 py-1.5 rounded-xl border border-accent/40 bg-accent/15 hover:bg-accent text-accent hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>➕</span>
+              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
               <span>Yeni Sohbet</span>
             </button>
 
@@ -537,7 +547,7 @@ function AIAssistantContent() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium">
-                        <span>ℹ️</span>
+                        <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
                         Genel Finans Bilgisi (Canlı veri yok)
                       </span>
                     )}
@@ -632,7 +642,7 @@ function AIAssistantContent() {
             title="Durdur"
             aria-label="Durdur"
           >
-            ⏹
+
           </button>
         ) : (
           <button
@@ -658,7 +668,7 @@ function AIAssistantContent() {
               onClick={handleStopGeneration}
               className="text-xs sm:text-sm px-4 py-2"
             >
-              Durdur ⏹
+              Durdur
             </Button>
           ) : (
             <Button
@@ -680,7 +690,7 @@ function AIAssistantContent() {
           <div className="glass-card max-w-lg w-full p-5 sm:p-6 border border-border rounded-2xl shadow-elevated space-y-4 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div className="flex items-center gap-2">
-                <span className="text-xl">📜</span>
+                <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
                 <div>
                   <h3 className="text-base font-bold text-text-primary">Sohbet Geçmişi</h3>
                   <p className="text-xs text-text-muted">Önceki analiz ve danışmanlık oturumlarınız</p>
@@ -702,7 +712,7 @@ function AIAssistantContent() {
                 onClick={handleCreateNewSession}
                 className="text-xs font-bold text-accent hover:underline flex items-center gap-1 cursor-pointer"
               >
-                <span>➕ Yeni Sohbet Başlat</span>
+                <span> Yeni Sohbet Başlat</span>
               </button>
             </div>
 

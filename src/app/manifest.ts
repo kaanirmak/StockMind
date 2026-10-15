@@ -1,3 +1,4 @@
+import { palette } from '@/theme/palette';
 import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
@@ -7,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Borsa İstanbul, TEFAS Fonları ve Küresel Piyasa Takip & Portföy Platformu',
     start_url: '/dashboard',
     display: 'standalone',
-    background_color: '#000000',
-    theme_color: '#8b5cf6',
+    background_color: palette.black,
+    theme_color: palette.primaryDark,
     icons: [
       {
         src: '/icon-192.png',

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useId } from 'react';
 
 interface ChatMessageContentProps {
   content: string;
@@ -60,7 +60,7 @@ function renderInline(text: string, isUser = false): React.ReactNode[] {
         parts.push(
           <a
             key={match.index}
-            href={linkMatch[2]}
+            href={/^(https?:\/\/|\/(?!\/))/.test(linkMatch[2]) ? linkMatch[2] : undefined}
             target="_blank"
             rel="noopener noreferrer"
             className={`underline font-medium hover:opacity-80 transition-opacity ${
@@ -103,7 +103,10 @@ function renderInline(text: string, isUser = false): React.ReactNode[] {
  * with zero external dependencies and elegant typography.
  */
 export function ChatMessageContent({ content, isUser = false }: ChatMessageContentProps) {
+  const [expanded, setExpanded] = useState(false);
+  const contentId = useId();
   if (!content) return null;
+  const collapsible = !isUser && content.length > 1800;
 
   const rawLines = content.split('\n');
   const blocks: React.ReactNode[] = [];
@@ -158,6 +161,26 @@ export function ChatMessageContent({ content, isUser = false }: ChatMessageConte
     const line = rawLines[i];
     const trimmed = line.trim();
 
+    // Markdown tables become accessible, horizontally scrollable data views.
+    if (trimmed.includes('|') && i + 1 < rawLines.length && /^\s*\|?\s*:?-{3,}/.test(rawLines[i + 1])) {
+      flushList(i);
+      const cells = (row: string) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((v) => v.trim());
+      const headers = cells(trimmed);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < rawLines.length && rawLines[i].includes('|')) { rows.push(cells(rawLines[i])); i++; }
+      i--;
+      blocks.push(<div key={`table-${i}`} className="overflow-x-auto my-3 rounded-xl border border-border"><table className="w-full text-xs text-left"><caption className="sr-only">Analiz verileri</caption><thead className="bg-bg-tertiary"><tr>{headers.map((v, n) => <th key={n} scope="col" className="p-3 font-semibold">{renderInline(v, isUser)}</th>)}</tr></thead><tbody>{rows.map((row, n) => <tr key={n} className="border-t border-border">{headers.map((_, c) => <td key={c} className="p-3 tabular-nums">{renderInline(row[c] || '', isUser)}</td>)}</tr>)}</tbody></table></div>);
+      const percentageColumn = headers.findIndex((header) => /%|ağırlık|dağılım|yüzde/i.test(header));
+      if (percentageColumn > 0 && rows.length > 1) {
+        const series = rows.map((row) => ({ label: row[0], value: row[percentageColumn]?.trim() ? Number(row[percentageColumn].replace(/[%*\s]/g, '').replace(',', '.')) : NaN }));
+        if (series.every((point) => point.label && Number.isFinite(point.value) && point.value >= 0 && point.value <= 100)) {
+          blocks.push(<figure key={`chart-${i}`} className="p-3 rounded-xl bg-bg-tertiary space-y-2" aria-label={`${headers[percentageColumn]} karşılaştırması`}><figcaption className="text-xs font-semibold text-text-primary">{headers[percentageColumn]}</figcaption>{series.slice(0, 12).map((point, index) => <div key={index} className="grid grid-cols-[5rem_1fr_3rem] items-center gap-2 text-xs"><span className="truncate">{point.label}</span><span className="h-2 rounded-full bg-bg-card overflow-hidden"><span className="block h-full bg-accent rounded-full" style={{ width: `${point.value}%` }} /></span><span className="text-right tabular-nums">%{point.value.toFixed(1)}</span></div>)}</figure>);
+        }
+      }
+      continue;
+    }
+
     // 1. Horizontal divider (---, ***, ___)
     if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
       flushList(i);
@@ -178,8 +201,7 @@ export function ChatMessageContent({ content, isUser = false }: ChatMessageConte
       const headingText = headingMatch[2];
       const isDisclaimer =
         headingText.includes('Yatırım Tavsiyesi') ||
-        headingText.includes('YTD') ||
-        headingText.includes('⚠️');
+        headingText.includes('YTD');
 
       if (level === 1) {
         blocks.push(
@@ -266,7 +288,9 @@ export function ChatMessageContent({ content, isUser = false }: ChatMessageConte
 
   flushList('final');
 
-  return <div className="space-y-1 break-words">{blocks}</div>;
+  return <div className="space-y-2"><div id={contentId} className={`space-y-1 break-words ${collapsible && !expanded ? 'max-h-80 overflow-hidden [mask-image:linear-gradient(black_80%,transparent)]' : ''}`}>{blocks}</div>
+    {collapsible && <button type="button" aria-expanded={expanded} aria-controls={contentId} onClick={() => setExpanded(!expanded)} className="text-accent text-xs font-semibold">{expanded ? 'Daralt' : 'Daha fazla göster'}</button>}
+  </div>;
 }
 
 export default ChatMessageContent;

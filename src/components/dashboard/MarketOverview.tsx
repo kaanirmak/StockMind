@@ -1,4 +1,5 @@
 'use client';
+import { Icon as MarketIcon } from '@/components/ui/Icon';
 
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
@@ -175,7 +176,7 @@ export default function MarketOverview() {
                 className="glass-card p-3 sm:p-3.5 hover:border-accent/40 transition-all duration-300 group block relative cursor-pointer"
               >
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-base sm:text-lg">{idx.flag}</span>
+                  <MarketIcon name="chart" />
                   <div className="min-w-0">
                     <p className="text-[10px] text-text-muted font-bold tracking-wider uppercase truncate">
                       {idx.symbol}

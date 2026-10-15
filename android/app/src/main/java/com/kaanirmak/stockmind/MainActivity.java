@@ -81,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
     private ActivityResultLauncher<Intent> fileChooserLauncher;
     private ActivityResultLauncher<String> notificationPermissionLauncher;
     private long backPressedTime = 0;
+    private boolean webGestureBlocksRefresh = true;
+    private int gestureSequence = 0;
     private float touchDownX;
     private float touchDownY;
 
@@ -253,9 +255,9 @@ public class MainActivity extends AppCompatActivity {
 
         swipeRefreshLayout.setColorSchemeColors(0xFF8B5CF6, 0xFF10B981);
         swipeRefreshLayout.setProgressBackgroundColorSchemeColor(0xFF131B2E);
-        // Pull-to-refresh competes with WebView horizontal carousels and chat gestures.
-        // Native refresh is disabled; pages still refresh through their own controls/navigation.
-        swipeRefreshLayout.setEnabled(false);
+        swipeRefreshLayout.setEnabled(true);
+        swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
+                webGestureBlocksRefresh || webView.canScrollVertically(-1));
         swipeRefreshLayout.setOnRefreshListener(() -> {
             if (errorView.getVisibility() == View.VISIBLE) {
                 loadAppUrl();
@@ -307,23 +309,37 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebView() {
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setOnTouchListener((view, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     touchDownX = event.getX();
                     touchDownY = event.getY();
+                    webGestureBlocksRefresh = true;
+                    final int sequence = ++gestureSequence;
+                    final float density = getResources().getDisplayMetrics().density;
+                    String hitTest = "(function(){if(window.scrollY>0||document.documentElement.dataset.scrollLocked||location.pathname.includes('ai-assistant'))return true;"
+                            + "var e=document.elementFromPoint(" + (event.getX() / density) + "," + (event.getY() / density) + ");"
+                            + "while(e&&e!==document.body){var s=getComputedStyle(e);if(e.matches('input,textarea,select,[role=dialog],canvas')||((/auto|scroll/.test(s.overflowY))&&e.scrollHeight>e.clientHeight)||((/auto|scroll/.test(s.overflowX))&&e.scrollWidth>e.clientWidth))return true;e=e.parentElement;}return false;})()";
+                    webView.evaluateJavascript(hitTest, value -> {
+                        if (sequence == gestureSequence) webGestureBlocksRefresh = !"false".equals(value);
+                    });
                     view.getParent().requestDisallowInterceptTouchEvent(false);
                     break;
                 case MotionEvent.ACTION_MOVE:
                     float dx = event.getX() - touchDownX;
                     float dy = event.getY() - touchDownY;
-                    if (Math.abs(dx) > 8f && Math.abs(dx) > Math.abs(dy)) {
+                    if (Math.abs(dx) > android.view.ViewConfiguration.get(this).getScaledTouchSlop() && Math.abs(dx) > Math.abs(dy)) {
+                        webGestureBlocksRefresh = true;
+                        gestureSequence++;
                         // Let horizontal tabs, market cards and AI chat gestures own the swipe.
                         view.getParent().requestDisallowInterceptTouchEvent(true);
                     }
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
+                    gestureSequence++;
+                    webGestureBlocksRefresh = true;
                     view.getParent().requestDisallowInterceptTouchEvent(false);
                     break;
                 default:

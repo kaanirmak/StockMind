@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useWatchlistStore, isPriceAlertTriggered } from '@/store/useWatchlistStore';
-import { sendPushNotification } from '@/lib/notifications/pushNotification';
+import { sendPushNotification, loadPushPreferences } from '@/lib/notifications/pushNotification';
 
 export function WatchlistAlertWatcher() {
   const isCheckingRef = useRef(false);
@@ -11,7 +11,7 @@ export function WatchlistAlertWatcher() {
     if (typeof window === 'undefined') return;
 
     const checkAlerts = async () => {
-      if (isCheckingRef.current) return;
+      if (isCheckingRef.current || document.hidden || !loadPushPreferences().priceAlerts) return;
       const { items } = useWatchlistStore.getState();
       const activeAlertItems = items.filter(
         (i) => (i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0)
@@ -44,7 +44,7 @@ export function WatchlistAlertWatcher() {
             const cooldownKey = `stockmind_alert_sent_${sym}_${(livePrice * 10).toFixed(0)}_${item.alertType || 'price'}`;
             if (!sessionStorage.getItem(cooldownKey)) {
               sessionStorage.setItem(cooldownKey, Date.now().toString());
-              sendPushNotification(check.title, check.message, '/watchlist');
+              sendPushNotification(check.title, check.message, item.assetType === 'fund' ? `/funds/${item.symbol}` : `/stocks/${item.symbol}`);
             }
           }
         }

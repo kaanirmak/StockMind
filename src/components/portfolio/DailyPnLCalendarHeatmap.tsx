@@ -1,4 +1,6 @@
 'use client';
+import { Icon as UIIcon } from '@/components/ui/Icon';
+
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Transaction, PortfolioSummary } from '@/types/portfolio';
@@ -282,12 +284,12 @@ export function DailyPnLCalendarHeatmap({
             </span>
             {heatmapData.stats.currentStreak.type === 'win' && (
               <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-500/20">
-                🔥 Kâr
+                 Kâr
               </span>
             )}
             {heatmapData.stats.currentStreak.type === 'loss' && (
               <span className="text-xs font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20">
-                📉 Zarar
+                 Zarar
               </span>
             )}
             {heatmapData.stats.currentStreak.type === 'neutral' && (
@@ -452,7 +454,7 @@ export function DailyPnLCalendarHeatmap({
                 </div>
                 {hoveredDay.transactionsCount > 0 && (
                   <div className="pt-1 border-t border-border/40 text-[11px] text-accent flex items-center gap-1 font-medium">
-                    <span>📌</span>
+                    <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
                     <span>
                       {hoveredDay.transactionsCount} İşlem ({hoveredDay.transactionsSymbols.join(', ')})
                     </span>
@@ -468,7 +470,7 @@ export function DailyPnLCalendarHeatmap({
                   </div>
                 )}
                 <div className="pt-1 text-[10px] text-text-muted/80 text-center font-medium">
-                  Detaylı varlık listesi için tıklayın 👆
+                  Detaylı varlık listesi için tıklayın
                 </div>
               </div>
             ) : (
@@ -506,7 +508,7 @@ export function DailyPnLCalendarHeatmap({
                 {hoveredDay.losingHoldings && hoveredDay.losingHoldings.length > 0 && (
                   <div className="pt-1.5 border-t border-border/40 text-[11px] space-y-1">
                     <div className="text-rose-400 font-bold flex items-center justify-between">
-                      <span>📉 Zarar Edenler ({hoveredDay.losingHoldings.length}):</span>
+                      <span> Zarar Edenler ({hoveredDay.losingHoldings.length}):</span>
                       <span className="font-mono">-{formatCurrency(hoveredDay.totalGrossLoss)}</span>
                     </div>
                     {hoveredDay.losingHoldings.slice(0, 3).map((lh) => (
@@ -528,7 +530,7 @@ export function DailyPnLCalendarHeatmap({
                 {hoveredDay.winningHoldings && hoveredDay.winningHoldings.length > 0 && (
                   <div className="pt-1 border-t border-border/40 text-[11px] space-y-1">
                     <div className="text-emerald-400 font-bold flex items-center justify-between">
-                      <span>📈 Kâr Edenler ({hoveredDay.winningHoldings.length}):</span>
+                      <span> Kâr Edenler ({hoveredDay.winningHoldings.length}):</span>
                       <span className="font-mono">+{formatCurrency(hoveredDay.totalGrossGain)}</span>
                     </div>
                     {hoveredDay.winningHoldings.slice(0, 2).map((wh) => (
@@ -549,7 +551,7 @@ export function DailyPnLCalendarHeatmap({
 
                 {hoveredDay.transactionsCount > 0 && (
                   <div className="pt-1 border-t border-border/40 text-[11px] text-accent flex items-center gap-1 font-medium">
-                    <span>📌</span>
+                    <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
                     <span>
                       {hoveredDay.transactionsCount} İşlem ({hoveredDay.transactionsSymbols.join(', ')})
                     </span>
@@ -557,7 +559,7 @@ export function DailyPnLCalendarHeatmap({
                 )}
 
                 <div className="pt-1 text-[10px] text-text-muted/80 text-center font-medium">
-                  Bu tarihteki varlıkları ve detayları görmek için tıklayın 👆
+                  Bu tarihteki varlıkları ve detayları görmek için tıklayın
                 </div>
               </>
             )}
@@ -580,7 +582,7 @@ export function DailyPnLCalendarHeatmap({
                     : 'bg-bg-tertiary text-text-muted border border-border'
                 }`}
               >
-                {selectedDay.hasRealData ? (selectedDay.pnl >= 0 ? '↗' : '↘') : '•'}
+                {selectedDay.hasRealData ? (selectedDay.pnl >= 0 ? "" : "") : '•'}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -650,7 +652,7 @@ export function DailyPnLCalendarHeatmap({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">
-                  📦 Bu Tarihteki Tüm Varlıklar
+                   Bu Tarihteki Tüm Varlıklar
                 </span>
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-bg-tertiary text-text-muted border border-border/40">
                   {selectedDay.holdingsAtDate?.length || 0} Varlık
@@ -677,7 +679,7 @@ export function DailyPnLCalendarHeatmap({
                       : 'text-rose-400 hover:bg-rose-500/10'
                   }`}
                 >
-                  📉 Zarar ({selectedDay.losingHoldings?.length || 0})
+                   Zarar ({selectedDay.losingHoldings?.length || 0})
                 </button>
                 <button
                   onClick={() => setAssetFilterTab('gain')}
@@ -687,7 +689,7 @@ export function DailyPnLCalendarHeatmap({
                       : 'text-emerald-400 hover:bg-emerald-500/10'
                   }`}
                 >
-                  📈 Kâr ({selectedDay.winningHoldings?.length || 0})
+                   Kâr ({selectedDay.winningHoldings?.length || 0})
                 </button>
               </div>
             </div>

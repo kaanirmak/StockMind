@@ -107,5 +107,6 @@ export function getPnLBgColor(value: number): string {
 
 export function getPnLSign(value: number): string {
   if (value > 0) return '+';
+  if (value < 0) return '-';
   return '';
 }
