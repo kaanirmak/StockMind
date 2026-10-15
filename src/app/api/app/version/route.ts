@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import pkg from '../../../../../package.json';
 
 declare global {
   var __stockmind_latest_broadcast: any;
@@ -32,13 +33,14 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    version: '1.4.0',
-    versionCode: 10,
+    version: pkg.version,
+    versionCode: 11,
     downloadUrl: '/api/download/apk',
     directApkUrl: '/StockMind.apk',
-    releaseNotes: 'Spotlight tarzı arama, sade işlem formu ve işlem ekranına entegre nakit hareketleri. Piyasa kartları, logolar ve mobil yerleşimler iyileştirildi.',
+    releaseNotes: 'CI/CD düzeltmeleri: Supabase GitHub entegrasyonu ve Cloudflare deploy akışı iyileştirildi.',
     publishedAt: '2026-10-15',
     minAndroidVersion: '7.0 (Nougat) ve üzeri',
     broadcast,
   });
 }
+
