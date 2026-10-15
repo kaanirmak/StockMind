@@ -6,6 +6,9 @@ declare global {
   var __stockmind_latest_broadcast: any;
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   let broadcast = globalThis.__stockmind_latest_broadcast || null;
 
@@ -31,16 +34,25 @@ export async function GET() {
     } catch (_) {}
   }
 
-  return NextResponse.json({
-    success: true,
-    version: pkg.version,
-    versionCode: 11,
-    downloadUrl: '/api/download/apk',
-    directApkUrl: '/StockMind.apk',
-    releaseNotes: 'CI/CD düzeltmeleri: Supabase GitHub entegrasyonu ve Cloudflare deploy akışı iyileştirildi.',
-    publishedAt: '2026-10-15',
-    minAndroidVersion: '7.0 (Nougat) ve üzeri',
-    broadcast,
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      version: pkg.version,
+      versionCode: 11,
+      downloadUrl: '/api/download/apk',
+      directApkUrl: '/StockMind.apk',
+      releaseNotes: 'CI/CD düzeltmeleri: Supabase GitHub entegrasyonu ve Cloudflare deploy akışı iyileştirildi.',
+      publishedAt: '2026-10-15',
+      minAndroidVersion: '7.0 (Nougat) ve üzeri',
+      broadcast,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    }
+  );
 }
 

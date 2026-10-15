@@ -20,16 +20,15 @@ export function AppUpdateNotifier() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [copied, setCopied] = useState(false);
-
   useEffect(() => {
-    // Only check if inside Android APK or on mobile device
+    // Check if inside Android APK or mobile app
     const checkUpdate = async () => {
       try {
         const isAndroid = isAndroidApp();
         let localVersionCode = 1;
         let localVersionName = '1.0.0';
 
-        if (isAndroid && typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') {
           const bridge = (window as any).StockMindAndroid;
           if (bridge) {
             if (typeof bridge.getAppVersionCode === 'function') {
@@ -42,18 +41,27 @@ export function AppUpdateNotifier() {
         }
         setCurrentVersion(localVersionName);
 
-        const res = await fetch('/api/app/version');
+        const res = await fetch(`/api/app/version?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' },
+        });
         if (!res.ok) return;
         const data = await res.json();
 
         if (data && data.versionCode) {
           setVersionInfo(data);
 
-          // ONLY trigger update notification if this device is outdated!
+          // Trigger update notification if this Android device is outdated
           if (isAndroid && localVersionCode < data.versionCode) {
-            // Check if dismissed recently for the visual banner
+            // Check if dismissed recently specifically for THIS version
+            const dismissedVersion = localStorage.getItem('stockmind_update_dismissed_version_code');
             const dismissedUntil = localStorage.getItem('stockmind_update_dismissed_until');
-            if (!dismissedUntil || Number(dismissedUntil) <= Date.now()) {
+            const isDismissedForThisVersion =
+              dismissedVersion === String(data.versionCode) &&
+              dismissedUntil &&
+              Number(dismissedUntil) > Date.now();
+
+            if (!isDismissedForThisVersion) {
               setUpdateAvailable(true);
             }
 
@@ -62,13 +70,27 @@ export function AppUpdateNotifier() {
             if (!localStorage.getItem(notifSentKey)) {
               localStorage.setItem(notifSentKey, 'true');
               sendPushNotification(
-                ` Yeni StockMind Güncellemesi Mevcut (v${data.version})`,
+                `🚀 Yeni StockMind Güncellemesi Mevcut (v${data.version})`,
                 'StockMind yeni sürümü hazır! Performans, logolar ve kapalıyken fiyat alarmları için hemen güncelleyin.',
                 '/settings'
               );
             }
+          } else if (!isAndroid && typeof window !== 'undefined') {
+            // Also check if on Android browser and dismissed
+            const isMobileAndroid = /android/i.test(navigator.userAgent);
+            if (isMobileAndroid) {
+              const dismissedVersion = localStorage.getItem('stockmind_update_dismissed_version_code');
+              const dismissedUntil = localStorage.getItem('stockmind_update_dismissed_until');
+              const isDismissed =
+                dismissedVersion === String(data.versionCode) &&
+                dismissedUntil &&
+                Number(dismissedUntil) > Date.now();
+              if (!isDismissed) {
+                setUpdateAvailable(true);
+              }
+            }
           } else {
-            // Up to date! Never show update banner or notification
+            // Up to date!
             setUpdateAvailable(false);
           }
 
@@ -78,7 +100,7 @@ export function AppUpdateNotifier() {
             if (!localStorage.getItem(bcKey)) {
               localStorage.setItem(bcKey, 'true');
               sendPushNotification(
-                data.broadcast.title || "StockMind ",
+                data.broadcast.title || "StockMind 📢",
                 data.broadcast.message,
                 data.broadcast.route || '/dashboard'
               );
@@ -91,6 +113,9 @@ export function AppUpdateNotifier() {
     };
 
     checkUpdate();
+    // Re-check after bridge is guaranteed to have attached
+    const timer = setTimeout(checkUpdate, 500);
+    return () => clearTimeout(timer);
   }, []);
 
   if (!updateAvailable || dismissed || !versionInfo) {
@@ -147,6 +172,9 @@ export function AppUpdateNotifier() {
 
   const handleDismiss = () => {
     setDismissed(true);
+    if (versionInfo) {
+      localStorage.setItem('stockmind_update_dismissed_version_code', String(versionInfo.versionCode));
+    }
     // Dismiss for 24 hours
     localStorage.setItem('stockmind_update_dismissed_until', String(Date.now() + 24 * 60 * 60 * 1000));
   };
@@ -157,7 +185,7 @@ export function AppUpdateNotifier() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-accent/20 border border-accent/40 flex items-center justify-center shrink-0 text-lg shadow-inner">
-
+              🚀
             </div>
             <div className="space-y-0.5">
               <div className="flex items-center gap-2 flex-wrap">

@@ -127,7 +127,7 @@ export default function SettingsPage() {
     }
 
     // Fetch latest remote version info
-    fetch('/api/app/version')
+    fetch(`/api/app/version?_t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data && data.version) {
@@ -186,7 +186,7 @@ export default function SettingsPage() {
     setCheckingUpdate(true);
     setUpdateStatus(null);
     try {
-      const res = await fetch('/api/app/version');
+      const res = await fetch(`/api/app/version?_t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       if (data && data.versionCode) {
         setRemoteVersionName(data.version);
