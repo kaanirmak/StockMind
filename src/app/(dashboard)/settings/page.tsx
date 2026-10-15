@@ -573,7 +573,7 @@ export default function SettingsPage() {
   const userInitial = (fullName || user?.email || 'M').charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-[calc(3rem+env(safe-area-inset-bottom))] max-w-6xl mx-auto">
+    <div className="settings-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(3rem+env(safe-area-inset-bottom))] max-w-6xl mx-auto">
       {/* Header */}
       <div className="product-hero p-4 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
         <div className="relative z-10 flex items-center gap-4">

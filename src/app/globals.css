@@ -463,6 +463,35 @@ html.dark .glass-purple {
   box-shadow: var(--shadow-elevated);
 }
 
+@media (max-width: 640px) {
+  .settings-page .product-hero {
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  .settings-page .settings-panel {
+    border-radius: 1rem;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--bg-primary) 18%, transparent);
+  }
+
+  .settings-page .settings-panel > .flex.items-center.justify-between,
+  .settings-page .settings-panel > .flex.flex-col {
+    gap: 0.75rem;
+  }
+
+  .settings-page input,
+  .settings-page select,
+  .settings-page textarea {
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+  }
+
+  .settings-page button[type='submit'] {
+    width: 100%;
+    min-height: 2.75rem;
+  }
+}
+
 .portfolio-metric-card {
   position: relative;
   isolation: isolate;
