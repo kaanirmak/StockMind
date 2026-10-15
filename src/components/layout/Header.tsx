@@ -6,8 +6,9 @@ import { readInbox, saveInbox } from '@/lib/notifications/inbox';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { SearchPalette } from '@/components/layout/SearchPalette';
 import { useTheme } from '@/components/theme/ThemeProvider';
-import { ApkDownloadModal, InstrumentLogo, LegalDisclaimerModal } from '@/components/ui';
+import { ApkDownloadModal, LegalDisclaimerModal } from '@/components/ui';
 
 export interface NotificationItem {
   id: string;
@@ -70,7 +71,6 @@ export default function Header() {
   const router = useRouter();
   const { profile, signOut } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showApkModal, setShowApkModal] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
@@ -134,87 +134,6 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const [searchResults, setSearchResults] = useState<{
-    stocks: any[];
-    funds: any[];
-    loading: boolean;
-  }>({ stocks: [], funds: [], loading: false });
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Close search dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setShowSearchDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Keyboard shortcut (⌘K or Ctrl+K)
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        setShowSearchDropdown(true);
-      }
-      if (e.key === 'Escape') {
-        setShowSearchDropdown(false);
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Live search effect with debounce
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults({ stocks: [], funds: [], loading: false });
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setSearchResults((prev) => ({ ...prev, loading: true }));
-      try {
-        const [stocksRes, fundsRes] = await Promise.all([
-          fetch(`/api/stocks?search=${encodeURIComponent(searchQuery.trim())}`),
-          fetch(`/api/funds?search=${encodeURIComponent(searchQuery.trim())}`),
-        ]);
-        const stocksData = await stocksRes.json();
-        const fundsData = await fundsRes.json();
-
-        setSearchResults({
-          stocks: stocksData.success ? stocksData.data.slice(0, 6) : [],
-          funds: fundsData.success ? fundsData.data.slice(0, 6) : [],
-          loading: false,
-        });
-        setShowSearchDropdown(true);
-      } catch (err) {
-        setSearchResults({ stocks: [], funds: [], loading: false });
-      }
-    }, 150);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
-      e.preventDefault();
-      setShowSearchDropdown(false);
-      if (searchResults.stocks.length > 0) {
-        router.push(`/stocks/${searchResults.stocks[0].symbol}`);
-      } else if (searchResults.funds.length > 0) {
-        router.push(`/funds/${searchResults.funds[0].code}`);
-      } else {
-        router.push(`/stocks/${searchQuery.toUpperCase().trim()}`);
-      }
-      setSearchQuery('');
-    }
-  };
 
   return (
     <header className="h-14 sm:h-16 bg-bg-card/98 backdrop-blur-xl border-b border-border shadow-xs flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-30">
@@ -228,199 +147,25 @@ export default function Header() {
           {/* Transition gradient aura behind mobile logo */}
           <div
             className={`absolute inset-0 rounded-xl bg-gradient-to-tr from-violet-600/30 via-fuchsia-500/25 to-indigo-600/30 blur-sm transition-all duration-500 ${
-              searchResults.loading
-                ? 'opacity-100 scale-110 animate-aura-expand'
-                : 'opacity-40 group-hover:opacity-100 group-hover:scale-105'
+              'opacity-40 group-hover:opacity-100 group-hover:scale-105'
             }`}
           />
           <img
             src="/icon-brain-light.png"
             alt="StockMind"
             className={`h-7 w-7 object-contain dark:hidden relative z-10 transition-transform ${
-              searchResults.loading ? 'animate-brain-pulse' : 'group-hover:scale-105'
+              'group-hover:scale-105'
             }`}
           />
           <img
             src="/icon-brain-dark.png"
             alt="StockMind"
             className={`h-7 w-7 object-contain hidden dark:block relative z-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.45)] transition-transform ${
-              searchResults.loading ? 'animate-brain-pulse' : 'group-hover:scale-105'
+              'group-hover:scale-105'
             }`}
           />
         </Link>
-        <div className="flex-1 relative min-w-0" ref={searchContainerRef}>
-        <div className="relative">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-            />
-          </svg>
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setShowSearchDropdown(true);
-            }}
-            onFocus={() => {
-              if (searchQuery.trim()) setShowSearchDropdown(true);
-            }}
-            onKeyDown={handleSearchSubmit}
-            placeholder="Hisse veya fon ara..."
-            className="w-full min-h-11 pl-9 sm:pl-10 pr-3 sm:pr-12 py-2 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all duration-200"
-          />
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono text-text-muted bg-bg-tertiary border border-border">
-            ⌘K
-          </kbd>
-        </div>
-
-        {/* Live Search Autocomplete Dropdown */}
-        {showSearchDropdown && searchQuery.trim().length > 0 && (
-          <>
-            <div
-              className="sm:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-xs animate-fade-in"
-              onClick={() => setShowSearchDropdown(false)}
-            />
-            <div className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-0 top-14 sm:top-full mt-1.5 sm:mt-2 glass-card rounded-2xl border border-border shadow-2xl p-2.5 z-50 max-h-[70vh] sm:max-h-[420px] overflow-y-auto space-y-3 animate-fade-in">
-            {searchResults.loading ? (
-              <div className="p-4 text-center text-xs text-text-muted flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Aranıyor...</span>
-              </div>
-            ) : searchResults.stocks.length === 0 && searchResults.funds.length === 0 ? (
-              <div className="p-4 text-center text-xs text-text-muted">
-                <p>"{searchQuery}" için doğrudan sonuç bulunamadı.</p>
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                  <Link
-                    href={`/stocks/${searchQuery.toUpperCase().trim()}`}
-                    onClick={() => setShowSearchDropdown(false)}
-                    className="text-accent hover:underline font-semibold"
-                  >
-                    {searchQuery.toUpperCase().trim()} Piyasada Ara &rarr;
-                  </Link>
-                  {searchQuery.trim().length === 3 && (
-                    <>
-                      <span>•</span>
-                      <Link
-                        href={`/funds/${searchQuery.toUpperCase().trim()}`}
-                        onClick={() => setShowSearchDropdown(false)}
-                        className="text-accent hover:underline font-semibold"
-                      >
-                        {searchQuery.toUpperCase().trim()} TEFAS Kodu &rarr;
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Stocks Section */}
-                {searchResults.stocks.length > 0 && (
-                  <div>
-                    <div className="px-2 py-1 text-[11px] font-bold text-text-muted uppercase tracking-wider">
-                      Hisse Senetleri ({searchResults.stocks.length})
-                    </div>
-                    <div className="space-y-1">
-                      {searchResults.stocks.map((stock: any) => {
-                        const isPos = (stock.changePercent || 0) >= 0;
-                        const curr = stock.currency === 'TRY' ? '₺' : '$';
-                        return (
-                          <Link
-                            key={stock.symbol}
-                            href={`/stocks/${stock.symbol}`}
-                            onClick={() => {
-                              setShowSearchDropdown(false);
-                              setSearchQuery('');
-                            }}
-                            className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-bg-hover transition-colors group cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <InstrumentLogo symbol={stock.symbol} name={stock.name} size="xs" />
-                              <div>
-                                <span className="font-bold text-xs text-text-primary group-hover:text-accent transition-colors block">
-                                  {stock.symbol}
-                                </span>
-                                <span className="text-[11px] text-text-muted line-clamp-1">
-                                  {stock.name}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right font-mono">
-                              <span className="text-xs font-bold text-text-primary block">
-                                {curr}{Number(stock.price).toFixed(2)}
-                              </span>
-                              <span className={`text-[10px] font-semibold ${isPos ? 'text-success' : 'text-danger'}`}>
-                                {isPos ? '+' : ''}{Number(stock.changePercent).toFixed(2)}%
-                              </span>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Funds Section */}
-                {searchResults.funds.length > 0 && (
-                  <div>
-                    <div className="px-2 py-1 text-[11px] font-bold text-text-muted uppercase tracking-wider border-t border-border/50 pt-2">
-                      TEFAS Yatırım Fonları ({searchResults.funds.length})
-                    </div>
-                    <div className="space-y-1">
-                      {searchResults.funds.map((fund: any) => (
-                        <Link
-                          key={fund.code}
-                          href={`/funds/${fund.code}`}
-                          onClick={() => {
-                            setShowSearchDropdown(false);
-                            setSearchQuery('');
-                          }}
-                          className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-bg-hover transition-colors group cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-accent/15 border border-accent/30 text-accent flex items-center justify-center font-bold text-xs">
-                              {fund.code}
-                            </div>
-                            <div>
-                              <span className="font-bold text-xs text-text-primary group-hover:text-accent transition-colors block">
-                                {fund.code}
-                              </span>
-                              <span className="text-[11px] text-text-muted line-clamp-1">
-                                {fund.name}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-right font-mono">
-                            <span className="text-xs font-bold text-text-primary block">
-                              ₺{Number(fund.price).toFixed(4)}
-                            </span>
-                            <span className="text-[10px] font-semibold text-success">
-                              +{Number(fund.yearlyReturn || 0).toFixed(1)}% (1Y)
-                            </span>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          </>
-        )}
-      </div>
+        <SearchPalette />
       </div>
 
       {/* Right Side */}
@@ -440,7 +185,7 @@ export default function Header() {
           type="button"
           onClick={() => setShowApkModal(true)}
           className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 shrink-0"
-          title="StockMind Android Uygulamasını İndir (v1.0.0 APK)"
+          title="StockMind Android Uygulamasını İndir (v1.4.0 APK)"
         >
           <svg className="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993s-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.152-.5684.417.417 0 00-.569.152l-2.0223 3.503C15.583 8.359 13.856 8 12 8s-3.583.359-5.1352.949L4.8425 5.446a.417.417 0 00-.569-.152.416.416 0 00-.152.5684l1.997 3.459C2.688 11.086 0 14.887 0 19.341h24c0-4.454-2.688-8.255-6.1185-10.0196" />

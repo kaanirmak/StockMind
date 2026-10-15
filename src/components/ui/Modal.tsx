@@ -11,7 +11,7 @@ export interface ModalProps {
   description?: string;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  presentation?: 'dialog' | 'sheet' | 'drawer';
+  presentation?: 'dialog' | 'sheet' | 'drawer' | 'spotlight';
   showCloseButton?: boolean;
 }
 
@@ -113,7 +113,7 @@ export const Modal: React.FC<ModalProps> = ({
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
       aria-describedby={description ? descriptionId : undefined}
-      className={`fixed inset-0 z-50 flex items-end ${presentation === 'dialog' ? 'sm:items-center' : 'sm:items-end'} justify-center px-0 pt-3 sm:p-6 overflow-y-auto ${presentation === 'drawer' ? 'md:justify-end md:p-0 md:items-stretch' : ''}`}
+      className={`fixed inset-0 z-50 flex items-end ${presentation === 'dialog' ? 'sm:items-center' : 'sm:items-end'} justify-center px-0 pt-3 sm:p-6 overflow-y-auto ${presentation === 'drawer' ? 'md:justify-end md:p-0 md:items-stretch' : ''} ${presentation === 'spotlight' ? '!items-start !px-3 !pt-[6dvh] sm:!pt-[12dvh]' : ''}`}
     >
       {/* Backdrop */}
       <div
@@ -126,7 +126,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`relative w-full ${sizeClasses[size]} ${presentation === 'drawer' ? 'md:h-dvh md:max-h-dvh md:rounded-none md:my-0 md:animate-slide-in-right' : ''} bg-bg-card border border-border/80 rounded-t-2xl ${presentation === 'dialog' ? 'sm:rounded-2xl' : 'sm:rounded-t-2xl'} shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-slide-up sm:animate-scale-in mt-auto ${presentation === 'dialog' ? 'sm:my-8' : 'sm:my-0'} max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] flex flex-col focus:outline-none`}
+        className={`relative w-full ${sizeClasses[size]} ${presentation === 'drawer' ? 'md:h-dvh md:max-h-dvh md:rounded-none md:my-0 md:animate-slide-in-right' : ''} bg-bg-card border border-border/80 rounded-t-2xl ${presentation === 'dialog' ? 'sm:rounded-2xl' : 'sm:rounded-t-2xl'} shadow-2xl shadow-black/80 z-10 overflow-hidden transform transition-all animate-slide-up sm:animate-scale-in mt-auto ${presentation === 'dialog' ? 'sm:my-8' : 'sm:my-0'} ${presentation === 'spotlight' ? '!mt-0 !rounded-2xl !max-h-[80dvh]' : ''} max-h-[calc(100dvh-0.75rem)] sm:max-h-[90vh] flex flex-col focus:outline-none`}
       >
         {/* Modal Header */}
         {(title || showCloseButton) && (

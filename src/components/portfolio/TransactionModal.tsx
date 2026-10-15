@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Modal, Input, Button, useToast } from '@/components/ui';
+import { CashPanel } from './CashPanel';
 import { cleanSymbol } from '@/lib/utils/symbol';
 
 export interface TransactionModalProps {
@@ -25,21 +26,12 @@ const POPULAR_STOCK_CHIPS = [
   { symbol: 'GRAM_ALTIN', name: 'Gram Altın', exchange: 'BIST', currency: 'TRY' },
 ];
 
-const POPULAR_FUND_CHIPS = [
-  { code: 'THF', name: 'İş Portföy Para Piyasası Fonu' },
-  { code: 'TI2', name: 'İş Portföy Altın Fonu' },
-  { code: 'AFT', name: 'Ak Portföy Yeni Teknolojiler' },
-  { code: 'TCD', name: 'Tacirler Değişken Fon' },
-  { code: 'MAC', name: 'Marmara Capital Hisse Fon' },
-  { code: 'YAY', name: 'Yapı Kredi Yabancı Teknoloji' },
-  { code: 'BUY', name: 'Bosphorus Teknoloji Fonu' },
-  { code: 'IPB', name: 'İstanbul Portföy Birinci Değişken' },
-];
-
 export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, presentation = 'dialog' }) => {
   const { addTransaction, activePortfolioId, livePrices } = usePortfolioStore();
   const { showToast } = useToast();
 
+  const [cashMode, setCashMode] = useState(false);
+  const [cashBusy, setCashBusy] = useState(false);
   const [assetType, setAssetType] = useState<'stock' | 'fund'>('stock');
   const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy');
   const [currency, setCurrency] = useState<'TRY' | 'USD'>('TRY');
@@ -346,103 +338,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
   return (
     <Modal presentation={presentation}
       isOpen={isOpen}
-      onClose={onClose}
-      title="Yeni Portföy İşlemi Ekle"
-      description="Tüm BIST hisseleri, ABD hisseleri veya TEFAS fonları arasından arama yapıp alım/satım kaydı oluşturun."
+      onClose={() => { if (!cashBusy && !isSubmitting) onClose(); }}
+      title="İşlem Ekle"
       size="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Asset Type Switcher */}
-        <div className="grid grid-cols-2 gap-2 p-1 bg-bg-secondary rounded-xl border border-border">
-          <button
-            type="button"
-            onClick={() => {
-              setAssetType('stock');
-              setSymbol('');
-              setSearchQuery('');
-              setPrice('');
-            }}
-            className={`py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-              assetType === 'stock'
-                ? 'bg-accent text-white shadow'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-             BIST & ABD Hisseleri
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAssetType('fund');
-              setSymbol('');
-              setSearchQuery('');
-              setPrice('');
-              setCurrency('TRY');
-            }}
-            className={`py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-              assetType === 'fund'
-                ? 'bg-accent text-white shadow'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-             TEFAS Yatırım Fonları
-          </button>
-        </div>
-
-        {/* Transaction Type & Currency */}
+      <div className="grid grid-cols-3 gap-1 mb-4 rounded-xl bg-bg-secondary p-1" role="group" aria-label="İşlem kategorisi">
+        {(['stock', 'fund', 'cash'] as const).map(type => <button type="button" key={type} disabled={cashBusy || isSubmitting} aria-pressed={type === 'cash' ? cashMode : !cashMode && assetType === type} onClick={() => {
+          setCashMode(type === 'cash');
+          if (type !== 'cash' && type !== assetType) { setAssetType(type); setSymbol(''); setSearchQuery(''); setPrice(''); if (type === 'fund') setCurrency('TRY'); }
+        }} className={`min-h-11 rounded-lg text-sm font-medium ${(type === 'cash' ? cashMode : !cashMode && assetType === type) ? 'bg-bg-card text-text-primary shadow-sm' : 'text-text-muted hover:text-text-primary'}`}>{type === 'stock' ? 'Hisse' : type === 'fund' ? 'Fon' : 'Nakit'}</button>)}
+      </div>
+      {cashMode ? <CashPanel embedded onComplete={onClose} onBusyChange={setCashBusy} /> : <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border">
-            <button
-              type="button"
-              onClick={() => setTransactionType('buy')}
-              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                transactionType === 'buy'
-                  ? 'bg-success/20 border border-success text-success'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-            >
-              + Alış
-            </button>
-            <button
-              type="button"
-              onClick={() => setTransactionType('sell')}
-              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                transactionType === 'sell'
-                  ? 'bg-danger/20 border border-danger text-danger'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-            >
-              - Satış
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border">
-            <button
-              type="button"
-              onClick={() => setCurrency('TRY')}
-              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                currency === 'TRY'
-                  ? 'bg-accent text-white shadow'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-            >
-              ₺ TRY
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCurrency('USD');
-                if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
-              }}
-              className={`py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                currency === 'USD'
-                  ? 'bg-emerald-600 text-white shadow'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-            >
-              $ USD
-            </button>
-          </div>
+          <label className="space-y-1 block text-xs text-text-secondary">İşlem türü<select aria-label="İşlem türü" value={transactionType} onChange={e => setTransactionType(e.target.value as 'buy' | 'sell')} className="block w-full h-11 px-3 rounded-xl bg-bg-input border border-border text-text-primary"><option value="buy">Alış</option><option value="sell">Satış</option></select></label>
+          <label className="space-y-1 block text-xs text-text-secondary">Para birimi<select aria-label="Para birimi" value={currency} onChange={e => { setCurrency(e.target.value as 'TRY' | 'USD'); if (e.target.value === 'USD' && liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2)); }} className="block w-full h-11 px-3 rounded-xl bg-bg-input border border-border text-text-primary"><option value="TRY">TRY · Türk Lirası</option><option value="USD">USD · ABD Doları</option></select></label>
         </div>
 
         {/* Searchable Symbol Input with Autocomplete */}
@@ -464,6 +373,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
 
           <div className="relative">
             <input
+              aria-label={assetType === 'stock' ? 'Hisse ara' : 'Fon ara'}
               type="text"
               value={searchQuery}
               onChange={(e) => {
@@ -476,10 +386,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
               onBlur={handleManualSymbolBlur}
               placeholder={
                 assetType === 'stock'
-                  ? 'Tüm hisselerde ara... (örn: KONTR, ASTOR, THYAO, AAPL)'
-                  : 'Tüm fonlarda ara... (örn: TI2, AFT, THF, TCD, MAC)'
+                  ? 'Hisse kodu veya şirket adı'
+                  : 'Fon kodu veya adı'
               }
-              className="w-full bg-bg-input text-text-primary font-mono text-sm rounded-xl border border-border px-3.5 py-2.5 pl-10 focus:border-accent focus:outline-none uppercase"
+              className="w-full bg-bg-input text-text-primary font-mono text-sm rounded-xl border border-border px-3.5 py-2.5 pl-10 focus:border-accent focus:outline-none"
               required
             />
             <svg
@@ -511,10 +421,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
                     <button
                       key={`${s.exchange}-${s.symbol}`}
                       type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSelectAsset(s);
-                      }}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { handleSelectAsset(s); }}
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-between group cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -539,10 +447,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
                     <span>Eşleşen hisse bulunamadı. </span>
                     <button
                       type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSelectAsset({ symbol: searchQuery.toUpperCase().trim() });
-                      }}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { handleSelectAsset({ symbol: searchQuery.toUpperCase().trim() }); }}
                       className="text-accent hover:underline font-semibold"
                     >
                       "{searchQuery.toUpperCase()}" olarak kaydet
@@ -555,10 +461,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
                     <button
                       key={f.code}
                       type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSelectAsset({ code: f.code, name: f.name, price: f.price, assetType: 'fund' });
-                      }}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { handleSelectAsset({ code: f.code, name: f.name, price: f.price, assetType: 'fund' }); }}
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-between group cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -583,10 +487,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
                     <span>Eşleşen fon bulunamadı. </span>
                     <button
                       type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSelectAsset({ code: searchQuery.toUpperCase().trim(), assetType: 'fund' });
-                      }}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { handleSelectAsset({ code: searchQuery.toUpperCase().trim(), assetType: 'fund' }); }}
                       className="text-accent hover:underline font-semibold"
                     >
                       "{searchQuery.toUpperCase()}" olarak kaydet
@@ -597,29 +499,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             </div>
           )}
 
-          {/* Quick-Pick Popular Chips */}
-          <div className="mt-2">
-            <span className="text-[11px] text-text-muted block mb-1">Hızlı Seçim (Popüler Varlıklar):</span>
-            <div className="flex flex-wrap gap-1.5">
-              {(assetType === 'stock' ? POPULAR_STOCK_CHIPS : POPULAR_FUND_CHIPS).map((chip: any) => {
-                const isSelected = symbol === (chip.symbol || chip.code);
-                return (
-                  <button
-                    key={chip.symbol || chip.code}
-                    type="button"
-                    onClick={() => handleSelectAsset(chip)}
-                    className={`px-2 py-1 rounded-md text-[11px] font-mono font-semibold transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-accent text-white shadow-sm'
-                        : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border/60'
-                    }`}
-                  >
-                    {chip.symbol || chip.code}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+
         </div>
 
         {/* Price, FX Rate & Quantity */}
@@ -664,7 +544,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
         )}
 
         {/* Date & Commission */}
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+        <div className="grid grid-cols-1 gap-2.5">
           <Input
             label="İşlem Tarihi"
             type="date"
@@ -672,6 +552,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             onChange={(e) => setDate(e.target.value)}
             required
           />
+        </div>
+        <details className="rounded-xl border border-border px-3">
+          <summary className="py-3 text-xs text-text-secondary cursor-pointer">Komisyon ve not ekle</summary>
+          <div className="space-y-3 pb-3">
           <Input
             label={`Komisyon Tutarı (${currency === 'USD' ? '$' : '₺'})`}
             type="number"
@@ -679,14 +563,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             value={commission}
             onChange={(e) => setCommission(Number(e.target.value))}
           />
-        </div>
-
-        <Input
+          <Input
           label="İşlem Notu (Opsiyonel)"
           placeholder="örn: Uzun vade biriktirme, temettü yatırımı"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
+
+          </div>
+        </details>
 
         {/* Total Summary */}
         <div className="bg-bg-tertiary p-3.5 rounded-xl border border-border space-y-1">
@@ -716,7 +601,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onCl
             {isSubmitting ? 'Kaydediliyor...' : 'İşlemi Kaydet'}
           </Button>
         </div>
-      </form>
+      </form>}
     </Modal>
   );
 };

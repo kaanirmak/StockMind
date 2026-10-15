@@ -79,10 +79,10 @@ export default function SettingsPage() {
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
-  const [appVersionCode, setAppVersionCode] = useState<number>(6);
-  const [appVersionName, setAppVersionName] = useState<string>('1.3.0');
-  const [remoteVersionCode, setRemoteVersionCode] = useState<number>(6);
-  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.3.0');
+  const [appVersionCode, setAppVersionCode] = useState<number>(10);
+  const [appVersionName, setAppVersionName] = useState<string>('1.4.0');
+  const [remoteVersionCode, setRemoteVersionCode] = useState<number>(10);
+  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.4.0');
 
   // Default Chart Type Preference
   const [defaultChartType, setDefaultChartType] = useState<'line' | 'candles'>('line');
@@ -850,7 +850,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 self-start sm:self-auto">
-            v1.3.0 Güncel
+            v1.4.0 Güncel
           </span>
         </div>
 

@@ -132,7 +132,7 @@ export default function DownloadPage() {
                     <div>
                       <h2 className="text-xl font-bold text-white">StockMind.apk</h2>
                       <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
-                        <span className="text-emerald-400 font-semibold">v1.3.0</span>
+                        <span className="text-emerald-400 font-semibold">v1.4.0</span>
                         <span>•</span>
                         <span>5.9 MB</span>
                         <span>•</span>
@@ -323,7 +323,7 @@ export default function DownloadPage() {
 
       {/* Footer */}
       <footer className="relative z-10 max-w-6xl mx-auto w-full px-6 py-6 text-center text-xs text-text-muted border-t border-white/5">
-         2026 StockMind Platform. Android & iOS PWA Engine v1.0.4.
+         2026 StockMind Platform. Android & iOS PWA Engine v1.4.0.
       </footer>
     </div>
   );

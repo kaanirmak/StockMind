@@ -15,32 +15,32 @@ export interface InstrumentLogoProps {
 const SIZE_CONFIGS = {
   xs: {
     container: 'w-6 h-6',
-    img: 'w-4 h-4',
+    img: 'w-full h-full p-0.5',
     text: 'text-[10px]',
   },
   sm: {
     container: 'w-7 h-7 sm:w-8 sm:h-8',
-    img: 'w-4.5 h-4.5 sm:w-5 sm:h-5',
+    img: 'w-full h-full p-1',
     text: 'text-[11px] sm:text-xs',
   },
   md: {
     container: 'w-9 h-9',
-    img: 'w-6 h-6',
+    img: 'w-full h-full p-1',
     text: 'text-xs',
   },
   lg: {
     container: 'w-11 h-11',
-    img: 'w-7 h-7',
+    img: 'w-full h-full p-1.5',
     text: 'text-sm',
   },
   xl: {
     container: 'w-14 h-14',
-    img: 'w-9 h-9',
+    img: 'w-full h-full p-2',
     text: 'text-base font-black',
   },
   '2xl': {
     container: 'w-16 h-16',
-    img: 'w-10 h-10',
+    img: 'w-full h-full p-2',
     text: 'text-lg font-black',
   },
 };
@@ -85,7 +85,7 @@ export function InstrumentLogo({
       } ${
         showFallback
           ? `${brandStyle.bg} ${brandStyle.text} ${brandStyle.border}`
-          : 'bg-white/95 dark:bg-[var(--palette-color151d2f)] border-border/60 hover:border-accent/40'
+          : 'bg-white border-border/60'
       } ${className}`}
       title={name || cleanSymbol}
     >

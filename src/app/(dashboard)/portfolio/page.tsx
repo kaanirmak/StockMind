@@ -595,7 +595,7 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {(assetFilter === 'all' || assetFilter === 'cash') && <CashPanel />}
+      {assetFilter === 'cash' && <CashPanel />}
       {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
       <div className="space-y-4">
         {/* Navigation Tabs & Secondary Actions */}

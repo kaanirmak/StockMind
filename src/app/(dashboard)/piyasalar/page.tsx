@@ -314,7 +314,7 @@ function PiyasalarContent() {
     return (
       <div
         key={`${keyPrefix}-${item.symbol}`}
-        className="glass-card p-3 hover:border-accent/40 transition-all duration-200 flex items-center justify-between gap-3 group relative cursor-pointer"
+        className="glass-card p-3 hover:border-accent/40 transition-all duration-200 flex items-center justify-between gap-2 group relative"
       >
         <Link href={`/stocks/${item.symbol}`} className="flex items-center gap-2.5 min-w-0 flex-1">
           <InstrumentLogo symbol={item.symbol} name={item.name} size="sm" />
@@ -366,10 +366,10 @@ function PiyasalarContent() {
               message: `${item.symbol} ${added ? 'eklendi' : 'çıkarıldı'}.`,
             });
           }}
-          className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
-            isStarred ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'
+          className={`inline-flex items-center justify-center w-11 h-11 rounded-xl transition-colors shrink-0 ${
+            isStarred ? 'bg-warning/10 text-warning' : 'text-text-muted hover:bg-bg-hover hover:text-warning'
           }`}
-          title="Favorilere Ekle"
+          aria-label={`${item.symbol} ${isStarred ? 'takipten çıkar' : 'takibe al'}`} aria-pressed={isStarred}
         >
           <svg className={`w-3.5 h-3.5 ${isStarred ? 'fill-warning text-warning' : 'fill-none stroke-current'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
@@ -382,25 +382,14 @@ function PiyasalarContent() {
   return (
     <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12">
       {/* Page Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-accent/15 via-bg-card to-bg-card p-5 sm:p-7 shadow-lg shadow-accent/5">
-        <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-accent/15 blur-3xl" />
-        <div className="relative flex items-end justify-between gap-4">
-          <div className="min-w-0">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-success">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" /> Canlı piyasa akışı
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">Piyasa Nabzı</h1>
-            <p className="mt-1 max-w-xl text-xs leading-relaxed text-text-secondary sm:text-sm">
-              BIST, döviz, emtia, kripto ve küresel endeksleri tek ekranda takip edin.
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-text-primary">Piyasalar</h1>
         {/* View Mode Toggle */}
-        <div className="flex items-center gap-1.5 shrink-0 rounded-xl border border-border/70 bg-bg-primary/50 p-1">
+        <div className="inline-flex items-center gap-1 shrink-0">
           <button
             onClick={() => setViewMode('table')}
-            className={`p-2 rounded-xl border transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
-            title="Tablo Görünümü"
+            className={`w-11 h-11 inline-flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
+            aria-label="Tablo Görünümü" aria-pressed={viewMode === 'table'}
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -408,8 +397,8 @@ function PiyasalarContent() {
           </button>
           <button
             onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-xl border transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
-            title="Kart Görünümü"
+            className={`w-11 h-11 inline-flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
+            aria-label="Kart Görünümü" aria-pressed={viewMode === 'grid'}
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -878,7 +867,8 @@ function PiyasalarContent() {
                                   const added = toggleWatchlist({ symbol: stock.symbol, name: stock.name, assetType: 'stock', price: stock.price, changePercent: stock.changePercent, exchange: stock.exchange });
                                   showToast({ type: 'success', title: added ? "Takip Listesine Eklendi " : 'Listeden Çıkarıldı', message: `${stock.symbol} ${added ? 'eklendi' : 'çıkarıldı'}.` });
                                 }}
-                                className={`p-1 sm:p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(stock.symbol) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
+                                aria-label={`${stock.symbol} ${checkWatchlisted(stock.symbol) ? 'takipten çıkar' : 'takibe al'}`} aria-pressed={checkWatchlisted(stock.symbol)}
+                                className={`inline-flex items-center justify-center w-11 h-11 rounded-xl transition-colors cursor-pointer ${checkWatchlisted(stock.symbol) ? 'bg-warning/10 text-warning' : 'text-text-muted hover:bg-bg-hover hover:text-warning'}`}
                               >
                                 <svg className={`w-3.5 h-3.5 ${checkWatchlisted(stock.symbol) ? 'fill-warning text-warning' : 'fill-none stroke-current'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
@@ -900,7 +890,7 @@ function PiyasalarContent() {
             </div>
           ) : (
             /* Stocks Grid with Lazy Load */
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {visibleStocks.map((stock) => {
                 const isPositive = (stock.changePercent || 0) >= 0;
                 const curr = (stock.currency as string) === 'TRY' ? '₺' : (stock.currency as string) === 'EUR' ? '€' : '$';
@@ -919,7 +909,8 @@ function PiyasalarContent() {
                       </Link>
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWatchlist({ symbol: stock.symbol, name: stock.name, assetType: 'stock', price: stock.price, changePercent: stock.changePercent, exchange: stock.exchange }); }}
-                        className={`p-1.5 rounded-lg border transition-colors cursor-pointer shrink-0 ${isStarred ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary/60 border-border text-text-muted hover:text-warning'}`}
+                        aria-label={`${stock.symbol} ${isStarred ? 'takipten çıkar' : 'takibe al'}`} aria-pressed={isStarred}
+                        className={`inline-flex items-center justify-center w-11 h-11 rounded-xl transition-colors cursor-pointer shrink-0 ${isStarred ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary/60 border-border text-text-muted hover:text-warning'}`}
                       >
                         <svg className={`w-3.5 h-3.5 ${isStarred ? 'fill-warning text-warning' : 'fill-none stroke-current'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
@@ -1096,7 +1087,8 @@ function PiyasalarContent() {
                                   const added = toggleWatchlist({ symbol: fund.code, name: fund.name, assetType: 'fund', price: fund.price || 0, changePercent: fund.dailyReturn || 0, exchange: 'TEFAS' as any });
                                   showToast({ type: 'success', title: added ? "Takip Listesine Eklendi " : 'Listeden Çıkarıldı', message: `${fund.code} ${added ? 'eklendi' : 'çıkarıldı'}.` });
                                 }}
-                                className={`p-1 sm:p-1.5 rounded-lg border transition-colors cursor-pointer ${checkWatchlisted(fund.code) ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary border-border text-text-muted hover:text-warning'}`}
+                                aria-label={`${fund.code} ${checkWatchlisted(fund.code) ? 'takipten çıkar' : 'takibe al'}`} aria-pressed={checkWatchlisted(fund.code)}
+                                className={`inline-flex items-center justify-center w-11 h-11 rounded-xl transition-colors cursor-pointer ${checkWatchlisted(fund.code) ? 'bg-warning/10 text-warning' : 'text-text-muted hover:bg-bg-hover hover:text-warning'}`}
                               >
                                 <svg className={`w-3.5 h-3.5 ${checkWatchlisted(fund.code) ? 'fill-warning text-warning' : 'fill-none stroke-current'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
@@ -1118,7 +1110,7 @@ function PiyasalarContent() {
             </div>
           ) : (
             /* Funds Grid */
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {visibleFunds.map((fund) => {
                 const dailyPos = (fund.dailyReturn || 0) >= 0;
                 const yearlyPos = (fund.yearlyReturn || 0) >= 0;
@@ -1135,7 +1127,8 @@ function PiyasalarContent() {
                       </Link>
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleWatchlist({ symbol: fund.code, name: fund.name, assetType: 'fund', price: fund.price || 0, changePercent: fund.dailyReturn || 0, exchange: 'TEFAS' as any }); }}
-                        className={`p-1.5 rounded-lg border transition-colors cursor-pointer shrink-0 ${isStarred ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary/60 border-border text-text-muted hover:text-warning'}`}
+                        aria-label={`${fund.code} ${isStarred ? 'takipten çıkar' : 'takibe al'}`} aria-pressed={isStarred}
+                        className={`inline-flex items-center justify-center w-11 h-11 rounded-xl transition-colors cursor-pointer shrink-0 ${isStarred ? 'bg-warning/20 border-warning text-warning' : 'bg-bg-tertiary/60 border-border text-text-muted hover:text-warning'}`}
                       >
                         <svg className={`w-3.5 h-3.5 ${isStarred ? 'fill-warning text-warning' : 'fill-none stroke-current'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />

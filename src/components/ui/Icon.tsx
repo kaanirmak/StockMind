@@ -2,6 +2,7 @@ import type { SVGProps } from 'react';
 
 // Heroicons outline geometry, shared stroke and sizing across product controls.
 const paths = {
+  search: 'M21 21l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z',
   home: 'M3 10.5 12 3l9 7.5M5 9v12h5v-6h4v6h5V9',
   chart: 'M3 3v18h18M7 15l4-5 4 3 5-8',
   wallet: 'M3 7h18v14H3V7Zm0 0V4h15v3m-2 6h5m-4 0v3h4',

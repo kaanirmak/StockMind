@@ -136,7 +136,7 @@ export default function Sidebar() {
               <span><UIIcon name="phone" className="w-4 h-4" /></span> ANDROID APP
             </span>
             <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              v1.0.0
+              v1.4.0
             </span>
           </div>
           <p className="text-xs font-bold text-text-primary">StockMind.apk</p>
