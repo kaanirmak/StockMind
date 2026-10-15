@@ -103,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
                 currentServerUrl.contains("192.168.1.") ||
                 currentServerUrl.contains("stock-mind-bay") ||
                 currentServerUrl.contains("stockmind-finora.vercel.app") ||
+                currentServerUrl.contains("vercel.app") ||
                 currentServerUrl.isEmpty()) {
             currentServerUrl = getDefaultUrl();
             prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
