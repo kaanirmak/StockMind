@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendTestEmail } from '@/lib/email/service';
 import { fetchSpecificSymbolLive } from '@/lib/data/stocks';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,29 @@ const sentReportsCache = new Set<string>();
 interface ReportRecipient {
   email: string;
   name?: string;
+}
+
+async function loadConfirmedUsers(): Promise<ReportRecipient[]> {
+  const admin = createAdminClient();
+  const recipients: ReportRecipient[] = [];
+  const perPage = 1000;
+
+  for (let page = 1; page <= 100; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+
+    for (const user of data.users) {
+      if (!user.email || !user.email_confirmed_at || user.banned_until) continue;
+      recipients.push({
+        email: user.email.trim(),
+        name: user.user_metadata?.full_name || user.user_metadata?.name || undefined,
+      });
+    }
+
+    if (data.users.length < perPage) break;
+  }
+
+  return recipients;
 }
 
 async function handleDailyReport(request: Request) {
@@ -59,15 +83,9 @@ async function handleDailyReport(request: Request) {
       } catch (_) {}
     }
 
-    if (recipients.length === 0) {
-      const defaultEmail =
-        process.env.DAILY_REPORT_RECIPIENT_EMAIL ||
-        process.env.SMTP_USER ||
-        '';
-      if (defaultEmail) {
-        recipients = [{ email: defaultEmail, name: 'Değerli Yatırımcı' }];
-      }
-    }
+    // Scheduled runs target every confirmed, active account. Manual calls may
+    // still provide an explicit recipient list for testing or recovery.
+    if (recipients.length === 0) recipients = await loadConfirmedUsers();
 
     if (recipients.length === 0) {
       return NextResponse.json(
