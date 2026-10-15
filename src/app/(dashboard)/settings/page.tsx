@@ -573,9 +573,9 @@ export default function SettingsPage() {
   const userInitial = (fullName || user?.email || 'M').charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12 max-w-6xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-[calc(3rem+env(safe-area-inset-bottom))] max-w-6xl mx-auto">
       {/* Header */}
-      <div className="product-hero p-5 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <div className="product-hero p-4 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
         <div className="relative z-10 flex items-center gap-4">
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/25 shrink-0">
             <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -605,7 +605,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <nav aria-label="Ayar bölümleri" className="sticky top-[3.75rem] sm:top-[4.25rem] z-20 flex items-center gap-1.5 p-1.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm overflow-x-auto no-scrollbar">
+      <nav aria-label="Ayar bölümleri" className="sticky top-[3.5rem] sm:top-[4.25rem] z-20 flex items-center gap-1.5 p-1.5 rounded-2xl bg-bg-primary/95 backdrop-blur-xl border border-border/80 shadow-sm overflow-x-auto overscroll-x-contain touch-pan-x no-scrollbar">
         {[
           ['#appearance', 'Görünüm', '◐'],
           ['#profile', 'Profil', '◎'],
@@ -613,7 +613,7 @@ export default function SettingsPage() {
           ['#mobile', 'Mobil', '◇'],
           ['#ai-settings', 'AI & Kota', '✦'],
         ].map(([href, label, icon]) => (
-          <a key={href} href={href} className="min-h-10 px-3.5 rounded-xl inline-flex items-center gap-2 text-xs font-semibold text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors whitespace-nowrap">
+          <a key={href} href={href} className="min-h-10 px-3 sm:px-3.5 rounded-xl inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-text-secondary hover:text-accent hover:bg-accent/10 transition-colors whitespace-nowrap active:scale-[0.98]">
             <span className="text-accent">{icon}</span>{label}
           </a>
         ))}
@@ -845,7 +845,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 self-start sm:self-auto">
-            v1.0.0 Güncel (5.9 MB)
+            v1.3.0 Güncel
           </span>
         </div>
 
