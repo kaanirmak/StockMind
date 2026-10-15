@@ -21,6 +21,14 @@ textarea {
   touch-action: manipulation;
 }
 
+/* Keep horizontal carousels, tabs and chat strips responsive inside the Android WebView. */
+.overflow-x-auto,
+[class*="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+}
+
 img,
 svg,
 video,

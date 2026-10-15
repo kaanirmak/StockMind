@@ -13,6 +13,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.MotionEvent;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
@@ -80,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
     private ActivityResultLauncher<Intent> fileChooserLauncher;
     private ActivityResultLauncher<String> notificationPermissionLauncher;
     private long backPressedTime = 0;
+    private float touchDownX;
+    private float touchDownY;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -250,6 +253,9 @@ public class MainActivity extends AppCompatActivity {
 
         swipeRefreshLayout.setColorSchemeColors(0xFF8B5CF6, 0xFF10B981);
         swipeRefreshLayout.setProgressBackgroundColorSchemeColor(0xFF131B2E);
+        // Pull-to-refresh competes with WebView horizontal carousels and chat gestures.
+        // Native refresh is disabled; pages still refresh through their own controls/navigation.
+        swipeRefreshLayout.setEnabled(false);
         swipeRefreshLayout.setOnRefreshListener(() -> {
             if (errorView.getVisibility() == View.VISIBLE) {
                 loadAppUrl();
@@ -301,6 +307,30 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebView() {
+        webView.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    touchDownX = event.getX();
+                    touchDownY = event.getY();
+                    view.getParent().requestDisallowInterceptTouchEvent(false);
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    float dx = event.getX() - touchDownX;
+                    float dy = event.getY() - touchDownY;
+                    if (Math.abs(dx) > 8f && Math.abs(dx) > Math.abs(dy)) {
+                        // Let horizontal tabs, market cards and AI chat gestures own the swipe.
+                        view.getParent().requestDisallowInterceptTouchEvent(true);
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    view.getParent().requestDisallowInterceptTouchEvent(false);
+                    break;
+                default:
+                    break;
+            }
+            return false;
+        });
         // Enable cookies and third-party cookies (essential for Supabase authentication)
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
