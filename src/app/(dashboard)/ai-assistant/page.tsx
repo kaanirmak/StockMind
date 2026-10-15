@@ -370,9 +370,9 @@ function AIAssistantContent() {
   };
 
   return (
-    <div className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative">
+    <div className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]">
       {/* Top Header - Compact for Mobile, Detailed for Desktop */}
-      <div className="glass-card p-2 sm:p-3 mb-2 shrink-0 rounded-2xl border border-border">
+      <div className="glass-card p-2 sm:p-3 mb-2 shrink-0 rounded-2xl border border-border shadow-sm">
         {/* Mobile Header (Single Compact Row) */}
         <div className="flex sm:hidden items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -495,7 +495,7 @@ function AIAssistantContent() {
       <div
         ref={messagesContainerRef}
         onScroll={handleContainerScroll}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar overscroll-y-contain"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar overscroll-y-contain touch-pan-y"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {messages.map((msg) => {
@@ -585,7 +585,7 @@ function AIAssistantContent() {
             isNearBottomRef.current = true;
             scrollToBottom('smooth');
           }}
-          className="absolute bottom-16 right-4 z-20 px-3 py-1.5 rounded-full bg-accent text-white shadow-lg shadow-accent/30 text-xs font-semibold flex items-center gap-1.5 hover:bg-accent-hover active:scale-95 transition-all cursor-pointer animate-fade-in"
+          className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 sm:right-4 z-20 px-3 py-1.5 rounded-full bg-accent text-white shadow-lg shadow-accent/30 text-xs font-semibold flex items-center gap-1.5 hover:bg-accent-hover active:scale-95 transition-all cursor-pointer animate-fade-in"
           title="En alta kaydır"
         >
           <span>↓ En Yeni Mesaj</span>
@@ -594,12 +594,12 @@ function AIAssistantContent() {
 
       {/* Preset Prompt Suggestions */}
       {messages.length <= 2 && (
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-1 shrink-0 no-scrollbar -mx-1 px-1 mb-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto overscroll-x-contain touch-pan-x py-1.5 shrink-0 no-scrollbar -mx-1 px-1 mb-1">
           {PROMPT_SUGGESTIONS.map((sug) => (
             <button
               key={sug.label}
               onClick={() => handleSendMessage(sug.prompt)}
-              className="px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] sm:text-xs bg-bg-secondary hover:bg-bg-tertiary border border-border/80 text-text-secondary hover:text-accent hover:border-accent transition-all cursor-pointer shrink-0 whitespace-nowrap"
+              className="px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-full text-[11px] sm:text-xs bg-bg-secondary/90 hover:bg-bg-tertiary border border-border/80 text-text-secondary hover:text-accent hover:border-accent transition-all cursor-pointer shrink-0 whitespace-nowrap shadow-sm active:scale-[0.98]"
             >
               {sug.label}
             </button>
@@ -608,7 +608,7 @@ function AIAssistantContent() {
       )}
 
       {/* Input Box - Mobile Ergonomic */}
-      <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm">
+      <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm mb-1 sm:mb-0 pb-[calc(0.375rem+env(safe-area-inset-bottom))] sm:pb-2">
         <input
           type="text"
           value={input}
@@ -620,7 +620,7 @@ function AIAssistantContent() {
             }
           }}
           placeholder="Hisse, fon veya teknik analiz sorusu sorun..."
-          className="flex-1 bg-transparent px-3 py-2 text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none min-w-0"
+          className="flex-1 bg-transparent px-3 py-2.5 sm:py-2 text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none min-w-0"
         />
 
         {/* Mobile Submit / Stop Button */}
