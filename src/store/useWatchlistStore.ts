@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { createClient } from '@/lib/supabase/client';
 
 export type PriceAlertType = 'price' | 'percent_up' | 'percent_down' | 'percent_both';
 
@@ -165,15 +166,101 @@ function saveLocalWatchlist(userId: string | null | undefined, items: WatchlistI
   }
 }
 
+async function getServerWatchlistId(userId: string): Promise<string | null> {
+  const supabase = createClient();
+  const existing = await supabase.from('watchlists').select('id').eq('user_id', userId).order('created_at').limit(1).maybeSingle();
+  if (existing.error) throw existing.error;
+  if (existing.data?.id) return existing.data.id;
+  const created = await supabase.from('watchlists').insert({ user_id: userId, name: 'Ana Takip Listesi' }).select('id').single();
+  if (created.error) throw created.error;
+  return created.data.id;
+}
+
+function toServerRow(item: WatchlistItem, watchlistId: string) {
+  return {
+    watchlist_id: watchlistId,
+    symbol: item.symbol.toUpperCase(),
+    name: item.name,
+    asset_type: item.assetType,
+    exchange: item.exchange || null,
+    target_price: item.targetPrice ?? null,
+    alert_type: item.alertType ?? null,
+    alert_percent: item.alertPercent ?? null,
+    alert_base_price: item.alertBasePrice ?? null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function fromServerRow(row: any, localBySymbol: Map<string, WatchlistItem>): WatchlistItem {
+  const previous = localBySymbol.get(String(row.symbol).toUpperCase());
+  return {
+    id: `server-${row.id}`,
+    symbol: String(row.symbol).toUpperCase(),
+    name: row.name || previous?.name || row.symbol,
+    assetType: row.asset_type === 'fund' ? 'fund' : 'stock',
+    price: previous?.price || 0,
+    changePercent: previous?.changePercent || 0,
+    exchange: row.exchange || previous?.exchange,
+    addedAt: row.added_at,
+    targetPrice: row.target_price ?? undefined,
+    alertType: row.alert_type ?? undefined,
+    alertPercent: row.alert_percent ?? undefined,
+    alertBasePrice: row.alert_base_price ?? undefined,
+  };
+}
+
+async function saveServerWatchlist(userId: string | null, items: WatchlistItem[]) {
+  if (!userId || userId === 'guest') return;
+  const supabase = createClient();
+  const watchlistId = await getServerWatchlistId(userId);
+  if (!watchlistId) return;
+  const existing = await supabase.from('watchlist_items').select('id,symbol,exchange').eq('watchlist_id', watchlistId);
+  if (existing.error) throw existing.error;
+  const wanted = new Set(items.map((item) => `${item.symbol.toUpperCase()}::${item.exchange || ''}`));
+  const stale = (existing.data || []).filter((row) => !wanted.has(`${String(row.symbol).toUpperCase()}::${row.exchange || ''}`));
+  if (stale.length) {
+    const { error } = await supabase.from('watchlist_items').delete().in('id', stale.map((row) => row.id));
+    if (error) throw error;
+  }
+  if (items.length) {
+    const { error } = await supabase.from('watchlist_items').upsert(items.map((item) => toServerRow(item, watchlistId)), { onConflict: 'watchlist_id,symbol,exchange' });
+    if (error) throw error;
+  }
+}
+
+async function loadServerWatchlist(userId: string, localItems: WatchlistItem[]): Promise<WatchlistItem[]> {
+  const supabase = createClient();
+  const watchlistId = await getServerWatchlistId(userId);
+  if (!watchlistId) return [];
+  const { data, error } = await supabase.from('watchlist_items').select('*').eq('watchlist_id', watchlistId).order('added_at', { ascending: false });
+  if (error) throw error;
+  const localBySymbol = new Map(localItems.map((item) => [item.symbol.toUpperCase(), item]));
+  const serverItems = (data || []).map((row) => fromServerRow(row, localBySymbol));
+  // One-time migration for existing devices: only upload local data when the server list is empty.
+  if (serverItems.length === 0 && localItems.length > 0) {
+    await saveServerWatchlist(userId, localItems);
+    return localItems;
+  }
+  return serverItems;
+}
+
 export const useWatchlistStore = create<WatchlistState>((set, get) => {
   return {
     items: [],
     currentUserId: null,
 
     loadUserWatchlist: (userId) => {
-      const loaded = loadLocalWatchlist(userId);
-      set({ items: loaded, currentUserId: userId || null });
-      syncNativeWatchlist(loaded);
+      const localItems = loadLocalWatchlist(userId);
+      set({ items: localItems, currentUserId: userId || null });
+      syncNativeWatchlist(localItems);
+      if (userId && userId !== 'guest') {
+        void loadServerWatchlist(userId, localItems).then((serverItems) => {
+          if (get().currentUserId !== userId) return;
+          set({ items: serverItems });
+          saveLocalWatchlist(userId, serverItems);
+          syncNativeWatchlist(serverItems);
+        }).catch((error) => console.warn('Failed to load server watchlist:', error));
+      }
     },
 
     resetWatchlist: () => {
@@ -195,6 +282,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       const updated = [newItem, ...items];
       set({ items: updated });
       saveLocalWatchlist(currentUserId, updated);
+      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
     },
 
     removeItem: (id) => {
@@ -202,6 +290,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       const updated = items.filter((i) => i.id !== id);
       set({ items: updated });
       saveLocalWatchlist(currentUserId, updated);
+      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
     },
 
     removeBySymbol: (symbol) => {
@@ -210,6 +299,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       const updated = items.filter((i) => i.symbol.toUpperCase() !== sym);
       set({ items: updated });
       saveLocalWatchlist(currentUserId, updated);
+      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
     },
 
     toggleWatchlist: (item) => {
@@ -221,6 +311,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
         const updated = items.filter((i) => i.symbol.toUpperCase() !== sym);
         set({ items: updated });
         saveLocalWatchlist(currentUserId, updated);
+        void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
         return false; // removed
       } else {
         const newItem: WatchlistItem = {
@@ -231,6 +322,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
         const updated = [newItem, ...items];
         set({ items: updated });
         saveLocalWatchlist(currentUserId, updated);
+        void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
         return true; // added
       }
     },
@@ -245,6 +337,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       const updated = items.map((i) => (i.id === id ? { ...i, targetPrice } : i));
       set({ items: updated });
       saveLocalWatchlist(currentUserId, updated);
+      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
     },
 
     setAlert: (symbolOrId, alert, stockMeta) => {
@@ -274,6 +367,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
 
       set({ items: updated });
       saveLocalWatchlist(currentUserId, updated);
+      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
     },
 
     removeAlert: (symbolOrId) => {
@@ -292,6 +386,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       });
       set({ items: updated });
       saveLocalWatchlist(currentUserId, updated);
+      void saveServerWatchlist(currentUserId, updated).catch((error) => console.warn('Failed to save server watchlist:', error));
     },
 
     getAlert: (symbol) => {
