@@ -165,11 +165,15 @@ function saveLocalWatchlist(userId: string | null | undefined, items: WatchlistI
   }
 }
 
-async function getServerWatchlistId(userId: string): Promise<string | null> {
+async function getSupabaseClient() {
   // Keep the browser client lazy so pure portfolio/alert calculations can be
   // imported in native test runners without loading the SSR auth package.
   const { createClient } = await import('@/lib/supabase/client');
-  const supabase = createClient();
+  return createClient();
+}
+
+async function getServerWatchlistId(userId: string): Promise<string | null> {
+  const supabase = await getSupabaseClient();
   const existing = await supabase.from('watchlists').select('id').eq('user_id', userId).order('created_at').limit(1).maybeSingle();
   if (existing.error) throw existing.error;
   if (existing.data?.id) return existing.data.id;
@@ -213,7 +217,7 @@ function fromServerRow(row: any, localBySymbol: Map<string, WatchlistItem>): Wat
 
 async function saveServerWatchlist(userId: string | null, items: WatchlistItem[]) {
   if (!userId || userId === 'guest') return;
-  const supabase = createClient();
+  const supabase = await getSupabaseClient();
   const watchlistId = await getServerWatchlistId(userId);
   if (!watchlistId) return;
   const existing = await supabase.from('watchlist_items').select('id,symbol,exchange').eq('watchlist_id', watchlistId);
@@ -231,7 +235,7 @@ async function saveServerWatchlist(userId: string | null, items: WatchlistItem[]
 }
 
 async function loadServerWatchlist(userId: string, localItems: WatchlistItem[]): Promise<WatchlistItem[]> {
-  const supabase = createClient();
+  const supabase = await getSupabaseClient();
   const watchlistId = await getServerWatchlistId(userId);
   if (!watchlistId) return [];
   const { data, error } = await supabase.from('watchlist_items').select('*').eq('watchlist_id', watchlistId).order('added_at', { ascending: false });
