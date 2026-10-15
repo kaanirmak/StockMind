@@ -197,23 +197,27 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20 md:pb-12">
+    <div className="reports-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Portföy Performans Raporları</h1>
+      <div className="product-hero p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="w-8 h-8 rounded-xl bg-accent/15 text-accent flex items-center justify-center text-base">▥</span>
+            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-accent">Portföy merkezi</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">Performans Raporları</h1>
           <p className="text-text-secondary text-sm mt-1">
             Detaylı getiri analizleri, varlık dağılımı ve vergi/kar-zarar dökümü.
           </p>
         </div>
 
         {/* Action buttons — responsive: stacked on mobile, row on desktop */}
-        <div className="grid grid-cols-1 sm:flex sm:flex-row gap-2">
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-2 w-full lg:w-auto">
           {/* Email button — glassmorphic card on mobile */}
           <button
             onClick={handleSendEmailReport}
             disabled={sendingEmail || pricesLoading}
-            className="glass-card flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group"
+            className="glass-card flex items-center gap-3 px-3.5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group min-w-0"
           >
             <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-accent/15 sm:bg-transparent flex items-center justify-center shrink-0">
               {(sendingEmail || pricesLoading) ? (
@@ -244,7 +248,7 @@ export default function ReportsPage() {
           <button
             onClick={handlePrint}
             disabled={summary.holdings.length === 0}
-            className="glass-card flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group"
+            className="glass-card flex items-center gap-3 px-3.5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group min-w-0"
           >
             <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-accent/15 sm:bg-transparent flex items-center justify-center shrink-0">
               <svg className="w-4 h-4 text-accent-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
