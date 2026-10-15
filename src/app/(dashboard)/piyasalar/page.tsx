@@ -418,8 +418,13 @@ function PiyasalarContent() {
         </div>
       </div>
 
+      <label className="sm:hidden block space-y-1.5 text-xs font-medium text-text-secondary">Piyasa
+        <select aria-label="Piyasa seçimi" value={activeMarket} onChange={(e) => handleMarketChange(e.target.value as MarketId)} className="w-full h-12 rounded-xl border border-border bg-bg-card text-text-primary px-3 text-sm">
+          {MARKETS.map((market) => <option key={market.id} value={market.id}>{market.label}</option>)}
+        </select>
+      </label>
       {/* ═══════════════════ TOUCH-FRIENDLY SCROLLABLE TABS BAR ═══════════════════ */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 w-full -mx-1 px-1 snap-x">
+      <div className="hidden sm:flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 w-full -mx-1 px-1 snap-x">
         {MARKETS.map((m) => {
           const isActive = activeMarket === m.id;
           return (
@@ -594,7 +599,7 @@ function PiyasalarContent() {
       {isStocksMarket && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
-            <button type="button" aria-pressed={watchlistOnly} onClick={() => setWatchlistOnly(!watchlistOnly)} className={`px-3 rounded-xl border ${watchlistOnly ? 'bg-accent/15 border-accent text-accent' : 'border-border'}`}>{watchlistOnly ? 'Takip Ettiklerim' : 'Tüm Varlıklar'} · Filtreyi Değiştir</button>
+            <button type="button" aria-pressed={watchlistOnly} onClick={() => setWatchlistOnly(!watchlistOnly)} className={`px-3 rounded-xl border ${watchlistOnly ? 'bg-accent/15 border-accent text-accent' : 'border-border'}`}>Takip Ettiklerim</button>
             <span>{stocksUpdatedAt ? `Son kontrol: ${stocksUpdatedAt.toLocaleTimeString('tr-TR')}` : 'Fiyatlar yükleniyor'}</span>
           </div>
           {/* Filters */}
@@ -617,8 +622,13 @@ function PiyasalarContent() {
                 />
               </div>
 
+              <label className="sm:hidden flex items-center gap-3 text-xs font-medium text-text-secondary">Sırala
+                <select aria-label="Piyasa sıralaması" value={`${stockSortBy}:${stockSortOrder}`} onChange={(e) => { const [field, direction] = e.target.value.split(':'); setStockSortBy(field as typeof stockSortBy); setStockSortOrder(direction as 'asc' | 'desc'); }} className="min-w-0 flex-1 h-11 rounded-xl border border-border bg-bg-input text-text-primary px-3 text-xs">
+                  <option value="marketCap:desc">Piyasa değeri · Büyükten küçüğe</option><option value="marketCap:asc">Piyasa değeri · Küçükten büyüğe</option><option value="changePercent:desc">En çok yükselenler</option><option value="changePercent:asc">En çok düşenler</option><option value="volume:desc">En yüksek hacim</option><option value="volume:asc">En düşük hacim</option><option value="price:desc">Fiyat · Yüksekten düşüğe</option><option value="price:asc">Fiyat · Düşükten yükseğe</option>
+                </select>
+              </label>
               {/* Quick Sort Options */}
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 bg-bg-tertiary/50 p-1 rounded-xl border border-border/60">
+              <div className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 bg-bg-tertiary/50 p-1 rounded-xl border border-border/60">
                 <span className="text-[11px] text-text-muted px-2 font-medium shrink-0">Sırala:</span>
                 <button
                   onClick={() => toggleStockSort('marketCap')}

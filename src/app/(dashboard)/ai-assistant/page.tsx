@@ -14,6 +14,7 @@ import {
   getStoredDefaultModel,
 } from '@/lib/ai/apiKeyStorage';
 import { ChatMessageContent } from '@/components/ai/ChatMessageContent';
+import { useChatScroll } from '@/hooks/useChatScroll';
 
 export interface Message {
   id: string;
@@ -67,9 +68,7 @@ function AIAssistantContent() {
   const [customApiKey, setCustomApiKey] = useState<string>('');
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isNearBottomRef = useRef<boolean>(true);
+  const { containerRef, contentRef, showLatest, followLatest, onScroll, onTouchStart, onTouchEnd, onWheel } = useChatScroll(messages, currentSessionId);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleStopGeneration = () => {
@@ -208,46 +207,6 @@ function AIAssistantContent() {
     }
   };
 
-  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState<boolean>(false);
-
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior,
-    });
-  };
-
-  // 7. Track User Scroll Position in Chat Container (Fix for auto-scroll yanking)
-  const handleContainerScroll = () => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
-    const isAtBottom = distanceFromBottom < 80;
-    isNearBottomRef.current = isAtBottom;
-    setShowScrollBottomBtn(!isAtBottom && scrollHeight > clientHeight + 100);
-  };
-
-  // Auto scroll only when user is near bottom
-  useEffect(() => {
-    if (isNearBottomRef.current) {
-      const raf = requestAnimationFrame(() => {
-        scrollToBottom('smooth');
-      });
-      return () => cancelAnimationFrame(raf);
-    }
-  }, [messages, loading]);
-
-  // Initial session switch scroll to bottom
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      scrollToBottom('instant');
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [currentSessionId]);
-
   // Handle URL prompt query param
   useEffect(() => {
     const urlPrompt = searchParams.get('prompt');
@@ -272,7 +231,7 @@ function AIAssistantContent() {
     updateCurrentSessionMessages(newMessages);
     setInput('');
     setLoading(true);
-    isNearBottomRef.current = true;
+    followLatest();
 
     // Extract current portfolio state
     let portfolioPayload: any = undefined;
@@ -503,98 +462,100 @@ function AIAssistantContent() {
 
       {/* Chat Messages Body */}
       <div
-        ref={messagesContainerRef}
-        onScroll={handleContainerScroll}
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-3 sm:space-y-4 px-1 py-1 mb-2 custom-scrollbar overscroll-y-contain touch-pan-y"
+        ref={containerRef}
+        onScroll={onScroll}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+        onWheel={onWheel}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 py-1 mb-2 custom-scrollbar overscroll-y-contain"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {messages.map((msg) => {
-          const isUser = msg.role === 'user';
-          return (
-            <div
-              key={msg.id}
-              className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} animate-slide-up`}
-            >
-              {/* Avatar */}
+        <div ref={contentRef} className="space-y-3 sm:space-y-4">
+          {messages.map((msg) => {
+            const isUser = msg.role === 'user';
+            return (
               <div
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                  isUser
-                    ? 'bg-accent text-white shadow-md shadow-accent/20'
-                    : 'bg-gradient-to-tr from-accent to-accent-secondary text-white'
-                }`}
+                key={msg.id}
+                className={`flex items-start gap-2 sm:gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                {isUser ? 'Siz' : 'AI'}
-              </div>
-
-              {/* Message Bubble */}
-              <div
-                className={`max-w-[88%] sm:max-w-xl md:max-w-2xl p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
-                  isUser
-                    ? 'bg-accent text-white rounded-tr-xs shadow-md shadow-accent/15'
-                    : 'glass-card border border-border/80 text-text-primary rounded-tl-xs space-y-2'
-                }`}
-              >
-                <div className="prose prose-sm dark:prose-invert max-w-none break-words">
-                  <ChatMessageContent content={msg.content} isUser={isUser} />
+                {/* Avatar */}
+                <div
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                    isUser
+                      ? 'bg-accent text-white shadow-md shadow-accent/20'
+                      : 'bg-gradient-to-tr from-accent to-accent-secondary text-white'
+                  }`}
+                >
+                  {isUser ? 'Siz' : 'AI'}
                 </div>
 
-                {!isUser && msg.sourceScope && (
-                  <div className="pt-1.5 border-t border-border/40 flex flex-wrap items-center justify-between gap-1 text-[10px]">
-                    {msg.sourceScope === 'live_market_data' ? (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Canlı Piyasa & Portföy Doğrulandı
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium">
-                        <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                        Genel Finans Bilgisi (Canlı veri yok)
-                      </span>
-                    )}
-                    {msg.asOf && (
-                      <span className="text-text-muted">
-                        Veri saati: {new Date(msg.asOf).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
+                {/* Message Bubble */}
+                <div
+                  className={`min-w-0 max-w-[88%] sm:max-w-xl md:max-w-2xl p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                    isUser
+                      ? 'bg-accent text-white rounded-tr-xs shadow-md shadow-accent/15'
+                      : 'glass-card border border-border/80 text-text-primary rounded-tl-xs space-y-2'
+                  }`}
+                >
+                  <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+                    <ChatMessageContent content={msg.content} isUser={isUser} />
                   </div>
-                )}
 
-                <div className={`text-[10px] mt-1 flex items-center justify-between gap-2 ${isUser ? 'text-white/70 justify-end' : 'text-text-muted'}`}>
-                  {!isUser && (
-                    <span className="text-[9px] text-text-muted/70 italic truncate">
-                      StockMind AI yatırım tavsiyesi vermez.
-                    </span>
+                  {!isUser && msg.sourceScope && (
+                    <div className="pt-1.5 border-t border-border/40 flex flex-wrap items-center justify-between gap-1 text-[10px]">
+                      {msg.sourceScope === 'live_market_data' ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          Canlı Piyasa & Portföy Doğrulandı
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium">
+                          <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
+                          Genel Finans Bilgisi (Canlı veri yok)
+                        </span>
+                      )}
+                      {msg.asOf && (
+                        <span className="text-text-muted">
+                          Veri saati: {new Date(msg.asOf).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
                   )}
-                  <span>{new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+
+                  <div className={`text-[10px] mt-1 flex items-center justify-between gap-2 ${isUser ? 'text-white/70 justify-end' : 'text-text-muted'}`}>
+                    {!isUser && (
+                      <span className="text-[9px] text-text-muted/70 italic truncate">
+                        StockMind AI yatırım tavsiyesi vermez.
+                      </span>
+                    )}
+                    <span>{new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
-        {loading && (
-          <div className="flex items-start gap-2 sm:gap-3 animate-fade-in">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-accent to-accent-secondary text-white flex items-center justify-center text-xs font-bold shrink-0">
-              AI
+          {loading && (
+            <div className="flex items-start gap-2 sm:gap-3 animate-fade-in">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-accent to-accent-secondary text-white flex items-center justify-center text-xs font-bold shrink-0">
+                AI
+              </div>
+              <div className="glass-card p-3 sm:p-4 rounded-2xl rounded-tl-xs border border-border/80 flex items-center gap-2 text-xs text-text-muted">
+                <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name.split(' (')[0] || 'AI'} canlı analiz hazırlıyor...</span>
+              </div>
             </div>
-            <div className="glass-card p-3 sm:p-4 rounded-2xl rounded-tl-xs border border-border/80 flex items-center gap-2 text-xs text-text-muted">
-              <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
-              <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name.split(' (')[0] || 'AI'} canlı analiz hazırlıyor...</span>
-            </div>
-          </div>
-        )}
+          )}
 
-        <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Floating Scroll to Bottom Button */}
-      {showScrollBottomBtn && (
+      {showLatest && (
         <button
           type="button"
-          onClick={() => {
-            isNearBottomRef.current = true;
-            scrollToBottom('smooth');
-          }}
+          onClick={() => followLatest('smooth')}
           className="absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 sm:right-4 z-20 px-3 py-1.5 rounded-full bg-accent text-white shadow-lg shadow-accent/30 text-xs font-semibold flex items-center gap-1.5 hover:bg-accent-hover active:scale-95 transition-all cursor-pointer animate-fade-in"
           title="En alta kaydır"
         >
@@ -604,7 +565,7 @@ function AIAssistantContent() {
 
       {/* Preset Prompt Suggestions */}
       {messages.length <= 2 && (
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto overscroll-x-contain touch-pan-x py-1.5 shrink-0 no-scrollbar -mx-1 px-1 mb-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto overscroll-x-contain py-1.5 shrink-0 no-scrollbar -mx-1 px-1 mb-1">
           {PROMPT_SUGGESTIONS.map((sug) => (
             <button
               key={sug.label}

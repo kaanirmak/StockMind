@@ -264,29 +264,6 @@ export default function PortfolioSummary() {
                   <span>İlk İşlemini Ekle</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push('/portfolio');
-                  }}
-                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15 active:scale-95 cursor-pointer flex items-center gap-1.5"
-                >
-                  <span><UIIcon name="download" className="w-4 h-4" /></span>
-                  <span>Excel / Ekstre Yükle</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push('/piyasalar');
-                  }}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-all border border-white/10 active:scale-95 cursor-pointer flex items-center gap-1.5"
-                >
-                  <span><UIIcon name="chart" className="w-4 h-4" /></span>
-                  <span>Piyasaları İncele</span>
-                </button>
               </div>
             </div>
           ) : (

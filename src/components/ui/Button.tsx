@@ -24,7 +24,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex min-w-0 items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]';
+      'inline-flex min-w-0 shrink-0 whitespace-nowrap items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-bg-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98]';
 
     const sizeStyles = {
       sm: 'text-xs px-3 py-2 min-h-11 rounded-lg gap-1.5',
@@ -34,7 +34,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-gradient-to-r from-accent to-accent-secondary text-white shadow-lg shadow-accent/25 hover:shadow-accent/40 hover:brightness-110 focus:ring-accent',
+        'bg-accent text-white shadow-sm hover:bg-accent-hover focus:ring-accent',
       secondary:
         'bg-bg-tertiary text-text-primary hover:bg-bg-hover border border-border focus:ring-accent/50',
       outline:

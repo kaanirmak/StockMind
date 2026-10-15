@@ -75,3 +75,54 @@ test('Losses have an explicit minus sign so meaning does not depend on color', (
   assert.equal(getPnLSign(12.4), '+');
   assert.equal(getPnLSign(0), '');
 });
+
+function chatScrollHarness() {
+  const effects = [], frames = new Map();
+  let nextFrame = 0, resize, visible;
+  const el = { scrollTop: 500, scrollHeight: 1000, clientHeight: 500, scrollTo({ top }) { this.scrollTop = Math.min(top, this.scrollHeight - this.clientHeight); } };
+  const { useChatScroll } = load('src/hooks/useChatScroll.ts', {
+    require: () => ({ useRef: (v) => ({ current: v }), useCallback: (fn) => fn, useEffect: (fn) => effects.push(fn), useState: () => [false, (v) => { visible = v; }] }),
+    requestAnimationFrame: (fn) => { frames.set(++nextFrame, fn); return nextFrame; },
+    cancelAnimationFrame: (id) => frames.delete(id),
+    ResizeObserver: class { constructor(fn) { resize = fn; } observe() {} disconnect() {} },
+  });
+  const hook = useChatScroll([], 'one');
+  hook.containerRef.current = el;
+  hook.contentRef.current = {};
+  const cleanups = effects.map(fn => fn());
+  const flush = () => { const pending = [...frames.values()]; frames.clear(); pending.forEach(fn => fn()); };
+  return { hook, el, flush, resize: () => resize(), visible: () => visible, dispose: () => cleanups.forEach(fn => fn?.()) };
+}
+
+test('Touch cancels queued auto-follow; incoming content preserves the reading position', () => {
+  const h = chatScrollHarness();
+  h.hook.onTouchStart();
+  h.el.scrollTop = 250;
+  h.hook.onScroll();
+  h.hook.onTouchEnd();
+  h.el.scrollHeight = 1500;
+  h.resize();
+  h.flush();
+  assert.equal(h.el.scrollTop, 250);
+  assert.equal(h.visible(), true);
+  h.dispose();
+});
+
+test('Small upward scrolling also pauses follow; explicit latest restores following after resize', () => {
+  const h = chatScrollHarness();
+  h.flush();
+  h.hook.onWheel();
+  h.el.scrollTop = 475;
+  h.hook.onScroll();
+  h.el.scrollHeight = 1100;
+  h.resize();
+  h.flush();
+  assert.equal(h.el.scrollTop, 475);
+  h.hook.followLatest();
+  assert.equal(h.el.scrollTop, 600);
+  h.el.clientHeight = 350;
+  h.resize();
+  h.flush();
+  assert.equal(h.el.scrollTop, 750);
+  h.dispose();
+});

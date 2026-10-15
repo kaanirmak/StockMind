@@ -309,7 +309,8 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebView() {
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        // Let WebView composite scrollable layers; do not force a whole-page layer.
+        webView.setNestedScrollingEnabled(true);
         webView.setOnTouchListener((view, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -321,10 +322,14 @@ public class MainActivity extends AppCompatActivity {
                     String hitTest = "(function(){if(window.scrollY>0||document.documentElement.dataset.scrollLocked||location.pathname.includes('ai-assistant'))return true;"
                             + "var e=document.elementFromPoint(" + (event.getX() / density) + "," + (event.getY() / density) + ");"
                             + "while(e&&e!==document.body){var s=getComputedStyle(e);if(e.matches('input,textarea,select,[role=dialog],canvas')||((/auto|scroll/.test(s.overflowY))&&e.scrollHeight>e.clientHeight)||((/auto|scroll/.test(s.overflowX))&&e.scrollWidth>e.clientWidth))return true;e=e.parentElement;}return false;})()";
+                    // Keep the gesture in WebView until the asynchronous hit test finishes.
+                    view.getParent().requestDisallowInterceptTouchEvent(true);
                     webView.evaluateJavascript(hitTest, value -> {
-                        if (sequence == gestureSequence) webGestureBlocksRefresh = !"false".equals(value);
+                        if (sequence == gestureSequence) {
+                            webGestureBlocksRefresh = !"false".equals(value);
+                            view.getParent().requestDisallowInterceptTouchEvent(webGestureBlocksRefresh);
+                        }
                     });
-                    view.getParent().requestDisallowInterceptTouchEvent(false);
                     break;
                 case MotionEvent.ACTION_MOVE:
                     float dx = event.getX() - touchDownX;

@@ -279,7 +279,7 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12 max-w-[1600px] mx-auto">
+    <div className="portfolio-page space-y-4 sm:space-y-6 animate-fade-in pb-12 max-w-[1600px] mx-auto">
       {/* Header & Portfolio Selector */}
       <div className="product-hero flex flex-col xl:flex-row xl:items-center justify-between gap-5 p-4 sm:p-6">
         <div className="relative z-10 min-w-0">
@@ -312,7 +312,7 @@ export default function PortfolioPage() {
               return (
                 <div
                   key={p.id}
-                  className={`group relative flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
+                  className={`group relative flex items-center gap-1.5 pl-3 pr-0 py-0 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
                     isActive
                       ? 'bg-accent text-white shadow'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -355,7 +355,7 @@ export default function PortfolioPage() {
           </div>
 
           {/* Action Buttons: Prominent Primary Action + Clean Secondary Dropdown */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-0.5 sm:pb-0">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
             {/* Primary Action Button */}
             <Button
               variant="primary"
@@ -409,7 +409,7 @@ export default function PortfolioPage() {
             </Button>
 
             {/* Secondary Actions Dropdown Menu */}
-            <div className="relative shrink-0" ref={actionsMenuRef}>
+            <div className="relative min-w-0 [&>button]:w-full sm:[&>button]:w-auto" ref={actionsMenuRef}>
               <Button
                 variant="secondary"
                 size="sm"
@@ -420,6 +420,7 @@ export default function PortfolioPage() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
                 </svg>
+              <span>Araçlar</span>
               </Button>
 
               {isActionsMenuOpen && (
@@ -503,9 +504,9 @@ export default function PortfolioPage() {
       )}
 
       {/* Summary KPI Cards - compact, mobile-first */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5">
+      <div className="portfolio-metrics grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3.5">
         {/* Total Value */}
-        <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': palette.primaryDark, '--metric-glow': 'rgba(139, 92, 246, 0.2)' } as React.CSSProperties}>
+        <div className="portfolio-metric-card col-span-2 sm:col-span-1 min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': palette.primaryDark, '--metric-glow': 'rgba(139, 92, 246, 0.2)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>Portföy Değeri</span>
@@ -589,7 +590,7 @@ export default function PortfolioPage() {
       {/* Allocation */}
       <div className="rounded-3xl border border-border/70 bg-bg-card/70 p-3 sm:p-5">
         <div className="space-y-3">
-          <nav aria-label="Portföy varlık filtresi" className="flex gap-2">{([['all', 'Tümü'], ['stock', 'Hisse'], ['fund', 'Fon'], ['cash', 'Nakit']] as const).map(([key, label]) => <Button key={key} size="sm" variant={assetFilter === key ? 'primary' : 'secondary'} aria-pressed={assetFilter === key} onClick={() => setAssetFilter(key)}>{label}</Button>)}</nav>
+          <nav aria-label="Portföy varlık filtresi" className="grid grid-cols-4 gap-1.5 sm:flex sm:gap-2">{([['all', 'Tümü'], ['stock', 'Hisse'], ['fund', 'Fon'], ['cash', 'Nakit']] as const).map(([key, label]) => <Button key={key} size="sm" variant={assetFilter === key ? 'primary' : 'secondary'} aria-pressed={assetFilter === key} onClick={() => setAssetFilter(key)}>{label}</Button>)}</nav>
           <PortfolioAllocationChart allocation={summary.allocation.filter((a) => assetFilter === 'all' || (assetFilter === 'cash' ? a.label.startsWith('Nakit ') : summary.holdings.some((h) => h.symbol === a.label && h.assetType === assetFilter))).map((a, _, all) => ({ ...a, percentage: all.reduce((sum, item) => sum + item.value, 0) > 0 ? a.value / all.reduce((sum, item) => sum + item.value, 0) * 100 : 0 }))} totalValue={assetFilter === 'all' ? summary.totalValue : assetFilter === 'cash' ? summary.cash?.totalValue || 0 : summary.holdings.filter((h) => h.assetType === assetFilter).reduce((sum, h) => sum + h.currentValue, 0)} />
         </div>
       </div>
@@ -598,37 +599,37 @@ export default function PortfolioPage() {
       {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
       <div className="space-y-4">
         {/* Navigation Tabs & Secondary Actions */}
-        <div className="sticky top-[3.75rem] sm:top-[4.25rem] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm">
-          <div className="flex items-center gap-1.5 p-1 bg-bg-card rounded-2xl border border-border w-full sm:w-fit overflow-x-auto scrollbar-none">
+        <div className="sm:sticky sm:top-[4.25rem] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 sm:p-2.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm">
+          <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-bg-card rounded-xl border border-border w-full sm:w-fit">
             <button
               onClick={() => setActiveTab('holdings')}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`min-w-0 px-1.5 sm:px-4 py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === 'holdings'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
               }`}
             >
-              Varlıklarım ({summary.holdings.length})
+              <span className="sm:hidden">Varlıklar</span><span className="hidden sm:inline">Varlıklarım ({summary.holdings.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('heatmap')}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              className={`min-w-0 px-1.5 sm:px-4 py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center justify-center gap-1.5 ${
                 activeTab === 'heatmap'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
               }`}
             >
-              <span> Isı & Aktivite Haritası</span>
+              <span className="sm:hidden">Isı Haritası</span><span className="hidden sm:inline">Isı & Aktivite Haritası</span>
             </button>
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`min-w-0 px-1.5 sm:px-4 py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 activeTab === 'transactions'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
               }`}
             >
-              İşlem Geçmişi ({activeTransactions.length})
+              <span className="sm:hidden">İşlemler</span><span className="hidden sm:inline">İşlem Geçmişi ({activeTransactions.length})</span>
             </button>
           </div>
 

@@ -9,9 +9,9 @@ import { useTheme } from '@/components/theme/ThemeProvider';
 
 const mobileNavItems = [
   { href: '/dashboard', label: 'Ana Sayfa', icon: <Icon name="home" /> },
-  { href: '/piyasalar', label: 'Piyasa Nabzı', icon: <Icon name="chart" /> },
+  { href: '/piyasalar', label: 'Piyasa Nabzı', shortLabel: 'Piyasa', icon: <Icon name="chart" /> },
   { href: '/portfolio', label: 'Portföy', icon: <Icon name="wallet" /> },
-  { href: '/watchlist', label: 'Takip Listesi', icon: <Icon name="star" /> },
+  { href: '/watchlist', label: 'Takip Listesi', shortLabel: 'Takip', icon: <Icon name="star" /> },
   { href: '/ai-assistant', label: 'AI Asistan', icon: <Icon name="sparkles" /> },
 ];
 
@@ -220,7 +220,7 @@ export default function MobileNav() {
                 }`}
               >
                 <span className={isActive ? 'text-accent animate-scale-in' : ''}>{item.icon}</span>
-                <span className="text-[10px] font-medium leading-none">{item.label}</span>
+                <span className="text-[10px] font-medium leading-none whitespace-nowrap">{'shortLabel' in item ? item.shortLabel : item.label}</span>
                 {isActive && (
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-accent" />
                 )}
@@ -251,7 +251,7 @@ export default function MobileNav() {
                 </svg>
               )}
             </span>
-            <span className="text-[10px] font-medium leading-none">Diğer</span>
+            <span className="text-[10px] font-medium leading-none whitespace-nowrap">Diğer</span>
             {isMoreActive && !showMore && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-accent" />
             )}

@@ -616,11 +616,11 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <nav aria-label="Ayar bölümleri" className="sticky top-14 z-20 flex gap-2 p-2 rounded-2xl bg-bg-card border border-border overflow-x-auto">
+      <nav aria-label="Ayar bölümleri" className="sticky top-14 z-20 grid grid-cols-2 sm:flex gap-1.5 p-1.5 rounded-xl bg-bg-card border border-border">
         {[
           ['profile', 'Hesap & Güvenlik'], ['notifications', 'Bildirim Tercihleri'],
           ['appearance', 'Görünüm & Tema'], ['ai-settings', 'AI Ayarları'],
-        ].map(([key, label]) => <button type="button" key={key} aria-pressed={settingsSection === key} onClick={() => { setSettingsSection(key); window.history.replaceState(null, '', `#${key}`); }} className={`min-h-11 px-3 rounded-xl text-xs font-semibold whitespace-nowrap ${settingsSection === key ? 'bg-accent/15 text-accent' : 'text-text-secondary hover:bg-bg-hover'}`}>{label}</button>)}
+        ].map(([key, label]) => <button type="button" key={key} aria-pressed={settingsSection === key} onClick={() => { setSettingsSection(key); window.history.replaceState(null, '', `#${key}`); }} className={`min-h-11 min-w-0 px-2 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap ${settingsSection === key ? 'bg-accent/15 text-accent' : 'text-text-secondary hover:bg-bg-hover'}`}>{label}</button>)}
       </nav>
 
       {/* Guest vs Logged in Account Banner */}
