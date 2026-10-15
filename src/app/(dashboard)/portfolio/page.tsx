@@ -489,10 +489,10 @@ export default function PortfolioPage() {
         </div>
       )}
 
-      {/* Summary KPI Cards - 2x2 Grid on Mobile, 4 Cols on Desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      {/* Summary KPI Cards - compact, mobile-first */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3.5">
         {/* Total Value */}
-        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': '#8b5cf6', '--metric-glow': 'rgba(139, 92, 246, 0.2)' } as React.CSSProperties}>
+        <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': '#8b5cf6', '--metric-glow': 'rgba(139, 92, 246, 0.2)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>Portföy Değeri</span>
@@ -511,7 +511,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Total PnL */}
-        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': isProfit ? '#10b981' : '#ef4444', '--metric-glow': isProfit ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
+        <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': isProfit ? '#10b981' : '#ef4444', '--metric-glow': isProfit ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>Toplam Kâr/Zarar</span>
@@ -538,7 +538,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Total Turnover / Volume */}
-        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': '#3b82f6', '--metric-glow': 'rgba(59, 130, 246, 0.18)' } as React.CSSProperties}>
+        <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': '#3b82f6', '--metric-glow': 'rgba(59, 130, 246, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>İşlem Hacmi</span>
@@ -560,7 +560,7 @@ export default function PortfolioPage() {
         </div>
 
         {/* Daily PnL & Position Count */}
-        <div className="portfolio-metric-card p-3.5 sm:p-5 flex flex-col justify-between" style={{ '--metric-color': summary.dailyPnL >= 0 ? '#10b981' : '#ef4444', '--metric-glow': summary.dailyPnL >= 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
+        <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': summary.dailyPnL >= 0 ? '#10b981' : '#ef4444', '--metric-glow': summary.dailyPnL >= 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
               <span>Günlük Getiri</span>
@@ -594,67 +594,9 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Main Grid: Allocation Chart & Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-        <div className="lg:col-span-5">
-          <PortfolioAllocationChart allocation={summary.allocation} totalValue={summary.totalValue} />
-        </div>
-
-        <div className="settings-panel lg:col-span-7 flex flex-col justify-between p-4 sm:p-6">
-          <div>
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <h3 className="text-sm sm:text-base font-bold text-text-primary">Portföy Varlık Özeti</h3>
-              <span className="text-xs text-text-muted font-medium">{summary.holdings.length} Aktif Varlık</span>
-            </div>
-            <p className="text-xs sm:text-sm text-text-secondary leading-relaxed mb-4 sm:mb-6">
-              Portföyünüzdeki hisse senetleri ve TEFAS yatırım fonları otomatik olarak güncel piyasa fiyatları üzerinden değerlenmektedir.
-              Excel yükleme özelliği sayesinde geçmiş ekstrelerinizi tek tıkla aktarabilirsiniz.
-            </p>
-
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
-              <div className="p-3 sm:p-4 rounded-xl bg-bg-secondary/60 border border-border/50 text-center sm:text-left">
-                <span className="text-[10px] sm:text-xs text-text-muted block">Hisse Senetleri</span>
-                <p className="text-base sm:text-lg font-bold text-text-primary mt-0.5">
-                  {summary.holdings.filter((h) => h.assetType === 'stock').length} Adet
-                </p>
-              </div>
-              <div className="p-3 sm:p-4 rounded-xl bg-bg-secondary/60 border border-border/50 text-center sm:text-left">
-                <span className="text-[10px] sm:text-xs text-text-muted block">Yatırım Fonları</span>
-                <p className="text-base sm:text-lg font-bold text-text-primary mt-0.5">
-                  {summary.holdings.filter((h) => h.assetType === 'fund').length} Adet
-                </p>
-              </div>
-              <div className="p-3 sm:p-4 rounded-xl bg-bg-secondary/60 border border-border/50 text-center sm:text-left">
-                <span className="text-[10px] sm:text-xs text-text-muted block">En Büyük Pay</span>
-                <p className="text-base sm:text-lg font-bold text-accent mt-0.5 truncate font-mono">
-                  {summary.holdings.length > 0 ? summary.holdings[0].symbol : '-'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 sm:pt-6 border-t border-border mt-4 sm:mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <span className="text-xs text-text-muted">Midas, İşCep, Garanti vb. ekstrelerinizi yükleyin</span>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={downloadExcelTemplate}
-                className="text-xs flex-1 sm:flex-none justify-center"
-              >
-                Şablon İndir
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsExcelModalOpen(true)}
-                className="text-xs bg-emerald-600 hover:bg-emerald-500 border-none flex-1 sm:flex-none justify-center"
-              >
-                Excel Yükle
-              </Button>
-            </div>
-          </div>
-        </div>
+      {/* Allocation */}
+      <div className="rounded-3xl border border-border/70 bg-bg-card/70 p-3 sm:p-5">
+        <PortfolioAllocationChart allocation={summary.allocation} totalValue={summary.totalValue} />
       </div>
 
       {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}

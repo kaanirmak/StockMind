@@ -3,72 +3,25 @@ import Link from 'next/link';
 import { Holding } from '@/types/portfolio';
 import { Badge, Button, InstrumentLogo } from '@/components/ui';
 
-export interface HoldingsTableProps {
-  holdings: Holding[];
-  onAddTransaction: () => void;
-}
-
-// Mini SVG Sparkline Component
 function MiniSparkline({ changePercent }: { changePercent: number }) {
-  const isPositive = changePercent >= 0;
-  const strokeColor = isPositive ? '#10b981' : '#f43f5e';
-  const fillColor = isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)';
-
-  // Generate 6 sample path coordinates based on change
-  const p1 = 14;
-  const p2 = isPositive ? 13 : 15;
-  const p3 = isPositive ? 11 : 16;
-  const p4 = isPositive ? 12 : 14;
-  const p5 = isPositive ? 8 : 18;
-  const p6 = isPositive ? 5 : 22;
-
-  const path = `M 0,${p1} Q 10,${p2} 20,${p3} T 40,${p4} T 55,${p5} T 70,${p6}`;
-  const areaPath = `${path} L 70,26 L 0,26 Z`;
-
+  const positive = changePercent >= 0;
+  const path = positive ? 'M0 20 Q18 18 34 13 T70 5' : 'M0 6 Q18 8 34 13 T70 22';
   return (
-    <svg className="w-16 h-7 shrink-0 overflow-visible" viewBox="0 0 70 26">
-      <path d={areaPath} fill={fillColor} />
-      <path d={path} fill="none" stroke={strokeColor} strokeWidth="1.8" strokeLinecap="round" />
+    <svg className="w-16 h-7 shrink-0" viewBox="0 0 70 26" aria-hidden="true">
+      <path d={path} fill="none" stroke={positive ? '#10b981' : '#f43f5e'} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
 
-// Helper to determine asset badge styling
 function getAssetBadgeInfo(h: Holding) {
-  const sym = h.symbol.toUpperCase();
-  if (sym.includes('ALTIN') || sym.includes('GOLD')) {
-    return {
-      bg: 'bg-amber-500/15 border-amber-500/30 text-amber-300',
-      label: 'Emtia / Altın',
-      icon: '🟡',
-    };
-  }
-  if (sym.includes('GUMUS') || sym.includes('SILVER')) {
-    return {
-      bg: 'bg-slate-400/15 border-slate-400/30 text-slate-200',
-      label: 'Emtia / Gümüş',
-      icon: '⚪',
-    };
-  }
-  if (h.assetType === 'fund') {
-    return {
-      bg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300',
-      label: 'TEFAS Fon',
-      icon: '📈',
-    };
-  }
-  if (h.originalCurrency === 'USD') {
-    return {
-      bg: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
-      label: 'ABD Hisse',
-      icon: '🌐',
-    };
-  }
-  return {
-    bg: 'bg-violet-500/15 border-violet-500/30 text-violet-300',
-    label: 'BIST Hisse',
-    icon: '📊',
-  };
+  if (h.assetType === 'fund') return { bg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300', label: 'TEFAS Fon', icon: '📈' };
+  if (h.originalCurrency === 'USD') return { bg: 'bg-blue-500/15 border-blue-500/30 text-blue-300', label: 'ABD Hisse', icon: '🌐' };
+  return { bg: 'bg-violet-500/15 border-violet-500/30 text-violet-300', label: 'BIST Hisse', icon: '📊' };
+}
+
+export interface HoldingsTableProps {
+  holdings: Holding[];
+  onAddTransaction: () => void;
 }
 
 export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTransaction }) => {
@@ -128,7 +81,6 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
           const isProfit = h.pnl >= 0;
           const link = h.assetType === 'stock' ? `/stocks/${h.symbol}` : `/funds/${h.symbol}`;
           const dailyChange = h.dailyChangePercent || 0;
-          const badgeInfo = getAssetBadgeInfo(h);
           const isExpanded = expandedSymbols.has(h.symbol);
           const hasLots = h.lots && h.lots.length > 0;
 
@@ -139,11 +91,9 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                 <Link href={link} className="flex items-center gap-2.5">
                   <InstrumentLogo symbol={h.symbol} size="md" />
                   <div>
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5">
                       <span className="font-bold text-sm text-text-primary">{h.symbol}</span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full border font-semibold ${badgeInfo.bg}`}>
-                        {badgeInfo.label}
-                      </span>
+                      <span className="text-[10px] text-text-muted">{h.assetType === 'fund' ? 'Fon' : 'Hisse'}</span>
                     </div>
                     <span className="text-[11px] text-text-muted line-clamp-1">
                       {h.exchange || (h.assetType === 'fund' ? 'Yatırım Fonu' : 'Borsa İstanbul')}
@@ -151,9 +101,8 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                   </div>
                 </Link>
 
-                {/* Sparkline & Weight badge */}
+                {/* Weight badge */}
                 <div className="flex items-center gap-2">
-                  <MiniSparkline changePercent={dailyChange} />
                   <span className="text-[11px] font-semibold text-text-muted px-2 py-0.5 rounded-full bg-bg-tertiary border border-border">
                     %{h.weight.toFixed(1)}
                   </span>
@@ -161,7 +110,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
               </div>
 
               {/* Middle Grid: Price, Quantity, Cost & Total Value */}
-              <div className="grid grid-cols-2 gap-2 text-xs py-2 px-2.5 rounded-xl bg-bg-secondary/50 border border-border/40 mb-2.5 font-mono">
+              <div className="grid grid-cols-2 gap-2 text-xs py-2.5 px-3 rounded-2xl bg-bg-secondary/50 border border-border/40 mb-2.5 font-mono">
                 <div>
                   <span className="text-[10px] text-text-muted block font-sans">Son Fiyat</span>
                   <div className="flex items-center gap-1 font-bold text-text-primary mt-0.5">

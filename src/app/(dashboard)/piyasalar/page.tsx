@@ -377,17 +377,23 @@ function PiyasalarContent() {
   };
 
   return (
-    <div className="space-y-4 animate-fade-in pb-12">
+    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12">
       {/* Page Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text-primary">Piyasalar</h1>
-          <p className="text-text-secondary text-xs sm:text-sm mt-0.5">
-            BIST, Emtia & Altın, Kripto, Döviz, Küresel Endeksler ve Fonları canlı takip edin.
-          </p>
+      <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-accent/15 via-bg-card to-bg-card p-5 sm:p-7 shadow-lg shadow-accent/5">
+        <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-accent/15 blur-3xl" />
+        <div className="relative flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-success">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" /> Canlı piyasa akışı
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">Piyasa Nabzı</h1>
+            <p className="mt-1 max-w-xl text-xs leading-relaxed text-text-secondary sm:text-sm">
+              BIST, döviz, emtia, kripto ve küresel endeksleri tek ekranda takip edin.
+            </p>
+          </div>
         </div>
         {/* View Mode Toggle */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 rounded-xl border border-border/70 bg-bg-primary/50 p-1">
           <button
             onClick={() => setViewMode('table')}
             className={`p-2 rounded-xl border transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
@@ -410,14 +416,14 @@ function PiyasalarContent() {
       </div>
 
       {/* ═══════════════════ TOUCH-FRIENDLY SCROLLABLE TABS BAR ═══════════════════ */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 w-full -mx-1 px-1">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 w-full -mx-1 px-1 snap-x">
         {MARKETS.map((m) => {
           const isActive = activeMarket === m.id;
           return (
             <button
               key={m.id}
               onClick={() => handleMarketChange(m.id)}
-              className={`shrink-0 whitespace-nowrap flex items-center gap-1.5 py-2 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`shrink-0 snap-start whitespace-nowrap flex items-center gap-1.5 py-2.5 px-3.5 sm:px-4 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 isActive
                   ? 'bg-accent text-white shadow-md shadow-accent/25'
                   : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border/60'
@@ -435,7 +441,7 @@ function PiyasalarContent() {
         <div className="space-y-6">
           {/* Ticker Cards Bar */}
           {overviewData.tickers.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+            <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x pb-1 sm:grid sm:grid-cols-3 lg:grid-cols-6">
               {overviewData.tickers.map((t) => {
                 const isPos = t.change >= 0;
                 const prefix = t.currency === 'TRY' ? '₺' : '$';
@@ -449,7 +455,7 @@ function PiyasalarContent() {
                       else if (t.symbol === 'BTC') handleMarketChange('CRYPTO');
                       else handleMarketChange('INDEX');
                     }}
-                    className="glass-card p-3 hover:border-accent/40 transition-all cursor-pointer group"
+                    className="glass-card min-w-[148px] snap-start p-3.5 hover:border-accent/40 transition-all cursor-pointer group sm:min-w-0"
                   >
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <span className="text-base">{t.flag}</span>
