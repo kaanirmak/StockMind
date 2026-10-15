@@ -32,6 +32,20 @@ function getCookieHeaderSize(request: NextRequest): number {
 }
 
 export async function updateSession(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ─── 1. FAST BYPASS: APIs, binaries, and static files do not need session middleware ───
+  if (
+    pathname.startsWith('/api/') ||
+    pathname.endsWith('.apk') ||
+    pathname.includes('StockMind.apk') ||
+    pathname.endsWith('.webmanifest') ||
+    pathname.endsWith('.ico') ||
+    pathname.endsWith('.txt')
+  ) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -47,17 +61,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // ─── COOKIE SIZE GUARD ───────────────────────────────────────────────
-  // When user_metadata contains a base64 avatar, the JWT (and therefore
-  // the Supabase auth cookies) can swell to 30-80 KB, exceeding Edge /
-  // Cloudflare Workers header limit and causing 494/431 REQUEST_HEADER_TOO_LARGE.
-  //
-  // We detect this BEFORE creating the Supabase client so we never even
-  // attempt to send oversized headers upstream. The fix:
-  //   1. Delete every Supabase auth cookie from the response.
-  //   2. Redirect to /login?reason=session_too_large so the user
-  //      re-authenticates with a fresh (clean) session.
-  // ─────────────────────────────────────────────────────────────────────
+  // ─── 2. COOKIE SIZE GUARD ───────────────────────────────────────────────
   const cookieSize = getCookieHeaderSize(request);
   if (cookieSize > MAX_COOKIE_BYTES) {
     console.warn(
@@ -65,10 +69,7 @@ export async function updateSession(request: NextRequest) {
         'Clearing Supabase auth cookies to prevent 494.'
     );
 
-    // If we're already heading to /login, just strip the cookies and pass through
-    // to prevent an infinite redirect loop.
     const isLoginPage = request.nextUrl.pathname.startsWith('/login');
-
     const url = request.nextUrl.clone();
     if (!isLoginPage) {
       url.pathname = '/login';
@@ -79,10 +80,8 @@ export async function updateSession(request: NextRequest) {
       ? NextResponse.next({ request })
       : NextResponse.redirect(url);
 
-    // Send Clear-Site-Data header to instruct the browser to purge all cookies for this origin
     response.headers.set('Clear-Site-Data', '"cookies"');
 
-    // Expire every Supabase auth cookie individually with explicit path
     for (const cookie of request.cookies.getAll()) {
       if (isSupabaseAuthCookie(cookie.name)) {
         response.cookies.set(cookie.name, '', {
@@ -95,6 +94,51 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
+  // ─── 3. ROUTE CLASSIFICATION ───────────────────────────────────────────
+  const protectedPaths = [
+    '/dashboard',
+    '/portfolio',
+    '/stocks',
+    '/funds',
+    '/watchlist',
+    '/reports',
+    '/ai-assistant',
+    '/news',
+    '/settings',
+  ];
+
+  const isProtectedRoute = protectedPaths.some((path) => pathname.startsWith(path));
+  const authPaths = ['/login', '/register'];
+  const isAuthRoute = authPaths.some((path) => pathname.startsWith(path));
+  const isLandingPage = pathname === '/';
+
+  // If this route does not require protection or redirect, pass through without calling Supabase
+  if (!isProtectedRoute && !isAuthRoute && !isLandingPage) {
+    return supabaseResponse;
+  }
+
+  const isGuest = request.cookies.get('stockmind_guest')?.value === 'true';
+  const hasAuthCookie = request.cookies.getAll().some((c) => isSupabaseAuthCookie(c.name));
+
+  // If user has NO auth cookies and is not a guest:
+  if (!hasAuthCookie) {
+    if (isGuest && isLandingPage) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+
+    if (isProtectedRoute && !isGuest) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+
+    // Visiting /login, /register, or / without auth cookies: pass through in 0ms!
+    return supabaseResponse;
+  }
+
+  // ─── 4. VERIFY USER WITH SUPABASE (ONLY FOR REQUESTS WITH COOKIES) ───
   try {
     const supabase = createServerClient(
       supabaseUrl,
@@ -124,36 +168,11 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    // Protected routes: check for authenticated user or guest demo session
-    const isGuest = request.cookies.get('stockmind_guest')?.value === 'true';
-
-    const protectedPaths = [
-      '/dashboard',
-      '/portfolio',
-      '/stocks',
-      '/funds',
-      '/watchlist',
-      '/reports',
-      '/ai-assistant',
-      '/news',
-      '/settings',
-    ];
-
-    const isProtectedRoute = protectedPaths.some((path) =>
-      request.nextUrl.pathname.startsWith(path)
-    );
-
     if (!user && !isGuest && isProtectedRoute) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       return NextResponse.redirect(url);
     }
-
-    // Redirect logged-in users away from auth pages
-    const authPaths = ['/login', '/register'];
-    const isAuthRoute = authPaths.some((path) =>
-      request.nextUrl.pathname.startsWith(path)
-    );
 
     if (user && isAuthRoute) {
       const url = request.nextUrl.clone();
@@ -161,14 +180,12 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Redirect logged-in users or active guests away from landing page to dashboard
-    if ((user || isGuest) && request.nextUrl.pathname === '/') {
+    if ((user || isGuest) && isLandingPage) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
       return NextResponse.redirect(url);
     }
   } catch (error) {
-    // If Supabase throws an unexpected error (network or invalid key), do not crash with 500
     console.error('Supabase middleware session check error:', error);
     return supabaseResponse;
   }

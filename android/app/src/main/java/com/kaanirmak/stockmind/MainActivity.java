@@ -528,8 +528,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             CookieManager cm = CookieManager.getInstance();
             String cookies = cm.getCookie(currentServerUrl);
-            // Normal Supabase JWT + refresh tokens are 3-6 KB. Only clear if dangerously bloated (> 12 KB).
-            if (cookies != null && cookies.length() > 12288) {
+            // Normal Supabase JWT + refresh tokens are 3-6 KB. Only clear if dangerously bloated (> 8 KB).
+            if (cookies != null && cookies.length() > 8192) {
                 // Cookies bloated! Clear BEFORE loading URL
                 final String finalUrl = targetUrl;
                 cm.removeAllCookies(success -> {

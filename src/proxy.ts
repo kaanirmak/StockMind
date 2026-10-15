@@ -16,8 +16,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder assets
+     * - api routes (they handle their own auth or are public)
+     * - StockMind.apk & large binary/static assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|html)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/|StockMind\\.apk|.*\\.(?:svg|png|jpg|jpeg|gif|webp|html|apk|ico|webmanifest|txt)$).*)',
   ],
 };
