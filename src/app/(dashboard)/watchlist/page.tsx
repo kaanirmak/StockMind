@@ -104,20 +104,24 @@ export default function WatchlistPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-text-primary">İzleme Listesi (Watchlist)</h1>
-            <Badge variant="purple" size="sm">
-              {items.length} Varlık Takip Ediliyor
-            </Badge>
+      <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-warning/10 via-bg-card to-bg-card p-5 sm:p-7 shadow-lg shadow-warning/5">
+        <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-warning/15 blur-3xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="min-w-0">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-success">
+              <span className="h-1.5 w-1.5 rounded-full bg-success" /> Hesapla senkronize
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">Takip Listem</h1>
+              <Badge variant="purple" size="sm">{items.length} varlık</Badge>
+            </div>
+            <p className="text-text-secondary text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
+              Hisselerinizi ve fonlarınızı tek ekranda izleyin, hedef fiyat alarmlarınızı yönetin.
+            </p>
           </div>
-          <p className="text-text-secondary text-sm mt-1">
-            Yıldızladığınız hisse ve TEFAS fonlarını tek ekrandan canlı izleyin ve fiyat alarmları kurun.
-          </p>
-        </div>
+          <div className="shrink-0">
         <Button
           variant="primary"
           size="md"
@@ -130,6 +134,8 @@ export default function WatchlistPage() {
         >
           Varlık Ekle
         </Button>
+          </div>
+        </div>
       </div>
 
       {/* Watchlist Mobile Card View (md:hidden) */}
@@ -151,7 +157,7 @@ export default function WatchlistPage() {
             return (
               <div
                 key={`m-wl-${item.id}`}
-                className="glass-card p-4 rounded-2xl border border-border/80 shadow-xs hover:border-accent/40 transition-all flex flex-col gap-3"
+                className="glass-card p-4 rounded-3xl border border-border/80 shadow-xs hover:border-accent/40 transition-all flex flex-col gap-3"
               >
                 {/* Header: Logo, Symbol, Name & Market Badge */}
                 <div className="flex items-center justify-between">
@@ -185,7 +191,7 @@ export default function WatchlistPage() {
                 </div>
 
                 {/* Price & Change Row */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between pt-3 border-t border-border/40">
                   <div>
                     <span className="text-[10px] text-text-muted block">Anlık Fiyat</span>
                     <span className="text-base font-bold font-mono text-text-primary">
@@ -203,7 +209,7 @@ export default function WatchlistPage() {
                 </div>
 
                 {/* Footer: Target Price / Alarm & Quick Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+                <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs">
                   <div>
                     {item.targetPrice ? (
                       <button
