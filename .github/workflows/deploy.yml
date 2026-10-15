@@ -1,13 +1,16 @@
-name: Deploy to Cloudflare
+name: Build & Validate
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+# Deployment is handled automatically by Cloudflare Workers Builds integration.
+# This workflow only validates that the Cloudflare build succeeds.
+
 jobs:
-  deploy:
-    name: "Build and Deploy to Cloudflare"
+  build:
+    name: "Build and Validate for Cloudflare"
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repository"
@@ -42,15 +45,3 @@ jobs:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           NEXT_PUBLIC_ENABLE_GOOGLE_AUTH: ${{ secrets.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH }}
           NEXT_PUBLIC_ENABLE_GITHUB_AUTH: ${{ secrets.NEXT_PUBLIC_ENABLE_GITHUB_AUTH }}
-
-      - name: "Deploy to Cloudflare Workers"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "CLOUDFLARE_API_TOKEN detected. Deploying worker..."
-            npx wrangler deploy
-          else
-            echo "::warning::CLOUDFLARE_API_TOKEN secret is not set in GitHub repository settings. Worker deployment skipped."
-          fi
