@@ -166,7 +166,7 @@ export default function StockDetailPage({
     stock?.exchange === 'FOREX' ? 'emerald' : 'info';
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-24 sm:pb-12">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-36 sm:pb-16">
       {/* Midas-Style Top Navigation Bar (Back, Instrument Name, Bookmark, Alert, Share) */}
       <div className="flex items-center justify-between py-1 gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -239,14 +239,8 @@ export default function StockDetailPage({
         </div>
       </div>
 
-      <div className="sm:hidden sticky top-14 z-20 flex items-center gap-2 p-2 rounded-xl border border-border bg-bg-card shadow-card">
-        <span className="text-xs font-bold truncate max-w-16">{symbol}</span>
-        <span className="text-base font-bold tabular-nums flex-1 truncate">{currSymbol}{currentPrice.toLocaleString('tr-TR', { maximumFractionDigits: currentPrice < 1 ? 4 : 2 })}</span>
-        <span className={`text-xs font-semibold tabular-nums ${isPositive ? 'text-success' : 'text-danger'}`}>{isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2)}</span>
-        <button type="button" aria-label={isWatchlisted ? 'Takip listesinden çıkar' : 'Takip listesine ekle'} aria-pressed={isWatchlisted} onClick={handleWatchlistToggle} className={`min-w-11 inline-flex items-center justify-center ${isWatchlisted ? 'text-warning' : 'text-text-secondary'}`}><svg viewBox="0 0 24 24" className="w-5 h-5" fill={isWatchlisted ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.75"><path d="m12 3 3 6 6 .8-4.5 4.5 1.1 6.3L12 17.5l-5.6 3.1 1.1-6.3L3 9.8 9 9l3-6Z" /></svg></button>
-      </div>
       {/* Midas-Style Symbol & Price Header */}
-      <div className="hidden sm:flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
         <div>
           {/* Symbol & Market Status Badge */}
           <div className="flex items-center gap-2.5">
@@ -531,61 +525,65 @@ export default function StockDetailPage({
         </div>
       </div>
 
-      {/* Mobile Sticky Bottom Action Bar */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg-card/95 backdrop-blur-md border-t border-border p-2.5 px-4 flex items-center justify-between gap-3 shadow-2xl">
-        <div className="min-w-0">
-          <span className="font-mono text-sm font-bold text-text-primary block truncate">
-            {isIndexAsset
-              ? `${currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} Pts`
-              : `${currSymbol}${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toFixed(2)}`}
-          </span>
-          <span className={`text-[10px] font-mono font-bold block ${isPositive ? 'text-success' : 'text-danger'}`}>
-            {isPositive ? '+' : ''}{stock?.changePercent ? stock.changePercent.toFixed(2) : '0.00'}%
-          </span>
-        </div>
+      {/* Mobile Sticky Bottom Action Bar (Docked right above MobileNav) */}
+      <div
+        className="md:hidden fixed left-0 right-0 z-40 bg-bg-card/95 backdrop-blur-xl border-t border-border/80 px-3 py-2.5 shadow-[0_-8px_25px_rgba(0,0,0,0.4)]"
+        style={{ bottom: 'calc(4rem + max(env(safe-area-inset-bottom, 0px), 6px))' }}
+      >
+        <div className="flex items-center justify-between gap-2 max-w-lg mx-auto">
+          {/* Symbol, Price, and Percent Change (Moved from top to bottom) */}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-mono text-xs sm:text-sm font-bold text-text-primary tracking-tight shrink-0">
+              {symbol}
+            </span>
+            <span className="font-mono text-sm sm:text-base font-black text-text-primary shrink-0">
+              {isIndexAsset
+                ? `${currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+                : `${currSymbol}${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            </span>
+            <span
+              className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-md shrink-0 flex items-center ${
+                isPositive
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-red-500/15 text-red-400 border border-red-500/20'
+              }`}
+            >
+              {isPositive ? '+' : ''}%{Math.abs(stock?.changePercent || 0).toFixed(2)}
+            </span>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleWatchlistToggle}
-            className={`p-2 rounded-xl border transition-colors cursor-pointer ${
-              isWatchlisted
-                ? 'bg-warning/20 border-warning text-warning'
-                : 'bg-bg-tertiary border-border text-text-muted'
-            }`}
-          >
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          </button>
+          {/* Action Buttons: Watchlist Star & "İşlem Yap" */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Watchlist Star Toggle */}
+            <button
+              onClick={handleWatchlistToggle}
+              aria-label={isWatchlisted ? 'Takip listesinden çıkar' : 'Takip listesine ekle'}
+              className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                isWatchlisted
+                  ? 'bg-warning/20 border-warning/40 text-warning shadow-sm shadow-warning/20'
+                  : 'bg-bg-secondary border-border text-text-muted hover:text-text-primary'
+              }`}
+              title={isWatchlisted ? 'Takip listesinde' : 'Takip listesine ekle'}
+            >
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+              </svg>
+            </button>
 
-          <Link
-            href={`/ai-assistant?prompt=${encodeURIComponent(
-              `${symbol} için teknik ve temel analiz yap, destek-direnç ve risk durumunu özetle.`
-            )}`}
-          >
-            <Button variant="secondary" size="sm">
-               AI
-            </Button>
-          </Link>
-
-          {isIndexAsset ? (
-            <Link href={symbol.startsWith('X') ? '/piyasalar?market=bist' : '/piyasalar?market=nasdaq'}>
-              <Button variant="primary" size="sm">
-                Bileşenler
-              </Button>
-            </Link>
-          ) : (
-            <Button
-              variant="primary"
-              size="sm"
+            {/* İşlem Yap Button */}
+            <button
               onClick={() => {
                 setPriceInput(currentPrice.toString());
                 setIsTradeModalOpen(true);
               }}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-accent to-purple-600 hover:from-accent/90 hover:to-purple-600/90 text-white font-bold text-xs sm:text-sm tracking-wide shadow-md shadow-accent/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
             >
-              İşlem Yap
-            </Button>
-          )}
+              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>İşlem Yap</span>
+            </button>
+          </div>
         </div>
       </div>
 
