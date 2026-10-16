@@ -143,8 +143,30 @@ export function playNotificationSound(): void {
   }
 }
 
-// In-memory cooldown cache to suppress duplicate/spam notifications
-const sentCooldownCache: Record<string, number> = {};
+// localStorage-backed cooldown cache to suppress duplicate/spam notifications
+// (survives Android WebView restarts, unlike an in-memory Map)
+const COOLDOWN_STORAGE_KEY = 'stockmind_notif_cooldowns';
+const COOLDOWN_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+
+function loadCooldownCache(): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(COOLDOWN_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveCooldownCache(cache: Record<string, number>): void {
+  try {
+    // Prune expired entries before saving to keep storage lean
+    const now = Date.now();
+    const pruned: Record<string, number> = {};
+    for (const [key, ts] of Object.entries(cache)) {
+      if (now - ts < COOLDOWN_DURATION_MS) pruned[key] = ts;
+    }
+    localStorage.setItem(COOLDOWN_STORAGE_KEY, JSON.stringify(pruned));
+  } catch { /* ignore */ }
+}
 
 /**
  * Sends a native phone notification (or web notification if on browser)
@@ -155,13 +177,15 @@ export function sendPushNotification(title: string, message: string, route: stri
   const prefs = loadPushPreferences();
   if (!prefs.enabled && !prefs.inAppEnabled) return false;
 
-  // Anti-spam cooldown: suppress identical alerts sent within 4 minutes
+  // Anti-spam cooldown: suppress identical alerts sent within the cooldown window
+  const cooldownCache = loadCooldownCache();
   const notifFingerprint = `${title}::${message}`;
-  const lastSent = sentCooldownCache[notifFingerprint] || 0;
-  if (Date.now() - lastSent < 4 * 60 * 1000) {
+  const lastSent = cooldownCache[notifFingerprint] || 0;
+  if (Date.now() - lastSent < COOLDOWN_DURATION_MS) {
     return false;
   }
-  sentCooldownCache[notifFingerprint] = Date.now();
+  cooldownCache[notifFingerprint] = Date.now();
+  saveCooldownCache(cooldownCache);
 
   let sent = false;
 

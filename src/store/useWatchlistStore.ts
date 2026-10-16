@@ -126,6 +126,7 @@ interface WatchlistState {
   setAlert: (symbolOrId: string, alert: WatchlistAlertConfig, stockMeta?: Partial<WatchlistItem>) => void;
   removeAlert: (symbolOrId: string) => void;
   getAlert: (symbol: string) => WatchlistItem | undefined;
+  updateAlertBasePrice: (symbol: string, newBasePrice: number) => void;
 }
 
 function getWatchlistKey(userId?: string | null): string {
@@ -480,6 +481,37 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
     getAlert: (symbol) => {
       const sym = symbol.toUpperCase();
       return get().items.find((i) => i.symbol.toUpperCase() === sym);
+    },
+
+    updateAlertBasePrice: (symbol, newBasePrice) => {
+      const { currentUserId, items } = get();
+      const sym = symbol.toUpperCase();
+      const index = items.findIndex((i) => i.symbol.toUpperCase() === sym);
+      if (index < 0) return;
+      const item = items[index];
+      // Skip if the item has no active alert
+      if (!item.alertType && !item.targetPrice) return;
+
+      // Recalculate targetPrice based on the new base price and original percent
+      let newTargetPrice = item.targetPrice;
+      if (item.alertPercent && item.alertPercent > 0 && item.alertType && item.alertType !== 'price') {
+        if (item.alertType === 'percent_up') {
+          newTargetPrice = calculateTargetPriceFromPercent(newBasePrice, item.alertPercent, 'up');
+        } else if (item.alertType === 'percent_down') {
+          newTargetPrice = calculateTargetPriceFromPercent(newBasePrice, item.alertPercent, 'down');
+        } else if (item.alertType === 'percent_both') {
+          // For 'both', targetPrice is recalculated on each check anyway
+          newTargetPrice = undefined;
+        }
+      }
+
+      const updated = items.map((i, idx) =>
+        idx === index
+          ? { ...i, alertBasePrice: newBasePrice, targetPrice: newTargetPrice }
+          : i
+      );
+      set({ items: updated });
+      persist(currentUserId, items, updated);
     },
   };
 });
