@@ -314,3 +314,193 @@ export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailRes
     };
   }
 }
+
+export interface ProRequestEmailParams {
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  userId: string;
+  requestNote?: string;
+  approveUrl: string;
+  rejectUrl: string;
+}
+
+export async function sendProRequestAdminEmail(params: ProRequestEmailParams): Promise<SendEmailResult> {
+  const { adminEmail, userName, userEmail, userId, requestNote, approveUrl, rejectUrl } = params;
+  const dateStr = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+
+  const html = `
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>StockMind Yeni Pro Hesap Talebi</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #060913; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f1f5f9; }
+    .container { max-width: 600px; margin: 0 auto; padding: 32px 20px; }
+    .card { background: linear-gradient(135deg, #0d1527 0%, #111a33 100%); border: 1px solid #1e293b; border-radius: 20px; padding: 32px; }
+    .logo { font-size: 22px; font-weight: 900; color: #6366f1; }
+    .badge { display: inline-block; padding: 4px 12px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 100px; font-size: 11px; font-weight: 700; color: #fbbf24; }
+    .title { font-size: 20px; font-weight: 800; color: #ffffff; margin-top: 20px; margin-bottom: 12px; }
+    .info-box { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px; margin: 20px 0; }
+    .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #94a3b8; font-weight: 600; }
+    .info-val { color: #f8fafc; font-weight: 700; }
+    .btn-approve { display: block; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 800; text-align: center; margin: 24px 0 12px; }
+    .btn-reject { display: block; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 16px;">
+        <span class="logo">⚡ StockMind Yönetici Bildirimi</span>
+        <span class="badge">PRO TALEBİ</span>
+      </div>
+
+      <div class="title">Yeni Bir Kullanıcı Pro Hesap İstiyor!</div>
+      <p style="font-size: 14px; color: #94a3b8; line-height: 1.5;">
+        Aşağıdaki kullanıcı hesabını StockMind Pro'ya yükseltmek için talepte bulundu. Onaylamak için aşağıdaki bağlantıya tıklayabilirsiniz:
+      </p>
+
+      <div class="info-box">
+        <div class="info-row"><span class="info-label">Ad Soyad:</span><span class="info-val">${userName}</span></div>
+        <div class="info-row"><span class="info-label">E-posta:</span><span class="info-val">${userEmail}</span></div>
+        <div class="info-row"><span class="info-label">Kullanıcı ID:</span><span class="info-val" style="font-family: monospace; font-size: 11px;">${userId}</span></div>
+        <div class="info-row"><span class="info-label">Talep Tarihi:</span><span class="info-val">${dateStr}</span></div>
+        ${requestNote ? `<div class="info-row" style="flex-direction: column; gap: 4px;"><span class="info-label">Kullanıcı Notu:</span><span class="info-val" style="font-style: italic; color: #cbd5e1;">"${requestNote}"</span></div>` : ''}
+      </div>
+
+      <a href="${approveUrl}" class="btn-approve">✅ Pro Hesabı Onayla ve Aktif Et</a>
+      <a href="${rejectUrl}" class="btn-reject">❌ Talebi Reddet</a>
+
+      <p style="text-align: center; font-size: 11px; color: #64748b; margin-top: 24px;">
+        Bu e-posta sadece StockMind yöneticisine iletilmiştir. Onay linki 30 gün geçerlidir.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  // Send to admin email via transport
+  const smtpUser = (process.env.SMTP_USER || '').trim();
+  const smtpPass = (process.env.SMTP_PASS || '').trim();
+  const smtpHost = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const smtpFrom = (process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
+
+  if (!smtpUser || !smtpPass) {
+    return { success: false, message: 'SMTP yapılandırılmamış.', method: 'failed' };
+  }
+
+  try {
+    const isGmail = smtpHost.includes('gmail') || smtpUser.includes('@gmail.com');
+    const transporter = nodemailer.createTransport({
+      host: isGmail ? 'smtp.gmail.com' : smtpHost,
+      port: smtpPort === 587 ? 587 : 465,
+      secure: smtpPort !== 587,
+      auth: { user: smtpUser, pass: smtpPass.replace(/\s+/g, '') },
+    });
+
+    await transporter.sendMail({
+      from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
+      to: adminEmail,
+      subject: `🔔 Yeni StockMind Pro Talebi: ${userName} (${userEmail})`,
+      html,
+    });
+
+    return { success: true, message: `Pro onay e-postası yöneticiye iletildi.` };
+  } catch (err: any) {
+    console.error('sendProRequestAdminEmail error:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function sendProApprovedUserEmail(params: { to: string; userName: string; appUrl: string }): Promise<SendEmailResult> {
+  const { to, userName, appUrl } = params;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>Tebrikler! StockMind Pro Hesabınız Aktif</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #060913; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #f1f5f9; }
+    .container { max-width: 600px; margin: 0 auto; padding: 32px 20px; }
+    .card { background: linear-gradient(135deg, #0d1527 0%, #111a33 100%); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.1); }
+    .logo { font-size: 22px; font-weight: 900; color: #6366f1; }
+    .badge { display: inline-block; padding: 4px 12px; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 100px; font-size: 11px; font-weight: 700; color: #fbbf24; }
+    .title { font-size: 22px; font-weight: 800; color: #ffffff; margin-top: 20px; margin-bottom: 12px; }
+    .feature-list { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 18px; margin: 20px 0; }
+    .feature-item { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: #cbd5e1; }
+    .feature-item:last-child { border-bottom: none; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 15px; font-weight: 800; text-align: center; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 16px;">
+        <span class="logo">⚡ StockMind</span>
+        <span class="badge">⭐ PRO ÜYELİK AKTİF</span>
+      </div>
+
+      <div class="title">Tebrikler ${userName}, Hesabınız Pro'ya Yükseltildi! 🎉</div>
+      <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
+        StockMind Pro talebiniz yönetici tarafından incelendi ve onaylandı. Artık en gelişmiş kantitatif analiz ve çoklu yapay zeka araçları hesabınızda sınırsız olarak açık!
+      </p>
+
+      <div class="feature-list">
+        <div class="feature-item">✨ <strong>Yatırım Komitesi:</strong> 4 uzman AI ajanının konsensüs ve çoklu analiz motoru</div>
+        <div class="feature-item">✨ <strong>Gelişmiş AI Modelleri:</strong> GPT-4o, Claude 3.5 Sonnet ve premium modeller</div>
+        <div class="feature-item">✨ <strong>Otomatik DCF & Monte Carlo:</strong> 1.000 simülasyonlu risk ve adil değerleme</div>
+        <div class="feature-item">✨ <strong>Öncelikli Piyasa Analizi:</strong> Günlük 18:30 VIP kapanış bülteni ve limitsiz takip</div>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${appUrl}/dashboard" class="btn">StockMind Pro'yu Keşfet &rarr;</a>
+      </div>
+
+      <p style="text-align: center; font-size: 11px; color: #64748b; margin-top: 28px;">
+        StockMind Teknoloji A.Ş. • İyi yatırımlar dileriz.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const smtpUser = (process.env.SMTP_USER || '').trim();
+  const smtpPass = (process.env.SMTP_PASS || '').trim();
+  const smtpHost = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  const smtpFrom = (process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
+
+  if (!smtpUser || !smtpPass) {
+    return { success: false, message: 'SMTP yapılandırılmamış.', method: 'failed' };
+  }
+
+  try {
+    const isGmail = smtpHost.includes('gmail') || smtpUser.includes('@gmail.com');
+    const transporter = nodemailer.createTransport({
+      host: isGmail ? 'smtp.gmail.com' : smtpHost,
+      port: smtpPort === 587 ? 587 : 465,
+      secure: smtpPort !== 587,
+      auth: { user: smtpUser, pass: smtpPass.replace(/\s+/g, '') },
+    });
+
+    await transporter.sendMail({
+      from: smtpFrom.includes('<') ? smtpFrom : `StockMind <${smtpFrom}>`,
+      to,
+      subject: `🎉 Tebrikler! StockMind Pro Hesabınız Onaylandı`,
+      html,
+    });
+
+    return { success: true, message: `Kullanıcıya Pro onay bildirimi gönderildi.` };
+  } catch (err: any) {
+    console.error('sendProApprovedUserEmail error:', err);
+    return { success: false, message: err.message };
+  }
+}
+

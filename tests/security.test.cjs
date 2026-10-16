@@ -25,7 +25,7 @@ function loader(stubs = {}, env = {}) {
       require(name) {
         if (Object.hasOwn(stubs, name)) return stubs[name];
         if (name === 'next/server') return { NextResponse: { json: (body, init) => Response.json(body, init) } };
-        if (name.startsWith('node:')) return require(name);
+        if (name === 'crypto' || name.startsWith('node:')) return require(name);
         if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
         throw new Error(`Unmocked dependency: ${name}`);
       },
@@ -37,8 +37,9 @@ function loader(stubs = {}, env = {}) {
 
 function fixture(options = {}) {
   const calls = { quota: 0, ai: 0, mail: 0, quote: 0, write: 0 };
+  const userMetadata = options.pro ? { plan: 'pro', is_pro: true } : (options.app_metadata || (options.plan ? { plan: options.plan } : {}));
   const supabase = {
-    auth: { getUser: async () => ({ data: { user: options.anonymous ? null : { id: 'user-1', email: 'owner@example.com', email_confirmed_at: options.unverified ? null : '2026-01-01' } }, error: options.authError || null }) },
+    auth: { getUser: async () => ({ data: { user: options.anonymous ? null : { id: 'user-1', email: 'owner@example.com', email_confirmed_at: options.unverified ? null : '2026-01-01', app_metadata: userMetadata } }, error: options.authError || null }) },
     rpc: async () => { calls.quota++; return { data: options.quota === undefined ? { allowed: true } : options.quota, error: options.quotaError || null }; },
   };
   const load = loader({
@@ -115,14 +116,22 @@ test('malformed JSON and wrong content type have explicit client errors', async 
   assert.equal((await post(new Request('https://stockmind.test/api', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{' }))).status, 400);
   assert.equal((await post(request(chat, { 'content-type': 'text/plain' }))).status, 415);
 });
-test('committee ignores supplied quote and uses server quote', async () => {
-  const { load, calls } = fixture();
+test('committee rejects non-pro accounts with 403 PRO_REQUIRED', async () => {
+  const { load, calls } = fixture({ pro: false });
+  const res = await load(routes[1]).POST(request({ symbol: 'thyao' }));
+  assert.equal(res.status, 403);
+  const data = await res.json();
+  assert.equal(data.code, 'PRO_REQUIRED');
+  assert.equal(calls.ai, 0);
+});
+test('committee ignores supplied quote and uses server quote for pro user', async () => {
+  const { load, calls } = fixture({ pro: true });
   assert.equal((await load(routes[1]).POST(request({ symbol: 'thyao', quote: { price: 999999 } }))).status, 200);
   assert.equal(calls.aiArgs[0], 'THYAO');
   assert.equal(calls.aiArgs[1].price, 123);
 });
 test('committee does not analyze a missing quote', async () => {
-  const { load, calls } = fixture({ quote: null });
+  const { load, calls } = fixture({ pro: true, quote: null });
   assert.equal((await load(routes[1]).POST(request({ symbol: 'UNKNOWN' }))).status, 503);
   assert.equal(calls.ai, 0);
 });
@@ -243,3 +252,32 @@ test('model catalog includes text models and fails closed for unknown or nonzero
   assert.equal((await response.json()).code, 'PRO_REQUIRED');
   assert.equal(calls.ai, 0);
 });
+
+test('pro action token generates tamper-proof signatures and rejects expired or altered tokens', () => {
+  const { createProActionToken, verifyProActionToken } = loader({}, {
+    SUPABASE_SERVICE_ROLE_KEY: 'test-secret-key-12345678901234567890',
+  })('src/lib/pro/tokens.ts');
+
+  const token = createProActionToken('usr_42', 'investor@example.com', 'approve');
+
+  const verified = verifyProActionToken(token);
+  assert.equal(verified.valid, true, 'Valid token must be verified');
+  assert.equal(verified.userId, 'usr_42');
+  assert.equal(verified.email, 'investor@example.com');
+  assert.equal(verified.action, 'approve');
+
+  // Tampered payload
+  const parts = token.split('.');
+  const tamperedPayload = Buffer.from(JSON.stringify({ userId: 'hacker', email: 'hacker@example.com', action: 'approve', exp: Date.now() + 10000 })).toString('base64url');
+  assert.equal(verifyProActionToken(`${tamperedPayload}.${parts[1]}`).valid, false, 'Tampered payload must be rejected');
+
+  // Tampered signature
+  assert.equal(verifyProActionToken(`${parts[0]}.invalidsignature`).valid, false, 'Tampered signature must be rejected');
+
+  // Expired token
+  const expiredPayload = Buffer.from(JSON.stringify({ userId: 'usr_42', email: 'investor@example.com', action: 'approve', exp: Date.now() - 1000 })).toString('base64url');
+  const crypto = require('node:crypto');
+  const expiredSig = crypto.createHmac('sha256', 'test-secret-key-12345678901234567890').update(expiredPayload).digest('base64url');
+  assert.equal(verifyProActionToken(`${expiredPayload}.${expiredSig}`).valid, false, 'Expired token must be rejected');
+});
+

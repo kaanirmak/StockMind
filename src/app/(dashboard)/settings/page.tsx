@@ -10,6 +10,7 @@ import { PortfolioDangerZone } from '@/components/portfolio/PortfolioDangerZone'
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
+import { ProPlanCard } from '@/components/pro/ProPlanCard';
 import { AUTO_MODEL, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { useAuth } from '@/hooks/useAuth';
@@ -648,6 +649,19 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Pro Membership Card */}
+      {user && (
+        <div hidden={settingsSection !== 'profile'}>
+          <ProPlanCard
+            isPro={profile?.isPro}
+            plan={profile?.plan}
+            proRequestStatus={profile?.proRequestStatus}
+            userEmail={user.email}
+            userName={profile?.fullName || user.user_metadata?.full_name}
+          />
+        </div>
+      )}
+
       {/* Theme Selection Card (Görünüm ve Plan Tercihi) */}
       <div hidden={settingsSection !== 'appearance'} id="appearance" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
@@ -831,9 +845,13 @@ export default function SettingsPage() {
             <p className="text-xs text-text-muted">Kişisel bilgilerinizi ve tercih ettiğiniz para birimini güncelleyin.</p>
           </div>
           <div className="flex items-center gap-2">
-            {(profile?.isPro ?? true) && (
-              <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-violet-600/15 via-accent/15 to-fuchsia-600/15 border border-accent/35 text-accent font-bold text-xs flex items-center gap-1.5 shadow-xs">
+            {profile?.isPro ? (
+              <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-xs">
                 <span><UIIcon name="star" className="w-4 h-4" /></span> StockMind PRO
+              </span>
+            ) : (
+              <span className="px-2.5 py-1 rounded-lg bg-bg-secondary border border-border text-text-muted font-semibold text-xs flex items-center gap-1.5">
+                Standart Hesap
               </span>
             )}
             <Badge variant="purple" size="sm">

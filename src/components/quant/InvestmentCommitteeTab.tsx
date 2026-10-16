@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Holding } from '@/types/portfolio';
 import { getStoredOpenRouterKey, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { Button } from '@/components/ui/Button';
+import { ProRequestModal } from '@/components/pro/ProRequestModal';
 
 const POPULAR_SYMBOLS = [
   { symbol: 'THYAO', name: 'Türk Hava Yolları' },
@@ -44,7 +45,7 @@ export default function InvestmentCommitteeTab({
   onSelectSymbol,
   portfolioStocks = [],
 }: InvestmentCommitteeTabProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const initialSym = selectedSymbol || portfolioStocks[0]?.symbol || 'THYAO';
   const [symbol, setSymbol] = useState(initialSym);
   const [customInput, setCustomInput] = useState('');
@@ -54,6 +55,8 @@ export default function InvestmentCommitteeTab({
   const [deliberationStep, setDeliberationStep] = useState(0);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [tempKeyInput, setTempKeyInput] = useState('');
+  const [showProModal, setShowProModal] = useState(false);
+  const [isProRequired, setIsProRequired] = useState(false);
 
   const DELIBERATION_STEPS = [
     'Komite üyeleri toplanıyor...',
@@ -126,7 +129,6 @@ export default function InvestmentCommitteeTab({
           }
         : undefined;
 
-      // First try API route, with graceful fallback to client-side runner
       const res = await fetch('/api/quant/committee', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,7 +140,14 @@ export default function InvestmentCommitteeTab({
       });
 
       const data = await res.json();
+      if (res.status === 403 || data.code === 'PRO_REQUIRED') {
+        setIsProRequired(true);
+        setReport(null);
+        return;
+      }
+
       if (data.success && data.report) {
+        setIsProRequired(false);
         setReport(data.report);
       } else {
         // Fallback directly to client logic
@@ -362,6 +371,32 @@ export default function InvestmentCommitteeTab({
         </div>
       )}
 
+      {/* Pro Gate Banner (when not Pro or Pro is required) */}
+      {!isLoading && !report && (isProRequired || (!profile?.isPro && !user?.app_metadata?.is_pro)) && (
+        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-bg-card to-bg-card text-center space-y-4 shadow-xl animate-fade-in">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-white flex items-center justify-center text-3xl mx-auto shadow-lg shadow-amber-500/25">
+            ⭐
+          </div>
+          <div className="max-w-lg mx-auto space-y-2">
+            <h3 className="text-lg sm:text-xl font-bold text-text-primary">
+              Yatırım Komitesi StockMind Pro Özelliğidir
+            </h3>
+            <p className="text-xs sm:text-sm text-text-muted leading-relaxed">
+              4 Efsane fon yöneticisi (Warren Buffett, Peter Lynch, Jim Simons, Michael Burry) çoklu yapay zeka simülasyonu ve konsensüs analiz motoru yalnızca Pro hesaplara açıktır.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Button
+              type="button"
+              onClick={() => setShowProModal(true)}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold px-6 py-2.5 shadow-lg shadow-amber-500/20 text-xs sm:text-sm"
+            >
+              🚀 Pro Hesap İste ve Erişimi Aç
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Report View */}
       {!isLoading && report && (
         <div className="space-y-6 animate-fade-in">
@@ -573,6 +608,16 @@ export default function InvestmentCommitteeTab({
           </div>
         </div>
       )}
+
+      <ProRequestModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+        userEmail={user?.email}
+        userName={profile?.fullName || user?.user_metadata?.full_name}
+        onSuccess={() => {
+          setIsProRequired(false);
+        }}
+      />
     </div>
   );
 }

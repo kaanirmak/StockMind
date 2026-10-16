@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { runInvestmentCommittee } from '@/lib/ai/investment-committee';
 import { getStockBySymbolLive } from '@/lib/data/stocks';
+import { hasProAccess } from '@/lib/ai/modelCatalog';
 import { ApiError, apiErrorResponse, authorizeAction, optionalText, readJsonObject } from '@/lib/api/security';
 
 export async function POST(request: Request) {
   try {
     const access = await authorizeAction(request, 'ai_committee');
     if (access.response) return access.response;
+    if (!hasProAccess(access.user.app_metadata)) {
+      throw new ApiError(403, 'Yatırım Komitesi analizi yalnızca StockMind Pro hesaplara açıktır.', 'PRO_REQUIRED');
+    }
     const body = await readJsonObject(request, 8 * 1024);
     const symbol = optionalText(body.symbol, 40)?.toUpperCase();
     if (!symbol || !/^[A-Z0-9_.:=^/-]+$/.test(symbol)) throw new ApiError(400, 'Geçerli bir sembol zorunludur.');
