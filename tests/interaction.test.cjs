@@ -374,3 +374,54 @@ test('PRO-02: price alert limit permits 3 alerts for free accounts while allowin
   );
 });
 
+test('PRO-03: hourly AI question quota allows 5 questions/hour for standard and 20 for pro', () => {
+  const {
+    checkAndConsumeHourlyChatQuota,
+    getHourlyChatQuota,
+    resetHourlyChatQuota,
+    HOURLY_QUOTA_STANDARD,
+    HOURLY_QUOTA_PRO,
+  } = load('src/lib/ai/hourlyQuota.ts');
+
+  assert.equal(HOURLY_QUOTA_STANDARD, 5);
+  assert.equal(HOURLY_QUOTA_PRO, 20);
+
+  // Standard user test
+  resetHourlyChatQuota('user-std');
+  for (let i = 1; i <= 5; i++) {
+    const res = checkAndConsumeHourlyChatQuota('user-std', false);
+    assert.equal(res.allowed, true, `Standard question ${i} should be allowed`);
+    assert.equal(res.used, i);
+    assert.equal(res.remaining, 5 - i);
+  }
+  const stdOverLimit = checkAndConsumeHourlyChatQuota('user-std', false);
+  assert.equal(stdOverLimit.allowed, false, 'Standard 6th question must be blocked');
+  assert.equal(stdOverLimit.remaining, 0);
+  assert.ok(stdOverLimit.retryAfter > 0, 'Should return a positive retryAfter duration');
+
+  // Pro user test
+  resetHourlyChatQuota('user-pro');
+  for (let i = 1; i <= 20; i++) {
+    const res = checkAndConsumeHourlyChatQuota('user-pro', true);
+    assert.equal(res.allowed, true, `Pro question ${i} should be allowed`);
+    assert.equal(res.used, i);
+    assert.equal(res.remaining, 20 - i);
+  }
+  const proOverLimit = checkAndConsumeHourlyChatQuota('user-pro', true);
+  assert.equal(proOverLimit.allowed, false, 'Pro 21st question must be blocked');
+  assert.equal(proOverLimit.remaining, 0);
+  assert.ok(proOverLimit.retryAfter > 0, 'Should return a positive retryAfter duration');
+
+  // Inspect status test
+  const inspected = getHourlyChatQuota('user-pro', true);
+  assert.equal(inspected.limit, 20);
+  assert.equal(inspected.used, 20);
+  assert.equal(inspected.remaining, 0);
+  assert.equal(inspected.allowed, false);
+
+  // Clean up
+  resetHourlyChatQuota('user-std');
+  resetHourlyChatQuota('user-pro');
+});
+
+

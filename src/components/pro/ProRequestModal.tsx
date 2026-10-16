@@ -115,6 +115,10 @@ export function ProRequestModal({
             <span className="text-emerald-400 font-bold shrink-0">✓</span>
             <span><strong>Sınırsız Fiyat Alarmı:</strong> Anlık sesli uyarı ve bildirim kotası olmadan sınırsız alarm kurun (Standart: 3)</span>
           </div>
+          <div className="flex items-start gap-2 text-text-secondary">
+            <span className="text-emerald-400 font-bold shrink-0">✓</span>
+            <span><strong>Genişletilmiş AI Soru Kotası:</strong> StockMind AI Asistan ile saatte 20 soru hakkı (Standart: 5 soru/saat)</span>
+          </div>
         </div>
 
         {/* Request Form */}

@@ -160,6 +160,16 @@ export function ProPlanCard({
             </div>
             <p className="text-[11px] text-text-muted">Yüzdesel ve hedef fiyat bazlı sınırsız anlık sesli bildirim (Standart: 3).</p>
           </div>
+
+          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
+            <div className="flex items-center justify-between font-semibold">
+              <span className="text-text-primary">Genişletilmiş AI Soru Kotası</span>
+              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                {effectivePro ? '✓ 20 Soru / Saat' : '🔒 5 Soru / Saat'}
+              </span>
+            </div>
+            <p className="text-[11px] text-text-muted">StockMind AI ile saatte 20 soru sorabilme imkanı (Standart: 5 soru/saat).</p>
+          </div>
         </div>
       </div>
 
