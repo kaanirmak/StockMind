@@ -133,10 +133,12 @@ export function ProPlanCard({
 
           <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
             <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">18:30 Günlük Kapanış Bülteni</span>
-              <span className="text-emerald-400 font-bold">✓ Aktif</span>
+              <span className="text-text-primary">StockMind AI Bülteni (Canlı & E-posta)</span>
+              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                {effectivePro ? '✓ Açık' : '🔒 Pro'}
+              </span>
             </div>
-            <p className="text-[11px] text-text-muted">Doğrulanmış e-postanıza günlük borsa ve piyasa raporu.</p>
+            <p className="text-[11px] text-text-muted">Hisse bazlı canlı zeka sinyalleri ve 18:30 günlük AI kapanış bülteni.</p>
           </div>
         </div>
       </div>

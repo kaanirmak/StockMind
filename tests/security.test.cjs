@@ -142,12 +142,18 @@ test('test mail uses confirmed account address and fixed test content', async ()
   assert.equal(calls.mailArgs.isDailyReport, false);
   assert.equal(calls.mailArgs.subject, undefined);
 });
-test('test mail dispatches daily report for authenticated user', async () => {
-  const { load, calls } = fixture();
+test('test mail dispatches daily report for authenticated pro user', async () => {
+  const { load, calls } = fixture({ pro: true });
   const res = await load(routes[2]).POST(request({ to: 'OWNER@example.com', isDailyReport: true }));
   assert.equal(res.status, 200);
   assert.equal(calls.mailArgs.to, 'owner@example.com');
   assert.equal(calls.mailArgs.isDailyReport, true);
+});
+test('test mail daily report is forbidden for free accounts with 403 PRO_REQUIRED', async () => {
+  const { load, calls } = fixture({ pro: false });
+  const res = await load(routes[2]).POST(request({ to: 'OWNER@example.com', isDailyReport: true }));
+  assert.equal(res.status, 403);
+  assert.equal(calls.mail, 0);
 });
 for (const [options, body, status] of [
   [{ unverified: true }, {}, 403], [{}, { to: 'victim@example.com' }, 403],

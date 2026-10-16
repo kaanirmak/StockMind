@@ -31,6 +31,13 @@ async function loadConfirmedUsers(): Promise<ReportRecipient[]> {
 
     for (const user of data.users) {
       if (!user.email || !user.email_confirmed_at || user.banned_until) continue;
+      // StockMind AI Bülteni is exclusively delivered to Pro accounts
+      const isPro = Boolean(
+        user.app_metadata?.plan === 'pro' ||
+        user.app_metadata?.is_pro === true
+      );
+      if (!isPro) continue;
+
       recipients.push({
         email: user.email.trim(),
         name: user.user_metadata?.full_name || user.user_metadata?.name || undefined,
