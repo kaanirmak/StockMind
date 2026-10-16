@@ -15,32 +15,32 @@ export interface InstrumentLogoProps {
 const SIZE_CONFIGS = {
   xs: {
     container: 'w-6 h-6',
-    img: 'w-full h-full p-0.5',
+    img: 'w-full h-full',
     text: 'text-[10px]',
   },
   sm: {
     container: 'w-7 h-7 sm:w-8 sm:h-8',
-    img: 'w-full h-full p-1',
+    img: 'w-full h-full',
     text: 'text-[11px] sm:text-xs',
   },
   md: {
     container: 'w-9 h-9',
-    img: 'w-full h-full p-1',
+    img: 'w-full h-full',
     text: 'text-xs',
   },
   lg: {
     container: 'w-11 h-11',
-    img: 'w-full h-full p-1.5',
+    img: 'w-full h-full',
     text: 'text-sm',
   },
   xl: {
     container: 'w-14 h-14',
-    img: 'w-full h-full p-2',
+    img: 'w-full h-full',
     text: 'text-base font-black',
   },
   '2xl': {
     container: 'w-16 h-16',
-    img: 'w-full h-full p-2',
+    img: 'w-full h-full',
     text: 'text-lg font-black',
   },
 };
@@ -60,8 +60,8 @@ export function InstrumentLogo({
   rounded = 'xl',
   showBorder = true,
 }: InstrumentLogoProps) {
-  const [hasError, setHasError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
 
   const cleanSymbol = (symbol || '')
     .toUpperCase()
@@ -69,6 +69,8 @@ export function InstrumentLogo({
     .trim();
 
   const logoUrl = getInstrumentLogoUrl(cleanSymbol);
+  const hasError = !!logoUrl && failedUrl === logoUrl;
+  const isLoaded = !!logoUrl && loadedUrl === logoUrl;
   const brandStyle = getInstrumentBrandStyle(cleanSymbol);
   const sizeConfig = SIZE_CONFIGS[size] || SIZE_CONFIGS.md;
   const roundedClass = ROUNDED_CONFIGS[rounded] || ROUNDED_CONFIGS.xl;
@@ -85,7 +87,7 @@ export function InstrumentLogo({
       } ${
         showFallback
           ? `${brandStyle.bg} ${brandStyle.text} ${brandStyle.border}`
-          : 'bg-white border-border/60'
+          : 'bg-bg-secondary border-border/60'
       } ${className}`}
       title={name || cleanSymbol}
     >
@@ -96,8 +98,8 @@ export function InstrumentLogo({
           alt={cleanSymbol}
           loading="lazy"
           decoding="async"
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
+          onLoad={() => setLoadedUrl(logoUrl)}
+          onError={() => setFailedUrl(logoUrl)}
           className={`${sizeConfig.img} object-contain transition-opacity duration-300 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}

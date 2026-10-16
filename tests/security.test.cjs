@@ -193,3 +193,13 @@ test('test email template contains no fabricated market or portfolio metrics', (
   assert.match(html, /test e-postası/);
   for (const fake of ['184500', '184.500', '4309', '48.63', 'Kâr', 'Getiri']) assert.equal(html.includes(fake), false);
 });
+
+test('cron endpoints strictly enforce header-based CRON_SECRET and disallow URL query secrets', () => {
+  const syncFundsCode = fs.readFileSync(path.join(root, 'src/app/api/cron/sync-funds/route.ts'), 'utf8');
+  const dailyReportCode = fs.readFileSync(path.join(root, 'src/app/api/cron/daily-report/route.ts'), 'utf8');
+  assert.doesNotMatch(syncFundsCode, /secretQuery/, 'sync-funds must never accept secret in query string');
+  assert.doesNotMatch(dailyReportCode, /searchParams\.get\(['"]secret/, 'daily-report must never accept secret in query string');
+  assert.match(syncFundsCode, /authorization/, 'sync-funds must check authorization header');
+  assert.match(syncFundsCode, /x-cron-secret/, 'sync-funds must check x-cron-secret header');
+});
+
