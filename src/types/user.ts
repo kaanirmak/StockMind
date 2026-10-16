@@ -9,6 +9,7 @@ export interface UserProfile {
   preferredCurrency: string;
   isPro?: boolean;
   plan?: 'free' | 'pro' | 'enterprise';
+  proRequestStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   createdAt: string;
   updatedAt: string;
 }

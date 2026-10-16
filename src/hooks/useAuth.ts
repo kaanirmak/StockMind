@@ -25,8 +25,15 @@ export function useAuth() {
       const pictureAvatar = currentUser?.user_metadata?.picture;
       const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
 
-      const isPro = Boolean(data?.is_pro ?? currentUser?.user_metadata?.is_pro ?? false);
-      const plan = (data?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+      const isPro = Boolean(
+        currentUser?.app_metadata?.plan === 'pro' ||
+        currentUser?.app_metadata?.is_pro === true ||
+        data?.is_pro === true ||
+        data?.plan === 'pro' ||
+        currentUser?.user_metadata?.is_pro === true
+      );
+      const plan = (currentUser?.app_metadata?.plan || data?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+      const proRequestStatus = (currentUser?.user_metadata?.pro_request_status || 'none') as 'none' | 'pending' | 'approved' | 'rejected';
 
       const userProf: UserProfile = {
         id: userId,
@@ -37,6 +44,7 @@ export function useAuth() {
         preferredCurrency: data?.preferred_currency || 'TRY',
         isPro,
         plan,
+        proRequestStatus,
         createdAt: data?.created_at || new Date().toISOString(),
         updatedAt: data?.updated_at || new Date().toISOString(),
       };
@@ -51,8 +59,13 @@ export function useAuth() {
         const pictureAvatar = currentUser?.user_metadata?.picture;
         const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
 
-        const isPro = Boolean(currentUser.user_metadata?.is_pro ?? false);
-        const plan = (currentUser.user_metadata?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+        const isPro = Boolean(
+          currentUser?.app_metadata?.plan === 'pro' ||
+          currentUser?.app_metadata?.is_pro === true ||
+          currentUser?.user_metadata?.is_pro === true
+        );
+        const plan = (currentUser?.app_metadata?.plan || currentUser?.user_metadata?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+        const proRequestStatus = (currentUser?.user_metadata?.pro_request_status || 'none') as 'none' | 'pending' | 'approved' | 'rejected';
 
         const fallbackProf: UserProfile = {
           id: userId,
@@ -63,6 +76,7 @@ export function useAuth() {
           preferredCurrency: 'TRY',
           isPro,
           plan,
+          proRequestStatus,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -145,8 +159,9 @@ export function useAuth() {
         avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (data?.avatar_url || profile?.avatarUrl || null),
         preferredLanguage: updates.preferredLanguage || data?.preferred_language || profile?.preferredLanguage || 'tr',
         preferredCurrency: updates.preferredCurrency || data?.preferred_currency || profile?.preferredCurrency || 'TRY',
-        isPro: true,
-        plan: 'pro',
+        isPro: profile?.isPro ?? false,
+        plan: profile?.plan ?? 'free',
+        proRequestStatus: profile?.proRequestStatus ?? 'none',
         createdAt: data?.created_at || profile?.createdAt || new Date().toISOString(),
         updatedAt: data?.updated_at || new Date().toISOString(),
       };
@@ -163,8 +178,9 @@ export function useAuth() {
         avatarUrl: updates.avatarUrl !== undefined ? updates.avatarUrl : (profile?.avatarUrl || null),
         preferredLanguage: updates.preferredLanguage || profile?.preferredLanguage || 'tr',
         preferredCurrency: updates.preferredCurrency || profile?.preferredCurrency || 'TRY',
-        isPro: true,
-        plan: 'pro',
+        isPro: profile?.isPro ?? false,
+        plan: profile?.plan ?? 'free',
+        proRequestStatus: profile?.proRequestStatus ?? 'none',
         createdAt: profile?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
