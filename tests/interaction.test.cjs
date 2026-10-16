@@ -148,10 +148,10 @@ test('RSS escaped descriptions become readable text without HTML markup', () => 
   assert.equal(rssPlainText('<![CDATA[<b>Başlık</b> &#x130;]]>'), 'Başlık İ');
   assert.equal(rssPlainText('&lt;script&gt;bad()&lt;/script&gt;Haber'), 'Haber');
 });
-function newsRoute(fetch) {
+function newsRoute(fetch, snapshot = []) {
   const text = load('src/lib/news/rssText.ts');
   return load('src/app/api/news/route.ts', {
-    require: name => name === 'next/server' ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } } : name === 'crypto' ? { default: require('node:crypto') } : text,
+    require: name => name === 'next/server' ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } } : name === 'crypto' ? { default: require('node:crypto') } : name === '@/lib/news/sentiment' ? load('src/lib/news/sentiment.ts') : name === '@/lib/news/feeds' ? load('src/lib/news/feeds.ts') : name === '@/lib/news/snapshot' ? { fetchNewsSnapshot: async () => snapshot } : text,
     fetch, AbortSignal, URL,
     console: { error() {} },
   });
@@ -163,7 +163,8 @@ test('News starts all feeds concurrently and preserves successful feeds when one
     pending.push({ resolve, reject });
   }));
   const response = GET(new Request('https://example.com/api/news'));
-  assert.equal(pending.length, 4);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pending.length, 2);
   pending[0].resolve({ ok: true, text: async () => '<rss><channel><item><title>ASELS haber</title><link>https://example.com/article</link><pubDate>Fri, 16 Oct 2026 10:00:00 GMT</pubDate><source>Kaynak</source></item></channel></rss>' });
   pending.slice(1).forEach(p => p.reject(new Error('Source timed out')));
   const result = await response;
@@ -176,4 +177,69 @@ test('All failed news sources report service failure, rather than a successful e
   const result = await GET(new Request('https://example.com/api/news'));
   assert.equal(result.status, 503);
   assert.equal(result.body.success, false);
+});
+
+test('Fresh collected news avoids publisher calls; stale collected news survives an upstream outage', async () => {
+  const makeArticle = age => ({ id: 'snapshot-1', title: 'BIST haber', summary: 'Haber', url: 'https://example.com/news', source: 'TRT Haber', feedId: 'trt-economy', category: 'BIST', sentiment: 'neutral', publishedAt: new Date().toISOString(), collectedAt: new Date(Date.now() - age).toISOString() });
+  let calls = 0;
+  const fresh = newsRoute(async () => { calls++; throw new Error('Unavailable'); }, [makeArticle(0)]);
+  const result = await fresh.GET(new Request('https://example.com/api/news?category=BIST'));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.count, 1);
+  assert.equal(calls, 0);
+  const stale = newsRoute(async () => { throw new Error('Unavailable'); }, [makeArticle(3600000)]);
+  const fallback = await stale.GET(new Request('https://example.com/api/news?category=BIST'));
+  assert.equal(fallback.status, 200);
+  assert.equal(fallback.body.stale, true);
+  assert.equal(fallback.body.count, 1);
+});
+test('News snapshots reject expired and malformed entries', () => {
+  const { readNewsSnapshot } = load('src/lib/news/snapshot.ts', { require: () => load('src/lib/news/feeds.ts') });
+  const now = Date.now();
+  const a = { id: '1', title: 'Haber', summary: '', source: 'TRT Haber', feedId: 'trt-economy', url: 'https://example.com', category: 'BIST', sentiment: 'neutral', publishedAt: new Date(now).toISOString(), collectedAt: new Date(now).toISOString() };
+  assert.equal(readNewsSnapshot({ data: [a] }, now).length, 1);
+  assert.equal(readNewsSnapshot({ data: [{ ...a, collectedAt: new Date(now - 86400001).toISOString() }, { ...a, url: 'javascript:bad()' }] }, now).length, 0);
+});
+
+test('KAP never presents publisher articles as official company disclosures', async () => {
+  const { GET } = newsRoute(async () => { throw new Error('Must not fetch'); });
+  const result = await GET(new Request('https://example.com/api/news?category=KAP'));
+  assert.equal(result.status, 200);
+  assert.equal(result.body.count, 0);
+  assert.match(result.body.warning, /KAP/);
+});
+test('A symbol without matching news does not receive unrelated general headlines', async () => {
+  const article = { id: '1', title: 'Ekonomi haber', summary: 'Genel ekonomi', category: 'BIST', feedId: 'trt-economy', collectedAt: new Date().toISOString(), publishedAt: new Date().toISOString() };
+  const { GET } = newsRoute(async () => { throw new Error('Must not fetch'); }, [article]);
+  const result = await GET(new Request('https://example.com/api/news?category=BIST&symbol=UNKNOWN'));
+  assert.equal(result.body.count, 0);
+});
+
+test('News sentiment distinguishes financial context, ambiguity, negation and mixed developments', () => {
+  const { analyzeNewsSentiment } = load('src/lib/news/sentiment.ts');
+  for (const [title, expected] of [
+    ['Merkez Bankası faiz kararını açıkladı', 'neutral'],
+    ['ECB raises interest rates', 'neutral'],
+    ['Borsa yükselecek mi?', 'neutral'],
+    ['Borsa yükselecek', 'neutral'],
+    ['Karadeniz limanlarında yeni karar', 'neutral'],
+    ['Enflasyon yüzde 40’a yükseldi', 'negative'],
+    ['Enflasyon geriledi', 'positive'],
+    ['Şirketin net kârı yüzde 20 arttı', 'positive'],
+    ['Şirket net zarar açıkladı', 'negative'],
+    ['BIST endeksi geriledi', 'negative'],
+    ['Borsada yükseliş bekleniyor', 'neutral'],
+    ['Şirket zarar açıklamadı', 'neutral'],
+    ['Company profits increased', 'positive'],
+    ['Inflation rose', 'negative'],
+    ['Stocks fell', 'negative'],
+    ['Borsa yükseldi ancak şirket net zarar açıkladı', 'neutral'],
+  ]) assert.equal(analyzeNewsSentiment(title).sentiment, expected, title);
+});
+test('Snapshot sentiment is recalculated instead of trusting old cached labels', async () => {
+  const article = { id: '1', title: 'Enflasyon yükseldi', summary: '', category: 'MACRO', feedId: 'trt-economy', sentiment: 'positive', collectedAt: new Date().toISOString(), publishedAt: new Date().toISOString() };
+  const { GET } = newsRoute(async () => { throw new Error('Must not fetch'); }, [article]);
+  const result = await GET(new Request('https://example.com/api/news?category=MACRO'));
+  assert.equal(result.body.data[0].sentiment, 'negative');
+  assert.ok(result.body.data[0].sentimentReason);
 });

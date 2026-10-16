@@ -67,7 +67,7 @@ export default function NewsPage() {
       if (!res.ok || !data.success || !Array.isArray(data.data)) throw new Error(data.error || 'Haberler yüklenemedi.');
       if (requestRef.current !== controller) return;
       setNews(data.data);
-      setNewsWarning(data.warning || '');
+      setNewsWarning(data.warning ? `${data.warning}${data.collectedAt ? ` Son güncelleme: ${new Date(data.collectedAt).toLocaleString('tr-TR')}` : ''}` : '');
     } catch (err) {
       if (requestRef.current !== controller) return;
       setNewsError(!navigator.onLine ? 'İnternet bağlantısı yok. Bağlantınızı kontrol edip tekrar deneyin.' : controller.signal.aborted ? 'Haber sunucusu zamanında yanıt vermedi. Tekrar deneyin.' : err instanceof Error ? err.message : 'Haberler yüklenemedi. Tekrar deneyin.');
@@ -288,11 +288,11 @@ export default function NewsPage() {
             const sentimentBadge =
               item.sentiment === 'positive' ? (
                 <Badge variant="success" size="sm">
-                  Pozitif / Boğa
+                  Olumlu
                 </Badge>
               ) : item.sentiment === 'negative' ? (
                 <Badge variant="danger" size="sm">
-                  Negatif / Ayı
+                  Olumsuz
                 </Badge>
               ) : (
                 <Badge variant="warning" size="sm">
@@ -326,7 +326,7 @@ export default function NewsPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {sentimentBadge}
+                      <span title={item.sentimentReason} aria-label={`Haber tonu: ${item.sentiment === 'positive' ? 'Olumlu' : item.sentiment === 'negative' ? 'Olumsuz' : 'Nötr'}. ${item.sentimentReason || ''}`}>{sentimentBadge}</span>
                       <span className="text-[11px] text-text-muted">
                         {new Date(item.publishedAt).toLocaleDateString('tr-TR', {
                           day: 'numeric',

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { rssPlainText } from '@/lib/news/rssText';
+import { fetchNewsSnapshot } from '@/lib/news/snapshot';
+import { analyzeNewsSentiment } from '@/lib/news/sentiment';
+import { NEWS_FEEDS, feedCategory, type NewsFeed } from '@/lib/news/feeds';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +17,8 @@ export interface NewsArticle {
   url: string;
   publishedAt: string;
   relatedSymbols?: string[];
+  feedId?: string;
+  sentimentReason?: string;
 }
 
 const DEFAULT_SYMBOLS_TO_TRACK = [
@@ -25,24 +30,31 @@ const DEFAULT_SYMBOLS_TO_TRACK = [
 
 // Function to fetch and parse real live RSS financial news
 async function fetchLiveNews(
-  query: string,
-  category: 'BIST' | 'KAP' | 'GLOBAL' | 'MACRO' | 'PORTFOLIO',
+  feed: NewsFeed,
   extraSymbolsToCheck: string[] = []
 ): Promise<NewsArticle[]> {
+  const started = Date.now();
+  let stage = 'headers';
+  let status: number | undefined;
+  let contentType: string | null = null;
   try {
-    const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=tr&gl=TR&ceid=TR:tr`;
+    const rssUrl = feed.url;
     const res = await fetch(rssUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        Accept: 'application/rss+xml, application/xml',
       },
       signal: AbortSignal.timeout(8000),
-      next: { revalidate: 180 }, // cache for 3 mins
+      cache: 'no-store', // Isolate upstream access from the OpenNext incremental cache.
     });
 
+    status = res.status;
+    contentType = res.headers?.get('content-type') || null;
+    stage = 'body';
     if (!res.ok) throw new Error(`RSS upstream HTTP ${res.status}`);
 
     const xmlText = await res.text();
     if (!/<rss\b/i.test(xmlText)) throw new Error('News upstream did not return RSS');
+    stage = 'parse';
     const items: NewsArticle[] = [];
 
     // Parse XML items using regex
@@ -56,27 +68,19 @@ async function fetchLiveNews(
       const titleMatch = itemContent.match(/<title>([\s\S]*?)<\/title>/);
       const linkMatch = itemContent.match(/<link>([\s\S]*?)<\/link>/);
       const pubDateMatch = itemContent.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
-      const sourceMatch = itemContent.match(/<source[^>]*>([\s\S]*?)<\/source>/);
       const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/);
 
       if (titleMatch) {
-        let rawTitle = rssPlainText(titleMatch[1]);
-        let source = sourceMatch ? rssPlainText(sourceMatch[1]) : 'Finans';
-
-        // Strip source suffix from title if present (e.g. "Haber Başlığı - Bloomberg HT")
-        if (rawTitle.includes(' - ')) {
-          const parts = rawTitle.split(' - ');
-          if (parts.length > 1) {
-            source = parts.pop() || source;
-            rawTitle = parts.join(' - ');
-          }
-        }
+        const rawTitle = rssPlainText(titleMatch[1]);
+        const source = feed.name;
 
         // Clean HTML description
         let rawSummary = descMatch ? rssPlainText(descMatch[1]) : '';
         if (!rawSummary || rawSummary === rawTitle) {
           rawSummary = `${rawTitle}. Kaynak: ${source}`;
         }
+
+        const category = feedCategory(feed.id, rawTitle, rawSummary);
 
         // Extract related symbols
         const relatedSymbolsSet = new Set<string>();
@@ -94,42 +98,12 @@ async function fetchLiveNews(
           }
         }
 
-        // Simple sentiment deduction based on Turkish financial keywords
-        let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
-        const lower = (rawTitle + ' ' + rawSummary).toLowerCase();
-        if (
-          lower.includes('rekor') ||
-          lower.includes('yükseliş') ||
-          lower.includes('kazandı') ||
-          lower.includes('artış') ||
-          lower.includes('büyüme') ||
-          lower.includes('kar') ||
-          lower.includes('temettü') ||
-          lower.includes('anlaşma') ||
-          lower.includes('sözleşme') ||
-          lower.includes('zirve') ||
-          lower.includes('alım') ||
-          lower.includes('hedef yükseltti')
-        ) {
-          sentiment = 'positive';
-        } else if (
-          lower.includes('düşüş') ||
-          lower.includes('zarar') ||
-          lower.includes('kayıp') ||
-          lower.includes('geriledi') ||
-          lower.includes('risk') ||
-          lower.includes('tedbir') ||
-          lower.includes('ceza') ||
-          lower.includes('gözaltı') ||
-          lower.includes('satış baskısı') ||
-          lower.includes('çöküş') ||
-          lower.includes('taban')
-        ) {
-          sentiment = 'negative';
-        }
+        const { sentiment, reason: sentimentReason } = analyzeNewsSentiment(rawTitle, rawSummary);
 
-        const articleLink = linkMatch ? linkMatch[1] : '#';
-        const pubDateStr = pubDateMatch ? new Date(pubDateMatch[1]).toISOString() : new Date().toISOString();
+        const articleLink = linkMatch ? rssPlainText(linkMatch[1]) : '';
+        const date = new Date(pubDateMatch?.[1] || '');
+        if (!/^https?:\/\//.test(articleLink) || !Number.isFinite(date.getTime())) continue;
+        const pubDateStr = date.toISOString();
 
         // Generate SHA-256 unique ID based on full title, link and category
         const uniqueHash = crypto
@@ -143,7 +117,9 @@ async function fetchLiveNews(
           title: rawTitle,
           summary: rawSummary,
           category,
+          feedId: feed.id,
           sentiment,
+          sentimentReason,
           source,
           url: articleLink,
           publishedAt: pubDateStr,
@@ -154,9 +130,10 @@ async function fetchLiveNews(
       if (items.length >= 15) break;
     }
 
+    if (!items.length) throw new Error('RSS contained no valid articles');
     return items;
   } catch (error) {
-    console.error('Error fetching live RSS news:', error);
+    console.error(JSON.stringify({ event: 'news_upstream_failed', provider: feed.id, stage, status, contentType, durationMs: Date.now() - started, error: error instanceof Error ? error.name : 'UnknownError' }));
     throw error;
   }
 }
@@ -172,42 +149,34 @@ export async function GET(request: Request) {
       ? symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
       : [];
 
-    let allNews: NewsArticle[] = [];
-
-    type Feed = { query: string; category: NewsArticle['category']; matchPortfolio?: boolean };
-    const feeds: Feed[] = [];
-    if (category === 'PORTFOLIO' && portfolioSymbols.length > 0) {
-      for (let i = 0; i < Math.min(portfolioSymbols.length, 20); i += 5) {
-        feeds.push({ query: `(${portfolioSymbols.slice(i, i + 5).join(' OR ')}) hisse OR KAP OR borsa OR fon`, category: 'PORTFOLIO' });
-      }
-      feeds.push(
-        { query: 'Borsa Istanbul OR BIST 100 OR BIST hisse', category: 'PORTFOLIO', matchPortfolio: true },
-        { query: 'Kamuyu Aydinlatma Platformu KAP hisse sozlesme', category: 'PORTFOLIO', matchPortfolio: true },
-      );
-    } else {
-      const generalFeeds: Feed[] = [
-        { query: 'Borsa Istanbul OR BIST 100 OR BIST hisse', category: 'BIST' },
-        { query: 'Kamuyu Aydinlatma Platformu KAP hisse sozlesme bilanco', category: 'KAP' },
-        { query: 'Wall Street OR Nasdaq OR Fed faiz OR SP500', category: 'GLOBAL' },
-        { query: 'Altin fiyati gram altin OR Merkez Bankasi OR Enflasyon', category: 'MACRO' },
-      ];
-      feeds.push(...generalFeeds.filter(feed => !category || category === 'ALL' || category === feed.category));
-      if (symbol) feeds.push({ query: `"${symbol.replace('_', ' ').trim()}" OR "${symbol}" (hisse OR piyasa OR ekonomi OR borsa OR altin OR fon)`, category: 'BIST' });
+    if (category === 'KAP') {
+      return NextResponse.json({ success: true, count: 0, data: [], warning: 'Resmî KAP bildirim kaynağı henüz bağlı değil.' });
     }
-
-    // A slow or unavailable source must not serialize/block all the other feeds.
-    const results = await Promise.allSettled(feeds.map(async feed => {
-      const articles = await fetchLiveNews(feed.query, feed.category, portfolioSymbols);
-      return feed.matchPortfolio ? articles.filter(article => {
+    if (category === 'PORTFOLIO' && portfolioSymbols.length === 0) {
+      return NextResponse.json({ success: true, count: 0, data: [] });
+    }
+    const feeds = NEWS_FEEDS.filter(feed => !category || category === 'ALL' || category === 'PORTFOLIO' ||
+      (feed.categories as readonly string[]).includes(category));
+    const relevant = (article: NewsArticle) => {
+      if (category === 'PORTFOLIO') {
         const text = `${article.title} ${article.summary}`.toUpperCase();
-        return portfolioSymbols.some(sym => text.includes(sym) || article.relatedSymbols?.includes(sym));
-      }) : articles;
-    }));
+        return portfolioSymbols.some(sym => text.includes(sym));
+      }
+      return !category || category === 'ALL' || article.category === category;
+    };
+    const snapshot = await fetchNewsSnapshot();
+    const snapshotFresh = feeds.length > 0 && feeds.every(feed => snapshot.some(article =>
+      article.feedId === feed.id && Date.now() - Date.parse(article.collectedAt) < 30 * 60 * 1000));
+    const results = snapshotFresh ? [] : await Promise.allSettled(feeds.map(feed => fetchLiveNews(feed, portfolioSymbols)));
     const failedFeeds = results.filter(result => result.status === 'rejected').length;
-    if (feeds.length > 0 && failedFeeds === feeds.length) {
+    const failedIds = new Set(feeds.filter((_, index) => results[index]?.status === 'rejected').map(feed => feed.id));
+    const fallback = snapshot.filter(article => snapshotFresh || failedIds.has(article.feedId as NewsFeed['id']));
+    if (feeds.length > 0 && failedFeeds === feeds.length && fallback.length === 0) {
       return NextResponse.json({ success: false, error: 'Haber kaynaklarına şu anda ulaşılamıyor. Lütfen tekrar deneyin.', data: [] }, { status: 503 });
     }
-    allNews = results.flatMap(result => result.status === 'fulfilled' ? result.value : []);
+    let allNews = [...results.flatMap(result => result.status === 'fulfilled' ? result.value : []), ...fallback].filter(relevant);
+    const stale = !snapshotFresh && fallback.length > 0;
+    const snapshotForCategory = fallback.filter(relevant);
 
     // Sort by publication date newest first
     allNews.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
@@ -224,9 +193,7 @@ export async function GET(request: Request) {
           n.summary.toUpperCase().includes(symUpper) ||
           n.summary.toUpperCase().includes(symClean)
       );
-      if (matched.length > 0) {
-        allNews = matched;
-      }
+      allNews = matched;
     }
 
     // Deduplicate by normalized title and unique id
@@ -245,9 +212,14 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       count: uniqueNews.length,
+      stale,
+      collectedAt: snapshotForCategory.length ? snapshotForCategory.map(a => a.collectedAt).sort()[0] : undefined,
       partial: failedFeeds > 0,
-      warning: failedFeeds > 0 ? 'Bazı haber kaynakları yanıt vermedi; ulaşılabilen haberler gösteriliyor.' : undefined,
-      data: uniqueNews,
+      warning: stale ? 'Canlı kaynaklara ulaşılamadı; son başarılı haberler gösteriliyor.' : failedFeeds > 0 ? 'Bazı haber kaynakları yanıt vermedi; ulaşılabilen haberler gösteriliyor.' : undefined,
+      data: uniqueNews.map(article => {
+        const analysis = analyzeNewsSentiment(article.title, article.summary);
+        return { ...article, sentiment: analysis.sentiment, sentimentReason: analysis.reason };
+      }),
     });
   } catch (error) {
     console.error('Live News API Error:', error);
