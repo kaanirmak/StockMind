@@ -84,7 +84,9 @@ export default function WidgetEmbedModal({
         <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent/20 border border-accent/30 text-accent flex items-center justify-center text-lg">
-
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+              </svg>
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">Widget Gömme & Masaüstü Paylaşımı</h3>
