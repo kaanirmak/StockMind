@@ -52,7 +52,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   const chartRef = useRef<IChartApi | null>(null);
 
   const [chartType, setChartType] = useState<'candles' | 'line'>('line');
-  const [touchInspectMode, setTouchInspectMode] = useState(false);
+  const touchInspectMode = false;
   const [isFullscreen, setIsFullscreen] = useState(false);
   useScrollLock(isFullscreen);
   useEffect(() => {
@@ -131,11 +131,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     return height;
   };
 
-  const handleResetZoom = () => {
-    if (chartRef.current) {
-      chartRef.current.timeScale().fitContent();
-    }
-  };
+
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -525,20 +521,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
         {/* Right: Chart Controls & Mode Toggles */}
         <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0 flex-wrap">
-          {/* Mobile Scroll / Inspect Mode Toggle */}
-          <button
-            type="button"
-            onClick={() => setTouchInspectMode((prev) => !prev)}
-            className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
-              touchInspectMode
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-sm'
-                : 'bg-bg-secondary border-border text-text-muted hover:text-text-primary'
-            }`}
-            title={touchInspectMode ? 'İnceleme Modu Açık' : 'Sayfa Kaydırma Serbest (İncelemek için tıklayın)'}
-          >
-            <span>{touchInspectMode ? 'İncele' : 'Kaydır'}</span>
-          </button>
-
           {/* Chart Style Toggle (Candles vs Line) */}
           <div className="flex items-center bg-bg-secondary p-0.5 rounded-lg border border-border">
             <button
@@ -565,15 +547,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             </button>
           </div>
 
-          {/* Reset Zoom Button */}
-          <button
-            onClick={handleResetZoom}
-            className="p-1.5 rounded-lg bg-bg-secondary border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer text-xs"
-            title="Ölçeği Sıfırla"
-          >
-
-          </button>
-
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullscreen}
@@ -584,14 +557,6 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Touch Inspect Mode Warning Banner */}
-      {touchInspectMode && (
-        <div className="flex items-center justify-between mb-2 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-400 animate-fade-in">
-          <span> <strong>İnceleme Modu:</strong> Grafiğe dokunarak mumları inceleyin. Sayfayı kaydırmak için iki parmak kullanın veya modu kapatın.</span>
-          <button type="button" onClick={() => setTouchInspectMode(false)} className="underline ml-2 cursor-pointer font-bold">Kapat</button>
-        </div>
-      )}
 
       {/* Chart Canvas with Non-locking Mobile Touch Action */}
       <div
