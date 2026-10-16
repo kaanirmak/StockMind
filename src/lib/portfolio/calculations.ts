@@ -203,7 +203,10 @@ function processPortfolioTransactions(
   for (const t of sorted) {
     const { symbol: cleanSym, assetType: cleanType, exchange: cleanEx } = cleanSymbol(t.symbol);
     const effectiveType = t.assetType === 'fund' || cleanType === 'fund' ? 'fund' : 'stock';
-    const effectiveEx = cleanEx || t.exchange || (effectiveType === 'fund' ? 'TEFAS' : 'BIST');
+    let effectiveEx = t.exchange;
+    if (!effectiveEx || effectiveEx === 'BIST') {
+      effectiveEx = (cleanEx && cleanEx !== 'BIST' ? cleanEx : (t.exchange || cleanEx || (effectiveType === 'fund' ? 'TEFAS' : 'BIST'))) as any;
+    }
 
     const isUsd =
       (t.currency || '').toUpperCase() === 'USD' ||
@@ -482,7 +485,8 @@ export function calculatePortfolioSummary(
   const buyVolume = transactions
     .filter((t) => t.transactionType === 'buy')
     .reduce((sum, t) => {
-      const isUsd = (t.currency || '').toUpperCase() === 'USD' || t.exchange === 'NASDAQ' || t.exchange === 'NYSE';
+      const { exchange: cleanEx } = cleanSymbol(t.symbol);
+      const isUsd = (t.currency || '').toUpperCase() === 'USD' || t.exchange === 'NASDAQ' || t.exchange === 'NYSE' || cleanEx === 'NASDAQ' || cleanEx === 'NYSE';
       const rate = isUsd ? (t.exchangeRate && t.exchangeRate > 0 ? t.exchangeRate : effectiveUsdRate) : 1.0;
       return sum + t.quantity * t.price * rate + (t.commission || 0) * (isUsd ? rate : 1.0);
     }, 0);
@@ -490,7 +494,8 @@ export function calculatePortfolioSummary(
   const sellVolume = transactions
     .filter((t) => t.transactionType === 'sell')
     .reduce((sum, t) => {
-      const isUsd = (t.currency || '').toUpperCase() === 'USD' || t.exchange === 'NASDAQ' || t.exchange === 'NYSE';
+      const { exchange: cleanEx } = cleanSymbol(t.symbol);
+      const isUsd = (t.currency || '').toUpperCase() === 'USD' || t.exchange === 'NASDAQ' || t.exchange === 'NYSE' || cleanEx === 'NASDAQ' || cleanEx === 'NYSE';
       const rate = isUsd ? (t.exchangeRate && t.exchangeRate > 0 ? t.exchangeRate : effectiveUsdRate) : 1.0;
       return sum + t.quantity * t.price * rate - (t.commission || 0) * (isUsd ? rate : 1.0);
     }, 0);

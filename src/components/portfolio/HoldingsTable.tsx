@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Holding } from '@/types/portfolio';
 import { Badge, Button, InstrumentLogo } from '@/components/ui';
+import { getAssetTypeLabel } from '@/lib/utils/symbol';
 
 function MiniSparkline({ changePercent }: { changePercent: number }) {
   const positive = changePercent >= 0;
@@ -15,9 +16,8 @@ function MiniSparkline({ changePercent }: { changePercent: number }) {
 }
 
 function getAssetBadgeInfo(h: Holding) {
-  if (h.assetType === 'fund') return { bg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300', label: 'TEFAS Fon', icon: '📈' };
-  if (h.originalCurrency === 'USD') return { bg: 'bg-blue-500/15 border-blue-500/30 text-blue-300', label: 'ABD Hisse', icon: '🌐' };
-  return { bg: 'bg-violet-500/15 border-violet-500/30 text-violet-300', label: 'BIST Hisse', icon: '📊' };
+  const info = getAssetTypeLabel(h);
+  return { bg: info.badgeColor, label: info.badgeLabel, icon: info.badgeIcon };
 }
 
 export interface HoldingsTableProps {
@@ -86,6 +86,8 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
           const isExpanded = expandedSymbols.has(h.symbol);
           const hasLots = h.lots && h.lots.length > 0;
 
+          const assetInfo = getAssetTypeLabel(h);
+
           return (
             <div key={`m-${h.assetType}-${h.symbol}`} className="p-4 hover:bg-bg-hover/60 transition-colors">
               {/* Top Row: Symbol, Exchange & Weight */}
@@ -93,12 +95,22 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                 <Link href={link} className="flex items-center gap-2.5">
                   <InstrumentLogo symbol={h.symbol} size="md" />
                   <div>
-                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       <span className="font-bold text-sm text-text-primary">{h.symbol}</span>
-                      <span className="text-[10px] text-text-muted">{h.assetType === 'fund' ? 'Fon' : 'Hisse'}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium border ${
+                        assetInfo.typeLabel === 'ETF'
+                          ? 'bg-sky-500/15 border-sky-500/30 text-sky-400'
+                          : assetInfo.typeLabel === 'Fon'
+                          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                          : assetInfo.isUs
+                          ? 'bg-blue-500/15 border-blue-500/30 text-blue-400'
+                          : 'bg-bg-tertiary border-border/60 text-text-muted'
+                      }`}>
+                        {assetInfo.typeLabel}
+                      </span>
                     </div>
                     <span className="text-[11px] text-text-muted line-clamp-1">
-                      {h.exchange || (h.assetType === 'fund' ? 'Yatırım Fonu' : 'Borsa İstanbul')}
+                      {assetInfo.exchangeLabel}
                     </span>
                   </div>
                 </Link>
@@ -232,7 +244,8 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
               const isProfit = h.pnl >= 0;
               const link = h.assetType === 'stock' ? `/stocks/${h.symbol}` : `/funds/${h.symbol}`;
               const dailyChange = h.dailyChangePercent || 0;
-              const isUsd = h.originalCurrency === 'USD';
+              const assetInfo = getAssetTypeLabel(h);
+              const isUsd = h.originalCurrency === 'USD' || assetInfo.isUs;
               const badgeInfo = getAssetBadgeInfo(h);
               const isExpanded = expandedSymbols.has(h.symbol);
               const hasLots = h.lots && h.lots.length > 0;
@@ -274,7 +287,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                             )}
                           </div>
                           <span className="text-[11px] text-text-muted">
-                            {h.exchange || (h.assetType === 'fund' ? 'TEFAS' : 'Borsa İstanbul')}
+                            {assetInfo.exchangeLabel}
                           </span>
                         </div>
                       </Link>
