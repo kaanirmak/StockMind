@@ -9,16 +9,32 @@ export interface PortfolioStatusWidgetProps {
   initialPeriod?: 'daily' | 'monthly' | 'total';
   transparent?: boolean;
   hideFooter?: boolean;
+  forceDemo?: boolean;
 }
+
+const SAMPLE_SUMMARY = {
+  totalValue: 348250.0,
+  totalCost: 295400.0,
+  totalPnL: 52850.0,
+  totalPnLPercent: 17.89,
+  dailyPnL: 6420.0,
+  dailyPnLPercent: 1.88,
+  realizedPnL: 8200.0,
+  cash: { configured: true, amount: 25000, currency: 'TRY' },
+};
 
 export default function PortfolioStatusWidget({
   standalone = false,
   initialPeriod = 'daily',
   transparent = false,
   hideFooter = false,
+  forceDemo = false,
 }: PortfolioStatusWidgetProps) {
   const { getSummary, livePrices, fetchPortfoliosAndTransactions } = usePortfolioStore();
-  const summary = getSummary();
+  const rawSummary = getSummary();
+  const isSample = forceDemo || rawSummary.totalValue === 0;
+  const summary = isSample ? SAMPLE_SUMMARY : rawSummary;
+
   const [period, setPeriod] = useState<'daily' | 'monthly' | 'total'>(initialPeriod);
   const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
 
@@ -88,8 +104,8 @@ export default function PortfolioStatusWidget({
         transparent
           ? 'bg-transparent border-white/10'
           : isPositive
-          ? 'bg-gradient-to-br from-[var(--palette-color1c0f38)] via-[var(--palette-color0d2222)] to-[var(--palette-color061214)] border-emerald-500/30 shadow-[0_12px_40px_rgba(16,185,129,0.12)]'
-          : 'bg-gradient-to-br from-[var(--palette-color240e32)] via-[var(--palette-color200b1a)] to-[var(--palette-color0e040c)] border-rose-500/30 shadow-[0_12px_40px_rgba(244,63,94,0.12)]'
+          ? 'bg-gradient-to-br from-[#121c24] via-[#0d2222] to-[#071317] border-emerald-500/30 shadow-[0_12px_40px_rgba(16,185,129,0.12)]'
+          : 'bg-gradient-to-br from-[#240e22] via-[#200b1a] to-[#12040c] border-rose-500/30 shadow-[0_12px_40px_rgba(244,63,94,0.12)]'
       }`}
     >
       {/* Ambient background glows */}
@@ -119,6 +135,11 @@ export default function PortfolioStatusWidget({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
             </span>
+            {isSample && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-white/70">
+                Örnek Portföy
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -198,12 +219,10 @@ export default function PortfolioStatusWidget({
                 isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''
               }`}
             >
-              {summary.totalValue > 0
-                ? `₺${summary.totalValue.toLocaleString('tr-TR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
-                : '₺0,00'}
+              ₺{summary.totalValue.toLocaleString('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </h2>
 
             {/* P&L Badge */}
