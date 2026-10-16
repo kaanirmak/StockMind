@@ -311,12 +311,13 @@ function AIAssistantContent() {
 
     // Sanitize model: if non-pro user and no custom API key, ensure they don't send a pro model
     let effectiveModel = selectedModel;
-    const isProModel = models.some((m) => m.id === selectedModel && !m.free);
-    if (isProModel && !proModelsAllowed && !customApiKey) {
+    const isFreeModel = selectedModel === AUTO_MODEL.id || models.some((m) => m.id === selectedModel && m.free);
+    if (!isFreeModel && !proModelsAllowed && !customApiKey) {
       effectiveModel = AUTO_MODEL.id;
       setSelectedModel(AUTO_MODEL.id);
       saveStoredOpenRouterKey(customApiKey, user?.id, AUTO_MODEL.id);
     }
+
 
     try {
       const res = await fetch('/api/ai/chat', {
@@ -404,15 +405,34 @@ function AIAssistantContent() {
     return () => { viewport?.removeEventListener('resize', update); window.removeEventListener('resize', update); };
   }, []);
 
+  const isKeyboardOpen = typeof window !== 'undefined' && Boolean(
+    viewportHeight && window.innerHeight - viewportHeight > 150
+  );
+
+  useEffect(() => {
+    if (isKeyboardOpen) {
+      followLatest('smooth');
+    }
+  }, [isKeyboardOpen, followLatest]);
+
   return (
-    <div style={{ height: viewportHeight ? `calc(${viewportHeight}px - 3.5rem - 5rem - env(safe-area-inset-bottom, 0px))` : 'calc(100dvh - 8.5rem)' }} className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]">
-      <div className="glass-card p-3 mb-2 shrink-0 rounded-2xl border border-border space-y-2.5">
+    <div
+      style={{
+        height: viewportHeight
+          ? (isKeyboardOpen
+              ? `calc(${viewportHeight}px - 3.5rem)`
+              : `calc(${viewportHeight}px - 3.5rem - 4.5rem - env(safe-area-inset-bottom, 0px))`)
+          : 'calc(100dvh - 8rem)',
+      }}
+      className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]"
+    >
+      <div className={`glass-card ${isKeyboardOpen ? 'p-2 mb-1 space-y-1.5' : 'p-2.5 sm:p-3 mb-2 space-y-2.5'} shrink-0 rounded-2xl border border-border transition-all`}>
         {/* Row 1: Title and brand on left, action buttons on right */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <StockMindMark className="w-7 h-7 shrink-0" />
+          <div className="flex items-center gap-2 min-w-0">
+            <StockMindMark className={`${isKeyboardOpen ? 'w-6 h-6' : 'w-7 h-7'} shrink-0`} />
             <div className="min-w-0">
-              <h1 className="text-sm font-bold text-text-primary truncate">StockMind AI</h1>
+              <h1 className="text-xs sm:text-sm font-bold text-text-primary truncate">StockMind AI</h1>
               <p className="text-[10px] text-text-muted truncate">Finans asistanı</p>
             </div>
           </div>
@@ -422,24 +442,24 @@ function AIAssistantContent() {
               onClick={() => setShowHistoryModal(true)}
               aria-label="Sohbet Geçmişi"
               title="Sohbet Geçmişi"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer"
+              className={`inline-flex items-center justify-center ${isKeyboardOpen ? 'w-7 h-7' : 'w-8.5 h-8.5 sm:w-9 sm:h-9'} rounded-xl border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer`}
             >
-              <UIIcon name="history" className="w-4 h-4" />
+              <UIIcon name="history" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
             <button
               type="button"
               onClick={handleCreateNewSession}
               aria-label="Yeni Sohbet"
               title="Yeni Sohbet"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors cursor-pointer"
+              className={`inline-flex items-center justify-center ${isKeyboardOpen ? 'w-7 h-7' : 'w-8.5 h-8.5 sm:w-9 sm:h-9'} rounded-xl border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors cursor-pointer`}
             >
-              <UIIcon name="plus" className="w-4 h-4" />
+              <UIIcon name="plus" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
 
-        {/* Row 2: Model selector & Quota display */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1.5 border-t border-border/50">
+        {/* Row 2: Model selector & Quota display - hide on mobile when typing to maximize chat space */}
+        <div className={`${isKeyboardOpen ? 'hidden sm:flex' : 'flex'} flex-col sm:flex-row sm:items-center gap-2 pt-1.5 border-t border-border/50`}>
           <label className="flex items-center gap-2 text-xs text-text-muted flex-1 min-w-0">
             <span className="shrink-0 font-medium">Model:</span>
             <select
@@ -605,7 +625,7 @@ function AIAssistantContent() {
       </div>
 
       {/* Floating Scroll to Bottom Button */}
-      {showLatest && (
+      {showLatest && !isKeyboardOpen && (
         <button
           type="button"
           onClick={() => followLatest('smooth')}
@@ -617,7 +637,7 @@ function AIAssistantContent() {
       )}
 
       {/* Preset Prompt Suggestions */}
-      {messages.length <= 2 && (
+      {messages.length <= 2 && !isKeyboardOpen && (
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto overscroll-x-contain py-1.5 shrink-0 no-scrollbar -mx-1 px-1 mb-1">
           {PROMPT_SUGGESTIONS.map((sug) => (
             <button
@@ -632,7 +652,7 @@ function AIAssistantContent() {
       )}
 
       {/* Input Box - Mobile Ergonomic */}
-      <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm mb-1 sm:mb-0 pb-[calc(0.375rem+env(safe-area-inset-bottom))] sm:pb-2">
+      <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm mb-1 sm:mb-0 pb-[calc(0.375rem+env(safe-area-inset-bottom))] sm:pb-2 focus-within:border-accent/80 focus-within:ring-1 focus-within:ring-accent/30 transition-all">
         <input
           type="text"
           value={input}
@@ -644,7 +664,7 @@ function AIAssistantContent() {
             }
           }}
           placeholder="Hisse, fon veya teknik analiz sorusu sorun..."
-          className="flex-1 bg-transparent px-3 py-2.5 sm:py-2 text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none min-w-0"
+          className="flex-1 bg-transparent px-3 py-2.5 sm:py-2 text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:!outline-none focus:ring-0 focus-visible:!ring-0 outline-none border-none min-w-0"
         />
 
         {/* Mobile Submit / Stop Button */}
@@ -656,7 +676,7 @@ function AIAssistantContent() {
             title="Durdur"
             aria-label="Durdur"
           >
-
+            <span className="w-3.5 h-3.5 rounded-xs bg-white block" />
           </button>
         ) : (
           <button
