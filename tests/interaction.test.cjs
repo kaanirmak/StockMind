@@ -141,3 +141,39 @@ test('iPad desktop user agents receive iOS instructions and Mac receives Mac ins
   assert.equal(detectAppPlatform({ userAgent: 'Macintosh Safari', platform: 'MacIntel', maxTouchPoints: 0 }).os, 'mac');
   assert.equal(detectAppPlatform({ userAgent: 'iPhone Safari' }).os, 'ios');
 });
+
+test('RSS escaped descriptions become readable text without HTML markup', () => {
+  const { rssPlainText } = load('src/lib/news/rssText.ts');
+  assert.equal(rssPlainText('&lt;a href="https://example.com"&gt;Haber &amp; gelişme&lt;/a&gt;&amp;nbsp;&lt;font&gt;Kaynak&lt;/font&gt;'), 'Haber & gelişme Kaynak');
+  assert.equal(rssPlainText('<![CDATA[<b>Başlık</b> &#x130;]]>'), 'Başlık İ');
+  assert.equal(rssPlainText('&lt;script&gt;bad()&lt;/script&gt;Haber'), 'Haber');
+});
+function newsRoute(fetch) {
+  const text = load('src/lib/news/rssText.ts');
+  return load('src/app/api/news/route.ts', {
+    require: name => name === 'next/server' ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } } : name === 'crypto' ? { default: require('node:crypto') } : text,
+    fetch, AbortSignal, URL,
+    console: { error() {} },
+  });
+}
+test('News starts all feeds concurrently and preserves successful feeds when one source fails', async () => {
+  const pending = [];
+  const { GET } = newsRoute((url, options) => new Promise((resolve, reject) => {
+    assert.ok(options.signal);
+    pending.push({ resolve, reject });
+  }));
+  const response = GET(new Request('https://example.com/api/news'));
+  assert.equal(pending.length, 4);
+  pending[0].resolve({ ok: true, text: async () => '<rss><channel><item><title>ASELS haber</title><link>https://example.com/article</link><pubDate>Fri, 16 Oct 2026 10:00:00 GMT</pubDate><source>Kaynak</source></item></channel></rss>' });
+  pending.slice(1).forEach(p => p.reject(new Error('Source timed out')));
+  const result = await response;
+  assert.equal(result.status, 200);
+  assert.equal(result.body.count, 1);
+  assert.equal(result.body.partial, true);
+});
+test('All failed news sources report service failure, rather than a successful empty news list', async () => {
+  const { GET } = newsRoute(async () => ({ ok: false, status: 503 }));
+  const result = await GET(new Request('https://example.com/api/news'));
+  assert.equal(result.status, 503);
+  assert.equal(result.body.success, false);
+});

@@ -17,20 +17,18 @@ async function handleSync(request: Request) {
     const { searchParams } = new URL(request.url);
     const authHeader = request.headers.get('authorization') || '';
     const cronSecretHeader = request.headers.get('x-cron-secret') || '';
-    const secretQuery = searchParams.get('secret') || '';
 
     const expectedSecret = process.env.CRON_SECRET;
 
-    // Security Check: CRON_SECRET is strictly mandatory
+    // Security Check: CRON_SECRET is strictly mandatory via headers only (never via URL query)
     const isAuthorized =
       Boolean(expectedSecret) &&
       (authHeader === `Bearer ${expectedSecret}` ||
-        cronSecretHeader === expectedSecret ||
-        secretQuery === expectedSecret);
+        cronSecretHeader === expectedSecret);
 
     if (!isAuthorized) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized: Valid CRON_SECRET is required' },
+        { success: false, error: 'Unauthorized: Valid CRON_SECRET header is required' },
         { status: 401 }
       );
     }

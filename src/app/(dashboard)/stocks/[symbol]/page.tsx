@@ -243,7 +243,8 @@ export default function StockDetailPage({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
         <div>
           {/* Symbol & Market Status Badge */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <InstrumentLogo symbol={symbol} name={stock?.name || symbol} size="lg" />
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary font-mono">
               {symbol}
             </h1>

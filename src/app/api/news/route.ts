@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { rssPlainText } from '@/lib/news/rssText';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,12 +35,14 @@ async function fetchLiveNews(
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
+      signal: AbortSignal.timeout(8000),
       next: { revalidate: 180 }, // cache for 3 mins
     });
 
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`RSS upstream HTTP ${res.status}`);
 
     const xmlText = await res.text();
+    if (!/<rss\b/i.test(xmlText)) throw new Error('News upstream did not return RSS');
     const items: NewsArticle[] = [];
 
     // Parse XML items using regex
@@ -57,8 +60,8 @@ async function fetchLiveNews(
       const descMatch = itemContent.match(/<description>([\s\S]*?)<\/description>/);
 
       if (titleMatch) {
-        let rawTitle = titleMatch[1].replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-        let source = sourceMatch ? sourceMatch[1].trim() : 'Finans';
+        let rawTitle = rssPlainText(titleMatch[1]);
+        let source = sourceMatch ? rssPlainText(sourceMatch[1]) : 'Finans';
 
         // Strip source suffix from title if present (e.g. "Haber Başlığı - Bloomberg HT")
         if (rawTitle.includes(' - ')) {
@@ -70,7 +73,7 @@ async function fetchLiveNews(
         }
 
         // Clean HTML description
-        let rawSummary = descMatch ? descMatch[1].replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').trim() : '';
+        let rawSummary = descMatch ? rssPlainText(descMatch[1]) : '';
         if (!rawSummary || rawSummary === rawTitle) {
           rawSummary = `${rawTitle}. Kaynak: ${source}`;
         }
@@ -154,7 +157,7 @@ async function fetchLiveNews(
     return items;
   } catch (error) {
     console.error('Error fetching live RSS news:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -171,62 +174,40 @@ export async function GET(request: Request) {
 
     let allNews: NewsArticle[] = [];
 
-    // If portfolio specific category requested
+    type Feed = { query: string; category: NewsArticle['category']; matchPortfolio?: boolean };
+    const feeds: Feed[] = [];
     if (category === 'PORTFOLIO' && portfolioSymbols.length > 0) {
-      // Chunk symbols into search queries for Google News
-      const chunkSize = 5;
-      for (let i = 0; i < portfolioSymbols.length; i += chunkSize) {
-        const chunk = portfolioSymbols.slice(i, i + chunkSize);
-        const query = `(${chunk.join(' OR ')}) hisse OR KAP OR borsa OR fon`;
-        const portNews = await fetchLiveNews(query, 'PORTFOLIO', portfolioSymbols);
-        allNews.push(...portNews);
-        if (i >= 15) break; // Limit to max 3 chunks for speed
+      for (let i = 0; i < Math.min(portfolioSymbols.length, 20); i += 5) {
+        feeds.push({ query: `(${portfolioSymbols.slice(i, i + 5).join(' OR ')}) hisse OR KAP OR borsa OR fon`, category: 'PORTFOLIO' });
       }
-
-      // Also fetch general BIST and KAP to catch any other mentions
-      const bistGeneral = await fetchLiveNews('Borsa Istanbul OR BIST 100 OR BIST hisse', 'PORTFOLIO', portfolioSymbols);
-      const kapGeneral = await fetchLiveNews('Kamuyu Aydinlatma Platformu KAP hisse sozlesme', 'PORTFOLIO', portfolioSymbols);
-
-      // Filter general news to those that mention user's portfolio symbols
-      const matchedGeneral = [...bistGeneral, ...kapGeneral].filter((n) => {
-        const text = `${n.title} ${n.summary}`.toUpperCase();
-        return portfolioSymbols.some((sym) => text.includes(sym) || n.relatedSymbols?.includes(sym));
-      });
-
-      allNews.push(...matchedGeneral);
+      feeds.push(
+        { query: 'Borsa Istanbul OR BIST 100 OR BIST hisse', category: 'PORTFOLIO', matchPortfolio: true },
+        { query: 'Kamuyu Aydinlatma Platformu KAP hisse sozlesme', category: 'PORTFOLIO', matchPortfolio: true },
+      );
     } else {
-      // General categories
-      if (category === 'BIST' || !category || category === 'ALL') {
-        const bistNews = await fetchLiveNews('Borsa Istanbul OR BIST 100 OR BIST hisse', 'BIST', portfolioSymbols);
-        allNews.push(...bistNews);
-      }
-
-      if (category === 'KAP' || !category || category === 'ALL') {
-        const kapNews = await fetchLiveNews('Kamuyu Aydinlatma Platformu KAP hisse sozlesme bilanco', 'KAP', portfolioSymbols);
-        allNews.push(...kapNews);
-      }
-
-      if (category === 'GLOBAL' || !category || category === 'ALL') {
-        const globalNews = await fetchLiveNews('Wall Street OR Nasdaq OR Fed faiz OR SP500', 'GLOBAL', portfolioSymbols);
-        allNews.push(...globalNews);
-      }
-
-      if (category === 'MACRO' || !category || category === 'ALL') {
-        const macroNews = await fetchLiveNews('Altin fiyati gram altin OR Merkez Bankasi OR Enflasyon', 'MACRO', portfolioSymbols);
-        allNews.push(...macroNews);
-      }
-
-      // If a specific symbol is requested, fetch targeted news directly
-      if (symbol) {
-        const cleanSym = symbol.replace('_', ' ').trim();
-        const specificNews = await fetchLiveNews(
-          `"${cleanSym}" OR "${symbol}" (hisse OR piyasa OR ekonomi OR borsa OR altin OR fon)`,
-          'BIST',
-          [symbol.toUpperCase()]
-        );
-        allNews.unshift(...specificNews);
-      }
+      const generalFeeds: Feed[] = [
+        { query: 'Borsa Istanbul OR BIST 100 OR BIST hisse', category: 'BIST' },
+        { query: 'Kamuyu Aydinlatma Platformu KAP hisse sozlesme bilanco', category: 'KAP' },
+        { query: 'Wall Street OR Nasdaq OR Fed faiz OR SP500', category: 'GLOBAL' },
+        { query: 'Altin fiyati gram altin OR Merkez Bankasi OR Enflasyon', category: 'MACRO' },
+      ];
+      feeds.push(...generalFeeds.filter(feed => !category || category === 'ALL' || category === feed.category));
+      if (symbol) feeds.push({ query: `"${symbol.replace('_', ' ').trim()}" OR "${symbol}" (hisse OR piyasa OR ekonomi OR borsa OR altin OR fon)`, category: 'BIST' });
     }
+
+    // A slow or unavailable source must not serialize/block all the other feeds.
+    const results = await Promise.allSettled(feeds.map(async feed => {
+      const articles = await fetchLiveNews(feed.query, feed.category, portfolioSymbols);
+      return feed.matchPortfolio ? articles.filter(article => {
+        const text = `${article.title} ${article.summary}`.toUpperCase();
+        return portfolioSymbols.some(sym => text.includes(sym) || article.relatedSymbols?.includes(sym));
+      }) : articles;
+    }));
+    const failedFeeds = results.filter(result => result.status === 'rejected').length;
+    if (feeds.length > 0 && failedFeeds === feeds.length) {
+      return NextResponse.json({ success: false, error: 'Haber kaynaklarına şu anda ulaşılamıyor. Lütfen tekrar deneyin.', data: [] }, { status: 503 });
+    }
+    allNews = results.flatMap(result => result.status === 'fulfilled' ? result.value : []);
 
     // Sort by publication date newest first
     allNews.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
@@ -264,6 +245,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       count: uniqueNews.length,
+      partial: failedFeeds > 0,
+      warning: failedFeeds > 0 ? 'Bazı haber kaynakları yanıt vermedi; ulaşılabilen haberler gösteriliyor.' : undefined,
       data: uniqueNews,
     });
   } catch (error) {

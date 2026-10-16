@@ -2,7 +2,7 @@
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { Badge, Input, Button } from '@/components/ui';
 import { NewsArticle } from '@/app/api/news/route';
@@ -17,6 +17,9 @@ export default function NewsPage() {
     fetchPortfoliosAndTransactions,
   } = usePortfolioStore();
 
+  const requestRef = useRef<AbortController | null>(null);
+  const [newsError, setNewsError] = useState('');
+  const [newsWarning, setNewsWarning] = useState('');
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -41,6 +44,11 @@ export default function NewsPage() {
   }, [activeTransactions]);
 
   const fetchNews = async (isManualRefresh = false) => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    setNewsError(''); setNewsWarning('');
     try {
       if (isManualRefresh) setIsRefreshing(true);
       else setLoading(true);
@@ -54,22 +62,25 @@ export default function NewsPage() {
         params.append('symbols', portfolioSymbols.join(','));
       }
 
-      const res = await fetch(`/api/news?${params.toString()}`);
+      const res = await fetch(`/api/news?${params.toString()}`, { signal: controller.signal });
       const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setNews(data.data);
-      }
+      if (!res.ok || !data.success || !Array.isArray(data.data)) throw new Error(data.error || 'Haberler yüklenemedi.');
+      if (requestRef.current !== controller) return;
+      setNews(data.data);
+      setNewsWarning(data.warning || '');
     } catch (err) {
-      console.error('Failed to load news:', err);
+      if (requestRef.current !== controller) return;
+      setNewsError(!navigator.onLine ? 'İnternet bağlantısı yok. Bağlantınızı kontrol edip tekrar deneyin.' : controller.signal.aborted ? 'Haber sunucusu zamanında yanıt vermedi. Tekrar deneyin.' : err instanceof Error ? err.message : 'Haberler yüklenemedi. Tekrar deneyin.');
     } finally {
-      setLoading(false);
-      setIsRefreshing(false);
+      clearTimeout(timeout);
+      if (requestRef.current === controller) { setLoading(false); setIsRefreshing(false); }
     }
   };
 
   useEffect(() => {
     fetchNews();
     setSelectedSymbolFilter('ALL');
+    return () => requestRef.current?.abort();
   }, [selectedCategory, portfolioSymbols.join(',')]);
 
   const filteredNews = useMemo(() => {
@@ -235,6 +246,9 @@ export default function NewsPage() {
         )}
       </div>
 
+      {newsError && <div role="alert" className="glass-card p-4 space-y-2"><p className="text-sm text-danger">{newsError}</p>{news.length > 0 && <p className="text-xs text-text-muted">Son yüklenen haberler gösteriliyor.</p>}<Button variant="secondary" size="sm" onClick={() => fetchNews(true)} disabled={isRefreshing}>Tekrar Dene</Button></div>}
+      {newsWarning && <p role="status" className="text-xs text-warning">{newsWarning}</p>}
+
       {/* Portfolio Empty State */}
       {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length === 0 && !loading ? (
         <div className="glass-card p-12 text-center space-y-4">
@@ -260,7 +274,7 @@ export default function NewsPage() {
           <div className="w-8 h-8 mx-auto border-2 border-accent border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-medium">Canlı haberler ve KAP bildirimleri yükleniyor...</p>
         </div>
-      ) : filteredNews.length === 0 ? (
+      ) : newsError && news.length === 0 ? null : filteredNews.length === 0 ? (
         <div className="glass-card p-12 text-center text-text-muted space-y-2">
           <svg className="w-10 h-10 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />

@@ -13,6 +13,7 @@ import {
   saveStoredOpenRouterKey,
   getStoredDefaultModel,
 } from '@/lib/ai/apiKeyStorage';
+import { StockMindMark } from '@/components/ui/StockMindMark';
 import { ChatMessageContent } from '@/components/ai/ChatMessageContent';
 import { useChatScroll } from '@/hooks/useChatScroll';
 
@@ -340,124 +341,19 @@ function AIAssistantContent() {
 
   return (
     <div style={{ height: viewportHeight ? `calc(${viewportHeight}px - 3.5rem - 5rem - env(safe-area-inset-bottom, 0px))` : 'calc(100dvh - 8.5rem)' }} className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]">
-      {/* Top Header - Compact for Mobile, Detailed for Desktop */}
-      <div className="glass-card p-2 sm:p-3 mb-2 shrink-0 rounded-2xl border border-border shadow-sm">
-        {/* Mobile Header (Single Compact Row) */}
-        <div className="flex sm:hidden items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-accent to-accent-secondary flex items-center justify-center text-white shrink-0 shadow-md shadow-accent/20">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-xs font-bold text-text-primary truncate">StockMind AI</h1>
-              <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Canlı Lisanslı
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* History Button */}
-            <button
-              type="button"
-              onClick={() => setShowHistoryModal(true)}
-              className="p-1.5 text-text-muted hover:text-text-primary rounded-lg border border-border hover:bg-bg-hover transition-colors text-xs cursor-pointer flex items-center gap-1"
-              title="Sohbet Geçmişi"
-            >
-              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-            </button>
-
-            {/* New Chat Button */}
-            <button
-              type="button"
-              onClick={handleCreateNewSession}
-              className="p-1.5 text-accent hover:text-white rounded-lg border border-accent/30 bg-accent/10 hover:bg-accent transition-colors text-xs cursor-pointer"
-              title="Yeni Sohbet"
-            >
-              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-            </button>
-
-            {/* Model Select */}
-            <select
-              value={selectedModel}
-              onChange={(e) => {
-                setSelectedModel(e.target.value);
-                saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value);
-              }}
-              className="bg-bg-input text-text-primary text-[11px] rounded-lg border border-border px-1.5 py-1 focus:border-accent focus:outline-none max-w-[105px] truncate cursor-pointer font-medium"
-            >
-              {AVAILABLE_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name.split(' (')[0]}
-                </option>
-              ))}
-            </select>
+      <div className="glass-card p-3 mb-2 shrink-0 rounded-2xl border border-border space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0"><StockMindMark /><div className="min-w-0"><h1 className="text-sm font-semibold text-text-primary truncate">StockMind AI</h1><p className="text-[10px] text-text-muted">Finans asistanı</p></div></div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button type="button" onClick={() => setShowHistoryModal(true)} aria-label="Sohbet Geçmişi" title="Sohbet Geçmişi" className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-border text-text-secondary hover:bg-bg-hover"><UIIcon name="history" className="w-5 h-5" /></button>
+            <button type="button" onClick={handleCreateNewSession} aria-label="Yeni Sohbet" title="Yeni Sohbet" className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-accent/30 text-accent hover:bg-accent/10"><UIIcon name="plus" className="w-5 h-5" /></button>
           </div>
         </div>
-
-        {/* Desktop Header */}
-        <div className="hidden sm:flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent to-accent-secondary flex items-center justify-center text-white shadow-lg shadow-accent/25 shrink-0">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base font-bold text-text-primary">StockMind AI Danışman</h1>
-                <Badge variant="success" size="sm" dot>
-                  Canlı Piyasa & Portföy Entegre
-                </Badge>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                  Sistem Lisansı Aktif
-                </span>
-              </div>
-              <p className="text-xs text-text-muted mt-0.5">BIST 100, TEFAS ve Küresel Piyasalar Canlı Analiz Motoru</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* History Button */}
-            <button
-              type="button"
-              onClick={() => setShowHistoryModal(true)}
-              className="px-3 py-1.5 rounded-xl border border-border bg-bg-secondary hover:bg-bg-hover text-xs font-semibold text-text-primary flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-              <span>Geçmiş Sohbetler ({sessions.length})</span>
-            </button>
-
-            {/* New Chat Button */}
-            <button
-              type="button"
-              onClick={handleCreateNewSession}
-              className="px-3 py-1.5 rounded-xl border border-accent/40 bg-accent/15 hover:bg-accent text-accent hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-              <span>Yeni Sohbet</span>
-            </button>
-
-            {/* Model Selector */}
-            <select
-              value={selectedModel}
-              onChange={(e) => {
-                setSelectedModel(e.target.value);
-                saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value);
-              }}
-              className="bg-bg-input text-text-primary text-xs rounded-xl border border-border px-3 py-1.5 focus:border-accent focus:outline-none cursor-pointer font-medium"
-            >
-              {AVAILABLE_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <label className="flex items-center gap-2 text-xs text-text-muted">Model
+          <select aria-label="AI modeli" value={selectedModel} onChange={e => { setSelectedModel(e.target.value); saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value); }} className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-bg-input border border-border text-xs text-text-primary">
+            {AVAILABLE_MODELS.map(model => <option key={model.id} value={model.id}>{model.name.split(' (')[0]}</option>)}
+          </select>
+        </label>
       </div>
 
       {/* Chat Messages Body */}
@@ -484,10 +380,10 @@ function AIAssistantContent() {
                   className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
                     isUser
                       ? 'bg-accent text-white shadow-md shadow-accent/20'
-                      : 'bg-gradient-to-tr from-accent to-accent-secondary text-white'
+                      : 'bg-bg-card border border-border'
                   }`}
                 >
-                  {isUser ? 'Siz' : 'AI'}
+                  {isUser ? 'Siz' : <StockMindMark className="w-6 h-6" />}
                 </div>
 
                 {/* Message Bubble */}
@@ -539,7 +435,7 @@ function AIAssistantContent() {
           {loading && (
             <div className="flex items-start gap-2 sm:gap-3 animate-fade-in">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-accent to-accent-secondary text-white flex items-center justify-center text-xs font-bold shrink-0">
-                AI
+                <StockMindMark className="w-6 h-6" />
               </div>
               <div className="glass-card p-3 sm:p-4 rounded-2xl rounded-tl-xs border border-border/80 flex items-center gap-2 text-xs text-text-muted">
                 <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
