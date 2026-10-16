@@ -16,6 +16,8 @@ import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendar
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, StateView } from '@/components/ui';
+import { useAuth } from '@/hooks/useAuth';
+import { ProRequestModal } from '@/components/pro/ProRequestModal';
 
 export default function PortfolioPage() {
   const {
@@ -54,6 +56,27 @@ export default function PortfolioPage() {
   const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+
+  const { user, profile } = useAuth();
+  const [showProModal, setShowProModal] = useState(false);
+  const isPro = Boolean(
+    user?.app_metadata?.plan === 'pro' ||
+    user?.app_metadata?.is_pro === true ||
+    profile?.isPro
+  );
+
+  const handleOpenNewPortfolio = () => {
+    if (!isPro && portfolios.length >= 1) {
+      showToast({
+        type: 'warning',
+        title: 'Çoklu Portföy — Pro Özellik',
+        message: 'Standart planda 1 portföy oluşturulabilir. Sınırsız portföy (Temettü, Büyüme, Fon vb.) yönetmek için Pro hesaba yükseltin.',
+      });
+      setShowProModal(true);
+      return;
+    }
+    setIsNewPortModalOpen(true);
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -156,6 +179,18 @@ export default function PortfolioPage() {
   const handleCreatePortfolio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPortName.trim()) return;
+
+    if (!isPro && portfolios.length >= 1) {
+      showToast({
+        type: 'warning',
+        title: 'Çoklu Portföy — Pro Özellik',
+        message: 'Standart hesaplarda 1 portföy oluşturulabilir. Sınırsız portföy yönetimi için Pro hesaba yükseltin.',
+      });
+      setIsNewPortModalOpen(false);
+      setShowProModal(true);
+      return;
+    }
+
     const created = await addPortfolio(newPortName.trim(), newPortDesc.trim());
     if (created) {
       setActivePortfolioId(created.id);
@@ -267,13 +302,26 @@ export default function PortfolioPage() {
               );
             })}
             <button
-              onClick={() => setIsNewPortModalOpen(true)}
-              className="p-1.5 text-text-muted hover:text-accent rounded-lg transition-colors cursor-pointer shrink-0"
-              title="Yeni Portföy Oluştur"
+              onClick={handleOpenNewPortfolio}
+              className={`p-1.5 rounded-lg transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                !isPro && portfolios.length >= 1
+                  ? 'text-amber-500/90 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                  : 'text-text-muted hover:text-accent hover:bg-bg-secondary'
+              }`}
+              title={
+                !isPro && portfolios.length >= 1
+                  ? 'Çoklu Portföy Oluştur (Pro Üyelik Gerekir)'
+                  : 'Yeni Portföy Oluştur'
+              }
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
+              {!isPro && portfolios.length >= 1 && (
+                <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-500/20 text-amber-500">
+                  PRO
+                </span>
+              )}
             </button>
           </div>
 
@@ -834,6 +882,11 @@ export default function PortfolioPage() {
           </div>
         </div>
       </Modal>
+
+      <ProRequestModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+      />
     </div>
   );
 }

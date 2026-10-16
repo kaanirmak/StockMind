@@ -140,6 +140,26 @@ export function ProPlanCard({
             </div>
             <p className="text-[11px] text-text-muted">Hisse bazlı canlı zeka sinyalleri ve 18:30 günlük AI kapanış bülteni.</p>
           </div>
+
+          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
+            <div className="flex items-center justify-between font-semibold">
+              <span className="text-text-primary">Sınırsız Çoklu Portföy</span>
+              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                {effectivePro ? '✓ Açık' : '🔒 Pro'}
+              </span>
+            </div>
+            <p className="text-[11px] text-text-muted">Farklı stratejiler (Temettü, Büyüme, Fon) için sınırsız portföy (Standart: 1).</p>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
+            <div className="flex items-center justify-between font-semibold">
+              <span className="text-text-primary">Sınırsız Akıllı Fiyat Alarmı</span>
+              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                {effectivePro ? '✓ Açık' : '🔒 Pro'}
+              </span>
+            </div>
+            <p className="text-[11px] text-text-muted">Yüzdesel ve hedef fiyat bazlı sınırsız anlık sesli bildirim (Standart: 3).</p>
+          </div>
         </div>
       </div>
 

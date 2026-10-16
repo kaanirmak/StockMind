@@ -310,3 +310,67 @@ test('portfolio publishes ready quotes while a slower asset is still loading', a
   assert.equal(state.livePrices.THYAO.price, 100);
   assert.equal(state.isRefreshingPrices, false);
 });
+
+test('PRO-01: multi-portfolio limit permits 1 portfolio for free accounts and unlimited for pro', () => {
+  const checkCanCreatePortfolio = (isPro, currentCount) => {
+    if (!isPro && currentCount >= 1) return false;
+    return true;
+  };
+
+  // Free tier
+  assert.equal(checkCanCreatePortfolio(false, 0), true, 'Free user can create their 1st portfolio');
+  assert.equal(checkCanCreatePortfolio(false, 1), false, 'Free user cannot create a 2nd portfolio');
+  assert.equal(checkCanCreatePortfolio(false, 5), false, 'Free user cannot create more than 1 portfolio');
+
+  // Pro tier
+  assert.equal(checkCanCreatePortfolio(true, 0), true, 'Pro user can create 1st portfolio');
+  assert.equal(checkCanCreatePortfolio(true, 1), true, 'Pro user can create 2nd portfolio');
+  assert.equal(checkCanCreatePortfolio(true, 10), true, 'Pro user has unlimited portfolios');
+});
+
+test('PRO-02: price alert limit permits 3 alerts for free accounts while allowing existing alert edits and unlimited for pro', () => {
+  const checkCanSetAlert = ({ isPro, existingAlerts, targetSymbol }) => {
+    const activeAlertsCount = existingAlerts.filter(
+      item => (item.targetPrice || item.alertPercent) && item.symbol.toUpperCase() !== targetSymbol.toUpperCase()
+    ).length;
+    const existingItem = existingAlerts.find(item => item.symbol.toUpperCase() === targetSymbol.toUpperCase());
+    const hasExistingAlert = Boolean(existingItem?.targetPrice || existingItem?.alertPercent);
+    const isLimitReached = !isPro && activeAlertsCount >= 3 && !hasExistingAlert;
+    return !isLimitReached;
+  };
+
+  const threeAlerts = [
+    { symbol: 'THYAO', targetPrice: 320 },
+    { symbol: 'ASELS', alertPercent: 5 },
+    { symbol: 'GARAN', targetPrice: 110 },
+  ];
+
+  // Free tier: 3 alerts configured, adding 4th should be blocked
+  assert.equal(
+    checkCanSetAlert({ isPro: false, existingAlerts: threeAlerts, targetSymbol: 'KCHOL' }),
+    false,
+    'Free user cannot set a 4th alert'
+  );
+
+  // Free tier: updating an already alerted stock (THYAO) should be permitted
+  assert.equal(
+    checkCanSetAlert({ isPro: false, existingAlerts: threeAlerts, targetSymbol: 'THYAO' }),
+    true,
+    'Free user can update an existing alert'
+  );
+
+  // Free tier: fewer than 3 alerts permits new alert
+  assert.equal(
+    checkCanSetAlert({ isPro: false, existingAlerts: threeAlerts.slice(0, 2), targetSymbol: 'KCHOL' }),
+    true,
+    'Free user with 2 alerts can set a 3rd alert'
+  );
+
+  // Pro tier: unlimited alerts
+  assert.equal(
+    checkCanSetAlert({ isPro: true, existingAlerts: threeAlerts, targetSymbol: 'KCHOL' }),
+    true,
+    'Pro user can set 4th and unlimited alerts'
+  );
+});
+

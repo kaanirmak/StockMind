@@ -11,6 +11,8 @@ import {
   calculateTargetPriceFromPercent,
 } from '@/store/useWatchlistStore';
 import { sendPushNotification } from '@/lib/notifications/pushNotification';
+import { useAuth } from '@/hooks/useAuth';
+import { ProRequestModal } from '@/components/pro/ProRequestModal';
 
 export interface PriceAlertModalProps {
   isOpen: boolean;
@@ -30,6 +32,23 @@ const PERCENT_PRESETS = [1, 2, 3, 5, 10];
 export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps) {
   const { showToast } = useToast();
   const { items, setAlert, removeAlert } = useWatchlistStore();
+  const { user, profile } = useAuth();
+  const [showProModal, setShowProModal] = useState(false);
+
+  const isPro = Boolean(
+    user?.app_metadata?.plan === 'pro' ||
+    user?.app_metadata?.is_pro === true ||
+    profile?.isPro
+  );
+
+  const activeAlertsCount = items.filter(
+    (i) => (i.targetPrice || i.alertPercent) && i.symbol.toUpperCase() !== stock?.symbol?.toUpperCase()
+  ).length;
+  const existingItem = stock
+    ? items.find((i) => i.symbol.toUpperCase() === stock.symbol.toUpperCase())
+    : null;
+  const hasExistingAlert = Boolean(existingItem?.targetPrice || existingItem?.alertPercent);
+  const isLimitReached = !isPro && activeAlertsCount >= 3 && !hasExistingAlert;
 
   const [mode, setMode] = useState<'percent' | 'price'>('percent');
   const [direction, setDirection] = useState<'up' | 'down' | 'both'>('up');
@@ -38,10 +57,6 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
   const [targetPriceInput, setTargetPriceInput] = useState<string>('');
 
   const currentPrice = stock?.price || 0;
-  const existingItem = stock
-    ? items.find((i) => i.symbol.toUpperCase() === stock.symbol.toUpperCase())
-    : null;
-  const hasExistingAlert = Boolean(existingItem?.targetPrice || existingItem?.alertPercent);
 
   // Initialize form state when modal opens or stock changes
   useEffect(() => {
@@ -94,6 +109,16 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
   const handleSaveAlert = (e: React.FormEvent) => {
     e.preventDefault();
     if (!stock || currentPrice <= 0) return;
+
+    if (isLimitReached) {
+      showToast({
+        type: 'warning',
+        title: 'Fiyat Alarmı Kotası Doldu',
+        message: 'Standart hesaplar en fazla 3 aktif alarm kurabilir. Sınırsız alarm için Pro\'ya geçin.',
+      });
+      setShowProModal(true);
+      return;
+    }
 
     let finalAlertType: PriceAlertType = 'price';
     let finalTargetPrice = 0;
@@ -182,6 +207,50 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
       description="Hisse belirlediğiniz yüzde veya fiyata ulaştığında anlık sesli bildirim alın."
     >
       <form onSubmit={handleSaveAlert} className="space-y-4 pt-1">
+        {/* Quota & Plan Indicator */}
+        <div className="flex items-center justify-between text-xs px-1">
+          <span className="text-text-muted">Alarm Kotası:</span>
+          {isPro ? (
+            <span className="inline-flex items-center gap-1 font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+              <UIIcon name="sparkles" className="w-3 h-3" />
+              Sınırsız (StockMind Pro)
+            </span>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full border ${
+                isLimitReached
+                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                  : 'bg-bg-secondary text-text-secondary border-border'
+              }`}
+            >
+              <span>{activeAlertsCount} / 3 Aktif Alarm</span>
+              {isLimitReached && <span className="font-bold text-rose-400"> (Dolu)</span>}
+            </span>
+          )}
+        </div>
+
+        {/* Limit reached warning banner */}
+        {isLimitReached && (
+          <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start justify-between gap-3 animate-fade-in">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-xs">
+                <UIIcon name="sparkles" className="w-4 h-4" />
+                <span>Standart Hesap Sınırı (3 Alarm)</span>
+              </div>
+              <p className="text-[11px] text-text-secondary leading-snug">
+                Standart hesaplarda en fazla 3 aktif alarm tutulabilir. Mevcut bir alarmı silerek yer açabilir veya Pro&apos;ya geçerek sınırsız alarm kurabilirsiniz.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowProModal(true)}
+              className="shrink-0 px-2.5 py-1.5 rounded-lg bg-amber-500 text-black font-bold text-[11px] hover:bg-amber-400 transition-colors cursor-pointer shadow-sm shadow-amber-500/20"
+            >
+              Pro&apos;ya Geç
+            </button>
+          </div>
+        )}
+
         {/* Stock Summary Header */}
         <div className="flex items-center justify-between p-3 rounded-2xl bg-bg-secondary/70 border border-border">
           <div className="min-w-0">
@@ -421,12 +490,31 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
             <Button type="button" variant="secondary" size="sm" onClick={onClose}>
               İptal
             </Button>
-            <Button type="submit" variant="primary" size="sm" className="font-bold">
-              {hasExistingAlert ? 'Alarmı Güncelle' : "Alarmı Kur "}
+            <Button
+              type="submit"
+              variant={isLimitReached ? 'secondary' : 'primary'}
+              size="sm"
+              className="font-bold"
+            >
+              {isLimitReached ? (
+                <span className="flex items-center gap-1.5 text-amber-400">
+                  <UIIcon name="sparkles" className="w-3.5 h-3.5" />
+                  <span>Pro ile Kur</span>
+                </span>
+              ) : hasExistingAlert ? (
+                'Alarmı Güncelle'
+              ) : (
+                'Alarmı Kur'
+              )}
             </Button>
           </div>
         </div>
       </form>
+
+      <ProRequestModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+      />
     </Modal>
   );
 }
