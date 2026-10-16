@@ -709,3 +709,62 @@ test('CASH-08: a positive final balance does not hide missing historical funding
   assert.equal(ledger.hasDeficit, false);
   assert.equal(ledger.historicalDeficit, true);
 });
+
+test('DATA-10: QQQ and global/BIST ETFs are correctly recognized as ETF asset type with NASDAQ/BIST exchange', () => {
+  const { cleanSymbol, isEtfSymbol, getAssetTypeLabel } = loadModule('src/lib/utils/symbol.ts');
+
+  // QQQ check
+  const qqqClean = cleanSymbol('QQQ');
+  assert.equal(qqqClean.symbol, 'QQQ');
+  assert.equal(qqqClean.exchange, 'NASDAQ');
+  assert.equal(isEtfSymbol('QQQ'), true);
+
+  const qqqLabel = getAssetTypeLabel({ symbol: 'QQQ' });
+  assert.equal(qqqLabel.typeLabel, 'ETF');
+  assert.equal(qqqLabel.badgeLabel, 'ABD ETF');
+  assert.equal(qqqLabel.exchangeLabel, 'NASDAQ');
+  assert.equal(qqqLabel.isEtf, true);
+
+  // SPY check
+  const spyClean = cleanSymbol('SPY');
+  assert.equal(spyClean.exchange, 'NASDAQ');
+  assert.equal(isEtfSymbol('SPY'), true);
+
+  // BIST ETF check
+  const gldtrClean = cleanSymbol('GLDTR');
+  assert.equal(gldtrClean.exchange, 'BIST');
+  assert.equal(isEtfSymbol('GLDTR'), true);
+  const gldtrLabel = getAssetTypeLabel({ symbol: 'GLDTR' });
+  assert.equal(gldtrLabel.typeLabel, 'ETF');
+  assert.equal(gldtrLabel.badgeLabel, 'BIST ETF');
+
+  // Regular BIST stock
+  const thyaoClean = cleanSymbol('THYAO');
+  assert.equal(thyaoClean.exchange, 'BIST');
+  assert.equal(isEtfSymbol('THYAO'), false);
+  const thyaoLabel = getAssetTypeLabel({ symbol: 'THYAO' });
+  assert.equal(thyaoLabel.typeLabel, 'Hisse');
+  assert.equal(thyaoLabel.badgeLabel, 'BIST Hisse');
+
+  // Holding calculation with QQQ
+  const txs = [
+    {
+      id: 'tx-qqq',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'QQQ',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 1,
+      price: 500,
+      currency: 'USD',
+      exchangeRate: 38.5,
+      transactionDate: '2026-10-15',
+    },
+  ];
+  const summary = calculatePortfolioSummary(txs, { QQQ: 520 }, 38.5);
+  assert.equal(summary.holdings.length, 1);
+  assert.equal(summary.holdings[0].symbol, 'QQQ');
+  assert.equal(summary.holdings[0].exchange, 'NASDAQ');
+});
+

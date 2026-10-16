@@ -8,6 +8,154 @@ const tefasList: any[] = Array.isArray(TEFAS_DIRECTORY)
   : [];
 const TEFAS_SET = new Set(tefasList.map((f) => String(f.code || '').toUpperCase()));
 
+// US and Global ETFs (Traded on NASDAQ / NYSE / CBOE / etc.)
+export const US_ETFS = new Set([
+  'QQQ', 'TQQQ', 'SQQQ', 'SPY', 'VOO', 'IVV', 'VTI', 'DIA', 'IWM', 'RSP', 'VT',
+  'XLK', 'XLE', 'XLF', 'XLV', 'XLI', 'XLY', 'XLP', 'XLU', 'XLB', 'XLRE', 'XLC',
+  'SOXX', 'SMH', 'SOXL', 'SOXS', 'VGT', 'ARKK', 'ARKG', 'ARKW', 'BOTZ', 'CIBR',
+  'IGV', 'SKYY', 'SCHD', 'JEPI', 'JEPQ', 'VYM', 'HDV', 'DGRO', 'TLT', 'IEF',
+  'SHY', 'BND', 'AGG', 'GLD', 'SLV', 'IAU', 'USO', 'UNG', 'BITO', 'IBIT',
+  'FBTC', 'ETHE', 'FETH', 'VXUS', 'VEA', 'VWO', 'EEM', 'FXI', 'INDA', 'EWJ',
+  'EWG', 'EWZ', 'UPRO', 'SPXU', 'SSO', 'SDS', 'QLD', 'PSQ', 'TNA', 'TZA'
+]);
+
+// BIST Borsa Yatırım Fonları (BYF / BIST ETFs)
+export const BIST_ETFS = new Set([
+  'GLDTR', 'GMSTR', 'ZGOLD', 'USDTR', 'EURTR', 'FNBTR', 'IST30', 'ZPBDL', 'ZPLIB', 'KZLGY', 'SLVTR'
+]);
+
+// Popular US Stocks (NASDAQ & NYSE)
+export const US_STOCKS = new Set([
+  'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA', 'PLTR', 'AMD',
+  'NFLX', 'INTC', 'COIN', 'AVGO', 'CRM', 'ADBE', 'PYPL', 'UBER', 'ABNB', 'DIS',
+  'BA', 'JPM', 'V', 'MA', 'WMT', 'PG', 'JNJ', 'XOM', 'CVX', 'KO', 'PEP', 'MCD',
+  'NKE', 'LLY', 'UNH', 'COST', 'HD', 'BABA', 'NIO', 'TSM', 'ASML', 'ARM', 'PANW',
+  'CRWD', 'SNOW', 'MSTR', 'HOOD', 'SHOP', 'SQ', 'ROKU', 'MARA', 'RIOT', 'CLSK',
+  'RIVN', 'LCID', 'SOFI', 'BAC', 'C', 'GS', 'MS', 'QCOM', 'TXN', 'MU', 'LRCX',
+  'KLAC', 'AMAT', 'INTU', 'NOW', 'SNPS', 'CDNS', 'MRVL', 'ORCL', 'IBM', 'BRK.B',
+  'BRK.A', 'CAT', 'GE', 'DE', 'RTX', 'LMT', 'HON', 'MMM', 'UPS', 'FDX'
+]);
+
+export function isEtfSymbol(symbol: string): boolean {
+  const s = String(symbol || '')
+    .replace(/^(BIST|NASDAQ|NYSE|US|TEFAS|FON|IST):/, '')
+    .replace(/\.(IS|E|TI|BIST)$/i, '')
+    .toUpperCase()
+    .trim();
+  return US_ETFS.has(s) || BIST_ETFS.has(s);
+}
+
+export function isUsSymbol(symbol: string): boolean {
+  const s = String(symbol || '')
+    .replace(/^(BIST|NASDAQ|NYSE|US|TEFAS|FON|IST):/, '')
+    .replace(/\.(IS|E|TI|BIST)$/i, '')
+    .toUpperCase()
+    .trim();
+  return US_ETFS.has(s) || US_STOCKS.has(s);
+}
+
+export interface AssetDisplayInfo {
+  typeLabel: string;      // 'ETF' | 'Fon' | 'Hisse' | 'Kripto' | 'Emtia'
+  badgeLabel: string;     // 'ABD ETF' | 'BIST ETF' | 'TEFAS Fon' | 'ABD Hisse' | 'BIST Hisse'
+  badgeColor: string;     // styling classes
+  badgeIcon: string;      // emoji icon
+  exchangeLabel: string;  // 'NASDAQ' | 'NYSE' | 'Borsa İstanbul' | 'TEFAS'
+  isEtf: boolean;
+  isUs: boolean;
+}
+
+export function getAssetTypeLabel(item: {
+  symbol: string;
+  assetType?: string;
+  exchange?: string | null;
+  currency?: string;
+  originalCurrency?: string;
+}): AssetDisplayInfo {
+  const s = String(item.symbol || '')
+    .replace(/^(BIST|NASDAQ|NYSE|US|TEFAS|FON|IST):/, '')
+    .replace(/\.(IS|E|TI|BIST)$/i, '')
+    .toUpperCase()
+    .trim();
+  const isEtf = isEtfSymbol(s);
+  const isUs =
+    isUsSymbol(s) ||
+    (item.originalCurrency || '').toUpperCase() === 'USD' ||
+    (item.currency || '').toUpperCase() === 'USD' ||
+    item.exchange === 'NASDAQ' ||
+    item.exchange === 'NYSE';
+
+  if (isEtf) {
+    const isUsEtf = isUs || !BIST_ETFS.has(s);
+    return {
+      typeLabel: 'ETF',
+      badgeLabel: isUsEtf ? 'ABD ETF' : 'BIST ETF',
+      badgeColor: isUsEtf ? 'bg-sky-500/15 border-sky-500/30 text-sky-300' : 'bg-amber-500/15 border-amber-500/30 text-amber-300',
+      badgeIcon: '⚡',
+      exchangeLabel: isUsEtf ? (item.exchange && item.exchange !== 'BIST' ? item.exchange : 'NASDAQ') : 'Borsa İstanbul (BYF)',
+      isEtf: true,
+      isUs: isUsEtf,
+    };
+  }
+
+  if (item.assetType === 'fund' || item.exchange === 'TEFAS' || (s.length === 3 && TEFAS_SET.has(s))) {
+    return {
+      typeLabel: 'Fon',
+      badgeLabel: 'TEFAS Fon',
+      badgeColor: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300',
+      badgeIcon: '📈',
+      exchangeLabel: 'TEFAS',
+      isEtf: false,
+      isUs: false,
+    };
+  }
+
+  if (isUs) {
+    return {
+      typeLabel: 'Hisse',
+      badgeLabel: 'ABD Hisse',
+      badgeColor: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
+      badgeIcon: '🌐',
+      exchangeLabel: item.exchange && item.exchange !== 'BIST' ? item.exchange : 'NASDAQ',
+      isEtf: false,
+      isUs: true,
+    };
+  }
+
+  if (item.exchange === 'CRYPTO') {
+    return {
+      typeLabel: 'Kripto',
+      badgeLabel: 'Kripto',
+      badgeColor: 'bg-orange-500/15 border-orange-500/30 text-orange-300',
+      badgeIcon: '🪙',
+      exchangeLabel: 'Kripto',
+      isEtf: false,
+      isUs: false,
+    };
+  }
+
+  if (item.exchange === 'COMMODITY') {
+    return {
+      typeLabel: 'Emtia',
+      badgeLabel: 'Emtia',
+      badgeColor: 'bg-yellow-500/15 border-yellow-500/30 text-yellow-300',
+      badgeIcon: '🥇',
+      exchangeLabel: 'Emtia',
+      isEtf: false,
+      isUs: false,
+    };
+  }
+
+  return {
+    typeLabel: 'Hisse',
+    badgeLabel: 'BIST Hisse',
+    badgeColor: 'bg-violet-500/15 border-violet-500/30 text-violet-300',
+    badgeIcon: '📊',
+    exchangeLabel: item.exchange && item.exchange !== 'TEFAS' ? item.exchange : 'Borsa İstanbul',
+    isEtf: false,
+    isUs: false,
+  };
+}
+
 /**
  * Cleans broker prefixes (FON:, IST:, MUTF:, BIST:, etc.), ISIN codes, suffixes (.IS, .E)
  * and detects asset type & exchange. Also maps company names to tickers.
@@ -112,10 +260,19 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
     }
   }
 
-  // 6. Check if symbol is in TEFAS directory or follows fund patterns
+  // 6. Check if symbol is in TEFAS directory, US ETFs, BIST ETFs, or US Stocks
   if (TEFAS_SET.has(raw)) {
     assetType = 'fund';
     exchange = 'TEFAS';
+  } else if (US_ETFS.has(raw)) {
+    assetType = 'stock';
+    exchange = 'NASDAQ';
+  } else if (BIST_ETFS.has(raw)) {
+    assetType = 'stock';
+    exchange = 'BIST';
+  } else if (US_STOCKS.has(raw)) {
+    assetType = 'stock';
+    exchange = (raw === 'BRK.B' || raw === 'JPM' || raw === 'V' || raw === 'WMT' || raw === 'KO' || raw === 'DIS') ? 'NYSE' : 'NASDAQ';
   }
 
   return { symbol: raw, assetType, exchange };
@@ -170,4 +327,3 @@ export function parseInstrumentId(instrumentId: string): { exchange: string; sym
   const cleaned = cleanSymbol(instrumentId);
   return { exchange: cleaned.exchange, symbol: cleaned.symbol };
 }
-
