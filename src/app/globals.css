@@ -887,3 +887,9 @@ button, a {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 [hidden] { display: none !important; }
+
+/* Keep settings sections below the fixed-height app header at every breakpoint. */
+.settings-page > nav[aria-label="Ayar bölümleri"] { top: 3.5rem; }
+@media (min-width: 640px) {
+  .settings-page > nav[aria-label="Ayar bölümleri"] { top: 4rem; }
+}

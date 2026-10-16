@@ -4,6 +4,8 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 import { palette } from '@/theme/palette';
 
 
+import { useAppPlatform } from '@/hooks/useAppPlatform';
+import { AppInstallationCard } from '@/components/ui/AppInstallationCard';
 import { PortfolioDangerZone } from '@/components/portfolio/PortfolioDangerZone';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
@@ -38,6 +40,7 @@ const AVATAR_PRESETS: Array<{ label: string; icon: string; colors: [string, stri
 ];
 
 export default function SettingsPage() {
+  const { nativeAndroid } = useAppPlatform();
   const [settingsSection, setSettingsSection] = useState('profile');
   useEffect(() => {
     const syncHash = () => { const hash = window.location.hash.slice(1); if (['profile', 'notifications', 'appearance', 'ai-settings'].includes(hash)) setSettingsSection(hash); else if (hash === 'mobile') setSettingsSection('appearance'); };
@@ -585,47 +588,17 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(3rem+env(safe-area-inset-bottom))] max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="product-hero p-4 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white flex items-center justify-center shadow-lg shadow-violet-500/25 shrink-0">
-            <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.214 1.281a1.125 1.125 0 00.644.87l1.217.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827a1.125 1.125 0 00-.431.992v.255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456a1.125 1.125 0 00-1.076.124l-.22.128a1.125 1.125 0 00-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281a1.125 1.125 0 00-.644-.87l-1.217-.456a1.125 1.125 0 01-1.369-.49L3.59 15.36a1.125 1.125 0 01.26-1.431l1.004-.827a1.125 1.125 0 00.43-.992v-.255a1.125 1.125 0 00-.43-.99L3.85 10.037a1.125 1.125 0 01-.26-1.43L4.887 6.36a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124l.22-.128c.332-.183.582-.495.644-.869l.181-1.264z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">Ayarlar</h1>
-              <Badge variant={user ? 'success' : 'warning'} size="sm">{user ? 'Hesap bağlı' : 'Misafir modu'}</Badge>
-            </div>
-            <p className="text-text-secondary text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
-              Hesabınızı, görünümü, bildirim kanallarını ve yapay zekâ tercihlerini tek merkezden yönetin.
-            </p>
-          </div>
-        </div>
-        <div className="relative z-10 grid grid-cols-2 gap-2 text-xs w-full md:w-auto">
-          <div className="px-3.5 py-2.5 rounded-xl bg-bg-primary/55 border border-border/70 backdrop-blur-md">
-            <span className="text-text-muted block text-[10px] uppercase tracking-wider">Tema</span>
-            <strong className="text-text-primary">{resolvedTheme === 'dark' ? 'Koyu' : 'Açık'}</strong>
-          </div>
-          <div className="px-3.5 py-2.5 rounded-xl bg-bg-primary/55 border border-border/70 backdrop-blur-md">
-            <span className="text-text-muted block text-[10px] uppercase tracking-wider">Dil / Para</span>
-            <strong className="text-text-primary">{language.toUpperCase()} · {currency}</strong>
-          </div>
-        </div>
-      </div>
-
-      <nav aria-label="Ayar bölümleri" className="sticky top-14 z-20 grid grid-cols-2 sm:flex gap-1.5 p-1.5 rounded-xl bg-bg-card border border-border">
+      <h1 className="sr-only">Ayarlar</h1>
+      <nav aria-label="Ayar bölümleri" className="sticky top-14 sm:top-16 z-20 grid grid-cols-4 gap-1.5 p-1.5 rounded-xl bg-bg-card border border-border">
         {[
-          ['profile', 'Hesap & Güvenlik'], ['notifications', 'Bildirim Tercihleri'],
-          ['appearance', 'Görünüm & Tema'], ['ai-settings', 'AI Ayarları'],
-        ].map(([key, label]) => <button type="button" key={key} aria-pressed={settingsSection === key} onClick={() => { setSettingsSection(key); window.history.replaceState(null, '', `#${key}`); }} className={`min-h-11 min-w-0 px-2 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap ${settingsSection === key ? 'bg-accent/15 text-accent' : 'text-text-secondary hover:bg-bg-hover'}`}>{label}</button>)}
+          ['profile', 'Hesap & Güvenlik', 'Hesap'], ['notifications', 'Bildirim Tercihleri', 'Bildirimler'],
+          ['appearance', 'Görünüm & Tema', 'Görünüm'], ['ai-settings', 'AI Ayarları', 'AI'],
+        ].map(([key, label, shortLabel]) => <button type="button" key={key} aria-pressed={settingsSection === key} onClick={() => { setSettingsSection(key); window.history.replaceState(null, '', `#${key}`); }} className={`min-h-11 min-w-0 px-2 sm:px-3 rounded-lg text-[11px] sm:text-xs font-semibold whitespace-nowrap ${settingsSection === key ? 'bg-accent/15 text-accent' : 'text-text-secondary hover:bg-bg-hover'}`}><span className="sm:hidden">{shortLabel}</span><span className="hidden sm:inline">{label}</span></button>)}
       </nav>
 
       {/* Guest vs Logged in Account Banner */}
       {!user ? (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div hidden={settingsSection !== 'profile'} className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
             <div>
@@ -835,50 +808,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Mobile App & APK Card */}
-      <div hidden={settingsSection !== 'appearance'} id="mobile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4 !border-emerald-500/25">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993s-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.152-.5684.417.417 0 00-.569.152l-2.0223 3.503C15.583 8.359 13.856 8 12 8s-3.583.359-5.1352.949L4.8425 5.446a.417.417 0 00-.569-.152.416.416 0 00-.152.5684l1.997 3.459C2.688 11.086 0 14.887 0 19.341h24c0-4.454-2.688-8.255-6.1185-10.0196" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-text-primary">Mobil Uygulama (Android APK)</h3>
-              <p className="text-xs text-text-muted">StockMind'ı Android cihazınızda tam ekran yerel uygulama olarak kullanın.</p>
-            </div>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 self-start sm:self-auto">
-            v1.4.0 Güncel
-          </span>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-          <div className="space-y-1">
-            <div className="font-bold text-sm text-text-primary">StockMind.apk Paketini İndirin</div>
-            <p className="text-xs text-text-muted">
-              Doğrudan APK dosyasını indirerek Android 7.0+ telefon veya tabletinize saniyeler içinde kurabilirsiniz.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
-            <a
-              href="/api/download/apk"
-              download="StockMind.apk"
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 hover:opacity-95 transition-all cursor-pointer"
-            >
-              <span>Hemen İndir (5.9 MB)</span>
-            </a>
-            <Link
-              href="/download"
-              className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold text-xs border border-white/10 transition-all text-center"
-            >
-              QR & Rehber
-            </Link>
-          </div>
-        </div>
-      </div>
+      {settingsSection === 'appearance' && !nativeAndroid && <AppInstallationCard />}
 
       {/* Profile Card */}
       <div hidden={settingsSection !== 'profile'} id="profile" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-6">
@@ -1269,7 +1199,7 @@ export default function SettingsPage() {
       </div>
 
       {/* APK Version & In-App Update Management Card */}
-      <div hidden={settingsSection !== 'appearance'} className="settings-panel p-4 sm:p-6 space-y-5">
+      {nativeAndroid && <div hidden={settingsSection !== 'appearance'} className="settings-panel p-4 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">
           <div>
             <div className="flex items-center gap-2">
@@ -1372,7 +1302,7 @@ export default function SettingsPage() {
             <span>StockMind v{remoteVersionName} APK İndir / Güncelle</span>
           </a>
         </div>
-      </div>
+      </div>}
 
       {/* Email & Notification Settings Card */}
       <div hidden={settingsSection !== 'notifications'} className="settings-panel p-4 sm:p-6 space-y-6">

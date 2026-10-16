@@ -20,6 +20,7 @@ export function DailyPnLCalendarHeatmap({
   transactions,
   className = '',
 }: DailyPnLCalendarHeatmapProps) {
+  const [calendarMonth, setCalendarMonth] = useState('');
   const [timeframe, setTimeframe] = useState<'1Y' | '6M' | 'YTD'>('1Y');
   const [hoveredDay, setHoveredDay] = useState<DayPnLRecord | null>(null);
   const [selectedDay, setSelectedDay] = useState<DayPnLRecord | null>(null);
@@ -96,7 +97,7 @@ export function DailyPnLCalendarHeatmap({
 
     fetchAllHistory();
 
-    return () => {
+  return () => {
       isMounted = false;
     };
   }, [summary.holdings, transactions]);
@@ -161,6 +162,15 @@ export function DailyPnLCalendarHeatmap({
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const activeDisplayDay = selectedDay || hoveredDay;
+  const calendarDays = heatmapData.weeks.flat();
+  const months = [...new Set(calendarDays.map(day => day.date.slice(0, 7)))].sort();
+  const month = months.includes(calendarMonth) ? calendarMonth : months.at(-1) || new Date().toISOString().slice(0, 7);
+  const monthIndex = months.indexOf(month);
+  const firstDay = new Date(`${month}-01T12:00:00`);
+  const leadingDays = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0).getDate();
+
+
 
   return (
     <div
@@ -172,7 +182,7 @@ export function DailyPnLCalendarHeatmap({
       <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4 relative z-10">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 via-accent/15 to-purple-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
@@ -183,11 +193,9 @@ export function DailyPnLCalendarHeatmap({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-black text-text-primary tracking-tight">
-                  Günlük Kâr / Zarar Aktivite Haritası
+                  Günlük Aktivite
                 </h3>
-                <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 text-accent border border-accent/20">
-                  Zaman Serisi Matrisi
-                </span>
+
               </div>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className="text-xs text-text-secondary">
@@ -209,11 +217,11 @@ export function DailyPnLCalendarHeatmap({
         </div>
 
         {/* Right Action: Timeframe Buttons + Collapse Toggle */}
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <div className="flex items-center gap-2 self-start lg:self-auto flex-wrap">
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-bg-secondary/70 border border-border/60">
             <button
               onClick={() => setTimeframe('1Y')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold transition-all cursor-pointer ${
                 timeframe === '1Y'
                   ? 'bg-accent text-white shadow-md'
                   : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
@@ -223,7 +231,7 @@ export function DailyPnLCalendarHeatmap({
             </button>
             <button
               onClick={() => setTimeframe('6M')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold transition-all cursor-pointer ${
                 timeframe === '6M'
                   ? 'bg-accent text-white shadow-md'
                   : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
@@ -233,13 +241,13 @@ export function DailyPnLCalendarHeatmap({
             </button>
             <button
               onClick={() => setTimeframe('YTD')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap text-xs font-bold transition-all cursor-pointer ${
                 timeframe === 'YTD'
                   ? 'bg-accent text-white shadow-md'
                   : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
               }`}
             >
-              2026 (YTD)
+              Bu Yıl
             </button>
           </div>
 
@@ -337,10 +345,26 @@ export function DailyPnLCalendarHeatmap({
         <>
           {/* Heatmap Grid Section */}
           <div className="relative animate-fade-in">
+        <div className="md:hidden space-y-3" aria-label="Aylık aktivite takvimi">
+          <div className="flex items-center justify-between gap-2">
+            <button type="button" aria-label="Önceki ay" disabled={monthIndex <= 0} onClick={() => { setCalendarMonth(months[monthIndex - 1]); setSelectedDay(null); }} className="w-11 h-11 rounded-xl bg-bg-secondary disabled:opacity-30">‹</button>
+            <h3 className="text-sm font-semibold capitalize">{firstDay.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}</h3>
+            <button type="button" aria-label="Sonraki ay" disabled={monthIndex >= months.length - 1} onClick={() => { setCalendarMonth(months[monthIndex + 1]); setSelectedDay(null); }} className="w-11 h-11 rounded-xl bg-bg-secondary disabled:opacity-30">›</button>
+          </div>
+          <div className="grid grid-cols-7 gap-1 text-center">
+            {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map(label => <span key={label} className="text-[10px] text-text-muted py-1">{label}</span>)}
+            {Array.from({ length: leadingDays }, (_, index) => <span key={`blank-${index}`} />)}
+            {Array.from({ length: daysInMonth }, (_, index) => {
+              const date = `${month}-${String(index + 1).padStart(2, '0')}`;
+              const day = calendarDays.find(record => record.date === date);
+              return <button type="button" key={date} style={{ minWidth: 0 }} disabled={!day || day.isFuture} aria-label={`${date}: ${day?.pnl || 0} TRY`} aria-pressed={selectedDay?.date === date} onClick={() => { if (day) setSelectedDay(selectedDay?.date === date ? null : day); }} className={`min-h-11 rounded-lg text-xs tabular-nums disabled:opacity-30 ${day ? getCellColor(day) : 'bg-bg-tertiary'} ${selectedDay?.date === date ? 'ring-2 ring-accent' : ''}`}>{index + 1}</button>;
+            })}
+          </div>
+        </div>
         {/* Horizontal scroll container */}
         <div
           ref={scrollContainerRef}
-          className="overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-text-muted/40 transition-colors"
+          className="hidden md:block overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-text-muted/40 transition-colors"
         >
           <div className="inline-block min-w-full">
             {/* Month labels row */}
@@ -376,6 +400,7 @@ export function DailyPnLCalendarHeatmap({
                       return (
                         <button
                           key={day.date}
+                          style={{ minHeight: 15, minWidth: 15 }}
                           type="button"
                           onMouseEnter={(e) => {
                             if (!day.isFuture) {

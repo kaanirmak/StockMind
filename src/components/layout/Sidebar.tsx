@@ -2,6 +2,7 @@
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
+import { useAppPlatform } from '@/hooks/useAppPlatform';
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -24,6 +25,7 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 export default function Sidebar() {
+  const { canDownloadApk } = useAppPlatform();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [showApkModal, setShowApkModal] = useState(false);
@@ -129,7 +131,7 @@ export default function Sidebar() {
       )}
 
       {/* Android Mobile App Card */}
-      {!collapsed ? (
+      {canDownloadApk && (!collapsed ? (
         <div className="mx-3 mb-2 p-2.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-500/25 relative overflow-hidden group">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-extrabold text-emerald-400 flex items-center gap-1">
@@ -163,7 +165,7 @@ export default function Sidebar() {
             <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993s-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.152-.5684.417.417 0 00-.569.152l-2.0223 3.503C15.583 8.359 13.856 8 12 8s-3.583.359-5.1352.949L4.8425 5.446a.417.417 0 00-.569-.152.416.416 0 00-.152.5684l1.997 3.459C2.688 11.086 0 14.887 0 19.341h24c0-4.454-2.688-8.255-6.1185-10.0196" />
           </svg>
         </button>
-      )}
+      ))}
 
       {/* Settings + Collapse */}
       <div className="px-3 py-4 border-t border-border space-y-1">

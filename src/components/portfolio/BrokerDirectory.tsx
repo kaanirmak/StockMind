@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { BROKERS, Broker } from '@/lib/data/brokers';
 import { useToast } from '@/components/ui';
 
@@ -16,11 +16,6 @@ export const BrokerDirectory: React.FC<BrokerDirectoryProps> = ({
   className = '',
 }) => {
   const { showToast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<
-    'ALL' | 'POPULAR' | 'Dijital / FinTech' | 'Banka İştiraki' | 'Bağımsız Kurum'
-  >('ALL');
-
   const handleOpenBroker = (broker: Broker) => {
     if (onSelectBroker) {
       onSelectBroker(broker);
@@ -35,27 +30,6 @@ export const BrokerDirectory: React.FC<BrokerDirectoryProps> = ({
     });
     window.open(broker.url, '_blank', 'noopener,noreferrer');
   };
-
-  const filtered = BROKERS.filter((b) => {
-    if (categoryFilter === 'POPULAR' && !b.popular) return false;
-    if (
-      categoryFilter !== 'ALL' &&
-      categoryFilter !== 'POPULAR' &&
-      b.category !== categoryFilter
-    ) {
-      return false;
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        b.name.toLowerCase().includes(q) ||
-        b.shortName.toLowerCase().includes(q) ||
-        b.description.toLowerCase().includes(q) ||
-        b.badge.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
 
   return (
     <div className={`space-y-3.5 ${className}`}>
@@ -81,113 +55,16 @@ export const BrokerDirectory: React.FC<BrokerDirectoryProps> = ({
         </div>
       )}
 
-      {/* Search Input */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder="Aracı kurum ara (Midas, Piapiri, Garanti, İş Yatırım vb.)..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full py-2.5 pl-9 pr-8 bg-bg-secondary text-text-primary rounded-xl border border-border text-xs focus:outline-hidden focus:border-accent transition-colors placeholder:text-text-muted"
-        />
-        <svg
-          className="w-4 h-4 text-text-muted absolute left-3 top-3"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={() => setSearchQuery('')}
-            className="absolute right-2.5 top-2.5 text-text-muted hover:text-text-primary text-xs cursor-pointer p-1"
-            title="Temizle"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      {/* Category Filter Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[11px] font-medium">
-        <button
-          type="button"
-          onClick={() => setCategoryFilter('ALL')}
-          className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-            categoryFilter === 'ALL'
-              ? 'bg-accent text-white font-bold shadow-xs'
-              : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-          }`}
-        >
-          Tümü ({BROKERS.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setCategoryFilter('POPULAR')}
-          className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-            categoryFilter === 'POPULAR'
-              ? 'bg-accent text-white font-bold shadow-xs'
-              : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-          }`}
-        >
-          ⭐ Popüler ({BROKERS.filter((b) => b.popular).length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setCategoryFilter('Dijital / FinTech')}
-          className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-            categoryFilter === 'Dijital / FinTech'
-              ? 'bg-accent text-white font-bold shadow-xs'
-              : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-          }`}
-        >
-          ⚡ FinTech ({BROKERS.filter((b) => b.category === 'Dijital / FinTech').length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setCategoryFilter('Banka İştiraki')}
-          className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-            categoryFilter === 'Banka İştiraki'
-              ? 'bg-accent text-white font-bold shadow-xs'
-              : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-          }`}
-        >
-          🏛️ Bankalar ({BROKERS.filter((b) => b.category === 'Banka İştiraki').length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setCategoryFilter('Bağımsız Kurum')}
-          className={`px-2.5 py-1 rounded-lg shrink-0 transition-colors cursor-pointer ${
-            categoryFilter === 'Bağımsız Kurum'
-              ? 'bg-accent text-white font-bold shadow-xs'
-              : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border'
-          }`}
-        >
-          🏢 Bağımsız ({BROKERS.filter((b) => b.category === 'Bağımsız Kurum').length})
-        </button>
-      </div>
-
       {/* Broker Cards List */}
-      <div className="max-h-[340px] sm:max-h-[380px] overflow-y-auto pr-1 space-y-2.5">
-        {filtered.length === 0 ? (
-          <div className="p-8 text-center text-text-muted text-xs bg-bg-secondary/40 rounded-xl border border-dashed border-border">
-            Aramanıza uygun aracı kurum bulunamadı.
-          </div>
-        ) : (
-          filtered.map((b) => {
+      <div className="space-y-2.5">
+        {BROKERS.map((b) => {
             const isMidas = b.id === 'midas';
             return (
-              <div
+              <button
+                type="button"
                 key={b.id}
                 onClick={() => handleOpenBroker(b)}
-                className={`group relative p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer overflow-hidden ${
+                className={`w-full text-left group relative p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer overflow-hidden ${
                   isMidas
                     ? 'border-indigo-500/50 bg-gradient-to-r from-bg-card via-indigo-950/20 to-bg-card hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-500/10 ring-1 ring-indigo-500/20'
                     : 'border-border/80 bg-gradient-to-r from-bg-card via-bg-secondary to-bg-card hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5'
@@ -245,10 +122,9 @@ export const BrokerDirectory: React.FC<BrokerDirectoryProps> = ({
                     </span>
                   </div>
                 </div>
-              </div>
+              </button>
             );
-          })
-        )}
+          })}
       </div>
 
       {/* SPK Disclaimer */}

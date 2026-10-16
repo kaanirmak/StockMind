@@ -6,6 +6,7 @@ import { readInbox, saveInbox } from '@/lib/notifications/inbox';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useAppPlatform } from '@/hooks/useAppPlatform';
 import { SearchPalette } from '@/components/layout/SearchPalette';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { ApkDownloadModal, LegalDisclaimerModal } from '@/components/ui';
@@ -69,6 +70,7 @@ function getNotificationIconColor(category: NotificationItem['category']) {
 
 export default function Header() {
   const router = useRouter();
+  const { canDownloadApk } = useAppPlatform();
   const { profile, signOut } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -180,18 +182,18 @@ export default function Header() {
           </Link>
         )}
 
-        {/* Android APK Download Button */}
-        <button
+        {/* Android browsers only; installed apps already have an update center. */}
+        {canDownloadApk && <button
           type="button"
           onClick={() => setShowApkModal(true)}
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 shrink-0"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 shrink-0"
           title="StockMind Android Uygulamasını İndir (v1.4.0 APK)"
         >
           <svg className="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993s-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.152-.5684.417.417 0 00-.569.152l-2.0223 3.503C15.583 8.359 13.856 8 12 8s-3.583.359-5.1352.949L4.8425 5.446a.417.417 0 00-.569-.152.416.416 0 00-.152.5684l1.997 3.459C2.688 11.086 0 14.887 0 19.341h24c0-4.454-2.688-8.255-6.1185-10.0196" />
           </svg>
           <span className="hidden sm:inline">APK İndir</span>
-        </button>
+        </button>}
 
         {/* Theme Toggle Button (Siyah Plan / Beyaz Plan) */}
         <button

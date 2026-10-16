@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { QuickActions } from '@/components/dashboard/QuickActions';
 import { Icon } from '@/components/ui/Icon';
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
@@ -13,23 +12,21 @@ import WatchlistPreview from '@/components/dashboard/WatchlistPreview';
 import { ApkDownloadModal } from '@/components/ui';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
-import { isAndroidApp } from '@/lib/notifications/pushNotification';
+import { useAppPlatform } from '@/hooks/useAppPlatform';
 
 export default function DashboardPage() {
   const { fetchPortfoliosAndTransactions } = usePortfolioStore();
   const [showApkModal, setShowApkModal] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
+  const { canDownloadApk } = useAppPlatform();
 
   useEffect(() => {
     fetchPortfoliosAndTransactions();
-    setIsAndroid(isAndroidApp());
   }, [fetchPortfoliosAndTransactions]);
 
   return (
     <div className="dashboard-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(4rem+env(safe-area-inset-bottom))]">
       {/* Portfolio Hero Card */}
       <PortfolioSummary />
-      <QuickActions />
 
       {/* Portfolio Heatmap */}
       <PortfolioHeatmap />
@@ -57,7 +54,7 @@ export default function DashboardPage() {
           >
             Widget Merkezi &rarr;
           </Link>
-          {!isAndroid && (
+          {canDownloadApk && (
             <button
               type="button"
               onClick={() => setShowApkModal(true)}
