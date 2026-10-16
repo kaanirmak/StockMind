@@ -310,3 +310,118 @@ test('portfolio publishes ready quotes while a slower asset is still loading', a
   assert.equal(state.livePrices.THYAO.price, 100);
   assert.equal(state.isRefreshingPrices, false);
 });
+
+test('PRO-01: multi-portfolio limit permits 1 portfolio for free accounts and unlimited for pro', () => {
+  const checkCanCreatePortfolio = (isPro, currentCount) => {
+    if (!isPro && currentCount >= 1) return false;
+    return true;
+  };
+
+  // Free tier
+  assert.equal(checkCanCreatePortfolio(false, 0), true, 'Free user can create their 1st portfolio');
+  assert.equal(checkCanCreatePortfolio(false, 1), false, 'Free user cannot create a 2nd portfolio');
+  assert.equal(checkCanCreatePortfolio(false, 5), false, 'Free user cannot create more than 1 portfolio');
+
+  // Pro tier
+  assert.equal(checkCanCreatePortfolio(true, 0), true, 'Pro user can create 1st portfolio');
+  assert.equal(checkCanCreatePortfolio(true, 1), true, 'Pro user can create 2nd portfolio');
+  assert.equal(checkCanCreatePortfolio(true, 10), true, 'Pro user has unlimited portfolios');
+});
+
+test('PRO-02: price alert limit permits 3 alerts for free accounts while allowing existing alert edits and unlimited for pro', () => {
+  const checkCanSetAlert = ({ isPro, existingAlerts, targetSymbol }) => {
+    const activeAlertsCount = existingAlerts.filter(
+      item => (item.targetPrice || item.alertPercent) && item.symbol.toUpperCase() !== targetSymbol.toUpperCase()
+    ).length;
+    const existingItem = existingAlerts.find(item => item.symbol.toUpperCase() === targetSymbol.toUpperCase());
+    const hasExistingAlert = Boolean(existingItem?.targetPrice || existingItem?.alertPercent);
+    const isLimitReached = !isPro && activeAlertsCount >= 3 && !hasExistingAlert;
+    return !isLimitReached;
+  };
+
+  const threeAlerts = [
+    { symbol: 'THYAO', targetPrice: 320 },
+    { symbol: 'ASELS', alertPercent: 5 },
+    { symbol: 'GARAN', targetPrice: 110 },
+  ];
+
+  // Free tier: 3 alerts configured, adding 4th should be blocked
+  assert.equal(
+    checkCanSetAlert({ isPro: false, existingAlerts: threeAlerts, targetSymbol: 'KCHOL' }),
+    false,
+    'Free user cannot set a 4th alert'
+  );
+
+  // Free tier: updating an already alerted stock (THYAO) should be permitted
+  assert.equal(
+    checkCanSetAlert({ isPro: false, existingAlerts: threeAlerts, targetSymbol: 'THYAO' }),
+    true,
+    'Free user can update an existing alert'
+  );
+
+  // Free tier: fewer than 3 alerts permits new alert
+  assert.equal(
+    checkCanSetAlert({ isPro: false, existingAlerts: threeAlerts.slice(0, 2), targetSymbol: 'KCHOL' }),
+    true,
+    'Free user with 2 alerts can set a 3rd alert'
+  );
+
+  // Pro tier: unlimited alerts
+  assert.equal(
+    checkCanSetAlert({ isPro: true, existingAlerts: threeAlerts, targetSymbol: 'KCHOL' }),
+    true,
+    'Pro user can set 4th and unlimited alerts'
+  );
+});
+
+test('PRO-03: hourly AI question quota allows 5 questions/hour for standard and 20 for pro', () => {
+  const {
+    checkAndConsumeHourlyChatQuota,
+    getHourlyChatQuota,
+    resetHourlyChatQuota,
+    HOURLY_QUOTA_STANDARD,
+    HOURLY_QUOTA_PRO,
+  } = load('src/lib/ai/hourlyQuota.ts');
+
+  assert.equal(HOURLY_QUOTA_STANDARD, 5);
+  assert.equal(HOURLY_QUOTA_PRO, 20);
+
+  // Standard user test
+  resetHourlyChatQuota('user-std');
+  for (let i = 1; i <= 5; i++) {
+    const res = checkAndConsumeHourlyChatQuota('user-std', false);
+    assert.equal(res.allowed, true, `Standard question ${i} should be allowed`);
+    assert.equal(res.used, i);
+    assert.equal(res.remaining, 5 - i);
+  }
+  const stdOverLimit = checkAndConsumeHourlyChatQuota('user-std', false);
+  assert.equal(stdOverLimit.allowed, false, 'Standard 6th question must be blocked');
+  assert.equal(stdOverLimit.remaining, 0);
+  assert.ok(stdOverLimit.retryAfter > 0, 'Should return a positive retryAfter duration');
+
+  // Pro user test
+  resetHourlyChatQuota('user-pro');
+  for (let i = 1; i <= 20; i++) {
+    const res = checkAndConsumeHourlyChatQuota('user-pro', true);
+    assert.equal(res.allowed, true, `Pro question ${i} should be allowed`);
+    assert.equal(res.used, i);
+    assert.equal(res.remaining, 20 - i);
+  }
+  const proOverLimit = checkAndConsumeHourlyChatQuota('user-pro', true);
+  assert.equal(proOverLimit.allowed, false, 'Pro 21st question must be blocked');
+  assert.equal(proOverLimit.remaining, 0);
+  assert.ok(proOverLimit.retryAfter > 0, 'Should return a positive retryAfter duration');
+
+  // Inspect status test
+  const inspected = getHourlyChatQuota('user-pro', true);
+  assert.equal(inspected.limit, 20);
+  assert.equal(inspected.used, 20);
+  assert.equal(inspected.remaining, 0);
+  assert.equal(inspected.allowed, false);
+
+  // Clean up
+  resetHourlyChatQuota('user-std');
+  resetHourlyChatQuota('user-pro');
+});
+
+

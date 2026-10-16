@@ -17,6 +17,7 @@ import {
 import { StockMindMark } from '@/components/ui/StockMindMark';
 import { ChatMessageContent } from '@/components/ai/ChatMessageContent';
 import { useChatScroll } from '@/hooks/useChatScroll';
+import { ProRequestModal } from '@/components/pro/ProRequestModal';
 
 export interface Message {
   id: string;
@@ -67,11 +68,24 @@ function AIAssistantContent() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [readinessError, setReadinessError] = useState('');
+  const [quotaState, setQuotaState] = useState<{
+    limit: number;
+    remaining: number;
+    used: number;
+    isPro: boolean;
+  } | null>(null);
+  const [showProModal, setShowProModal] = useState(false);
+
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/ai/chat', { signal: controller.signal, cache: 'no-store' }).then(async response => {
       const data = await response.json();
-      if (!controller.signal.aborted) setReadinessError(data.success ? '' : chatErrorMessage(response.status, data));
+      if (!controller.signal.aborted) {
+        setReadinessError(data.success ? '' : chatErrorMessage(response.status, data));
+        if (data.quota) {
+          setQuotaState(data.quota);
+        }
+      }
     }).catch(() => {});
     return () => controller.abort();
   }, []);
@@ -302,6 +316,9 @@ function AIAssistantContent() {
       });
 
       const data = await res.json();
+      if (data.quota) {
+        setQuotaState(data.quota);
+      }
       if (data.success && data.message) {
         const assistantMessage: Message = {
           id: `ast-${Date.now()}`,
@@ -315,6 +332,9 @@ function AIAssistantContent() {
         updateCurrentSessionMessages([...newMessages, assistantMessage]);
       } else {
         const errorText = chatErrorMessage(res.status, data);
+        if (data.code === 'HOURLY_QUOTA_EXCEEDED' && !data.quota?.isPro) {
+          setShowProModal(true);
+        }
         updateCurrentSessionMessages([
           ...newMessages,
           {
@@ -368,7 +388,39 @@ function AIAssistantContent() {
       <div className="glass-card p-3 mb-2 shrink-0 rounded-2xl border border-border space-y-2">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0"><StockMindMark /><div className="min-w-0"><h1 className="text-sm font-semibold text-text-primary truncate">StockMind AI</h1><p className="text-[10px] text-text-muted">Finans asistanı</p></div></div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            {quotaState && (
+              quotaState.isPro ? (
+                <span
+                  title="StockMind Pro: Saatte 20 soru hakkı"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/25 text-[11px] font-semibold"
+                >
+                  <UIIcon name="sparkles" className="w-3.5 h-3.5" />
+                  <span>{quotaState.remaining}/20 Soru (Saatlik)</span>
+                </span>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span
+                    title="Standart Plan: Saatte 5 soru hakkı"
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border text-[11px] font-medium ${
+                      quotaState.remaining === 0
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                        : 'bg-bg-secondary text-text-secondary border-border'
+                    }`}
+                  >
+                    <span>{quotaState.remaining}/5 Soru</span>
+                    {quotaState.remaining === 0 && <span className="font-bold text-rose-400">(Dolu)</span>}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowProModal(true)}
+                    className="px-2 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[10px] font-bold shadow-sm shadow-amber-500/20 transition-all cursor-pointer"
+                  >
+                    Pro&apos;ya Geç (20/saat)
+                  </button>
+                </div>
+              )
+            )}
             <button type="button" onClick={() => setShowHistoryModal(true)} aria-label="Sohbet Geçmişi" title="Sohbet Geçmişi" className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-border text-text-secondary hover:bg-bg-hover"><UIIcon name="history" className="w-5 h-5" /></button>
             <button type="button" onClick={handleCreateNewSession} aria-label="Yeni Sohbet" title="Yeni Sohbet" className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-accent/30 text-accent hover:bg-accent/10"><UIIcon name="plus" className="w-5 h-5" /></button>
           </div>
@@ -652,6 +704,12 @@ function AIAssistantContent() {
           </div>
         </div>
       )}
+
+      {/* Pro Upgrade Request Modal */}
+      <ProRequestModal
+        isOpen={showProModal}
+        onClose={() => setShowProModal(false)}
+      />
     </div>
   );
 }

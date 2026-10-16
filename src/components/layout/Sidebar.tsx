@@ -96,7 +96,14 @@ export default function Sidebar() {
                 {iconMap[item.icon]}
               </span>
               {!collapsed && (
-                <span className="text-sm font-medium truncate">{item.label}</span>
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="text-sm font-medium truncate">{item.label}</span>
+                  {item.href === '/quant-lab' && (
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs">
+                      PRO
+                    </span>
+                  )}
+                </div>
               )}
             </Link>
           );

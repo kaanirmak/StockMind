@@ -1,8 +1,10 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { NewsArticle } from '@/app/api/news/route';
+import { useAuth } from '@/hooks/useAuth';
+import { ProRequestModal } from '@/components/pro/ProRequestModal';
+import { Button } from '@/components/ui/Button';
 
 export interface AIBulletinCardProps {
   symbol: string;
@@ -21,9 +23,21 @@ export const AIBulletinCard: React.FC<AIBulletinCardProps> = ({
   changePercent = 0,
   indicators,
 }) => {
+  const { user, profile } = useAuth();
+  const [showProModal, setShowProModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'technical' | 'news'>('technical');
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
+
+  const isPro = Boolean(
+    user?.app_metadata?.plan === 'pro' ||
+    user?.app_metadata?.is_pro === true ||
+    profile?.isPro
+  );
+
+  const isPending =
+    profile?.proRequestStatus === 'pending' ||
+    user?.user_metadata?.pro_request_status === 'pending';
 
   // Fetch relevant news for this specific symbol
   useEffect(() => {
@@ -138,10 +152,16 @@ export const AIBulletinCard: React.FC<AIBulletinCardProps> = ({
               <h3 className="text-sm sm:text-base font-bold text-text-primary tracking-tight">
                 StockMind AI Bülteni
               </h3>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/10 border border-accent/20 text-accent">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                Canlı Zeka Raporu
-              </span>
+              {isPro ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-accent/10 border border-accent/20 text-accent">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                  Canlı Zeka Raporu
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/20 to-amber-600/20 border border-amber-500/40 text-amber-500">
+                  <span>🔒</span> PRO ÖZEL
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-text-muted mt-0.5 font-medium">
               {stockName || symbol} için anlık teknik seviyeler, gösterge sinyalleri ve haber duyarlılığı
@@ -149,41 +169,96 @@ export const AIBulletinCard: React.FC<AIBulletinCardProps> = ({
           </div>
         </div>
 
-        {/* Tab Buttons */}
-        <div className="flex items-center gap-1 p-1 bg-bg-tertiary/70 rounded-xl border border-border/60 self-start sm:self-auto shrink-0">
-          <button
-            onClick={() => setActiveTab('technical')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'technical'
-                ? 'bg-accent text-white shadow-xs'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <span>Teknik Analiz</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('news')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'news'
-                ? 'bg-accent text-white shadow-xs'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-            </svg>
-            <span>Haberler & KAP</span>
-            {news.length > 0 && (
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary" />
-            )}
-          </button>
-        </div>
+        {/* Tab Buttons (only interactive when Pro) */}
+        {isPro && (
+          <div className="flex items-center gap-1 p-1 bg-bg-tertiary/70 rounded-xl border border-border/60 self-start sm:self-auto shrink-0">
+            <button
+              onClick={() => setActiveTab('technical')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'technical'
+                  ? 'bg-accent text-white shadow-xs'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span>Teknik Analiz</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('news')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'news'
+                  ? 'bg-accent text-white shadow-xs'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+              </svg>
+              <span>Haberler & KAP</span>
+              {news.length > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-secondary" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* TAB 1: TECHNICAL ANALYSIS */}
+      {!isPro ? (
+        <div className="mt-4 relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-bg-tertiary/70 to-bg-card p-6 sm:p-8 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-amber-500/25">
+            <span className="text-xl">👑</span>
+          </div>
+
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h4 className="text-base font-bold text-text-primary">
+              StockMind AI Bülteni Pro Üyelere Özeldir
+            </h4>
+            <p className="text-xs text-text-muted leading-relaxed">
+              {stockName || symbol} için anlık yapay zeka genel sinyali, destek & direnç kırılım eşikleri, RSI/SMA gösterge puanı ve haber duyarlılık analizi Pro üyelikle sunulmaktadır.
+            </p>
+          </div>
+
+          {/* Quick Metrics Teaser Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-[11px] text-text-secondary">
+            <span className="px-2.5 py-1 rounded-lg bg-bg-card/80 border border-border/80 font-medium">
+              📊 % Skor & AI Genel Sinyali
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-bg-card/80 border border-border/80 font-medium">
+              🎯 S1, S2, R1, R2 Destek & Direnç
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-bg-card/80 border border-border/80 font-medium">
+              ⚡ Canlı KAP & Haber Etki Yorumu
+            </span>
+          </div>
+
+          <div className="pt-2">
+            {isPending ? (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-500 text-xs font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                <span>⏳ Pro Talebiniz İnceleniyor — Yönetici Onayı Bekleniyor</span>
+              </div>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setShowProModal(true)}
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold shadow-md shadow-amber-500/25 text-xs px-5 py-2 cursor-pointer"
+              >
+                🚀 Pro'ya Yükselt / Hesap İste
+              </Button>
+            )}
+          </div>
+
+          <ProRequestModal
+            isOpen={showProModal}
+            onClose={() => setShowProModal(false)}
+          />
+        </div>
+      ) : (
+        <>
+          {/* TAB 1: TECHNICAL ANALYSIS */}
       {activeTab === 'technical' && (
         <div className="mt-3.5 space-y-4 animate-fade-in">
           {/* Signal & Score Row */}
@@ -377,6 +452,8 @@ export const AIBulletinCard: React.FC<AIBulletinCardProps> = ({
             </Link>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

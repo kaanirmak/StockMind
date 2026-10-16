@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendTestEmail } from '@/lib/email/service';
 import { ApiError, apiErrorResponse, authorizeAction, optionalText, readJsonObject } from '@/lib/api/security';
+import { hasProAccess } from '@/lib/ai/modelCatalog';
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +18,9 @@ export async function POST(request: Request) {
       throw new ApiError(400, 'SMTP ayarları sunucuda yönetilir; istek üzerinden değiştirilemez.');
     }
     const isDaily = Boolean(body.isDailyReport);
+    if (isDaily && !hasProAccess(user.app_metadata)) {
+      throw new ApiError(403, '18:30 Günlük StockMind AI Bülteni Pro üyelik gerektirir.', 'PRO_REQUIRED');
+    }
     const result = await sendTestEmail({ to: user.email, userName: 'StockMind Kullanıcısı', isDailyReport: isDaily });
     if (!result.success) throw new ApiError(503, result.message || 'E-posta gönderilemedi. Lütfen daha sonra tekrar deneyin.');
     return NextResponse.json({

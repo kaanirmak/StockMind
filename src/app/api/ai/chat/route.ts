@@ -4,6 +4,12 @@ import { NextResponse } from 'next/server';
 import { callOpenRouter, OpenRouterError, type OpenRouterMessage } from '@/lib/ai/openrouter';
 import { buildLiveAIContext, type PortfolioContextPayload } from '@/lib/ai/market-context';
 import { ApiError, apiErrorResponse, authorizeAction, isRecord, optionalText, readJsonObject } from '@/lib/api/security';
+import {
+  getHourlyChatQuota,
+  checkAndConsumeHourlyChatQuota,
+  HOURLY_QUOTA_PRO,
+  HOURLY_QUOTA_STANDARD,
+} from '@/lib/ai/hourlyQuota';
 
 function parsePortfolio(value: unknown): PortfolioContextPayload | undefined {
   if (value === undefined || value === null) return undefined;
@@ -65,9 +71,37 @@ export async function POST(request: Request) {
     const model = optionalText(body.model, 120) || 'openrouter/free';
     const entry = model === AUTO_MODEL.id ? AUTO_MODEL : (await getModelCatalog()).find(entry => entry.id === model);
     if (!entry) throw new ApiError(400, 'Model artık listede bulunmuyor. Başka bir model seçin.');
-    if (!entry.free && !hasProAccess(access.user.app_metadata)) throw new ApiError(403, 'Bu model yalnızca Pro hesaplara açıktır.', 'PRO_REQUIRED');
+    const isPro = hasProAccess(access.user.app_metadata);
+    if (!entry.free && !isPro) throw new ApiError(403, 'Bu model yalnızca Pro hesaplara açıktır.', 'PRO_REQUIRED');
     const apiKey = optionalText(body.apiKey, 512);
     if (!apiKey && !process.env.OPENROUTER_API_KEY?.trim()) throw new ApiError(401, 'AI anahtarı tanımlanmalıdır.', 'AI_KEY_REQUIRED');
+
+    // Enforce hourly question quota (20/hour for Pro, 5/hour for Standard) when using platform AI
+    let quotaStatus: ReturnType<typeof checkAndConsumeHourlyChatQuota> | undefined = undefined;
+    if (!apiKey) {
+      quotaStatus = checkAndConsumeHourlyChatQuota(access.user.id, isPro);
+      if (!quotaStatus.allowed) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'HOURLY_QUOTA_EXCEEDED',
+            error: isPro
+              ? `Saatlik Pro soru kotanıza ulaştınız (${HOURLY_QUOTA_PRO} soru / saat). Lütfen bir sonraki saati bekleyin.`
+              : `Saatlik ücretsiz soru kotanıza ulaştınız (${HOURLY_QUOTA_STANDARD} soru / saat). Kesintisiz ve saatte ${HOURLY_QUOTA_PRO} soru hakkı için Pro hesaba yükseltin.`,
+            quota: quotaStatus,
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(quotaStatus.retryAfter),
+              'X-RateLimit-Limit': String(quotaStatus.limit),
+              'X-RateLimit-Remaining': String(quotaStatus.remaining),
+            },
+          }
+        );
+      }
+    }
+
     const effectivePortfolio = body.portfolioContext ?? (isRecord(body.context) ? body.context.portfolio : undefined);
     const portfolio = parsePortfolio(effectivePortfolio);
     let liveContext = '';
@@ -93,6 +127,14 @@ export async function POST(request: Request) {
       hasLiveContext,
       sourceScope,
       asOf,
+      quota: quotaStatus
+        ? {
+            limit: quotaStatus.limit,
+            remaining: quotaStatus.remaining,
+            used: quotaStatus.used,
+            isPro,
+          }
+        : undefined,
       disclaimer: 'StockMind AI yatırım tavsiyesi vermez. Piyasa verileri ve analizler bilgilendirme amaçlıdır.',
     });
   } catch (error) {
@@ -107,6 +149,18 @@ export async function GET() {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) return NextResponse.json({ success: false, code: 'AUTH_REQUIRED', error: 'Oturumunuz doğrulanamadı. Tekrar giriş yapın.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
-    return NextResponse.json({ success: true, serverKeyConfigured: Boolean(process.env.OPENROUTER_API_KEY?.trim()) }, { headers: { 'Cache-Control': 'no-store' } });
+    const isPro = hasProAccess(data.user.app_metadata);
+    const quota = getHourlyChatQuota(data.user.id, isPro);
+    return NextResponse.json({
+      success: true,
+      serverKeyConfigured: Boolean(process.env.OPENROUTER_API_KEY?.trim()),
+      quota: {
+        limit: quota.limit,
+        remaining: quota.remaining,
+        used: quota.used,
+        resetInSeconds: quota.retryAfter,
+        isPro,
+      },
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return NextResponse.json({ success: false, error: 'AI bağlantı durumu kontrol edilemedi.' }, { status: 503 }); }
 }

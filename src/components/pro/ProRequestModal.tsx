@@ -105,7 +105,19 @@ export function ProRequestModal({
           </div>
           <div className="flex items-start gap-2 text-text-secondary">
             <span className="text-emerald-400 font-bold shrink-0">✓</span>
-            <span><strong>Limitsiz Portföy & VIP Rapor:</strong> Günlük 18:30 kapanış bülteni ve öncelikli analiz</span>
+            <span><strong>StockMind AI Bülteni:</strong> Canlı hisse zeka sinyalleri ve günlük 18:30 kapanış bülteni</span>
+          </div>
+          <div className="flex items-start gap-2 text-text-secondary">
+            <span className="text-emerald-400 font-bold shrink-0">✓</span>
+            <span><strong>Sınırsız Çoklu Portföy:</strong> Temettü, büyüme ve fon sepetlerinizi ayrı portföylerde sınırsız yönetin (Standart: 1)</span>
+          </div>
+          <div className="flex items-start gap-2 text-text-secondary">
+            <span className="text-emerald-400 font-bold shrink-0">✓</span>
+            <span><strong>Sınırsız Fiyat Alarmı:</strong> Anlık sesli uyarı ve bildirim kotası olmadan sınırsız alarm kurun (Standart: 3)</span>
+          </div>
+          <div className="flex items-start gap-2 text-text-secondary">
+            <span className="text-emerald-400 font-bold shrink-0">✓</span>
+            <span><strong>Genişletilmiş AI Soru Kotası:</strong> StockMind AI Asistan ile saatte 20 soru hakkı (Standart: 5 soru/saat)</span>
           </div>
         </div>
 

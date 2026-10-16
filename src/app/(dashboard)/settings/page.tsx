@@ -1505,10 +1505,10 @@ export default function SettingsPage() {
           <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
             <div className="flex items-center gap-2">
               <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-              <span className="text-xs font-semibold text-text-primary">AI Asistan Sohbet</span>
+              <span className="text-xs font-semibold text-text-primary">AI Asistan Soru Kotası</span>
             </div>
-            <div className="text-sm font-bold font-mono text-accent mt-2">10 istek / dk</div>
-            <div className="text-[11px] text-text-muted mt-0.5">Maks. 100 istek / gün (Ücretsiz)</div>
+            <div className="text-sm font-bold font-mono text-accent mt-2">5 Soru / Saat (Standart) · 20 (Pro)</div>
+            <div className="text-[11px] text-text-muted mt-0.5">Maks. 100 istek / gün</div>
           </div>
 
           <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
