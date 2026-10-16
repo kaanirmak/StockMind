@@ -276,7 +276,8 @@ export default function PortfolioSummary() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" />
                     )}
                   </svg>
-                  <span title={periodData.available ? 'Nakit hariç varlık getirisi' : `Eksik geçmiş fiyat: ${periodData.missing.join(', ')}`}>{periodData.available ? `${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}` : periodData.loading ? 'Hesaplanıyor…' : 'Veri eksik'}</span>
+                  <span title={periodData.available ? 'Nakit hariç varlık getirisi' : `Eksik fiyat: ${periodData.missing.join(', ')}`}>{periodData.available ? `${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}` : periodData.loading ? 'Fiyatlar yükleniyor…' : 'Veri eksik'}</span>
+                  {!periodData.available && !periodData.loading && <span role="status" className="text-[10px] font-normal">Fiyat alınamadı: {periodData.missing.join(', ')}</span>}
                   {periodData.available && periodData.pnlPercent !== 0 && (
                     <span className="text-xs sm:text-sm font-semibold opacity-90">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>
                   )}

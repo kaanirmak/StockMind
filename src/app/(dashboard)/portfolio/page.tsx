@@ -343,8 +343,9 @@ export default function PortfolioPage() {
               </span>
             </div>
             <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${performance.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
-              {performance.available ? `${performance.pnl >= 0 ? '+' : ''}₺${performance.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : performance.loading ? 'Hesaplanıyor…' : 'Veri eksik'}
+              {performance.available ? `${performance.pnl >= 0 ? '+' : ''}₺${performance.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : performance.loading ? 'Fiyatlar yükleniyor…' : 'Veri eksik'}
             </h3>
+            {!performance.available && !performance.loading && <p role="status" className="mt-1 text-[10px] text-text-muted break-words">Fiyat alınamadı: {performance.missing.join(', ')}</p>}
           </div>
           <div className="flex items-center justify-between gap-1 mt-2 text-[10px] sm:text-xs">
             {performance.available && <Badge variant={performance.pnlPercent >= 0 ? 'success' : 'danger'} size="sm">

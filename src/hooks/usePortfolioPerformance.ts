@@ -5,7 +5,7 @@ import { calculatePeriodPerformance, istanbulDate, type PerformancePeriod, type 
 import { cleanSymbol } from '@/lib/utils/symbol';
 
 export function usePortfolioPerformance(period: PerformancePeriod) {
-  const { transactions, activePortfolioId, livePrices } = usePortfolioStore();
+  const { transactions, activePortfolioId, livePrices, isRefreshingPrices } = usePortfolioStore();
   const active = useMemo(() => transactions.filter(t => t.portfolioId === activePortfolioId), [transactions, activePortfolioId]);
   const [loaded, setLoaded] = useState<{ key: string; history: PriceHistoryMap } | null>(null);
   const key = `${activePortfolioId}:${istanbulDate(new Date())}:${active.map(t => `${t.symbol}:${t.assetType}`).sort().join('|')}`;
@@ -45,5 +45,5 @@ export function usePortfolioPerformance(period: PerformancePeriod) {
   }, [key, needsHistory, active]);
   const history = loaded?.key === key ? loaded.history : {};
   const metric = calculatePeriodPerformance(active, livePrices, history, period);
-  return { ...metric, loading: needsHistory && loaded?.key !== key };
+  return { ...metric, loading: isRefreshingPrices || (needsHistory && loaded?.key !== key) };
 }

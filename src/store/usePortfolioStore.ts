@@ -361,7 +361,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
       // 1. Fetch live USD/TRY exchange rate
       try {
-        const fxRes = await fetch('/api/stocks/USDTRY');
+        const fxRes = await fetch('/api/stocks/USDTRY', { signal: AbortSignal.timeout(15000) });
         if (fxRes.ok) {
           const fxJson = await fxRes.json();
           if (fxJson.success && fxJson.data && fxJson.data.price > 0) {
@@ -372,6 +372,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             newQuotes['USDTRY'] = fxQuote;
             newQuotes['USD'] = fxQuote;
             newQuotes['USDTRY=X'] = fxQuote;
+            set({ livePrices: { ...newQuotes } });
           }
         }
       } catch (e) {
@@ -379,7 +380,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
       }
 
       if (cashMovements.some((m) => m.currency === 'EUR')) {
-        try { const response = await fetch('/api/stocks/EURTRY'); const result = await response.json(); if (result.success && result.data?.price > 0) newQuotes['EURTRY'] = { price: Number(result.data.price), changePercent: Number(result.data.changePercent || 0) }; } catch { /* Missing rates are disclosed by the cash ledger. */ }
+        try { const response = await fetch('/api/stocks/EURTRY', { signal: AbortSignal.timeout(15000) }); const result = await response.json(); if (result.success && result.data?.price > 0) newQuotes['EURTRY'] = { price: Number(result.data.price), changePercent: Number(result.data.changePercent || 0) }; } catch { /* Missing rates are disclosed by the cash ledger. */ }
       }
       await Promise.all(
         assets.map(async ({ symbol, rawSymbol, assetType }) => {
@@ -389,7 +390,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
             if (assetType === 'fund') {
               try {
-                const res = await fetch(`/api/funds/${encodeURIComponent(symbol)}`);
+                const res = await fetch(`/api/funds/${encodeURIComponent(symbol)}`, { signal: AbortSignal.timeout(15000) });
                 if (res.ok) {
                   const json = await res.json();
                   if (json.success && json.data && json.data.price > 0) {
@@ -402,6 +403,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
                     newQuotes[normKey] = quote;
                     newQuotes[`FON:${symbol}`] = quote;
                     newQuotes[`IST:${symbol}`] = quote;
+                    set({ livePrices: { ...newQuotes } });
                   }
                 }
               } catch (err) {
@@ -412,7 +414,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
 
             // Asset is a stock or commodity
             try {
-              const res = await fetch(`/api/stocks/${encodeURIComponent(querySymbol)}`);
+              const res = await fetch(`/api/stocks/${encodeURIComponent(querySymbol)}`, { signal: AbortSignal.timeout(15000) });
               if (res.ok) {
                 const json = await res.json();
                 if (json.success && json.data && (json.data.price > 0 || json.data.basePrice > 0)) {
@@ -426,6 +428,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
                   newQuotes[normKey] = quote;
                   newQuotes[`FON:${symbol}`] = quote;
                   newQuotes[`IST:${symbol}`] = quote;
+                    set({ livePrices: { ...newQuotes } });
                   return;
                 }
               }
@@ -436,7 +439,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             // Fallback for 3-letter codes that might be TEFAS funds
             if (symbol.length === 3) {
               try {
-                const fundRes = await fetch(`/api/funds/${encodeURIComponent(symbol)}`);
+                const fundRes = await fetch(`/api/funds/${encodeURIComponent(symbol)}`, { signal: AbortSignal.timeout(15000) });
                 if (fundRes.ok) {
                   const fundJson = await fundRes.json();
                   if (fundJson.success && fundJson.data && fundJson.data.price > 0) {
@@ -449,6 +452,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
                     newQuotes[normKey] = quote;
                     newQuotes[`FON:${symbol}`] = quote;
                     newQuotes[`IST:${symbol}`] = quote;
+                    set({ livePrices: { ...newQuotes } });
                   }
                 }
               } catch (err) {
