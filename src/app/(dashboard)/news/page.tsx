@@ -111,15 +111,8 @@ export default function NewsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Piyasa Haberleri & KAP</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Borsa İstanbul, KAP bildirimleri, küresel piyasalar ve portföyünüzdeki varlıklara ait anlık gelişmeler.
-          </p>
-        </div>
-
+      <h1 className="sr-only">Piyasa Haberleri & KAP</h1>
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           {/* Portfolio quick switcher when multiple portfolios exist */}
           {portfolios.length > 1 && (
