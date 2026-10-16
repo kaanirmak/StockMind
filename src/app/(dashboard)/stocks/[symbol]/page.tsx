@@ -180,23 +180,14 @@ export default function StockDetailPage({
             </svg>
           </button>
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-bold text-base sm:text-lg text-text-primary truncate">
-              {stock?.name || symbol}
-            </span>
-            {stock?.name && stock.name !== symbol && (
-              <span className="text-xs font-mono font-semibold px-1.5 py-0.5 rounded bg-bg-secondary text-text-muted shrink-0 hidden sm:inline-block">
-                {symbol}
-              </span>
-            )}
-          </div>
+          <span className="font-bold font-mono text-base sm:text-lg text-text-primary truncate">{symbol}</span>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Bookmark / Watchlist */}
           <button
             onClick={handleWatchlistToggle}
-            className={`p-2 rounded-xl transition-colors cursor-pointer ${
+            className={`inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-xl transition-colors cursor-pointer ${
               isWatchlisted
                 ? 'text-warning bg-warning/15'
                 : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
@@ -211,7 +202,7 @@ export default function StockDetailPage({
           {/* Price Alert */}
           <button
             onClick={() => setIsAlertModalOpen(true)}
-            className={`p-2 rounded-xl transition-colors cursor-pointer relative ${
+            className={`inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-xl transition-colors cursor-pointer relative ${
               hasAlert
                 ? 'text-warning bg-warning/15 hover:bg-warning/25'
                 : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
@@ -229,7 +220,7 @@ export default function StockDetailPage({
           {/* Share */}
           <button
             onClick={handleShare}
-            className="p-2 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
             title="Paylaş"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -243,10 +234,10 @@ export default function StockDetailPage({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
         <div>
           {/* Symbol & Market Status Badge */}
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap min-w-0">
             <InstrumentLogo symbol={symbol} name={stock?.name || symbol} size="lg" />
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary font-mono">
-              {symbol}
+            <h1 className="min-w-0 flex-1 text-lg sm:text-2xl font-bold leading-snug text-text-primary break-words">
+              {stock?.name || symbol}
             </h1>
             <span
               className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 ${
