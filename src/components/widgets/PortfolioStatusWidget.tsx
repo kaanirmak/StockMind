@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
 export interface PortfolioStatusWidgetProps {
   standalone?: boolean;
-  initialPeriod?: 'daily' | 'monthly' | 'total';
+  initialPeriod?: 'daily' | 'weekly' | 'monthly' | 'total';
   transparent?: boolean;
   hideFooter?: boolean;
   forceDemo?: boolean;
@@ -35,7 +36,7 @@ export default function PortfolioStatusWidget({
   const isSample = forceDemo || rawSummary.totalValue === 0;
   const summary = isSample ? SAMPLE_SUMMARY : rawSummary;
 
-  const [period, setPeriod] = useState<'daily' | 'monthly' | 'total'>(initialPeriod);
+  const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'total'>(initialPeriod);
   const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
 
   useEffect(() => {
@@ -66,6 +67,7 @@ export default function PortfolioStatusWidget({
       ? usdQuote.price
       : 38.5;
 
+  const actual = usePortfolioPerformance(period);
   const periodData = useMemo(() => {
     switch (period) {
       case 'daily':
@@ -74,12 +76,9 @@ export default function PortfolioStatusWidget({
           pnl: summary.dailyPnL,
           pnlPercent: summary.dailyPnLPercent,
         };
+      case 'weekly':
       case 'monthly':
-        return {
-          label: 'Bu Ay',
-          pnl: summary.dailyPnL * 22,
-          pnlPercent: summary.dailyPnLPercent * 22,
-        };
+        return { label: period === 'weekly' ? 'Bu Hafta' : 'Bu Ay', pnl: actual.pnl, pnlPercent: actual.pnlPercent };
       case 'total':
       default:
         return {
@@ -88,7 +87,7 @@ export default function PortfolioStatusWidget({
           pnlPercent: summary.totalPnLPercent,
         };
     }
-  }, [period, summary]);
+  }, [period, summary, actual.pnl, actual.pnlPercent]);
 
   const isPositive = periodData.pnl >= 0;
 
@@ -240,8 +239,8 @@ export default function PortfolioStatusWidget({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" />
                 )}
               </svg>
-              <span>{periodData.label}: {getPnLSign(periodData.pnl)}{formatCurrency(Math.abs(periodData.pnl))}</span>
-              <span className="opacity-80">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>
+              <span>{periodData.label}: {(period === 'weekly' || period === 'monthly') && (isSample || !actual.available) ? (actual.loading ? 'Hesaplanıyor…' : 'Veri eksik') : `${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}`}</span>
+              {(!(period === 'weekly' || period === 'monthly') || (!isSample && actual.available)) && <span className="opacity-80">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>}
             </div>
           </div>
         </div>
@@ -277,14 +276,13 @@ export default function PortfolioStatusWidget({
                 : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
             }`}
           >
-            <div className="text-[10px] text-white/50 font-medium">Aylık Tahmini Getiri</div>
+            <div className="text-[10px] text-white/50 font-medium">Bu Ay Getirisi</div>
             <div
               className={`font-bold tabular-nums text-xs mt-0.5 ${
-                summary.dailyPnL * 22 >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                actual.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
               } ${isPrivacyMode ? 'filter blur-[5px]' : ''}`}
             >
-              {getPnLSign(summary.dailyPnL * 22)}{formatCurrency(Math.abs(summary.dailyPnL * 22))}
-              <span className="text-[10px] ml-1 opacity-80">({getPnLSign(summary.dailyPnLPercent * 22)}%{(Math.abs(summary.dailyPnLPercent * 22)).toFixed(1)})</span>
+              {period !== 'monthly' ? 'Görmek için seçin' : !isSample && actual.available ? `${getPnLSign(actual.pnl)}${formatCurrency(Math.abs(actual.pnl))}` : actual.loading ? 'Hesaplanıyor…' : 'Veri eksik'}
             </div>
           </div>
         </div>

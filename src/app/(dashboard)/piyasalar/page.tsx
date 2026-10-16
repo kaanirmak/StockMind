@@ -380,10 +380,13 @@ function PiyasalarContent() {
   };
 
   return (
-    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12">
+    <div className="space-y-3 sm:space-y-6 animate-fade-in pb-12">
       {/* Page Header */}
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold text-text-primary">Piyasalar</h1>
+        <h1 className="hidden sm:block text-lg font-semibold text-text-primary">Piyasalar</h1>
+        <div className="sm:hidden min-w-0 flex-1"><select aria-label="Piyasa seçimi" value={activeMarket} onChange={(e) => handleMarketChange(e.target.value as MarketId)} className="w-full min-w-0 h-11 rounded-xl border border-border bg-bg-card text-text-primary px-3 text-sm">
+          {MARKETS.map((market) => <option key={market.id} value={market.id}>{market.label}</option>)}
+        </select></div>
         {/* View Mode Toggle */}
         <div className="inline-flex items-center gap-1 shrink-0">
           <button
@@ -407,11 +410,7 @@ function PiyasalarContent() {
         </div>
       </div>
 
-      <label className="sm:hidden block space-y-1.5 text-xs font-medium text-text-secondary">Piyasa
-        <select aria-label="Piyasa seçimi" value={activeMarket} onChange={(e) => handleMarketChange(e.target.value as MarketId)} className="w-full h-12 rounded-xl border border-border bg-bg-card text-text-primary px-3 text-sm">
-          {MARKETS.map((market) => <option key={market.id} value={market.id}>{market.label}</option>)}
-        </select>
-      </label>
+
       {/* ═══════════════════ TOUCH-FRIENDLY SCROLLABLE TABS BAR ═══════════════════ */}
       <div className="hidden sm:flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1 w-full -mx-1 px-1 snap-x">
         {MARKETS.map((m) => {
@@ -589,10 +588,10 @@ function PiyasalarContent() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
             <button type="button" aria-pressed={watchlistOnly} onClick={() => setWatchlistOnly(!watchlistOnly)} className={`px-3 rounded-xl border ${watchlistOnly ? 'bg-accent/15 border-accent text-accent' : 'border-border'}`}>Takip Ettiklerim</button>
-            <span>{stocksUpdatedAt ? `Son kontrol: ${stocksUpdatedAt.toLocaleTimeString('tr-TR')}` : 'Fiyatlar yükleniyor'}</span>
+            <span className="hidden sm:inline">{stocksUpdatedAt ? `Son kontrol: ${stocksUpdatedAt.toLocaleTimeString('tr-TR')}` : 'Fiyatlar yükleniyor'}</span>
           </div>
           {/* Filters */}
-          <div className="glass-card p-3 sm:p-4 space-y-3 sticky top-14 sm:static z-20 !bg-bg-card">
+          <div className="glass-card p-2 sm:p-4 space-y-1 sm:space-y-3 sm:static z-20 !bg-bg-card">
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
               {/* Search */}
               <div className="flex-1">
@@ -611,11 +610,7 @@ function PiyasalarContent() {
                 />
               </div>
 
-              <label className="sm:hidden flex items-center gap-3 text-xs font-medium text-text-secondary">Sırala
-                <select aria-label="Piyasa sıralaması" value={`${stockSortBy}:${stockSortOrder}`} onChange={(e) => { const [field, direction] = e.target.value.split(':'); setStockSortBy(field as typeof stockSortBy); setStockSortOrder(direction as 'asc' | 'desc'); }} className="min-w-0 flex-1 h-11 rounded-xl border border-border bg-bg-input text-text-primary px-3 text-xs">
-                  <option value="marketCap:desc">Piyasa değeri · Büyükten küçüğe</option><option value="marketCap:asc">Piyasa değeri · Küçükten büyüğe</option><option value="changePercent:desc">En çok yükselenler</option><option value="changePercent:asc">En çok düşenler</option><option value="volume:desc">En yüksek hacim</option><option value="volume:asc">En düşük hacim</option><option value="price:desc">Fiyat · Yüksekten düşüğe</option><option value="price:asc">Fiyat · Düşükten yükseğe</option>
-                </select>
-              </label>
+
               {/* Quick Sort Options */}
               <div className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 bg-bg-tertiary/50 p-1 rounded-xl border border-border/60">
                 <span className="text-[11px] text-text-muted px-2 font-medium shrink-0">Sırala:</span>
@@ -662,8 +657,13 @@ function PiyasalarContent() {
               </div>
             </div>
             <details className="rounded-xl border border-border px-3">
-              <summary className="min-h-11 flex items-center text-xs font-semibold text-text-secondary cursor-pointer">Gelişmiş Filtreler</summary>
+              <summary className="min-h-11 flex items-center text-xs font-semibold text-text-secondary cursor-pointer"><span className="sm:hidden">Sırala ve filtrele</span><span className="hidden sm:inline">Gelişmiş Filtreler</span></summary>
               <div className="space-y-2 pb-2">
+              <label className="sm:hidden flex items-center gap-3 text-xs font-medium text-text-secondary">Sırala
+                <select aria-label="Piyasa sıralaması" value={`${stockSortBy}:${stockSortOrder}`} onChange={(e) => { const [field, direction] = e.target.value.split(':'); setStockSortBy(field as typeof stockSortBy); setStockSortOrder(direction as 'asc' | 'desc'); }} className="min-w-0 flex-1 h-11 rounded-xl border border-border bg-bg-input text-text-primary px-3 text-xs">
+                  <option value="marketCap:desc">Piyasa değeri · Büyükten küçüğe</option><option value="marketCap:asc">Piyasa değeri · Küçükten büyüğe</option><option value="changePercent:desc">En çok yükselenler</option><option value="changePercent:asc">En çok düşenler</option><option value="volume:desc">En yüksek hacim</option><option value="volume:asc">En düşük hacim</option><option value="price:desc">Fiyat · Yüksekten düşüğe</option><option value="price:asc">Fiyat · Düşükten yükseğe</option>
+                </select>
+              </label>
             {/* Sub-Category / Sector Filter Chips */}
             {activeMarket === 'INDEX' && (
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">

@@ -1,3 +1,7 @@
+export class OpenRouterError extends Error {
+  constructor(public status: number, public code: string, message: string) { super(message); }
+}
+
 // OpenRouter AI Integration
 
 export interface OpenRouterMessage {
@@ -19,14 +23,7 @@ export interface OpenRouterChatOptions {
 
 const DEFAULT_MODEL = 'openrouter/free';
 
-export const AVAILABLE_MODELS = [
-  { id: 'openrouter/free', name: 'OpenRouter Free (Otomatik Ücretsiz Model)', provider: 'OpenRouter' },
-  { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3 (Yüksek Akıl & Hız - Önerilen)', provider: 'DeepSeek' },
-  { id: 'google/gemini-2.5-flash', name: 'Google Gemini 2.5 Flash (Ultra Hızlı)', provider: 'Google' },
-  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Meta Llama 3.3 70B (Çok Yönlü Analiz)', provider: 'Meta' },
-  { id: 'openai/gpt-4o-mini', name: 'OpenAI GPT-4o Mini (Akıllı Finans)', provider: 'OpenAI' },
-  { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B (Derin Piyasa Analizi)', provider: 'Alibaba' },
-];
+
 
 export const FINANCIAL_SYSTEM_PROMPT = `Sen StockMind platformunun yapay zeka destekli kıdemli finansal analisti ve portföy danışmanısın.
 Görevlerin:
@@ -47,7 +44,7 @@ export async function callOpenRouter(
 
   if (!apiKey) {
     // Key olmadığında dummy cevap vermek yerine açıkça API_KEY_REQUIRED fırlatıyoruz
-    throw new Error('API_KEY_REQUIRED');
+    throw new OpenRouterError(401, 'AI_KEY_REQUIRED', 'AI anahtarı tanımlı değil.');
   }
 
   const effectiveSystemPrompt = options?.injectedContext
@@ -76,28 +73,18 @@ export async function callOpenRouter(
     });
 
     if (!res.ok) {
-      const errorText = await res.text();
-      console.warn('OpenRouter API status:', res.status);
-
-      let parsedMsg = errorText;
-      try {
-        const json = JSON.parse(errorText);
-        if (json?.error?.message) {
-          parsedMsg = json.error.message;
-        }
-      } catch (_) {}
-
-      if (res.status === 401 || res.status === 403) {
-        throw new Error('Geçersiz veya yetkisiz OpenRouter API anahtarı. Lütfen anahtarınızı ve bakiyenizi kontrol edin.');
-      }
-
-      throw new Error(`OpenRouter (${res.status}): ${parsedMsg}`);
+      await res.body?.cancel();
+      if (res.status === 401 || res.status === 403) throw new OpenRouterError(401, 'AI_PROVIDER_UNAUTHORIZED', 'OpenRouter anahtarı reddedildi.');
+      if (res.status === 402) throw new OpenRouterError(402, 'AI_CREDITS_REQUIRED', 'OpenRouter kredisi yetersiz.');
+      if (res.status === 429) throw new OpenRouterError(429, 'AI_RATE_LIMITED', 'AI servisinin istek sınırına ulaşıldı.');
+      throw new OpenRouterError(503, 'AI_PROVIDER_UNAVAILABLE', 'AI sağlayıcısı şu anda yanıt veremiyor.');
     }
 
     const data = await res.json();
     return data.choices?.[0]?.message?.content || 'Üzgünüm, analiz yanıtı oluşturulamadı.';
   } catch (error: any) {
     console.error('OpenRouter call failed');
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new OpenRouterError(504, 'AI_TIMEOUT', 'AI isteği zaman aşımına uğradı.');
     throw error;
   }
 }

@@ -655,7 +655,7 @@ test('CASH-02: deposits and withdrawals change account equity but are never inve
   assert.equal(before.totalPnL, 94);
   assert.equal(after.totalValue, 894);
   assert.equal(after.totalPnL, 94);
-  assert.equal(after.totalCost, 800);
+  assert.equal(after.totalCost, summary.totalCost);
 });
 test('CASH-03: today deposit does not inflate the daily return denominator', () => {
   const txs = [cashTrade('buy', 10, 100)];
@@ -693,14 +693,14 @@ test('CASH-06: future cash movements and trades do not change current available 
   assert.equal(ledger.totalValue, 1000);
   assert.equal(ledger.netContributions, 1000);
 });
-test('CASH-07: FX appreciation after a same-day foreign deposit is profit, not a second contribution', () => {
+test('CASH-07: foreign cash appreciation changes balance but is excluded from investment performance', () => {
   const ledger = calculateCashLedger([], [cashMovement(100, 'deposit', 'USD', 40, '2026-10-15')], { USDTRY: 42 }, '2026-10-15');
   const result = includeCashInSummary(calculatePortfolioSummary([], {}), ledger);
   assert.equal(result.totalValue, 4200);
-  assert.equal(result.totalCost, 4000);
-  assert.equal(result.totalPnL, 200);
-  assert.equal(result.dailyPnL, 200);
-  assert.equal(result.dailyPnLPercent, 5);
+  assert.equal(result.totalCost, 0);
+  assert.equal(result.totalPnL, 0);
+  assert.equal(result.dailyPnL, 0);
+  assert.equal(result.dailyPnLPercent, 0);
 });
 test('CASH-08: a positive final balance does not hide missing historical funding', () => {
   const txs = [{ ...cashTrade('buy', 1, 100), transactionDate: '2026-10-12' }, { ...cashTrade('sell', 1, 200), transactionDate: '2026-10-13' }];
@@ -768,3 +768,101 @@ test('DATA-10: QQQ and global/BIST ETFs are correctly recognized as ETF asset ty
   assert.equal(summary.holdings[0].exchange, 'NASDAQ');
 });
 
+
+const liveDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date());
+function dailyTrade(type, quantity, price, date = liveDay, overrides = {}) {
+  return { id: `${type}-${date}-${price}`, portfolioId: 'p', userId: 'u', symbol: 'THYAO', assetType: 'stock', transactionType: type, quantity, price, currency: 'TRY', commission: 0, transactionDate: date, exchange: 'BIST', notes: null, createdAt: date, ...overrides };
+}
+test('Daily: a same-day buy has no exposure to the decline before its purchase', () => {
+  const result = calculatePortfolioSummary([dailyTrade('buy', 10, 90)], { THYAO: { price: 90, changePercent: -10 } });
+  assert.equal(result.dailyPnL, 0);
+  assert.equal(result.dailyPnLPercent, 0);
+  assert.equal(result.holdings[0].dailyPnL, 0);
+});
+test('Daily: opening units use previous close, new units use execution price including commission', () => {
+  const result = calculatePortfolioSummary([dailyTrade('buy', 10, 100, '2026-10-01'), dailyTrade('buy', 5, 92, liveDay, { commission: 2 })], { THYAO: { price: 90, changePercent: -10 } });
+  assert.equal(result.dailyPnL, -112); // -100 opening units, -10 new units, -2 commission.
+  assert.equal(result.dailyPnLPercent, -11.2);
+});
+test('Daily: closing an old position retains today loss and excludes earlier realized losses', () => {
+  const result = calculatePortfolioSummary([dailyTrade('buy', 10, 120, '2026-10-01'), dailyTrade('sell', 10, 90)], { THYAO: { price: 90, changePercent: -10 } });
+  assert.equal(result.holdings.length, 0);
+  assert.equal(result.dailyPnL, -100);
+  assert.equal(result.dailyPnLPercent, -10);
+  assert.equal(result.realizedPnL, -300);
+});
+test('Daily: a same-day round trip, dividend and fee remain in daily earnings', () => {
+  const result = calculatePortfolioSummary([dailyTrade('buy', 10, 90), dailyTrade('sell', 10, 95), dailyTrade('dividend', 1, 5), dailyTrade('fee', 1, 2)], { THYAO: { price: 100, changePercent: 0 } });
+  assert.equal(result.dailyPnL, 53);
+});
+test('Daily: USD holdings combine price and FX moves multiplicatively', () => {
+  const tx = dailyTrade('buy', 1, 100, '2026-10-01', { symbol: 'AAPL', exchange: 'NASDAQ', currency: 'USD', exchangeRate: 40 });
+  const result = calculatePortfolioSummary([tx], { AAPL: { price: 90, changePercent: -10 }, USDTRY: { price: 44, changePercent: 10 } });
+  assert.equal(result.dailyPnL, -40); // 90*44 - 100*40, not -10% of current TRY value.
+  assert.equal(result.dailyPnLPercent, -1);
+});
+test('Daily: a fixed USD asset captures FX gain and does not double-count foreign cash', () => {
+  const tx = dailyTrade('buy', 1, 100, '2026-10-01', { symbol: 'AAPL', exchange: 'NASDAQ', currency: 'USD', exchangeRate: 40 });
+  const prices = { AAPL: { price: 100, changePercent: 0 }, USDTRY: { price: 44, changePercent: 10 } };
+  const summary = calculatePortfolioSummary([tx], prices);
+  assert.equal(summary.dailyPnL, 400);
+  const cash = calculateCashLedger([tx], [cashMovement(200, 'deposit', 'USD', 40, '2026-10-01')], prices, liveDay);
+  const total = includeCashInSummary(summary, cash);
+  assert.equal(total.dailyPnL, 400); // Asset FX only; remaining cash FX is excluded.
+  assert.equal(total.dailyPnLPercent, 10);
+});
+
+test('Cash cannot change investment profit or return percentages even with missing historical funding', () => {
+  const txs = [dailyTrade('buy', 10, 100, '2026-10-01')];
+  const prices = { THYAO: { price: 90, changePercent: -10 }, USDTRY: { price: 50, changePercent: 5 } };
+  const summary = calculatePortfolioSummary(txs, prices);
+  const ledger = calculateCashLedger(txs, [cashMovement(100000, 'deposit', 'TRY', 1, liveDay), cashMovement(470, 'deposit', 'USD', 40, liveDay)], prices, liveDay);
+  const result = includeCashInSummary(summary, ledger);
+  assert.ok(ledger.historicalDeficit);
+  assert.notEqual(result.totalValue, summary.totalValue);
+  for (const key of ['dailyPnL', 'dailyPnLPercent', 'totalPnL', 'totalPnLPercent', 'totalCost', 'fxPnL']) assert.equal(result[key], summary[key], key);
+});
+
+const { calculatePeriodPerformance, periodStart } = loadModule('src/lib/portfolio/periodPerformance.ts');
+const periodNow = new Date('2026-10-16T12:00:00Z');
+test('Periods: week starts Monday and month starts on the first in Istanbul', () => {
+  assert.equal(periodStart('weekly', periodNow), '2026-10-12');
+  assert.equal(periodStart('monthly', periodNow), '2026-10-01');
+  assert.equal(periodStart('monthly', new Date('2026-09-30T22:00:00Z')), '2026-10-01');
+});
+test('Periods: weekly and monthly returns use their own historical close, not daily multipliers', () => {
+  const txs = [dailyTrade('buy', 10, 80, '2026-09-15')];
+  const prices = { THYAO: { price: 90, changePercent: -10 } };
+  const history = { THYAO: { '2026-09-30': 110, '2026-10-09': 120, '2026-10-12': 999 } };
+  const week = calculatePeriodPerformance(txs, prices, history, 'weekly', periodNow);
+  const month = calculatePeriodPerformance(txs, prices, history, 'monthly', periodNow);
+  assert.equal(week.pnl, -300);
+  assert.equal(week.pnlPercent, -25);
+  assert.equal(month.pnl, -200);
+  assert.ok(Math.abs(month.pnlPercent - (-200 / 1100 * 100)) < 0.0001);
+});
+test('Periods: new purchases start at their purchase price and closed holdings retain period profit', () => {
+  const prices = { THYAO: { price: 110, changePercent: 0 } };
+  const bought = calculatePeriodPerformance([dailyTrade('buy', 10, 100, '2026-10-14')], prices, {}, 'monthly', periodNow);
+  assert.equal(bought.pnl, 100);
+  assert.equal(bought.pnlPercent, 10);
+  const sold = calculatePeriodPerformance([dailyTrade('buy', 10, 80, '2026-09-15'), dailyTrade('sell', 10, 110, '2026-10-14')], prices, { THYAO: { '2026-09-30': 100 } }, 'monthly', periodNow);
+  assert.equal(sold.pnl, 100);
+  assert.equal(sold.pnlPercent, 10);
+});
+test('Periods: incomplete or stale opening prices are unavailable rather than fabricated', () => {
+  const txs = [dailyTrade('buy', 10, 100, '2026-09-15')];
+  const prices = { THYAO: { price: 90, changePercent: -10 } };
+  assert.equal(calculatePeriodPerformance(txs, prices, {}, 'monthly', periodNow).available, false);
+  assert.equal(calculatePeriodPerformance(txs, prices, { THYAO: { '2026-09-01': 100 } }, 'monthly', periodNow).available, false);
+});
+test('Periods: historical FX is required and participates in USD asset return', () => {
+  const txs = [dailyTrade('buy', 1, 100, '2026-09-15', { symbol: 'AAPL', exchange: 'NASDAQ', currency: 'USD', exchangeRate: 40 })];
+  const prices = { AAPL: { price: 90, changePercent: 0 }, USDTRY: { price: 44, changePercent: 0 } };
+  const history = { AAPL: { '2026-09-30': 100 }, USDTRY: { '2026-09-30': 40 } };
+  const result = calculatePeriodPerformance(txs, prices, history, 'monthly', periodNow);
+  assert.equal(result.available, true);
+  assert.equal(result.pnl, -40);
+  assert.equal(result.pnlPercent, -1);
+  assert.equal(calculatePeriodPerformance(txs, prices, { AAPL: history.AAPL }, 'monthly', periodNow).available, false);
+});

@@ -227,7 +227,7 @@ export function getPortfolioDailyActivity(
         const changePct = h.dailyChangePercent || 0;
         const cVal = h.currentValue || (h.totalQuantity * h.currentPrice);
         const pVal = cVal / (1 + (changePct / 100));
-        const holdingPnl = cVal - pVal;
+        const holdingPnl = h.dailyPnL ?? cVal - pVal;
 
         return {
           symbol: h.symbol,
@@ -236,7 +236,7 @@ export function getPortfolioDailyActivity(
           averageCost: h.averageCost,
           totalCost: h.totalCost,
           dailyPnL: Number(holdingPnl.toFixed(2)),
-          dailyPnLPercent: Number(changePct.toFixed(2)),
+          dailyPnLPercent: Number((h.dailyReturnPercent ?? changePct).toFixed(2)),
           priceOnDate: h.currentPrice,
           previousClosePrice: Number((h.currentPrice / (1 + (changePct / 100))).toFixed(4)),
           todayTransactions: txByDate[dStr]?.transactions
@@ -325,12 +325,12 @@ export function getPortfolioDailyActivity(
           if (liveH) {
             h.priceOnDate = liveH.currentPrice;
             if (liveH.dailyChangePercent != null) {
-              h.dailyPnLPercent = Number(liveH.dailyChangePercent.toFixed(2));
+              h.dailyPnLPercent = Number((liveH.dailyReturnPercent ?? liveH.dailyChangePercent).toFixed(2));
               const prevPrice = liveH.dailyChangePercent === -100 ? 0 : liveH.currentPrice / (1 + liveH.dailyChangePercent / 100);
               h.previousClosePrice = Number(prevPrice.toFixed(4));
               const diff = liveH.currentPrice - prevPrice;
               h.priceDiff = Number(diff.toFixed(4));
-              h.dailyPnL = Number((h.quantity * diff).toFixed(2));
+              h.dailyPnL = liveH.dailyPnL ?? Number((h.quantity * diff).toFixed(2));
             }
           }
         }

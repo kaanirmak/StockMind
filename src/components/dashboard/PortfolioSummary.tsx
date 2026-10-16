@@ -2,12 +2,13 @@
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
-type MetricView = 'daily' | 'total';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { type PerformancePeriod as MetricView } from '@/lib/portfolio/periodPerformance';
 
 export default function PortfolioSummary() {
   const router = useRouter();
@@ -61,7 +62,8 @@ export default function PortfolioSummary() {
 
   const periods: { key: MetricView; label: string }[] = [
     { key: 'daily', label: 'Bugün' },
-    { key: 'total', label: 'Toplam K/Z' },
+    { key: 'monthly', label: 'Bu Ay' },
+    { key: 'total', label: 'Toplam' },
   ];
 
   const currentPeriodObj = periods.find((p) => p.key === period) || periods[0];
@@ -79,30 +81,13 @@ export default function PortfolioSummary() {
     router.push('/portfolio');
   };
 
-  // Period P&L
-  const periodData = useMemo(() => {
-    switch (period) {
-      case 'daily':
-        return {
-          label: 'Bugün',
-          pnl: summary.dailyPnL,
-          pnlPercent: summary.dailyPnLPercent,
-        };
-      case 'total':
-      default:
-        return {
-          label: 'Toplam',
-          pnl: summary.totalPnL,
-          pnlPercent: summary.totalPnLPercent,
-        };
-    }
-  }, [period, summary]);
+  const periodData = usePortfolioPerformance(period);
 
   const isPositive = periodData.pnl >= 0;
 
   // Sync to Android Home Screen Widget if running inside APK
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).StockMindAndroid && summary.totalValue > 0) {
+    if (typeof window !== 'undefined' && (window as any).StockMindAndroid && summary.totalValue > 0 && periodData.available) {
       try {
         const sign = periodData.pnl >= 0 ? " +" : " ";
         const pnlStr = `${sign}${formatCurrency(Math.abs(periodData.pnl))}`;
@@ -291,8 +276,8 @@ export default function PortfolioSummary() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" />
                     )}
                   </svg>
-                  <span>{getPnLSign(periodData.pnl)}{formatCurrency(Math.abs(periodData.pnl))}</span>
-                  {periodData.pnlPercent !== 0 && (
+                  <span title={periodData.available ? 'Nakit hariç varlık getirisi' : `Eksik geçmiş fiyat: ${periodData.missing.join(', ')}`}>{periodData.available ? `${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}` : periodData.loading ? 'Hesaplanıyor…' : 'Veri eksik'}</span>
+                  {periodData.available && periodData.pnlPercent !== 0 && (
                     <span className="text-xs sm:text-sm font-semibold opacity-90">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>
                   )}
                 </div>

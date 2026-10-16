@@ -10,7 +10,7 @@ import { PortfolioDangerZone } from '@/components/portfolio/PortfolioDangerZone'
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
-import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
+import { AUTO_MODEL, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
@@ -61,6 +61,19 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
   const [currency, setCurrency] = useState('TRY');
   const [openRouterKey, setOpenRouterKey] = useState('');
+  const [models, setModels] = useState<CatalogModel[]>([AUTO_MODEL]);
+  const [proModelsAllowed, setProModelsAllowed] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/ai/models', { signal: controller.signal }).then(response => response.json()).then(data => {
+      if (!controller.signal.aborted && Array.isArray(data.models)) {
+        setModels(data.models);
+        setProModelsAllowed(data.pro === true);
+        setDefaultModel(current => data.models.some((model: CatalogModel) => model.id === current && (model.free || data.pro)) ? current : AUTO_MODEL.id);
+      }
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [user?.id]);
   const [defaultModel, setDefaultModel] = useState('openrouter/free');
   const [isAdvancedAiOpen, setIsAdvancedAiOpen] = useState(false);
   const [emailAlerts, setEmailAlerts] = useState(true);
@@ -1591,9 +1604,9 @@ export default function SettingsPage() {
                 }}
                 className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
               >
-                {AVAILABLE_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
+                {models.map((m) => (
+                  <option key={m.id} value={m.id} disabled={!m.free && !proModelsAllowed}>
+                    {m.name}{m.free ? '' : ' · Pro'}
                   </option>
                 ))}
               </select>

@@ -1,5 +1,7 @@
+import { AUTO_MODEL, getModelCatalog, hasProAccess } from '@/lib/ai/modelCatalog';
+import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { AVAILABLE_MODELS, callOpenRouter, type OpenRouterMessage } from '@/lib/ai/openrouter';
+import { callOpenRouter, OpenRouterError, type OpenRouterMessage } from '@/lib/ai/openrouter';
 import { buildLiveAIContext, type PortfolioContextPayload } from '@/lib/ai/market-context';
 import { ApiError, apiErrorResponse, authorizeAction, isRecord, optionalText, readJsonObject } from '@/lib/api/security';
 
@@ -61,9 +63,11 @@ export async function POST(request: Request) {
       throw new ApiError(400, 'Mesajlar çok uzun veya son mesaj kullanıcıya ait değil.');
     }
     const model = optionalText(body.model, 120) || 'openrouter/free';
-    if (!AVAILABLE_MODELS.some((entry) => entry.id === model)) throw new ApiError(400, 'Desteklenmeyen model.');
+    const entry = model === AUTO_MODEL.id ? AUTO_MODEL : (await getModelCatalog()).find(entry => entry.id === model);
+    if (!entry) throw new ApiError(400, 'Model artık listede bulunmuyor. Başka bir model seçin.');
+    if (!entry.free && !hasProAccess(access.user.app_metadata)) throw new ApiError(403, 'Bu model yalnızca Pro hesaplara açıktır.', 'PRO_REQUIRED');
     const apiKey = optionalText(body.apiKey, 512);
-    if (!apiKey && !process.env.OPENROUTER_API_KEY?.trim()) throw new ApiError(401, 'AI anahtarı tanımlanmalıdır.');
+    if (!apiKey && !process.env.OPENROUTER_API_KEY?.trim()) throw new ApiError(401, 'AI anahtarı tanımlanmalıdır.', 'AI_KEY_REQUIRED');
     const effectivePortfolio = body.portfolioContext ?? (isRecord(body.context) ? body.context.portfolio : undefined);
     const portfolio = parsePortfolio(effectivePortfolio);
     let liveContext = '';
@@ -92,6 +96,17 @@ export async function POST(request: Request) {
       disclaimer: 'StockMind AI yatırım tavsiyesi vermez. Piyasa verileri ve analizler bilgilendirme amaçlıdır.',
     });
   } catch (error) {
+    if (error instanceof OpenRouterError) return NextResponse.json({ success: false, code: error.code, error: error.message }, { status: error.status });
     return apiErrorResponse(error);
   }
+}
+
+// Session-only readiness check: no provider call, portfolio payload or quota consumption.
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return NextResponse.json({ success: false, code: 'AUTH_REQUIRED', error: 'Oturumunuz doğrulanamadı. Tekrar giriş yapın.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ success: true, serverKeyConfigured: Boolean(process.env.OPENROUTER_API_KEY?.trim()) }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch { return NextResponse.json({ success: false, error: 'AI bağlantı durumu kontrol edilemedi.' }, { status: 503 }); }
 }

@@ -58,6 +58,9 @@ export interface Holding {
   feesPaid?: number; // Fees paid in TRY (FIN-06)
   weight: number; // percentage of portfolio
   dailyChangePercent?: number;
+  dailyPnL?: number; // Includes intraday trades and FX in TRY.
+  dailyReturnPercent?: number;
+  previousClosePrice?: number;
   lots?: {
     shares: number;
     costTry: number;

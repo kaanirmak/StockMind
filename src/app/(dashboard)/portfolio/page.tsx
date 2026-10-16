@@ -4,7 +4,8 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 import { palette } from '@/theme/palette';
 
 
-import { CashPanel } from '@/components/portfolio/CashPanel';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { PERIOD_LABELS, type PerformancePeriod } from '@/lib/portfolio/periodPerformance';
 import { ConfirmAction } from '@/components/ui/ConfirmAction';
 import React, { useState, useEffect } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -32,6 +33,8 @@ export default function PortfolioPage() {
     isRefreshingPrices,
   } = usePortfolioStore();
 
+  const [performancePeriod, setPerformancePeriod] = useState<PerformancePeriod>('daily');
+  const performance = usePortfolioPerformance(performancePeriod);
   const { showToast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; symbol: string } | null>(null);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
@@ -48,7 +51,6 @@ export default function PortfolioPage() {
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
   const [activeTab, setActiveTab] = useState<'holdings' | 'heatmap' | 'activity' | 'transactions'>('holdings');
-  const [assetFilter, setAssetFilter] = useState<'all' | 'stock' | 'fund' | 'cash'>('all');
   const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
@@ -296,7 +298,8 @@ export default function PortfolioPage() {
           <div className="min-w-0 flex-1">
             <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Portföy Değeri</p>
             <h2 className="text-xl sm:text-3xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
-            <p className="mt-2 text-xs text-text-muted">{summary.cash?.configured ? 'Net yatırılan' : 'Maliyet'}: ₺{summary.totalCost.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</p>
+            <p className="mt-2 text-xs text-text-muted">{summary.cash?.configured ? 'Net yatırılan' : 'Maliyet'}: ₺{(summary.cash?.configured ? summary.cash.netContributions : summary.totalCost).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</p>
+      <p className="mt-1 text-[10px] sm:text-xs text-text-muted leading-relaxed">İşlem hacmi: ₺{summary.totalVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Alış: ₺{summary.buyVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Satış: ₺{summary.sellVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</p>
           </div>
           <PortfolioAllocationChart compact allocation={summary.allocation} totalValue={summary.totalValue} />
         </div>
@@ -305,7 +308,7 @@ export default function PortfolioPage() {
         <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': isProfit ? palette.success : palette.danger, '--metric-glow': isProfit ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
-              <span>Toplam Kâr/Zarar</span>
+              <span>Varlık Kâr/Zararı</span>
               <span className="text-base sm:text-lg">{isProfit ? "" : ""}</span>
             </div>
             <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${isProfit ? 'text-success' : 'text-danger'}`}>
@@ -317,7 +320,7 @@ export default function PortfolioPage() {
               <Badge variant={isProfit ? 'success' : 'danger'} size="sm">
                 {isProfit ? '+' : ''}{summary.totalPnLPercent.toFixed(2)}%
               </Badge>
-              <span className="text-text-muted hidden sm:inline">net getiri</span>
+              <span className="text-text-muted hidden sm:inline">nakit hariç</span>
             </div>
             <div className="flex items-center justify-between text-[10px] text-text-muted pt-1 border-t border-border/50">
               <span>Açık: <strong className={summary.unrealizedPnL >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>₺{summary.unrealizedPnL.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></span>
@@ -329,22 +332,24 @@ export default function PortfolioPage() {
         </div>
 
         {/* Daily PnL & Position Count */}
-        <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': summary.dailyPnL >= 0 ? palette.success : palette.danger, '--metric-glow': summary.dailyPnL >= 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
+        <div className="portfolio-metric-card min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': performance.pnl >= 0 ? palette.success : palette.danger, '--metric-glow': performance.pnl >= 0 ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)' } as React.CSSProperties}>
           <div>
             <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
-              <span>Günlük Getiri</span>
+              <select aria-label="Getiri dönemi" value={performancePeriod} onChange={event => setPerformancePeriod(event.target.value as PerformancePeriod)} className="min-w-0 bg-bg-secondary text-text-primary rounded-lg px-2 py-1 text-xs normal-case">
+                {Object.entries(PERIOD_LABELS).filter(([value]) => value !== 'weekly').map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-bg-secondary text-text-muted border border-border/50">
                 {summary.holdings.length} Poz.
               </span>
             </div>
-            <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${summary.dailyPnL >= 0 ? 'text-success' : 'text-danger'}`}>
-              {summary.dailyPnL >= 0 ? '+' : ''}₺{summary.dailyPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${performance.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
+              {performance.available ? `${performance.pnl >= 0 ? '+' : ''}₺${performance.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : performance.loading ? 'Hesaplanıyor…' : 'Veri eksik'}
             </h3>
           </div>
           <div className="flex items-center justify-between gap-1 mt-2 text-[10px] sm:text-xs">
-            <Badge variant={summary.dailyPnLPercent >= 0 ? 'success' : 'danger'} size="sm">
-              {summary.dailyPnLPercent >= 0 ? '+' : ''}{summary.dailyPnLPercent.toFixed(2)}%
-            </Badge>
+            {performance.available && <Badge variant={performance.pnlPercent >= 0 ? 'success' : 'danger'} size="sm">
+              {performance.pnlPercent >= 0 ? '+' : ''}{performance.pnlPercent.toFixed(2)}%
+            </Badge>}
             <button
               type="button"
               onClick={() => {
@@ -363,10 +368,6 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      <p className="text-xs text-text-muted px-1">İşlem hacmi: ₺{summary.totalVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Alış: ₺{summary.buyVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Satış: ₺{summary.sellVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</p>
-      <nav aria-label="Portföy varlık filtresi" className="grid grid-cols-4 gap-1.5">{([['all', 'Tümü'], ['stock', 'Hisse'], ['fund', 'Fon'], ['cash', 'Nakit']] as const).map(([key, label]) => <Button key={key} size="sm" variant={assetFilter === key ? 'primary' : 'secondary'} aria-pressed={assetFilter === key} onClick={() => setAssetFilter(key)}>{label}</Button>)}</nav>
-
-      {assetFilter === 'cash' && <CashPanel />}
       {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
       <div className="space-y-4">
         {/* Navigation Tabs & Secondary Actions */}
@@ -395,9 +396,10 @@ export default function PortfolioPage() {
           )}
         </div>
 
-        {activeTab === 'holdings' ? (assetFilter === 'cash' ? <StateView title="Nakit hareketleri" description="Bakiyelerinizi ve para giriş/çıkış geçmişinizi Nakit Hesabı bölümünden yönetin." /> :
+        {activeTab === 'holdings' ? (
           <HoldingsTable
-            holdings={summary.holdings.filter((h) => assetFilter === 'all' || h.assetType === assetFilter)}
+            holdings={summary.holdings}
+            cashBalances={summary.cash?.configured ? summary.cash.balances : []}
             onAddTransaction={() => {
               setTradeModalSymbol(undefined);
               setTradeModalMode('stock');
