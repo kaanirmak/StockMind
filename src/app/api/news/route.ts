@@ -1,3 +1,4 @@
+import { mentionsNewsSymbol } from '@/lib/news/symbolMatch';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { rssPlainText } from '@/lib/news/rssText';
@@ -42,6 +43,7 @@ async function fetchLiveNews(
     const res = await fetch(rssUrl, {
       headers: {
         Accept: 'application/rss+xml, application/xml',
+        'User-Agent': 'StockMind RSS reader',
       },
       signal: AbortSignal.timeout(8000),
       cache: 'no-store', // Isolate upstream access from the OpenNext incremental cache.
@@ -86,16 +88,8 @@ async function fetchLiveNews(
         const relatedSymbolsSet = new Set<string>();
         const allSymbolsToCheck = Array.from(new Set([...DEFAULT_SYMBOLS_TO_TRACK, ...extraSymbolsToCheck]));
 
-        const upperText = `${rawTitle} ${rawSummary}`.toUpperCase();
-
         for (const sym of allSymbolsToCheck) {
-          if (!sym) continue;
-          const cleanSym = sym.toUpperCase().trim();
-          // Regex check for whole word symbol or symbol mentions
-          const regex = new RegExp(`(^|[^A-Z0-9])${cleanSym}([^A-Z0-9]|$)`, 'i');
-          if (regex.test(upperText) || upperText.includes(`$${cleanSym}`) || upperText.includes(`#${cleanSym}`)) {
-            relatedSymbolsSet.add(cleanSym);
-          }
+          if (mentionsNewsSymbol(`${rawTitle} ${rawSummary}`, sym)) relatedSymbolsSet.add(sym.trim().toUpperCase());
         }
 
         const { sentiment, reason: sentimentReason } = analyzeNewsSentiment(rawTitle, rawSummary);
@@ -127,7 +121,7 @@ async function fetchLiveNews(
         });
       }
 
-      if (items.length >= 15) break;
+      if (items.length >= 100) break;
     }
 
     if (!items.length) throw new Error('RSS contained no valid articles');
@@ -159,8 +153,8 @@ export async function GET(request: Request) {
       (feed.categories as readonly string[]).includes(category));
     const relevant = (article: NewsArticle) => {
       if (category === 'PORTFOLIO') {
-        const text = `${article.title} ${article.summary}`.toUpperCase();
-        return portfolioSymbols.some(sym => text.includes(sym));
+        const text = `${article.title} ${article.summary}`;
+        return portfolioSymbols.some(sym => mentionsNewsSymbol(text, sym));
       }
       return !category || category === 'ALL' || article.category === category;
     };
@@ -183,16 +177,7 @@ export async function GET(request: Request) {
 
     // Filter by single symbol if explicitly requested
     if (symbol) {
-      const symUpper = symbol.toUpperCase();
-      const symClean = symbol.replace('_', ' ').toUpperCase();
-      const matched = allNews.filter(
-        (n) =>
-          n.relatedSymbols?.includes(symUpper) ||
-          n.title.toUpperCase().includes(symUpper) ||
-          n.title.toUpperCase().includes(symClean) ||
-          n.summary.toUpperCase().includes(symUpper) ||
-          n.summary.toUpperCase().includes(symClean)
-      );
+      const matched = allNews.filter(n => mentionsNewsSymbol(`${n.title} ${n.summary}`, symbol));
       allNews = matched;
     }
 
@@ -218,7 +203,7 @@ export async function GET(request: Request) {
       warning: stale ? 'Canlı kaynaklara ulaşılamadı; son başarılı haberler gösteriliyor.' : failedFeeds > 0 ? 'Bazı haber kaynakları yanıt vermedi; ulaşılabilen haberler gösteriliyor.' : undefined,
       data: uniqueNews.map(article => {
         const analysis = analyzeNewsSentiment(article.title, article.summary);
-        return { ...article, sentiment: analysis.sentiment, sentimentReason: analysis.reason };
+        return { ...article, relatedSymbols: Array.from(new Set([...DEFAULT_SYMBOLS_TO_TRACK, ...portfolioSymbols])).filter(symbol => mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)), sentiment: analysis.sentiment, sentimentReason: analysis.reason };
       }),
     });
   } catch (error) {

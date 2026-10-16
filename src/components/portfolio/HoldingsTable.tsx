@@ -22,11 +22,12 @@ function getAssetBadgeInfo(h: Holding) {
 
 export interface HoldingsTableProps {
   holdings: Holding[];
+  cashBalances?: { currency: string; amount: number; value: number | null }[];
   onAddTransaction: () => void;
   onTrade?: (symbol: string) => void;
 }
 
-export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTransaction, onTrade }) => {
+export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBalances = [], onAddTransaction, onTrade }) => {
   const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(new Set());
 
   const toggleExpand = (sym: string) => {
@@ -38,7 +39,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
     });
   };
 
-  if (holdings.length === 0) {
+  if (holdings.length === 0 && cashBalances.length === 0) {
     return (
       <div className="glass-card p-8 sm:p-12 text-center text-text-muted space-y-3">
         <svg className="w-12 h-12 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -57,6 +58,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
 
   const totalCost = holdings.reduce((sum, h) => sum + h.totalCost, 0);
   const totalValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
+  const displayValue = totalValue + cashBalances.reduce((sum, row) => sum + (row.value || 0), 0);
   const totalPnL = totalValue - totalCost;
   const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0;
   const isTotalProfit = totalPnL >= 0;
@@ -69,9 +71,9 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
       <div className="md:hidden divide-y divide-border/50">
         {/* Mobile Header Summary Pill */}
         <div className="p-3 bg-bg-secondary/70 flex items-center justify-between text-xs font-semibold">
-          <span className="text-text-muted">{holdings.length} Varlık Bulunuyor</span>
+          <span className="text-text-muted">{holdings.length + cashBalances.length} Varlık Bulunuyor</span>
           <div className="flex items-center gap-2">
-            <span className="text-text-primary font-bold">₺{totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-text-primary font-bold">₺{displayValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isTotalProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
               {isTotalProfit ? '+' : ''}{totalPnLPercent.toFixed(1)}%
             </span>
@@ -158,14 +160,6 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => (onTrade ? onTrade(h.symbol) : onAddTransaction())}
-                    className="flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-white hover:bg-accent px-2 py-0.5 rounded-lg border border-accent/30 transition-all cursor-pointer shadow-xs active:scale-95"
-                    title={`${h.symbol} ile Midas veya Aracı Kurumda İşlem Yap`}
-                  >
-                    <span>⚡ İşlem Yap</span>
-                  </button>
                   <button
                     type="button"
                     onClick={() => toggleExpand(h.symbol)}
@@ -473,7 +467,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
                 ₺{totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </td>
               <td className="py-3.5 px-3 text-right font-mono font-bold text-text-primary">
-                ₺{totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                ₺{displayValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
               </td>
               <td className="py-3.5 px-3 text-right font-mono">
                 <div className="flex flex-col items-end">
@@ -492,6 +486,12 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onAddTra
           </tfoot>
         </table>
       </div>
+      {cashBalances.length > 0 && <div className="divide-y divide-border/50 border-t border-border/50">
+        {cashBalances.map(row => <div key={row.currency} className="p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0"><span className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center shrink-0">{row.currency === 'USD' ? '$' : row.currency === 'EUR' ? '€' : '₺'}</span><div><p className="text-sm font-semibold">Nakit · {row.currency}</p><p className="text-xs text-text-muted">{row.amount.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} {row.currency}</p></div></div>
+          <div className="text-right"><p className="font-mono text-sm font-semibold">{row.value === null ? 'Kur alınamadı' : `₺${row.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</p><p className="text-[10px] text-text-muted">Getiri hesabı dışında</p></div>
+        </div>)}
+      </div>}
     </div>
   );
 };

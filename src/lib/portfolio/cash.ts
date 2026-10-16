@@ -59,13 +59,11 @@ export function calculateCashLedger(transactions: Transaction[], movements: Cash
 export function includeCashInSummary(summary: PortfolioSummary, cash: CashLedger): PortfolioSummary {
   if (!cash.configured) return { ...summary, cash };
   const totalValue = summary.totalValue + cash.totalValue;
-  const totalPnL = totalValue - cash.netContributions;
-  const dailyPnL = summary.dailyPnL + cash.dailyFxPnL;
-  const previousEquity = totalValue - dailyPnL - cash.todayNetFlows;
-  const dailyBase = previousEquity > 0 ? previousEquity : Math.max(cash.todayNetFlows, 0);
+  // Cash affects account value and allocation only. Performance remains asset-only,
+  // including its original cost basis and return denominators.
   const allocation = [...summary.allocation, ...cash.balances.filter((row) => (row.value ?? 0) > 0).map((row) => ({ label: `Nakit ${row.currency}`, value: row.value!, percentage: 0, color: palette.info }))];
   const positiveValue = allocation.reduce((sum, row) => sum + Math.max(row.value, 0), 0);
-  return { ...summary, cash, totalValue, totalCost: cash.netContributions, totalPnL, totalPnLPercent: cash.netContributions > 0 ? totalPnL / cash.netContributions * 100 : 0, dailyPnL, dailyPnLPercent: dailyBase > 0 ? dailyPnL / dailyBase * 100 : 0,
+  return { ...summary, cash, totalValue,
     holdings: summary.holdings.map((h) => ({ ...h, weight: positiveValue > 0 ? h.currentValue / positiveValue * 100 : 0 })),
     allocation: allocation.map((row) => ({ ...row, percentage: positiveValue > 0 ? row.value / positiveValue * 100 : 0 })),
     valuationStatus: { ...summary.valuationStatus, isComplete: summary.valuationStatus?.isComplete !== false && cash.missingRates.length === 0, missingFx: Boolean(summary.valuationStatus?.missingFx || cash.missingRates.length), missingPrices: summary.valuationStatus?.missingPrices || [] },

@@ -43,7 +43,8 @@ function fixture(options = {}) {
   };
   const load = loader({
     '@/lib/supabase/server': { createClient: async () => supabase },
-    '@/lib/ai/openrouter': { AVAILABLE_MODELS: [{ id: 'openrouter/free' }], callOpenRouter: async (...args) => { calls.ai++; calls.aiArgs = args; return 'answer'; } },
+    '@/lib/ai/openrouter': { OpenRouterError: class extends Error {}, AVAILABLE_MODELS: [{ id: 'openrouter/free' }], callOpenRouter: async (...args) => { calls.ai++; calls.aiArgs = args; return 'answer'; } },
+    '@/lib/ai/modelCatalog': { AUTO_MODEL: { id: 'openrouter/free', free: true }, getModelCatalog: async () => [{ id: 'openrouter/free', free: true }, { id: 'paid/model', free: false }], hasProAccess: metadata => metadata?.plan === 'pro' },
     '@/lib/ai/market-context': { buildLiveAIContext: async () => 'server context' },
     '@/lib/ai/investment-committee': { runInvestmentCommittee: async (...args) => { calls.ai++; calls.aiArgs = args; return { isLiveLLM: true }; } },
     '@/lib/data/stocks': { getStockBySymbolLive: async () => { calls.quote++; return options.quote === undefined ? { price: 123, name: 'Verified' } : options.quote; } },
@@ -203,3 +204,42 @@ test('cron endpoints strictly enforce header-based CRON_SECRET and disallow URL 
   assert.match(syncFundsCode, /x-cron-secret/, 'sync-funds must check x-cron-secret header');
 });
 
+
+test('development permits same-port loopback normalization, production and other origins remain blocked', async () => {
+  for (const [env, origin, host, expected] of [
+    ['development', 'http://127.0.0.1:3000', '127.0.0.1:3000', 401],
+    ['production', 'http://127.0.0.1:3000', '127.0.0.1:3000', 403],
+    ['development', 'http://127.0.0.1:3001', '127.0.0.1:3001', 403],
+    ['development', 'http://evil.test:3000', 'evil.test:3000', 403],
+  ]) {
+    const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: null }, error: null }) } }) } }, { NODE_ENV: env });
+    const security = load('src/lib/api/security.ts');
+    await assert.rejects(() => security.authorizeAction(new Request('http://localhost:3000/api/ai/chat', { headers: { origin, host } }), 'ai_chat'), error => error.status === expected);
+  }
+});
+
+test('model catalog includes text models and fails closed for unknown or nonzero prices', () => {
+  const { parseModelCatalog, hasProAccess } = loader()('src/lib/ai/modelCatalog.ts');
+  const row = (id, pricing, output = ['text']) => ({ id, name: id, pricing, architecture: { output_modalities: output } });
+  const models = parseModelCatalog({ data: [
+    row('free', { prompt: '0', completion: '0', request: '0' }),
+    row('paid', { prompt: '0.01', completion: '0' }),
+    row('unknown', { prompt: '0', completion: 'unknown' }),
+    row('image', { prompt: '0', completion: '0' }, ['image']),
+  ] });
+  assert.equal(models[0].id, 'openrouter/free');
+  assert.equal(models.find(m => m.id === 'free').free, true);
+  assert.equal(models.find(m => m.id === 'paid').free, false);
+  assert.equal(models.find(m => m.id === 'unknown').free, false);
+  assert.equal(models.some(m => m.id === 'image'), false);
+  assert.equal(hasProAccess({ plan: 'free' }), false);
+  assert.equal(hasProAccess({ plan: 'pro' }), true);
+});
+
+ test('paid model is forbidden for free accounts before provider execution', async () => {
+  const { load, calls } = fixture();
+  const response = await load('src/app/api/ai/chat/route.ts').POST(request({ ...chat, model: 'paid/model' }));
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).code, 'PRO_REQUIRED');
+  assert.equal(calls.ai, 0);
+});

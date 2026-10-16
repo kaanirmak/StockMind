@@ -4,14 +4,14 @@ import { createClient } from '@/lib/supabase/server';
 export type ProtectedAction = 'ai_chat' | 'ai_committee' | 'test_email';
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public code?: string) {
     super(message);
   }
 }
 
 export function apiErrorResponse(error: unknown) {
   if (error instanceof ApiError) {
-    return NextResponse.json({ success: false, error: error.message }, { status: error.status });
+    return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status });
   }
   // Provider/database errors can contain credentials or request content.
   redactedLog('error', 'Unhandled server error', { errorType: error instanceof Error ? error.name : typeof error });
@@ -48,12 +48,25 @@ export function redactedLog(level: 'info' | 'warn' | 'error', message: string, m
 /** Verify identity and a database-backed quota before any paid/provider work. */
 export async function authorizeAction(request: Request, action: ProtectedAction) {
   const origin = request.headers.get('origin');
-  if (origin && origin !== new URL(request.url).origin) {
-    throw new ApiError(403, 'Bu kaynaktan istek kabul edilmiyor.');
+  const requestUrl = new URL(request.url);
+  // Next dev can normalize 127.0.0.1 to localhost internally. Only accept
+  // loopback aliases on the same port and protocol in development.
+  let localAlias = false;
+  if (origin && process.env.NODE_ENV === 'development') {
+    try {
+      const source = new URL(origin);
+      const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+      localAlias = loopback.has(source.hostname) && loopback.has(requestUrl.hostname)
+        && source.protocol === requestUrl.protocol && source.port === requestUrl.port
+        && source.host === request.headers.get('host');
+    } catch { /* Invalid origins remain forbidden. */ }
+  }
+  if (origin && origin !== requestUrl.origin && !localAlias) {
+    throw new ApiError(403, 'Bu kaynaktan istek kabul edilmiyor.', 'FORBIDDEN_ORIGIN');
   }
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) throw new ApiError(401, 'Devam etmek için giriş yapın.');
+  if (error || !data.user) throw new ApiError(401, 'Devam etmek için giriş yapın.', 'AUTH_REQUIRED');
 
   const { data: quota, error: quotaError } = await supabase.rpc('consume_api_quota', {
     p_action: action,

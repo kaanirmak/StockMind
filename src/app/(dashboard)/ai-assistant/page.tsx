@@ -1,10 +1,11 @@
 'use client';
+import { chatErrorMessage } from '@/lib/ai/chatErrors';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AVAILABLE_MODELS } from '@/lib/ai/openrouter';
+import { AUTO_MODEL, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { Button, Badge } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -65,7 +66,30 @@ function AIAssistantContent() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0].id);
+  const [readinessError, setReadinessError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/ai/chat', { signal: controller.signal, cache: 'no-store' }).then(async response => {
+      const data = await response.json();
+      if (!controller.signal.aborted) setReadinessError(data.success ? '' : chatErrorMessage(response.status, data));
+    }).catch(() => {});
+    return () => controller.abort();
+  }, []);
+  const [selectedModel, setSelectedModel] = useState<string>(AUTO_MODEL.id);
+  const [models, setModels] = useState<CatalogModel[]>([AUTO_MODEL]);
+  const [proModelsAllowed, setProModelsAllowed] = useState(false);
+  const [modelWarning, setModelWarning] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/ai/models', { signal: controller.signal }).then(response => response.json()).then(data => {
+      if (controller.signal.aborted || !Array.isArray(data.models)) return;
+      setModels(data.models);
+      setProModelsAllowed(data.pro === true);
+      setModelWarning(data.warning || '');
+      setSelectedModel(current => data.models.some((model: CatalogModel) => model.id === current && (model.free || data.pro)) ? current : AUTO_MODEL.id);
+    }).catch(() => { if (!controller.signal.aborted) setModelWarning('Model listesi alınamadı. Otomatik ücretsiz kullanılabilir.'); });
+    return () => controller.abort();
+  }, [user?.id]);
   const [customApiKey, setCustomApiKey] = useState<string>('');
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
@@ -290,13 +314,13 @@ function AIAssistantContent() {
         };
         updateCurrentSessionMessages([...newMessages, assistantMessage]);
       } else {
-        const errorText = res.status === 401 || res.status === 403 ? 'AI erişimi doğrulanamadı. Ayarlar > AI bölümünden anahtarınızı kontrol edin.' : res.status === 429 ? 'İstek sınırına ulaşıldı. Biraz bekleyip tekrar deneyin.' : 'AI şu anda yanıt veremiyor. Lütfen tekrar deneyin.';
+        const errorText = chatErrorMessage(res.status, data);
         updateCurrentSessionMessages([
           ...newMessages,
           {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: ` **Analiz Uyarısı:** ${errorText}\n\n*Sunucu yanıt veremedi veya model meşgul.*`,
+            content: ` **Analiz Uyarısı:** ${errorText}`,
             createdAt: new Date().toISOString(),
           },
         ]);
@@ -351,9 +375,12 @@ function AIAssistantContent() {
         </div>
         <label className="flex items-center gap-2 text-xs text-text-muted">Model
           <select aria-label="AI modeli" value={selectedModel} onChange={e => { setSelectedModel(e.target.value); saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value); }} className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-bg-input border border-border text-xs text-text-primary">
-            {AVAILABLE_MODELS.map(model => <option key={model.id} value={model.id}>{model.name.split(' (')[0]}</option>)}
+            <optgroup label="Ücretsiz modeller">{models.filter(model => model.free).map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</optgroup>
+            <optgroup label="Pro modeller">{models.filter(model => !model.free).map(model => <option key={model.id} value={model.id} disabled={!proModelsAllowed}>{model.name} · Pro</option>)}</optgroup>
           </select>
         </label>
+        {modelWarning && <p className="text-xs text-text-muted">{modelWarning}</p>}
+        {readinessError && <p role="alert" className="text-xs text-danger">{readinessError} <a href="/login" className="underline">Giriş yap</a></p>}
       </div>
 
       {/* Chat Messages Body */}
@@ -439,7 +466,7 @@ function AIAssistantContent() {
               </div>
               <div className="glass-card p-3 sm:p-4 rounded-2xl rounded-tl-xs border border-border/80 flex items-center gap-2 text-xs text-text-muted">
                 <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
-                <span>{AVAILABLE_MODELS.find((m) => m.id === selectedModel)?.name.split(' (')[0] || 'AI'} canlı analiz hazırlıyor...</span>
+                <span>{models.find((m) => m.id === selectedModel)?.name.split(' (')[0] || 'AI'} canlı analiz hazırlıyor...</span>
               </div>
             </div>
           )}

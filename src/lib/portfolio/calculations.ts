@@ -450,7 +450,11 @@ export function calculatePortfolioSummary(
   livePrices?: Record<string, PriceQuote | number>
 ): PortfolioSummary {
   const liveUsdTry = getLiveUsdTryRate(livePrices);
-  const { holdings, realizedPnL, dividendsTotal, feesTotal, valuationStatus } = processPortfolioTransactions(transactions, livePrices);
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date());
+  const dateKey = (date: string) => date.includes('T')
+    ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date(date)) : date.slice(0, 10);
+  const effectiveTransactions = transactions.filter(t => dateKey(t.transactionDate) <= today);
+  const { holdings, realizedPnL, dividendsTotal, feesTotal, valuationStatus } = processPortfolioTransactions(effectiveTransactions, livePrices);
 
   const totalValue = holdings.reduce((acc, h) => acc + h.currentValue, 0);
   const totalCost = holdings.reduce((acc, h) => acc + h.totalCost, 0);
@@ -465,20 +469,64 @@ export function calculatePortfolioSummary(
   const totalFxPnL = holdings.reduce((sum, h) => sum + (h.fxPnL || 0), 0);
   const totalAssetPnL = holdings.reduce((sum, h) => sum + (h.assetPnL || 0), 0);
 
-  // Daily PnL mathematically derived from previous close:
-  // For each holding: P_prev = P_current / (1 + change/100)
-  // Gain = Value_current - Value_prev
-  const dailyPnL = holdings.reduce((sum, h) => {
-    const change = h.dailyChangePercent || 0;
-    if (change !== 0 && 1 + change / 100 > 0) {
-      const prevValue = h.currentValue / (1 + change / 100);
-      return sum + (h.currentValue - prevValue);
+  // Daily equity change = current positions + today's proceeds/costs - opening positions.
+  // Opening units alone receive the full close-to-close move; today's buys start at execution price.
+  const opening = processPortfolioTransactions(effectiveTransactions.filter(t => dateKey(t.transactionDate) < today), livePrices).holdings;
+  const todayTransactions = effectiveTransactions.filter(t => dateKey(t.transactionDate) === today);
+  const keyOf = (symbol: string) => normalizeSymbolKey(symbol);
+  const currentByKey = new Map(holdings.map(h => [keyOf(h.symbol), h]));
+  const openingByKey = new Map(opening.map(h => [keyOf(h.symbol), h]));
+  const flowByKey = new Map<string, number>();
+  let todayBuyCapital = 0;
+  for (const t of todayTransactions) {
+    const key = keyOf(t.symbol);
+    const holding = currentByKey.get(key) || openingByKey.get(key);
+    const isUsd = holding?.originalCurrency === 'USD' || t.currency === 'USD' || t.exchange === 'NASDAQ' || t.exchange === 'NYSE';
+    const rate = isUsd ? (t.exchangeRate && t.exchangeRate > 0 ? t.exchangeRate : liveUsdTry || 1) : 1;
+    const gross = t.quantity * t.price * rate;
+    const fee = (t.commission || 0) * rate;
+    let flow = 0;
+    if (t.transactionType === 'buy') { flow = -gross - fee; todayBuyCapital += gross + fee; }
+    else if (t.transactionType === 'sell') flow = gross - fee;
+    else if (t.transactionType === 'dividend') flow = t.price * (t.quantity > 0 ? t.quantity : 1) * rate - fee;
+    else if (t.transactionType === 'fee') flow = -(t.price * (t.quantity > 0 ? t.quantity : 1) * rate + fee);
+    else if (t.transactionType === 'split' && t.quantity > 0) {
+      const old = openingByKey.get(key);
+      if (old) old.totalQuantity *= t.quantity;
     }
-    return sum;
-  }, 0);
-
-  const prevTotalValue = totalValue - dailyPnL;
-  const dailyPnLPercent = prevTotalValue > 0 ? (dailyPnL / prevTotalValue) * 100 : 0;
+    flowByKey.set(key, (flowByKey.get(key) || 0) + flow);
+  }
+  const fxQuote = livePrices?.USDTRY ?? livePrices?.USD ?? livePrices?.['USDTRY=X'];
+  const fxChange = typeof fxQuote === 'object' && Number.isFinite(fxQuote.changePercent) ? fxQuote.changePercent || 0 : 0;
+  const previousRate = liveUsdTry && fxChange > -100 ? liveUsdTry / (1 + fxChange / 100) : liveUsdTry || 1;
+  let dailyPnL = 0;
+  let openingValue = 0;
+  const keys = new Set([...currentByKey.keys(), ...openingByKey.keys(), ...flowByKey.keys()]);
+  for (const key of keys) {
+    const current = currentByKey.get(key);
+    const old = openingByKey.get(key);
+    const holding = current || old;
+    if (!holding) { dailyPnL += flowByKey.get(key) || 0; continue; }
+    const quote = getCurrentAssetPrice(holding.symbol, holding.assetType, livePrices, holding.originalPrice || holding.currentPrice);
+    const priorNative = quote.changePercent > -100 ? quote.price / (1 + quote.changePercent / 100) : quote.price;
+    const priorTry = priorNative * (holding.originalCurrency === 'USD' ? previousRate : 1);
+    const base = (old?.totalQuantity || 0) * priorTry;
+    const gain = (current?.currentValue || 0) - base + (flowByKey.get(key) || 0);
+    openingValue += base;
+    dailyPnL += gain;
+    if (current) {
+      current.dailyPnL = Number(gain.toFixed(2));
+      const boughtCapital = todayTransactions.filter(t => keyOf(t.symbol) === key && t.transactionType === 'buy')
+        .reduce((sum, t) => sum + (t.quantity * t.price + (t.commission || 0)) *
+          (holding.originalCurrency === 'USD' ? (t.exchangeRate && t.exchangeRate > 0 ? t.exchangeRate : liveUsdTry || 1) : 1), 0);
+      const positionBase = base > 0 ? base : boughtCapital;
+      current.dailyReturnPercent = positionBase > 0 ? gain / positionBase * 100 : 0;
+      current.previousClosePrice = priorTry;
+      current.dailyChangePercent = priorTry > 0 ? (current.currentPrice / priorTry - 1) * 100 : 0;
+    }
+  }
+  const dailyBase = openingValue > 0 ? openingValue : todayBuyCapital;
+  const dailyPnLPercent = dailyBase > 0 ? (dailyPnL / dailyBase) * 100 : 0;
 
   // Turnover metrics
   const effectiveUsdRate = liveUsdTry || 1.0;

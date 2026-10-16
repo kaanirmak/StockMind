@@ -9,13 +9,13 @@ let previous = { data: [] };
 try { previous = JSON.parse(await readFile(output, 'utf8')); } catch { /* First collection. */ }
 const results = await Promise.allSettled(NEWS_FEEDS.map(async feed => {
   const response = await fetch(feed.url, {
-    signal: AbortSignal.timeout(15000), headers: { Accept: 'application/rss+xml, application/xml' },
+    signal: AbortSignal.timeout(15000), headers: { Accept: 'application/rss+xml, application/xml', 'User-Agent': 'StockMind RSS reader' },
   });
   if (!response.ok) throw new Error(`${feed.id}: HTTP ${response.status}`);
   const xml = await response.text();
   if (!/<rss\b/i.test(xml)) throw new Error(`${feed.id}: invalid RSS`);
   const collectedAt = new Date().toISOString();
-  const articles = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 30).flatMap(([, item]) => {
+  const articles = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 100).flatMap(([, item]) => {
     const field = tag => item.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`))?.[1] || '';
     const title = rssPlainText(field('title'));
     const url = rssPlainText(field('link'));
