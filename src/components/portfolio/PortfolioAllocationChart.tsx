@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Modal } from '@/components/ui/Modal';
 
 export interface AllocationItem {
   label: string;
@@ -12,13 +13,33 @@ export interface AllocationItem {
 export interface PortfolioAllocationChartProps {
   allocation: AllocationItem[];
   totalValue: number;
+  compact?: boolean;
 }
 
 export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> = ({
   allocation,
   totalValue,
+  compact = false,
 }) => {
   const [selected, setSelected] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  if (compact) {
+    let offset = 0;
+    return <>
+      <button type="button" disabled={!allocation.length} aria-label="Varlık dağılımı ayrıntıları" onClick={() => setDetailsOpen(true)} className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-full">
+        <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90" aria-hidden="true">
+          <circle cx="50" cy="50" r="39" fill="none" stroke="var(--border)" strokeWidth="12" />
+          {allocation.map(item => {
+            const circumference = 2 * Math.PI * 39;
+            const start = offset; offset += item.percentage / 100;
+            return <circle key={item.label} cx="50" cy="50" r="39" fill="none" stroke={item.color} strokeWidth="12" strokeDasharray={`${circumference * item.percentage / 100} ${circumference}`} strokeDashoffset={-circumference * start} />;
+          })}
+        </svg>
+        <span className="absolute inset-0 flex flex-col items-center justify-center text-text-primary"><span className="text-base font-semibold">{allocation.length}</span><span className="text-[10px] text-text-muted">{allocation.length ? 'Dağılım' : 'Varlık'}</span></span>
+      </button>
+      <Modal isOpen={detailsOpen} onClose={() => setDetailsOpen(false)} title="Varlık dağılımı"><PortfolioAllocationChart allocation={allocation} totalValue={totalValue} /></Modal>
+    </>;
+  }
   const selectedItem = allocation.find((item) => item.label === selected);
   if (!allocation || allocation.length === 0) {
     return (

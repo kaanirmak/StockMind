@@ -87,37 +87,9 @@ export default function WatchlistPage() {
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12">
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-warning/10 via-bg-card to-bg-card p-5 sm:p-7 shadow-lg shadow-warning/5">
-        <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-warning/15 blur-3xl" />
-        <div className="relative flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="min-w-0">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-success">
-              <span className="h-1.5 w-1.5 rounded-full bg-current" /> {syncStatus === 'synced' ? 'Hesapla senkronize' : syncStatus === 'syncing' ? 'Senkronize ediliyor' : syncStatus === 'error' ? 'Senkronizasyon bekliyor' : 'Bu cihazda kayıtlı'}
-            </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-primary">Takip Listem</h1>
-              <Badge variant="purple" size="sm">{items.length} varlık</Badge>
-            </div>
-            <p className="text-text-secondary text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
-              Hisselerinizi ve fonlarınızı tek ekranda izleyin, hedef fiyat alarmlarınızı yönetin.
-            </p>
-          </div>
-          <div className="shrink-0">
-        <Button
-          variant="primary"
-          size="md"
-          onClick={() => setIsAddModalOpen(true)}
-          leftIcon={
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          }
-        >
-          Varlık Ekle
-        </Button>
-          </div>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0"><h1 className="text-lg font-semibold text-text-primary">Takip Listem <span className="text-sm text-text-muted">({items.length})</span></h1>{syncStatus === 'syncing' && <p className="text-xs text-text-muted">Senkronize ediliyor…</p>}</div>
+        <Button size="sm" onClick={() => setIsAddModalOpen(true)}>+ Varlık Ekle</Button>
       </div>
 
       {syncStatus === 'error' && <div role="alert" className="rounded-xl p-3 bg-warning/10 text-warning text-sm flex items-center justify-between gap-2"><p>Değişiklikleriniz henüz hesabınıza kaydedilemedi.</p><Button variant="secondary" onClick={() => { retrySync(); void refreshFromServer(); }}>Tekrar Dene</Button></div>}
@@ -127,9 +99,7 @@ export default function WatchlistPage() {
           <div className="glass-card p-8 text-center text-text-muted space-y-3">
             <p className="text-sm font-medium text-text-secondary">İzleme listenizde henüz varlık bulunmuyor.</p>
             <p className="text-xs">Takip etmek istediğiniz hisse veya fonları ekleyebilirsiniz.</p>
-            <Button variant="secondary" size="sm" onClick={() => setIsAddModalOpen(true)}>
-              + İlk Varlığı Ekle
-            </Button>
+
           </div>
         ) : (
           items.map((item) => {
@@ -265,9 +235,7 @@ export default function WatchlistPage() {
                     <div className="space-y-3">
                       <p className="text-sm font-medium text-text-secondary">İzleme listenizde henüz varlık bulunmuyor.</p>
                       <p className="text-xs">Yukarıdaki &quot;Varlık Ekle&quot; butonuna basarak takip etmek istediğiniz hisse veya fonları ekleyebilirsiniz.</p>
-                      <Button variant="secondary" size="sm" onClick={() => setIsAddModalOpen(true)}>
-                        + İlk Varlığı Ekle
-                      </Button>
+
                     </div>
                   </td>
                 </tr>

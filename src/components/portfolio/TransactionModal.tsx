@@ -45,8 +45,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     initialMode === 'broker' ? 'broker' : 'virtual'
   );
   // Under StockMind Sanal Bakiye: 'stock' | 'fund' | 'cash'
-  const [assetSubTab, setAssetSubTab] = useState<'stock' | 'fund' | 'cash'>(
-    initialMode === 'cash' ? 'cash' : initialMode === 'fund' ? 'fund' : 'stock'
+  const [assetSubTab, setAssetSubTab] = useState<'instrument' | 'cash'>(
+    initialMode === 'cash' ? 'cash' : 'instrument'
   );
   const [cashMode, setCashMode] = useState(initialMode === 'cash');
   const [cashBusy, setCashBusy] = useState(false);
@@ -55,7 +55,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [currency, setCurrency] = useState<'TRY' | 'USD'>('TRY');
   const [exchangeRate, setExchangeRate] = useState<string>('');
   const [symbol, setSymbol] = useState(initialSymbol || '');
-  const [searchQuery, setSearchQuery] = useState(initialSymbol || '');
   const [quantity, setQuantity] = useState<number>(100);
   const [price, setPrice] = useState<string>('');
   const [commission, setCommission] = useState<number>(0);
@@ -74,14 +73,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   }>({ brokers: [], stocks: [], funds: [], loading: false });
   const spotlightContainerRef = useRef<HTMLDivElement>(null);
 
-  const [searchResults, setSearchResults] = useState<{
-    stocks: any[];
-    funds: any[];
-    loading: boolean;
-  }>({ stocks: [], funds: [], loading: false });
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isFetchingPrice, setIsFetchingPrice] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const spotlightInputRef = useRef<HTMLInputElement>(null);
 
   const usdQuote = livePrices?.['USDTRY'] || livePrices?.['USD'];
   const liveUsdRate =
@@ -101,7 +94,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     if (isOpen) {
       if (initialSymbol) {
         setSymbol(initialSymbol.toUpperCase().trim());
-        setSearchQuery(initialSymbol.toUpperCase().trim());
       }
       if (initialMode) {
         if (initialMode === 'broker') {
@@ -109,7 +101,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           setCashMode(false);
         } else {
           setExecutionMode('virtual');
-          setAssetSubTab(initialMode);
+          setAssetSubTab(initialMode === 'cash' ? 'cash' : 'instrument');
           if (initialMode === 'cash') {
             setCashMode(true);
           } else {
@@ -124,9 +116,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   // Close dropdowns on click outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsDropdownOpen(false);
-      }
       if (spotlightContainerRef.current && !spotlightContainerRef.current.contains(e.target as Node)) {
         setIsSpotlightOpen(false);
       }
@@ -161,20 +150,23 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       ...prev,
       brokers: matchedBrokers,
       stocks: matchedPopular,
+      funds: [],
       loading: true,
     }));
 
     // 3. Debounced remote API search across stocks and TEFAS funds
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const [stocksRes, fundsRes] = await Promise.allSettled([
-          fetch(`/api/stocks?search=${encodeURIComponent(q)}`).then((r) => r.json()),
-          fetch(`/api/funds?search=${encodeURIComponent(q)}`).then((r) => r.json()),
+          fetch(`/api/stocks?search=${encodeURIComponent(q)}`, { signal: controller.signal }).then((r) => r.json()),
+          fetch(`/api/funds?search=${encodeURIComponent(q)}`, { signal: controller.signal }).then((r) => r.json()),
         ]);
 
+        if (controller.signal.aborted) return;
         const remoteStocks =
           stocksRes.status === 'fulfilled' && stocksRes.value?.success && Array.isArray(stocksRes.value?.data)
-            ? stocksRes.value.data.slice(0, 6)
+            ? stocksRes.value.data.filter((item: { exchange?: string; assetType?: string }) => item.exchange !== 'TEFAS' && item.assetType !== 'fund').slice(0, 6)
             : [];
 
         const remoteFunds =
@@ -199,43 +191,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       }
     }, 150);
 
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [spotlightQuery]);
-
-  // Live search effect with debounce across all stocks and funds
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults({ stocks: [], funds: [], loading: false });
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setSearchResults((prev) => ({ ...prev, loading: true }));
-      try {
-        if (assetType === 'stock') {
-          const res = await fetch(`/api/stocks?search=${encodeURIComponent(searchQuery.trim())}`);
-          const data = await res.json();
-          setSearchResults({
-            stocks: data.success && Array.isArray(data.data) ? data.data.slice(0, 10) : [],
-            funds: [],
-            loading: false,
-          });
-        } else {
-          const res = await fetch(`/api/funds?search=${encodeURIComponent(searchQuery.trim())}`);
-          const data = await res.json();
-          setSearchResults({
-            stocks: [],
-            funds: data.success && Array.isArray(data.data) ? data.data.slice(0, 10) : [],
-            loading: false,
-          });
-        }
-      } catch (err) {
-        setSearchResults({ stocks: [], funds: [], loading: false });
-      }
-    }, 180);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, assetType]);
 
   const handleSelectAsset = async (item: {
     symbol?: string;
@@ -252,10 +209,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     const sym = cleanSym.toUpperCase().trim();
 
     setSymbol(sym);
-    setSearchQuery(sym);
-    setIsDropdownOpen(false);
 
-    const isFund = assetType === 'fund' || detectedType === 'fund' || item.assetType === 'fund';
+    const isFund = item.assetType ? item.assetType === 'fund' : detectedType === 'fund' || assetType === 'fund';
     const isUsdAsset =
       item.currency === 'USD' ||
       exchange === 'NASDAQ' ||
@@ -305,48 +260,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       }
     } catch (e) {
       console.warn('Failed to fetch live price:', e);
-    } finally {
-      setIsFetchingPrice(false);
-    }
-  };
-
-  const handleManualSymbolBlur = async () => {
-    if (!symbol || symbol.length < 2) return;
-    const { symbol: cleanSym, assetType: detectedType, exchange } = cleanSymbol(symbol);
-    if (detectedType === 'fund') {
-      setAssetType('fund');
-      setCurrency('TRY');
-    } else if (exchange === 'NASDAQ' || exchange === 'NYSE') {
-      setCurrency('USD');
-      if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
-    }
-
-    setIsFetchingPrice(true);
-    try {
-      if (assetType === 'fund' || detectedType === 'fund') {
-        const res = await fetch(`/api/funds/${encodeURIComponent(cleanSym)}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data?.price > 0) {
-            setPrice(json.data.price.toString());
-          }
-        }
-      } else {
-        const res = await fetch(`/api/stocks/${encodeURIComponent(cleanSym)}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            const p = json.data.price || json.data.basePrice;
-            if (p > 0) setPrice(p.toString());
-            if (json.data.currency === 'USD') {
-              setCurrency('USD');
-              if (liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2));
-            }
-          }
-        }
-      }
-    } catch (e) {
-      // ignore
     } finally {
       setIsFetchingPrice(false);
     }
@@ -438,7 +351,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
       // Reset form & close
       setSymbol('');
-      setSearchQuery('');
       setPrice('');
       setNotes('');
       onClose();
@@ -496,13 +408,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           </div>
           <input
             type="text"
+            ref={spotlightInputRef}
+            aria-label="Yatırım enstrümanı veya aracı kurum ara"
             value={spotlightQuery}
             onChange={(e) => {
               setSpotlightQuery(e.target.value);
               setIsSpotlightOpen(true);
             }}
             onFocus={() => setIsSpotlightOpen(true)}
-            placeholder="Spotlight arama (Hisse, Fon veya Aracı Kurum)..."
+            placeholder="Hisse, fon veya kurum ara"
             className="w-full pl-10 pr-20 py-2.5 rounded-xl bg-bg-secondary text-text-primary text-xs sm:text-sm font-medium placeholder:text-text-muted border border-border focus:outline-hidden focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all shadow-inner"
           />
           <div className="absolute right-2.5 flex items-center gap-1.5">
@@ -599,7 +513,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         setIsSpotlightOpen(false);
                         setSpotlightQuery('');
                         setExecutionMode('virtual');
-                        setAssetSubTab('stock');
+                        setAssetSubTab('instrument');
                         setCashMode(false);
                         setAssetType('stock');
                         handleSelectAsset({ ...s, assetType: 'stock' });
@@ -644,7 +558,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         setIsSpotlightOpen(false);
                         setSpotlightQuery('');
                         setExecutionMode('virtual');
-                        setAssetSubTab('fund');
+                        setAssetSubTab('instrument');
                         setCashMode(false);
                         setAssetType('fund');
                         handleSelectAsset({ ...f, assetType: 'fund' });
@@ -756,39 +670,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         </button>
       </div>
 
-      {/* 3. Sub-tabs under StockMind Sanal Bakiye: Hisse, TEFAS Fon, Nakit */}
       {executionMode === 'virtual' && (
-        <div className="grid grid-cols-3 gap-1 mb-4 rounded-xl bg-bg-secondary/70 p-1 border border-border/50" role="group" aria-label="Varlık kategorisi">
-          {(['stock', 'fund', 'cash'] as const).map((type) => (
-            <button
-              type="button"
-              key={type}
-              disabled={cashBusy || isSubmitting}
-              aria-pressed={assetSubTab === type}
-              onClick={() => {
-                setAssetSubTab(type);
-                if (type === 'cash') {
-                  setCashMode(true);
-                } else {
-                  setCashMode(false);
-                  if (assetType !== type) {
-                    setAssetType(type);
-                    setSymbol('');
-                    setSearchQuery('');
-                    setPrice('');
-                    if (type === 'fund') setCurrency('TRY');
-                  }
-                }
-              }}
-              className={`min-h-10 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                assetSubTab === type
-                  ? 'bg-bg-card text-text-primary shadow-xs border border-border/80'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span>{type === 'stock' ? '📈 Hisse' : type === 'fund' ? '📊 TEFAS Fon' : '💵 Nakit'}</span>
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-1 mb-4 rounded-xl bg-bg-secondary/70 p-1" role="group" aria-label="Varlık kategorisi">
+          {(['instrument', 'cash'] as const).map(type => <button type="button" key={type} disabled={cashBusy || isSubmitting} aria-pressed={assetSubTab === type} onClick={() => { setAssetSubTab(type); setCashMode(type === 'cash'); }} className={`min-h-11 px-2 rounded-lg text-xs sm:text-sm font-semibold ${assetSubTab === type ? 'bg-bg-card text-text-primary shadow-sm' : 'text-text-muted'}`}>{type === 'instrument' ? 'Yatırım enstrümanı' : 'Nakit'}</button>)}
         </div>
       )}
 
@@ -804,7 +688,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               type="button"
               onClick={() => {
                 setExecutionMode('virtual');
-                setAssetSubTab('stock');
+                setAssetSubTab('instrument');
                 setCashMode(false);
               }}
               className="text-accent hover:underline font-bold shrink-0 ml-2 cursor-pointer"
@@ -822,152 +706,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <label className="space-y-1 block text-xs text-text-secondary">Para birimi<select aria-label="Para birimi" value={currency} onChange={e => { setCurrency(e.target.value as 'TRY' | 'USD'); if (e.target.value === 'USD' && liveUsdRate) setExchangeRate(liveUsdRate.toFixed(2)); }} className="block w-full h-11 px-3 rounded-xl bg-bg-input border border-border text-text-primary"><option value="TRY">TRY · Türk Lirası</option><option value="USD">USD · ABD Doları</option></select></label>
         </div>
 
-        {/* Searchable Symbol Input with Autocomplete */}
-        <div className="relative" ref={dropdownRef}>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-medium text-text-secondary">
-              {assetType === 'stock' ? 'Hisse Sembolü veya Şirket Adı' : 'TEFAS Fon Kodu veya Fon Adı'}
-            </label>
-            {isFetchingPrice && (
-              <span className="text-[11px] text-accent flex items-center gap-1 animate-pulse">
-                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Fiyat sorgulanıyor...
-              </span>
-            )}
-          </div>
-
-          <div className="relative">
-            <input
-              aria-label={assetType === 'stock' ? 'Hisse ara' : 'Fon ara'}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSearchQuery(val);
-                setSymbol(val.toUpperCase().trim());
-                setIsDropdownOpen(true);
-              }}
-              onFocus={() => setIsDropdownOpen(true)}
-              onBlur={handleManualSymbolBlur}
-              placeholder={
-                assetType === 'stock'
-                  ? 'Hisse kodu veya şirket adı'
-                  : 'Fon kodu veya adı'
-              }
-              className="w-full bg-bg-input text-text-primary font-mono text-sm rounded-xl border border-border px-3.5 py-2.5 pl-10 focus:border-accent focus:outline-none"
-              required
-            />
-            <svg
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-              />
-            </svg>
-          </div>
-
-          {/* Autocomplete Dropdown List */}
-          {isDropdownOpen && searchQuery.trim().length > 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 bg-bg-card border border-border rounded-xl shadow-2xl p-1.5 z-50 max-h-60 overflow-y-auto space-y-1 animate-fade-in backdrop-blur-md">
-              {searchResults.loading ? (
-                <div className="py-4 text-center text-xs text-text-muted flex items-center justify-center gap-2">
-                  <div className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                  <span>Sonuçlar aranıyor...</span>
-                </div>
-              ) : assetType === 'stock' ? (
-                searchResults.stocks.length > 0 ? (
-                  searchResults.stocks.map((s) => (
-                    <button
-                      key={`${s.exchange}-${s.symbol}`}
-                      type="button"
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={() => { handleSelectAsset(s); }}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-between group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="font-mono font-bold text-xs text-text-primary px-1.5 py-0.5 rounded bg-bg-tertiary group-hover:bg-accent group-hover:text-white transition-colors shrink-0">
-                          {s.symbol}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-text-primary truncate">{s.name}</p>
-                          <p className="text-[10px] text-text-muted">{s.sector || s.exchange}</p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0 ml-2">
-                        <span className="text-xs font-mono font-bold text-text-primary block">
-                          {s.currency === 'USD' ? '$' : '₺'}{(s.price || s.basePrice || 0).toFixed(2)}
-                        </span>
-                        <span className="text-[10px] font-semibold text-text-muted">{s.exchange}</span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="p-3 text-center text-xs text-text-muted">
-                    <span>Eşleşen hisse bulunamadı. </span>
-                    <button
-                      type="button"
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={() => { handleSelectAsset({ symbol: searchQuery.toUpperCase().trim() }); }}
-                      className="text-accent hover:underline font-semibold"
-                    >
-                      "{searchQuery.toUpperCase()}" olarak kaydet
-                    </button>
-                  </div>
-                )
-              ) : (
-                searchResults.funds.length > 0 ? (
-                  searchResults.funds.map((f) => (
-                    <button
-                      key={f.code}
-                      type="button"
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={() => { handleSelectAsset({ code: f.code, name: f.name, price: f.price, assetType: 'fund' }); }}
-                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-between group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="font-mono font-bold text-xs text-text-primary px-1.5 py-0.5 rounded bg-bg-tertiary group-hover:bg-accent group-hover:text-white transition-colors shrink-0">
-                          {f.code}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-text-primary truncate">{f.name}</p>
-                          <p className="text-[10px] text-text-muted">{f.category || 'TEFAS Fonu'}</p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0 ml-2">
-                        <span className="text-xs font-mono font-bold text-text-primary block">
-                          ₺{(f.price || 0).toFixed(4)}
-                        </span>
-                        <span className="text-[10px] font-semibold text-text-muted">TEFAS</span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="p-3 text-center text-xs text-text-muted">
-                    <span>Eşleşen fon bulunamadı. </span>
-                    <button
-                      type="button"
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={() => { handleSelectAsset({ code: searchQuery.toUpperCase().trim(), assetType: 'fund' }); }}
-                      className="text-accent hover:underline font-semibold"
-                    >
-                      "{searchQuery.toUpperCase()}" olarak kaydet
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-
-
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-bg-secondary p-3">
+          <div className="min-w-0"><p className="text-xs text-text-muted">Yatırım enstrümanı</p><p className="text-sm font-semibold text-text-primary truncate">{symbol ? `${symbol} · ${assetType === 'fund' ? 'TEFAS Fon' : 'Hisse'}` : 'Henüz seçilmedi'}</p>{isFetchingPrice && <p role="status" className="text-xs text-accent">Fiyat alınıyor…</p>}</div>
+          <Button variant="ghost" size="sm" onClick={() => spotlightInputRef.current?.focus()}>{symbol ? 'Değiştir' : 'Varlık Seç'}</Button>
         </div>
 
         {/* Price, FX Rate & Quantity */}

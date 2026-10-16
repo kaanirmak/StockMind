@@ -6,7 +6,7 @@ import { palette } from '@/theme/palette';
 
 import { CashPanel } from '@/components/portfolio/CashPanel';
 import { ConfirmAction } from '@/components/ui/ConfirmAction';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
@@ -15,7 +15,6 @@ import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendar
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, StateView } from '@/components/ui';
-import { exportTransactionsToExcel, downloadExcelTemplate } from '@/lib/portfolio/excelParser';
 
 export default function PortfolioPage() {
   const {
@@ -46,26 +45,13 @@ export default function PortfolioPage() {
   const [portfolioToDelete, setPortfolioToDelete] = useState<(typeof portfolios)[0] | null>(null);
   const [isClearTxModalOpen, setIsClearTxModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
-  const actionsMenuRef = useRef<HTMLDivElement>(null);
-
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
-  const [activeTab, setActiveTab] = useState<'holdings' | 'heatmap' | 'transactions'>('holdings');
+  const [activeTab, setActiveTab] = useState<'holdings' | 'heatmap' | 'activity' | 'transactions'>('holdings');
   const [assetFilter, setAssetFilter] = useState<'all' | 'stock' | 'fund' | 'cash'>('all');
   const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
-        setIsActionsMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     setIsMounted(true);
@@ -165,15 +151,6 @@ export default function PortfolioPage() {
     );
   }
 
-  const handleRefreshPrices = async () => {
-    await fetchLivePrices();
-    showToast({
-      type: 'info',
-      title: 'Fiyatlar Güncellendi',
-      message: 'Tüm varlıkların anlık piyasa fiyatları güncellendi.',
-    });
-  };
-
   const handleCreatePortfolio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPortName.trim()) return;
@@ -245,69 +222,11 @@ export default function PortfolioPage() {
     }
   };
 
-  const handleExportCSV = () => {
-    if (summary.holdings.length === 0) {
-      showToast({ type: 'warning', title: 'Veri Yok', message: 'Dışa aktarılacak varlık bulunmuyor.' });
-      return;
-    }
-
-    const headers = 'Sembol,Varlık Türü,Adet,Ortalama Maliyet,Son Fiyat,Toplam Maliyet,Piyasa Değeri,Kar Zarar,Kar Zarar Yüzdesi,Ağırlık\n';
-    const rows = summary.holdings
-      .map(
-        (h) =>
-          `${h.symbol},${h.assetType},${h.totalQuantity},${h.averageCost},${h.currentPrice},${h.totalCost},${h.currentValue},${h.pnl},${h.pnlPercent}%,%${h.weight}`
-      )
-      .join('\n');
-
-    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${activePortfolio?.name || 'Portfoy'}_varliklar.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    showToast({ type: 'success', title: 'CSV İndirildi', message: 'Portföy varlıkları CSV olarak kaydedildi.' });
-  };
-
-  const handleExportExcel = () => {
-    if (activeTransactions.length === 0) {
-      showToast({ type: 'warning', title: 'Veri Yok', message: 'Dışa aktarılacak işlem bulunmuyor.' });
-      return;
-    }
-    exportTransactionsToExcel(activeTransactions, activePortfolio?.name || 'Portfoy');
-    showToast({ type: 'success', title: 'Excel İndirildi', message: 'İşlemler Excel (.xlsx) olarak kaydedildi.' });
-  };
 
   return (
     <div className="portfolio-page space-y-4 sm:space-y-6 animate-fade-in pb-12 max-w-[1600px] mx-auto">
-      {/* Header & Portfolio Selector */}
-      <div className="product-hero flex flex-col xl:flex-row xl:items-center justify-between gap-5 p-4 sm:p-6">
-        <div className="relative z-10 min-w-0">
-          <div className="flex items-center gap-3.5">
-            <div className="hidden sm:flex w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white items-center justify-center shadow-lg shadow-violet-500/20">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5v10.5H3.75V6.75zM7.5 6.75V5.25A2.25 2.25 0 019.75 3h4.5a2.25 2.25 0 012.25 2.25v1.5M3.75 10.5h16.5" />
-              </svg>
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">Portföy</h1>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[10px] sm:text-xs font-bold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Canlı değerleme
-                </span>
-              </div>
-              <p className="text-text-secondary text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
-                Varlık dağılımınızı, performansınızı ve tüm işlemlerinizi tek bakışta yönetin.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Toolbar on mobile & desktop */}
-        <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 xl:max-w-[65%]">
-          {/* Portfolio Switcher - Swipeable on mobile */}
+      <h1 className="sr-only">Portföy</h1>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-1.5 p-1 bg-bg-primary/55 backdrop-blur-md rounded-xl border border-border/80 overflow-x-auto scrollbar-none w-full sm:w-auto">
             {portfolios.map((p) => {
               const isActive = activePortfolioId === p.id;
@@ -356,167 +275,9 @@ export default function PortfolioPage() {
             </button>
           </div>
 
-          {/* Action Buttons: Prominent Primary Action + Clean Secondary Dropdown */}
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-            {/* Primary Action Button: İşlem Yap (Midas & Aracı Kurumlar) */}
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setTradeModalSymbol(undefined);
-                setTradeModalMode('broker');
-                setIsTradeModalOpen(true);
-              }}
-              className="whitespace-nowrap shrink-0 shadow-md font-bold px-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 border-none text-white shadow-violet-500/20"
-              leftIcon={
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              }
-            >
-              İşlem Yap
-            </Button>
-
-            {/* Secondary Action: Manuel İşlem Ekle */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setTradeModalSymbol(undefined);
-                setTradeModalMode('stock');
-                setIsTradeModalOpen(true);
-              }}
-              className="whitespace-nowrap shrink-0 text-xs"
-              leftIcon={
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                </svg>
-              }
-            >
-              İşlem Ekle
-            </Button>
-
-            {/* Live Price Refresh Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshPrices}
-              disabled={isRefreshingPrices}
-              className="whitespace-nowrap shrink-0 text-xs"
-              title="Anlık Canlı Fiyatları Yenile"
-              leftIcon={
-                <svg
-                  className={`w-3.5 h-3.5 text-accent ${isRefreshingPrices ? 'animate-spin' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              }
-            >
-              {isRefreshingPrices ? 'Yenileniyor...' : 'Fiyat Yenile'}
-            </Button>
-
-            {/* Excel Upload Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsExcelModalOpen(true)}
-              className="whitespace-nowrap shrink-0 text-xs border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500"
-              leftIcon={
-                <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              }
-            >
-              Excel Yükle
-            </Button>
-
-            {/* Secondary Actions Dropdown Menu */}
-            <div className="relative min-w-0 [&>button]:w-full sm:[&>button]:w-auto" ref={actionsMenuRef}>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setIsActionsMenuOpen(!isActionsMenuOpen)}
-                className="whitespace-nowrap shrink-0 text-xs px-2.5"
-                title="Portföy Araçları" aria-label="Portföy Araçları"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm0 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
-                </svg>
-              <span>Araçlar</span>
-              </Button>
-
-              {isActionsMenuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-56 rounded-2xl bg-bg-card border border-border shadow-xl p-1.5 z-40 text-xs space-y-0.5 animate-fade-in">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsActionsMenuOpen(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-text-primary hover:bg-bg-hover flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <span><UIIcon name="chart" className="w-4 h-4" /></span>
-                    <span>İşlemleri Excel Olarak İndir</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsActionsMenuOpen(false);
-                      handleExportCSV();
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-text-primary hover:bg-bg-hover flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                    <span>Varlıkları CSV Olarak İndir</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsActionsMenuOpen(false);
-                      downloadExcelTemplate();
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-text-primary hover:bg-bg-hover flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <span><UIIcon name="download" className="w-4 h-4" /></span>
-                    <span>Örnek Excel Şablonu İndir</span>
-                  </button>
-
-                  <div className="my-1 border-t border-border/60" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsActionsMenuOpen(false);
-                      setClearConfirmed(false); setIsClearTxModalOpen(true);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-amber-400 hover:bg-amber-500/10 flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                    <span>Bu Portföyün İşlemlerini Temizle</span>
-                  </button>
-
-                  {portfolios.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsActionsMenuOpen(false);
-                        handleOpenDeletePortfolio(activePortfolio);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-500/10 flex items-center gap-2.5 transition-colors cursor-pointer font-semibold"
-                    >
-                      <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                      <span>Portföyü Sil</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-2 shrink-0">
+          <Button size="sm" onClick={() => { setTradeModalSymbol(undefined); setTradeModalMode('broker'); setIsTradeModalOpen(true); }} leftIcon={<UIIcon name="plus" className="w-4 h-4" />}>İşlem Yap</Button>
+          <Button variant="outline" size="sm" onClick={() => setIsExcelModalOpen(true)} leftIcon={<UIIcon name="download" className="w-4 h-4" />}>Excel Yükle</Button>
         </div>
       </div>
 
@@ -529,24 +290,15 @@ export default function PortfolioPage() {
       )}
 
       {/* Summary KPI Cards - compact, mobile-first */}
-      <div className="portfolio-metrics grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3.5">
-        {/* Total Value */}
-        <div className="portfolio-metric-card col-span-2 sm:col-span-1 min-h-[112px] p-3 sm:p-4 flex flex-col justify-between" style={{ '--metric-color': palette.primaryDark, '--metric-glow': 'rgba(139, 92, 246, 0.2)' } as React.CSSProperties}>
-          <div>
-            <div className="flex items-center justify-between text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">
-              <span>Portföy Değeri</span>
-              <span className="text-base sm:text-lg"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-            </div>
-            <h3 className="text-lg sm:text-2xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">
-              ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </h3>
+      <div className="portfolio-metrics grid grid-cols-2 gap-2 sm:gap-3.5">
+        {/* Total value and allocation share the same compact summary. */}
+        <div className="portfolio-metric-card col-span-2 p-3 sm:p-4 flex items-center justify-between gap-3" style={{ '--metric-color': palette.primaryDark } as React.CSSProperties}>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Portföy Değeri</p>
+            <h2 className="text-xl sm:text-3xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
+            <p className="mt-2 text-xs text-text-muted">{summary.cash?.configured ? 'Net yatırılan' : 'Maliyet'}: ₺{summary.totalCost.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</p>
           </div>
-          <div className="flex items-center gap-1 mt-2 text-[10px] sm:text-xs text-text-muted truncate">
-            <span>{summary.cash?.configured ? 'Net Yatırılan:' : 'Maliyet:'}</span>
-            <span className="font-semibold text-text-secondary font-mono truncate">
-              ₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-            </span>
-          </div>
+          <PortfolioAllocationChart compact allocation={summary.allocation} totalValue={summary.totalValue} />
         </div>
 
         {/* Total PnL */}
@@ -596,7 +348,7 @@ export default function PortfolioPage() {
             <button
               type="button"
               onClick={() => {
-                setActiveTab('heatmap');
+                setActiveTab('activity');
                 setTimeout(() => {
                   document.getElementById('daily-calendar')?.scrollIntoView({ behavior: 'smooth' });
                 }, 50);
@@ -612,50 +364,15 @@ export default function PortfolioPage() {
       </div>
 
       <p className="text-xs text-text-muted px-1">İşlem hacmi: ₺{summary.totalVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Alış: ₺{summary.buyVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Satış: ₺{summary.sellVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</p>
-      {/* Allocation */}
-      <div className="rounded-3xl border border-border/70 bg-bg-card/70 p-3 sm:p-5">
-        <div className="space-y-3">
-          <nav aria-label="Portföy varlık filtresi" className="grid grid-cols-4 gap-1.5 sm:flex sm:gap-2">{([['all', 'Tümü'], ['stock', 'Hisse'], ['fund', 'Fon'], ['cash', 'Nakit']] as const).map(([key, label]) => <Button key={key} size="sm" variant={assetFilter === key ? 'primary' : 'secondary'} aria-pressed={assetFilter === key} onClick={() => setAssetFilter(key)}>{label}</Button>)}</nav>
-          <PortfolioAllocationChart allocation={summary.allocation.filter((a) => assetFilter === 'all' || (assetFilter === 'cash' ? a.label.startsWith('Nakit ') : summary.holdings.some((h) => h.symbol === a.label && h.assetType === assetFilter))).map((a, _, all) => ({ ...a, percentage: all.reduce((sum, item) => sum + item.value, 0) > 0 ? a.value / all.reduce((sum, item) => sum + item.value, 0) * 100 : 0 }))} totalValue={assetFilter === 'all' ? summary.totalValue : assetFilter === 'cash' ? summary.cash?.totalValue || 0 : summary.holdings.filter((h) => h.assetType === assetFilter).reduce((sum, h) => sum + h.currentValue, 0)} />
-        </div>
-      </div>
+      <nav aria-label="Portföy varlık filtresi" className="grid grid-cols-4 gap-1.5">{([['all', 'Tümü'], ['stock', 'Hisse'], ['fund', 'Fon'], ['cash', 'Nakit']] as const).map(([key, label]) => <Button key={key} size="sm" variant={assetFilter === key ? 'primary' : 'secondary'} aria-pressed={assetFilter === key} onClick={() => setAssetFilter(key)}>{label}</Button>)}</nav>
 
       {assetFilter === 'cash' && <CashPanel />}
       {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
       <div className="space-y-4">
         {/* Navigation Tabs & Secondary Actions */}
         <div className="sm:sticky sm:top-[4.25rem] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 sm:p-2.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm">
-          <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 bg-bg-card rounded-xl border border-border w-full sm:w-fit">
-            <button
-              onClick={() => setActiveTab('holdings')}
-              className={`min-w-0 px-1.5 sm:px-4 py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                activeTab === 'holdings'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
-              }`}
-            >
-              <span className="sm:hidden">Varlıklar</span><span className="hidden sm:inline">Varlıklarım ({summary.holdings.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('heatmap')}
-              className={`min-w-0 px-1.5 sm:px-4 py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center justify-center gap-1.5 ${
-                activeTab === 'heatmap'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
-              }`}
-            >
-              <span className="sm:hidden">Isı Haritası</span><span className="hidden sm:inline">Isı & Aktivite Haritası</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('transactions')}
-              className={`min-w-0 px-1.5 sm:px-4 py-2 rounded-lg text-[11px] sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                activeTab === 'transactions'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-secondary'
-              }`}
-            >
-              <span className="sm:hidden">İşlemler</span><span className="hidden sm:inline">İşlem Geçmişi ({activeTransactions.length})</span>
-            </button>
+          <div role="tablist" aria-label="Portföy bölümleri" className="grid grid-cols-4 gap-1 w-full">
+            {([['holdings', 'Varlıklar'], ['heatmap', 'Isı Haritası'], ['activity', 'Aktivite'], ['transactions', 'İşlemler']] as const).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`min-w-0 min-h-11 px-1 rounded-lg text-[11px] sm:text-sm font-semibold ${activeTab === tab ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-secondary'}`}>{label}</button>)}
           </div>
 
           {activeTab === 'transactions' && activeTransactions.length > 0 && (
@@ -693,18 +410,9 @@ export default function PortfolioPage() {
             }}
           />
         ) : activeTab === 'heatmap' ? (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 animate-fade-in items-start">
-            <div className="min-w-0">
-              <PortfolioHeatmap />
-            </div>
-            <div id="daily-calendar" className="min-w-0 scroll-mt-24">
-              <DailyPnLCalendarHeatmap
-                portfolioId={activePortfolioId}
-                summary={summary}
-                transactions={activeTransactions}
-              />
-            </div>
-          </div>
+          <PortfolioHeatmap />
+        ) : activeTab === 'activity' ? (
+          <div id="daily-calendar" className="min-w-0 scroll-mt-28"><DailyPnLCalendarHeatmap portfolioId={activePortfolioId} summary={summary} transactions={activeTransactions} /></div>
         ) : (
           /* Transaction History Section (Mobile Card View + Desktop Table View) */
           <div className="space-y-4">

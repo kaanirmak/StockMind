@@ -126,3 +126,18 @@ test('Small upward scrolling also pauses follow; explicit latest restores follow
   assert.equal(h.el.scrollTop, 750);
   h.dispose();
 });
+
+test('APK download appears only in an Android browser, never desktop or an installed app', () => {
+  const { detectAppPlatform } = load('src/lib/utils/appPlatform.ts');
+  assert.equal(detectAppPlatform({ userAgent: 'Mozilla Android 14' }).canDownloadApk, true);
+  assert.equal(detectAppPlatform({ userAgent: 'Mozilla Android 14', nativeAndroid: true }).canDownloadApk, false);
+  assert.equal(detectAppPlatform({ userAgent: 'Mozilla Android 14', standalone: true }).canDownloadApk, false);
+  assert.equal(detectAppPlatform({ userAgent: 'Macintosh', platform: 'MacIntel' }).canDownloadApk, false);
+  assert.equal(detectAppPlatform({ userAgent: 'Windows NT 10.0' }).canDownloadApk, false);
+});
+test('iPad desktop user agents receive iOS instructions and Mac receives Mac instructions', () => {
+  const { detectAppPlatform } = load('src/lib/utils/appPlatform.ts');
+  assert.equal(detectAppPlatform({ userAgent: 'Macintosh Safari', platform: 'MacIntel', maxTouchPoints: 5 }).os, 'ios');
+  assert.equal(detectAppPlatform({ userAgent: 'Macintosh Safari', platform: 'MacIntel', maxTouchPoints: 0 }).os, 'mac');
+  assert.equal(detectAppPlatform({ userAgent: 'iPhone Safari' }).os, 'ios');
+});
