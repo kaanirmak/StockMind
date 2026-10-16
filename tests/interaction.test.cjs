@@ -275,3 +275,38 @@ test('portfolio news scans beyond the first fifteen feed items', async () => {
   assert.equal(result.body.count, 1);
   assert.equal(result.body.data[0].title, 'Aselsan ihracat sözleşmesi imzaladı');
 });
+
+test('portfolio publishes ready quotes while a slower asset is still loading', async () => {
+  let state;
+  let releaseSlow;
+  const pendingSlow = new Promise(resolve => { releaseSlow = resolve; });
+  const { usePortfolioStore } = load('src/store/usePortfolioStore.ts', {
+    AbortSignal,
+    require(name) {
+      if (name === 'zustand') return { create: initializer => {
+        state = initializer(update => { state = { ...state, ...update }; }, () => state);
+        return state;
+      } };
+      if (name === '@/lib/portfolio/calculations') return { normalizeSymbolKey: s => s, cleanSymbol: s => ({ symbol: s, assetType: 'stock' }) };
+      if (name === '@/lib/portfolio/cash') return {};
+      if (name === '@/lib/supabase/client') return {};
+      throw new Error(name);
+    },
+    fetch: async (url, options) => {
+      assert.ok(options.signal);
+      if (url.endsWith('/THYAO')) await pendingSlow;
+      return { ok: true, json: async () => ({ success: true, data: { price: url.endsWith('/USDTRY') ? 40 : 100, changePercent: -1 } }) };
+    },
+  });
+  state.transactions = [{ symbol: 'ASELS', assetType: 'stock' }, { symbol: 'THYAO', assetType: 'stock' }];
+  const request = usePortfolioStore.fetchLivePrices();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(state.livePrices.USDTRY.price, 40);
+  assert.equal(state.livePrices.ASELS.price, 100);
+  assert.equal(state.livePrices.THYAO, undefined);
+  assert.equal(state.isRefreshingPrices, true);
+  releaseSlow();
+  await request;
+  assert.equal(state.livePrices.THYAO.price, 100);
+  assert.equal(state.isRefreshingPrices, false);
+});
