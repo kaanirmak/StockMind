@@ -7,6 +7,7 @@ import { ApiError, apiErrorResponse, authorizeAction, isRecord, optionalText, re
 import {
   getHourlyChatQuota,
   checkAndConsumeHourlyChatQuota,
+  refundHourlyChatQuota,
   HOURLY_QUOTA_PRO,
   HOURLY_QUOTA_STANDARD,
 } from '@/lib/ai/hourlyQuota';
@@ -51,9 +52,12 @@ function parsePortfolio(value: unknown): PortfolioContextPayload | undefined {
 }
 
 export async function POST(request: Request) {
+  let accessUserId: string | null = null;
+  let quotaConsumed = false;
   try {
     const access = await authorizeAction(request, 'ai_chat');
     if (access.response) return access.response;
+    accessUserId = access.user.id;
     const body = await readJsonObject(request);
     if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 40) {
       throw new ApiError(400, '1–40 mesaj gönderilmelidir.');
@@ -100,6 +104,7 @@ export async function POST(request: Request) {
           }
         );
       }
+      quotaConsumed = true;
     }
 
     const effectivePortfolio = body.portfolioContext ?? (isRecord(body.context) ? body.context.portfolio : undefined);
@@ -111,7 +116,17 @@ export async function POST(request: Request) {
       liveContext = 'Piyasa verisi alınamadı. Güncel fiyat veya teknik gösterge varmış gibi yorum yapma.';
     }
     if (portfolio) liveContext += '\nPortföy bilgileri kullanıcı tarafından gönderilmiştir; doğrulanmış hesap kaydı değildir.';
-    const content = await callOpenRouter(messages, { model, apiKey, injectedContext: liveContext });
+
+    // Ensure messages sent to OpenRouter start with user role (strip leading assistant greetings if any)
+    let providerMessages = [...messages];
+    while (providerMessages.length > 0 && providerMessages[0].role !== 'user') {
+      providerMessages.shift();
+    }
+    if (providerMessages.length === 0) {
+      providerMessages = messages;
+    }
+
+    const content = await callOpenRouter(providerMessages, { model, apiKey, injectedContext: liveContext });
     const hasLiveContext = !liveContext.startsWith('Piyasa verisi alınamadı') && Boolean(liveContext);
     const sourceScope = hasLiveContext ? 'live_market_data' : 'unverified_general_knowledge';
     const asOf = new Date().toISOString();
@@ -138,6 +153,11 @@ export async function POST(request: Request) {
       disclaimer: 'StockMind AI yatırım tavsiyesi vermez. Piyasa verileri ve analizler bilgilendirme amaçlıdır.',
     });
   } catch (error) {
+    if (quotaConsumed && accessUserId) {
+      try {
+        refundHourlyChatQuota(accessUserId);
+      } catch (_) {}
+    }
     if (error instanceof OpenRouterError) return NextResponse.json({ success: false, code: error.code, error: error.message }, { status: error.status });
     return apiErrorResponse(error);
   }

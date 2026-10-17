@@ -378,6 +378,7 @@ test('PRO-03: hourly AI question quota allows 5 questions/hour for standard and 
   const {
     checkAndConsumeHourlyChatQuota,
     getHourlyChatQuota,
+    refundHourlyChatQuota,
     resetHourlyChatQuota,
     HOURLY_QUOTA_STANDARD,
     HOURLY_QUOTA_PRO,
@@ -418,6 +419,15 @@ test('PRO-03: hourly AI question quota allows 5 questions/hour for standard and 
   assert.equal(inspected.used, 20);
   assert.equal(inspected.remaining, 0);
   assert.equal(inspected.allowed, false);
+
+  // Refund quota test
+  resetHourlyChatQuota('user-refund');
+  checkAndConsumeHourlyChatQuota('user-refund', false);
+  assert.equal(getHourlyChatQuota('user-refund', false).used, 1);
+  refundHourlyChatQuota('user-refund');
+  assert.equal(getHourlyChatQuota('user-refund', false).used, 0);
+  assert.equal(getHourlyChatQuota('user-refund', false).remaining, 5);
+  resetHourlyChatQuota('user-refund');
 
   // Clean up
   resetHourlyChatQuota('user-std');

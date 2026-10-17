@@ -161,6 +161,31 @@ export function ChatMessageContent({ content, isUser = false }: ChatMessageConte
     const line = rawLines[i];
     const trimmed = line.trim();
 
+    // 0. Fenced code block (```lang ... ```)
+    if (trimmed.startsWith('```')) {
+      flushList(i);
+      const lang = trimmed.slice(3).trim();
+      const codeLines: string[] = [];
+      i++;
+      while (i < rawLines.length && !rawLines[i].trim().startsWith('```')) {
+        codeLines.push(rawLines[i]);
+        i++;
+      }
+      blocks.push(
+        <div key={`code-${i}`} className="my-2.5 rounded-xl overflow-hidden border border-border/80 bg-bg-tertiary">
+          {lang && (
+            <div className="px-3 py-1 bg-bg-secondary text-[10px] font-mono font-semibold text-text-muted border-b border-border/60">
+              {lang}
+            </div>
+          )}
+          <pre className="p-3 text-xs font-mono text-text-primary overflow-x-auto whitespace-pre">
+            <code>{codeLines.join('\n')}</code>
+          </pre>
+        </div>
+      );
+      continue;
+    }
+
     // Markdown tables become accessible, horizontally scrollable data views.
     if (trimmed.includes('|') && i + 1 < rawLines.length && /^\s*\|?\s*:?-{3,}/.test(rawLines[i + 1])) {
       flushList(i);
