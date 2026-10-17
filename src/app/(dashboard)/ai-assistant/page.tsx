@@ -158,8 +158,15 @@ function AIAssistantContent() {
     const key = getStoredOpenRouterKey(user?.id);
     if (key) setCustomApiKey(key);
     const model = getStoredDefaultModel(user?.id);
-    if (model) setSelectedModel(model);
-  }, [user]);
+    if (model) {
+      const isProModel = models.some((m) => m.id === model && !m.free);
+      if (isProModel && !proModelsAllowed && !key) {
+        setSelectedModel(AUTO_MODEL.id);
+      } else {
+        setSelectedModel(model);
+      }
+    }
+  }, [user, proModelsAllowed, models]);
 
   // 3. Sync active session messages to LocalStorage
   const updateCurrentSessionMessages = (newMessages: Message[], titleOverride?: string) => {
@@ -302,6 +309,16 @@ function AIAssistantContent() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    // Sanitize model: if non-pro user and no custom API key, ensure they don't send a pro model
+    let effectiveModel = selectedModel;
+    const isFreeModel = selectedModel === AUTO_MODEL.id || models.some((m) => m.id === selectedModel && m.free);
+    if (!isFreeModel && !proModelsAllowed && !customApiKey) {
+      effectiveModel = AUTO_MODEL.id;
+      setSelectedModel(AUTO_MODEL.id);
+      saveStoredOpenRouterKey(customApiKey, user?.id, AUTO_MODEL.id);
+    }
+
+
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -309,7 +326,7 @@ function AIAssistantContent() {
         signal: controller.signal,
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
-          model: selectedModel,
+          model: effectiveModel,
           apiKey: customApiKey || undefined,
           portfolioContext: portfolioPayload,
         }),
@@ -333,6 +350,11 @@ function AIAssistantContent() {
       } else {
         const errorText = chatErrorMessage(res.status, data);
         if (data.code === 'HOURLY_QUOTA_EXCEEDED' && !data.quota?.isPro) {
+          setShowProModal(true);
+        }
+        if (data.code === 'PRO_REQUIRED') {
+          setSelectedModel(AUTO_MODEL.id);
+          saveStoredOpenRouterKey(customApiKey, user?.id, AUTO_MODEL.id);
           setShowProModal(true);
         }
         updateCurrentSessionMessages([
@@ -383,54 +405,130 @@ function AIAssistantContent() {
     return () => { viewport?.removeEventListener('resize', update); window.removeEventListener('resize', update); };
   }, []);
 
+  const isKeyboardOpen = typeof window !== 'undefined' && Boolean(
+    viewportHeight && window.innerHeight - viewportHeight > 150
+  );
+
+  useEffect(() => {
+    if (isKeyboardOpen) {
+      followLatest('smooth');
+    }
+  }, [isKeyboardOpen, followLatest]);
+
   return (
-    <div style={{ height: viewportHeight ? `calc(${viewportHeight}px - 3.5rem - 5rem - env(safe-area-inset-bottom, 0px))` : 'calc(100dvh - 8.5rem)' }} className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]">
-      <div className="glass-card p-3 mb-2 shrink-0 rounded-2xl border border-border space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0"><StockMindMark /><div className="min-w-0"><h1 className="text-sm font-semibold text-text-primary truncate">StockMind AI</h1><p className="text-[10px] text-text-muted">Finans asistanı</p></div></div>
-          <div className="flex items-center gap-2 shrink-0">
-            {quotaState && (
-              quotaState.isPro ? (
+    <div
+      style={{
+        height: viewportHeight
+          ? (isKeyboardOpen
+              ? `calc(${viewportHeight}px - 3.5rem)`
+              : `calc(${viewportHeight}px - 3.5rem - 4.5rem - env(safe-area-inset-bottom, 0px))`)
+          : 'calc(100dvh - 8rem)',
+      }}
+      className="ai-chat-container flex flex-col h-full max-h-full min-h-0 animate-fade-in relative pb-[env(safe-area-inset-bottom)]"
+    >
+      <div className={`glass-card ${isKeyboardOpen ? 'p-2 mb-1 space-y-1.5' : 'p-2.5 sm:p-3 mb-2 space-y-2.5'} shrink-0 rounded-2xl border border-border transition-all`}>
+        {/* Row 1: Title and brand on left, action buttons on right */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <StockMindMark className={`${isKeyboardOpen ? 'w-6 h-6' : 'w-7 h-7'} shrink-0`} />
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-sm font-bold text-text-primary truncate">StockMind AI</h1>
+              <p className="text-[10px] text-text-muted truncate">Finans asistanı</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(true)}
+              aria-label="Sohbet Geçmişi"
+              title="Sohbet Geçmişi"
+              className={`inline-flex items-center justify-center ${isKeyboardOpen ? 'w-7 h-7' : 'w-8.5 h-8.5 sm:w-9 sm:h-9'} rounded-xl border border-border text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer`}
+            >
+              <UIIcon name="history" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateNewSession}
+              aria-label="Yeni Sohbet"
+              title="Yeni Sohbet"
+              className={`inline-flex items-center justify-center ${isKeyboardOpen ? 'w-7 h-7' : 'w-8.5 h-8.5 sm:w-9 sm:h-9'} rounded-xl border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors cursor-pointer`}
+            >
+              <UIIcon name="plus" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Model selector & Quota display - hide on mobile when typing to maximize chat space */}
+        <div className={`${isKeyboardOpen ? 'hidden sm:flex' : 'flex'} flex-col sm:flex-row sm:items-center gap-2 pt-1.5 border-t border-border/50`}>
+          <label className="flex items-center gap-2 text-xs text-text-muted flex-1 min-w-0">
+            <span className="shrink-0 font-medium">Model:</span>
+            <select
+              aria-label="AI modeli"
+              value={selectedModel}
+              onChange={(e) => {
+                const newModel = e.target.value;
+                const isProModel = models.some((m) => m.id === newModel && !m.free);
+                if (isProModel && !proModelsAllowed && !customApiKey) {
+                  setShowProModal(true);
+                  return;
+                }
+                setSelectedModel(newModel);
+                saveStoredOpenRouterKey(customApiKey, user?.id, newModel);
+              }}
+              className="flex-1 min-w-0 h-9 px-2.5 rounded-xl bg-bg-input border border-border text-xs text-text-primary focus:border-accent focus:outline-none"
+            >
+              <optgroup label="Ücretsiz modeller">
+                {models.filter((model) => model.free).map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Pro modeller">
+                {models.filter((model) => !model.free).map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name} {proModelsAllowed ? '· Pro' : '🔒 (Pro)'}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </label>
+
+          {quotaState && (
+            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+              {quotaState.isPro ? (
                 <span
                   title="StockMind Pro: Saatte 20 soru hakkı"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/25 text-[11px] font-semibold"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-[11px] font-semibold"
                 >
                   <UIIcon name="sparkles" className="w-3.5 h-3.5" />
                   <span>{quotaState.remaining}/20 Soru (Saatlik)</span>
                 </span>
               ) : (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                   <span
                     title="Standart Plan: Saatte 5 soru hakkı"
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-xl border text-[11px] font-medium ${
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium shrink-0 ${
                       quotaState.remaining === 0
                         ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                         : 'bg-bg-secondary text-text-secondary border-border'
                     }`}
                   >
-                    <span>{quotaState.remaining}/5 Soru</span>
+                    <span>{quotaState.remaining}/5 Soru (Saatlik)</span>
                     {quotaState.remaining === 0 && <span className="font-bold text-rose-400">(Dolu)</span>}
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowProModal(true)}
-                    className="px-2 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[10px] font-bold shadow-sm shadow-amber-500/20 transition-all cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold shadow-sm shadow-amber-500/20 transition-all cursor-pointer shrink-0"
                   >
                     Pro&apos;ya Geç (20/saat)
                   </button>
                 </div>
-              )
-            )}
-            <button type="button" onClick={() => setShowHistoryModal(true)} aria-label="Sohbet Geçmişi" title="Sohbet Geçmişi" className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-border text-text-secondary hover:bg-bg-hover"><UIIcon name="history" className="w-5 h-5" /></button>
-            <button type="button" onClick={handleCreateNewSession} aria-label="Yeni Sohbet" title="Yeni Sohbet" className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-accent/30 text-accent hover:bg-accent/10"><UIIcon name="plus" className="w-5 h-5" /></button>
-          </div>
+              )}
+            </div>
+          )}
         </div>
-        <label className="flex items-center gap-2 text-xs text-text-muted">Model
-          <select aria-label="AI modeli" value={selectedModel} onChange={e => { setSelectedModel(e.target.value); saveStoredOpenRouterKey(customApiKey, user?.id, e.target.value); }} className="flex-1 min-w-0 h-11 px-3 rounded-xl bg-bg-input border border-border text-xs text-text-primary">
-            <optgroup label="Ücretsiz modeller">{models.filter(model => model.free).map(model => <option key={model.id} value={model.id}>{model.name}</option>)}</optgroup>
-            <optgroup label="Pro modeller">{models.filter(model => !model.free).map(model => <option key={model.id} value={model.id} disabled={!proModelsAllowed}>{model.name} · Pro</option>)}</optgroup>
-          </select>
-        </label>
         {modelWarning && <p className="text-xs text-text-muted">{modelWarning}</p>}
         {readinessError && <p role="alert" className="text-xs text-danger">{readinessError} <a href="/login" className="underline">Giriş yap</a></p>}
       </div>
@@ -527,7 +625,7 @@ function AIAssistantContent() {
       </div>
 
       {/* Floating Scroll to Bottom Button */}
-      {showLatest && (
+      {showLatest && !isKeyboardOpen && (
         <button
           type="button"
           onClick={() => followLatest('smooth')}
@@ -539,7 +637,7 @@ function AIAssistantContent() {
       )}
 
       {/* Preset Prompt Suggestions */}
-      {messages.length <= 2 && (
+      {messages.length <= 2 && !isKeyboardOpen && (
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto overscroll-x-contain py-1.5 shrink-0 no-scrollbar -mx-1 px-1 mb-1">
           {PROMPT_SUGGESTIONS.map((sug) => (
             <button
@@ -554,7 +652,7 @@ function AIAssistantContent() {
       )}
 
       {/* Input Box - Mobile Ergonomic */}
-      <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm mb-1 sm:mb-0 pb-[calc(0.375rem+env(safe-area-inset-bottom))] sm:pb-2">
+      <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm mb-1 sm:mb-0 pb-[calc(0.375rem+env(safe-area-inset-bottom))] sm:pb-2 focus-within:border-accent/80 focus-within:ring-1 focus-within:ring-accent/30 transition-all">
         <input
           type="text"
           value={input}
@@ -566,7 +664,7 @@ function AIAssistantContent() {
             }
           }}
           placeholder="Hisse, fon veya teknik analiz sorusu sorun..."
-          className="flex-1 bg-transparent px-3 py-2.5 sm:py-2 text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none min-w-0"
+          className="flex-1 bg-transparent px-3 py-2.5 sm:py-2 text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus-visible:!outline-none focus:ring-0 focus-visible:!ring-0 outline-none border-none min-w-0"
         />
 
         {/* Mobile Submit / Stop Button */}
@@ -578,7 +676,7 @@ function AIAssistantContent() {
             title="Durdur"
             aria-label="Durdur"
           >
-
+            <span className="w-3.5 h-3.5 rounded-xs bg-white block" />
           </button>
         ) : (
           <button
