@@ -56,11 +56,15 @@ const PROMPT_SUGGESTIONS = [
   { label: 'Günün Piyasa Özeti', prompt: 'BIST, döviz, altın ve kripto piyasalarının güncel durumunu kısa özet ve tablo halinde göster.' },
 ];
 
-const SESSIONS_STORAGE_KEY = 'stockmind_ai_chat_sessions_v2';
+const SESSIONS_STORAGE_KEY_PREFIX = 'stockmind_ai_chat_sessions_v2';
+const getSessionsStorageKey = (userId?: string | null) =>
+  userId && userId !== 'guest'
+    ? `${SESSIONS_STORAGE_KEY_PREFIX}_${userId}`
+    : SESSIONS_STORAGE_KEY_PREFIX;
 
 function AIAssistantContent() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
@@ -89,7 +93,7 @@ function AIAssistantContent() {
       }
     }).catch(() => {});
     return () => controller.abort();
-  }, []);
+  }, [user?.id]);
   const [selectedModel, setSelectedModel] = useState<string>(AUTO_MODEL.id);
   const [models, setModels] = useState<CatalogModel[]>([AUTO_MODEL]);
   const [proModelsAllowed, setProModelsAllowed] = useState(false);
@@ -119,12 +123,17 @@ function AIAssistantContent() {
     }
   };
 
-  // 1. Initialize Sessions from LocalStorage
+  // 1. Initialize Sessions from LocalStorage (scoped to user)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    const storageKey = getSessionsStorageKey(user?.id);
     try {
-      const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+      let raw = localStorage.getItem(storageKey);
+      // Migration fallback from global key
+      if (!raw && user?.id && user.id !== 'guest') {
+        raw = localStorage.getItem(SESSIONS_STORAGE_KEY_PREFIX);
+      }
       if (raw) {
         const parsed: ChatSession[] = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -150,9 +159,9 @@ function AIAssistantContent() {
     setCurrentSessionId(firstSession.id);
     setMessages(INITIAL_MESSAGES);
     try {
-      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify([firstSession]));
+      localStorage.setItem(storageKey, JSON.stringify([firstSession]));
     } catch {}
-  }, []);
+  }, [user?.id]);
 
   // 2. Load API key & model
   useEffect(() => {
@@ -196,7 +205,8 @@ function AIAssistantContent() {
       });
 
       try {
-        localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+        const storageKey = getSessionsStorageKey(user?.id);
+        localStorage.setItem(storageKey, JSON.stringify(updated));
       } catch (err) {
         console.warn('Failed saving sessions to localStorage:', err);
       }
@@ -222,7 +232,8 @@ function AIAssistantContent() {
     setShowHistoryModal(false);
 
     try {
-      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+      const storageKey = getSessionsStorageKey(user?.id);
+      localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch {}
   };
 
@@ -245,7 +256,8 @@ function AIAssistantContent() {
 
     setSessions(remaining);
     try {
-      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(remaining));
+      const storageKey = getSessionsStorageKey(user?.id);
+      localStorage.setItem(storageKey, JSON.stringify(remaining));
     } catch {}
 
     if (sessionId === currentSessionId) {
@@ -255,9 +267,11 @@ function AIAssistantContent() {
   };
 
   // Handle URL prompt query param
+  const promptProcessedRef = useRef<string | null>(null);
   useEffect(() => {
     const urlPrompt = searchParams.get('prompt');
-    if (urlPrompt && messages.length === 1) {
+    if (urlPrompt && urlPrompt !== promptProcessedRef.current) {
+      promptProcessedRef.current = urlPrompt;
       handleSendMessage(urlPrompt);
     }
   }, [searchParams]);
@@ -266,6 +280,14 @@ function AIAssistantContent() {
   const handleSendMessage = async (userText: string) => {
     const cleanText = userText.trim();
     if (!cleanText || loading) return;
+
+    const hasCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
+
+    // Check quota before modifying chat state so input isn't cleared and UI doesn't freeze
+    if (!hasCustomKey && quotaState && quotaState.remaining <= 0 && !quotaState.isPro) {
+      setShowQuotaExceededModal(true);
+      return;
+    }
 
     const userMessage: Message = {
       id: `usr-${Date.now()}`,
@@ -280,38 +302,34 @@ function AIAssistantContent() {
     setLoading(true);
     followLatest();
 
-    // Extract current portfolio state
+    // Extract current portfolio state with safe finite numbers
     let portfolioPayload: any = undefined;
     try {
       const summary = usePortfolioStore.getState().getSummary();
       if (summary && (summary.totalValue > 0 || (summary.holdings && summary.holdings.length > 0))) {
+        const safeNum = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
         portfolioPayload = {
-          totalValue: summary.totalValue,
-          totalCost: summary.totalCost,
-          totalProfitLoss: summary.totalPnL,
-          totalProfitLossPercent: summary.totalPnLPercent,
-          dailyProfitLoss: summary.dailyPnL,
-          dailyProfitLossPercent: summary.dailyPnLPercent,
+          totalValue: safeNum(summary.totalValue),
+          totalCost: safeNum(summary.totalCost),
+          totalProfitLoss: safeNum(summary.totalPnL),
+          totalProfitLossPercent: safeNum(summary.totalPnLPercent),
+          dailyProfitLoss: safeNum(summary.dailyPnL),
+          dailyProfitLossPercent: safeNum(summary.dailyPnLPercent),
           holdings: summary.holdings.map((h) => ({
             symbol: h.symbol,
-            assetType: h.assetType,
-            shares: h.totalQuantity,
-            averageCost: h.averageCost,
-            currentPrice: h.currentPrice,
-            totalValue: h.currentValue,
-            profitLoss: h.pnl,
-            profitLossPercent: h.pnlPercent,
-            weight: h.weight,
+            name: (h as any).name || h.symbol,
+            assetType: h.assetType || 'HISSE',
+            shares: Math.max(0, safeNum(h.totalQuantity)),
+            averageCost: Math.max(0, safeNum(h.averageCost)),
+            currentPrice: Math.max(0, safeNum(h.currentPrice)),
+            totalValue: Math.max(0, safeNum(h.currentValue)),
+            profitLoss: safeNum(h.pnl),
+            profitLossPercent: safeNum(h.pnlPercent),
+            weight: safeNum(h.weight),
           })),
         };
       }
     } catch (_) {}
-
-    // Check quota before sending if non-pro user has 0 questions left
-    if (quotaState && quotaState.remaining <= 0 && !quotaState.isPro) {
-      setShowQuotaExceededModal(true);
-      return;
-    }
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -325,6 +343,17 @@ function AIAssistantContent() {
       saveStoredOpenRouterKey(customApiKey, user?.id, AUTO_MODEL.id);
     }
 
+    // Exclude welcome greeting and error/cancel alerts from model history
+    const validHistory = newMessages.filter(
+      (m) => m.id !== 'msg-welcome' && !m.id.startsWith('err-') && !m.id.startsWith('stop-')
+    );
+
+    // Keep payload within a sliding window of the last 20 messages
+    const trimmedHistory = validHistory.slice(-20);
+    while (trimmedHistory.length > 0 && trimmedHistory[0].role !== 'user') {
+      trimmedHistory.shift();
+    }
+    const payloadMessages = trimmedHistory.length > 0 ? trimmedHistory : [userMessage];
 
     try {
       const res = await fetch('/api/ai/chat', {
@@ -332,7 +361,7 @@ function AIAssistantContent() {
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          messages: payloadMessages.map((m) => ({ role: m.role, content: m.content })),
           model: effectiveModel,
           apiKey: customApiKey || undefined,
           portfolioContext: portfolioPayload,
@@ -342,7 +371,7 @@ function AIAssistantContent() {
       const data = await res.json();
       if (data.quota) {
         setQuotaState(data.quota);
-        if (data.quota.remaining === 0 && !data.quota.isPro) {
+        if (data.quota.remaining === 0 && !data.quota.isPro && !hasCustomKey) {
           setShowQuotaExceededModal(true);
         }
       }
@@ -359,7 +388,7 @@ function AIAssistantContent() {
         updateCurrentSessionMessages([...newMessages, assistantMessage]);
       } else {
         const errorText = chatErrorMessage(res.status, data);
-        if (data.code === 'HOURLY_QUOTA_EXCEEDED' && !data.quota?.isPro) {
+        if (data.code === 'HOURLY_QUOTA_EXCEEDED' && !data.quota?.isPro && !hasCustomKey) {
           setShowQuotaExceededModal(true);
         }
         if (data.code === 'PRO_REQUIRED') {
@@ -504,32 +533,44 @@ function AIAssistantContent() {
             </select>
           </label>
 
-          {quotaState && (
+          {customApiKey ? (
             <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-              {quotaState.isPro ? (
-                <span
-                  title="StockMind Pro: Saatte 20 soru hakkı"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-[11px] font-semibold"
-                >
-                  <UIIcon name="sparkles" className="w-3.5 h-3.5" />
-                  <span>{quotaState.remaining}/20 Hak</span>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowQuotaExceededModal(true)}
-                  title="Saatlik Soru Hakkı (Pro'da saat başı 20 soru)"
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium shrink-0 cursor-pointer transition-colors ${
-                    quotaState.remaining === 0
-                      ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 font-bold'
-                      : 'bg-bg-secondary text-text-secondary border-border hover:border-accent/40 hover:text-text-primary'
-                  }`}
-                >
-                  <span>{quotaState.remaining}/5 Hak</span>
-                  {quotaState.remaining === 0 && <span className="font-bold text-rose-400">(Dolu)</span>}
-                </button>
-              )}
+              <span
+                title="Kendi OpenRouter API anahtarınız aktif: Platform saatlik soru kotası uygulanmaz."
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 text-[11px] font-semibold"
+              >
+                <UIIcon name="sparkles" className="w-3.5 h-3.5" />
+                <span>Özel Anahtar (Limitsiz)</span>
+              </span>
             </div>
+          ) : (
+            quotaState && (
+              <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                {quotaState.isPro ? (
+                  <span
+                    title="StockMind Pro: Saatte 20 soru hakkı"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-[11px] font-semibold"
+                  >
+                    <UIIcon name="sparkles" className="w-3.5 h-3.5" />
+                    <span>{quotaState.remaining}/20 Hak</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuotaExceededModal(true)}
+                    title="Saatlik Soru Hakkı (Pro'da saat başı 20 soru)"
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium shrink-0 cursor-pointer transition-colors ${
+                      quotaState.remaining === 0
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 font-bold'
+                        : 'bg-bg-secondary text-text-secondary border-border hover:border-accent/40 hover:text-text-primary'
+                    }`}
+                  >
+                    <span>{quotaState.remaining}/5 Hak</span>
+                    {quotaState.remaining === 0 && <span className="font-bold text-rose-400">(Dolu)</span>}
+                  </button>
+                )}
+              </div>
+            )
           )}
         </div>
         {modelWarning && <p className="text-xs text-text-muted">{modelWarning}</p>}
@@ -874,6 +915,8 @@ function AIAssistantContent() {
       <ProRequestModal
         isOpen={showProModal}
         onClose={() => setShowProModal(false)}
+        userEmail={user?.email || undefined}
+        userName={profile?.fullName || user?.user_metadata?.full_name || user?.user_metadata?.name || undefined}
       />
     </div>
   );

@@ -140,6 +140,23 @@ const COMPANY_ALIASES: Record<string, string> = {
   'google': 'GOOGL',
 };
 
+const TURKISH_STOP_WORDS = new Set([
+  'BEN', 'SEN', 'BIZ', 'SIZ', 'BIR', 'IKI', 'UC', 'DORT', 'BES', 'ALTI',
+  'ILE', 'ICIN', 'GIBI', 'GORE', 'KADAR', 'DAHA', 'COK', 'EN', 'AZ', 'FAZLA',
+  'EVET', 'HAYIR', 'NASIL', 'NEDEN', 'NICIN', 'HANGI', 'KAC', 'NE', 'KIM',
+  'BU', 'SU', 'O', 'BUNLAR', 'SUNLAR', 'ONLAR', 'BURADA', 'ORADA',
+  'VAR', 'YOK', 'PARA', 'FIYAT', 'HESAP', 'ALIM', 'SATIM', 'ALIS', 'SATIS',
+  'DURUM', 'DURUMU', 'ANALIZ', 'RAPOR', 'PORTFOY', 'HISSE', 'HISSELER',
+  'FON', 'FONLAR', 'SEPET', 'ORAN', 'ORANI', 'PUAN', 'KAZANC', 'GETIRI',
+  'ZARAR', 'KAR', 'BUGUN', 'YARIN', 'DUN', 'HAFTA', 'AY', 'YIL', 'ZAMAN',
+  'SAAT', 'DEGER', 'ALMAK', 'SATMAK', 'LUTFEN', 'MERHABA', 'SELAM', 'IYI',
+  'KOTU', 'TAMAM', 'PEKI', 'GUZEL', 'OLUR', 'ETMEK', 'YAPMAK', 'BAK', 'GOR',
+  'BILGI', 'YARDIM', 'HOCAM', 'SORU', 'CEVAP', 'ONER', 'ONERI', 'TAVSIYE',
+  'SENIN', 'BENIM', 'BIZIM', 'ONUN', 'SONRA', 'ONCE', 'SIMDI', 'SUAN', 'ANLIK',
+  'DETAY', 'DETAYLI', 'GENEL', 'OZET', 'OZETI', 'TABLO', 'KART', 'GRAFIK',
+  'BIST', 'BORSA', 'DOVIZ', 'ALTIN', 'DOLAR', 'EURO', 'AVRO', 'PETROL'
+]);
+
 export function detectSymbolsInText(text: string): string[] {
   const lower = text.toLowerCase();
   const detected = new Set<string>();
@@ -152,10 +169,11 @@ export function detectSymbolsInText(text: string): string[] {
   }
 
   // 2. Extract potential uppercase/alphanumeric tickers (3 to 6 chars)
+  // Exclude Turkish stop words and punctuation
   const words = text.split(/[\s,?.!;:"'()\[\]{}]+/);
   for (const w of words) {
     const clean = w.trim().toUpperCase();
-    if (/^[A-Z0-9]{3,6}$/.test(clean)) {
+    if (/^[A-Z0-9]{3,6}$/.test(clean) && !TURKISH_STOP_WORDS.has(clean)) {
       detected.add(clean);
     }
   }

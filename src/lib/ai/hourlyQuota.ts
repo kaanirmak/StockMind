@@ -99,6 +99,21 @@ export function checkAndConsumeHourlyChatQuota(userId: string, isPro: boolean): 
 }
 
 /**
+ * Refunds 1 question credit to the user if an upstream AI request failed.
+ */
+export function refundHourlyChatQuota(userId: string): void {
+  const list = userQuestionTimestamps.get(userId);
+  if (list && list.length > 0) {
+    list.pop();
+    if (list.length === 0) {
+      userQuestionTimestamps.delete(userId);
+    } else {
+      userQuestionTimestamps.set(userId, list);
+    }
+  }
+}
+
+/**
  * Reset quota tracking for testing or administrative purposes.
  */
 export function resetHourlyChatQuota(userId?: string): void {
