@@ -75,6 +75,7 @@ function AIAssistantContent() {
     isPro: boolean;
   } | null>(null);
   const [showProModal, setShowProModal] = useState(false);
+  const [showQuotaExceededModal, setShowQuotaExceededModal] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -306,6 +307,12 @@ function AIAssistantContent() {
       }
     } catch (_) {}
 
+    // Check quota before sending if non-pro user has 0 questions left
+    if (quotaState && quotaState.remaining <= 0 && !quotaState.isPro) {
+      setShowQuotaExceededModal(true);
+      return;
+    }
+
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
@@ -335,6 +342,9 @@ function AIAssistantContent() {
       const data = await res.json();
       if (data.quota) {
         setQuotaState(data.quota);
+        if (data.quota.remaining === 0 && !data.quota.isPro) {
+          setShowQuotaExceededModal(true);
+        }
       }
       if (data.success && data.message) {
         const assistantMessage: Message = {
@@ -350,7 +360,7 @@ function AIAssistantContent() {
       } else {
         const errorText = chatErrorMessage(res.status, data);
         if (data.code === 'HOURLY_QUOTA_EXCEEDED' && !data.quota?.isPro) {
-          setShowProModal(true);
+          setShowQuotaExceededModal(true);
         }
         if (data.code === 'PRO_REQUIRED') {
           setSelectedModel(AUTO_MODEL.id);
@@ -502,29 +512,22 @@ function AIAssistantContent() {
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-[11px] font-semibold"
                 >
                   <UIIcon name="sparkles" className="w-3.5 h-3.5" />
-                  <span>{quotaState.remaining}/20 Soru (Saatlik)</span>
+                  <span>{quotaState.remaining}/20 Hak</span>
                 </span>
               ) : (
-                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                  <span
-                    title="Standart Plan: Saatte 5 soru hakkı"
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium shrink-0 ${
-                      quotaState.remaining === 0
-                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                        : 'bg-bg-secondary text-text-secondary border-border'
-                    }`}
-                  >
-                    <span>{quotaState.remaining}/5 Soru (Saatlik)</span>
-                    {quotaState.remaining === 0 && <span className="font-bold text-rose-400">(Dolu)</span>}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowProModal(true)}
-                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-[11px] font-bold shadow-sm shadow-amber-500/20 transition-all cursor-pointer shrink-0"
-                  >
-                    Pro&apos;ya Geç (20/saat)
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQuotaExceededModal(true)}
+                  title="Saatlik Soru Hakkı (Pro'da saat başı 20 soru)"
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium shrink-0 cursor-pointer transition-colors ${
+                    quotaState.remaining === 0
+                      ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 font-bold'
+                      : 'bg-bg-secondary text-text-secondary border-border hover:border-accent/40 hover:text-text-primary'
+                  }`}
+                >
+                  <span>{quotaState.remaining}/5 Hak</span>
+                  {quotaState.remaining === 0 && <span className="font-bold text-rose-400">(Dolu)</span>}
+                </button>
               )}
             </div>
           )}
@@ -798,6 +801,70 @@ function AIAssistantContent() {
               <Button variant="secondary" size="sm" onClick={() => setShowHistoryModal(false)}>
                 Kapat
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quota Exceeded Modal */}
+      {showQuotaExceededModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-sm p-6 rounded-3xl bg-bg-card border border-border shadow-2xl text-center space-y-4 animate-scale-up">
+            <button
+              type="button"
+              onClick={() => setShowQuotaExceededModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full border border-border/80 flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
+              aria-label="Kapat"
+            >
+              ✕
+            </button>
+
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/10">
+              ⚡
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-bold text-text-primary">
+                {quotaState && quotaState.remaining === 0 ? 'Limitin Doldu!' : 'Saatlik Soru Hakkı'}
+              </h3>
+              <p className="text-xs text-text-muted leading-relaxed">
+                {quotaState && quotaState.remaining === 0 ? (
+                  <>
+                    Standart planda saatlik 5 soru limitine ulaştın.<br />
+                    <span className="font-semibold text-text-primary mt-1 inline-block">
+                      Pro planda <span className="text-amber-400 font-bold">saat başı 20 soru</span> hakkı bulunur.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Şu anki kalan hakkın: <strong className="text-text-primary">{quotaState?.remaining ?? 5}/5 soru</strong>.<br />
+                    <span className="font-semibold text-text-primary mt-1 inline-block">
+                      Pro planda <span className="text-amber-400 font-bold">saat başı 20 soru</span> hakkı bulunur.
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setShowQuotaExceededModal(false);
+                  setShowProModal(true);
+                }}
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-2.5 shadow-md shadow-amber-500/20"
+              >
+                Pro&apos;ya Geç (20 Soru/Saat)
+              </Button>
+              <button
+                type="button"
+                onClick={() => setShowQuotaExceededModal(false)}
+                className="text-xs text-text-muted hover:text-text-primary py-1 transition-colors cursor-pointer"
+              >
+                Tamam, sonra
+              </button>
             </div>
           </div>
         </div>
