@@ -92,7 +92,7 @@
 
 ### Gereksinimler
 
-- **Node.js** ≥ 18
+- **Node.js** 22 LTS (veya 24 LTS)
 - **npm**, **yarn**, **pnpm** veya **bun**
 - [Supabase](https://supabase.com) hesabı (ücretsiz)
 

@@ -1,3 +1,4 @@
+import { readOpenRouterResponse } from './openrouter';
 import { palette } from '@/theme/palette';
 // StockMind Yatırım Komitesi - Çoklu AI Ajan Simülasyonu Motoru
 
@@ -160,12 +161,7 @@ KRİTİK TALİMATLAR:
     }),
   });
 
-  if (!res.ok) {
-    throw new Error(`OpenRouter HTTP ${res.status}`);
-  }
-
-  const data = await res.json();
-  const rawText = data.choices?.[0]?.message?.content || '';
+  const rawText = await readOpenRouterResponse(res);
 
   // Extract JSON robustly
   const jsonMatch = rawText.match(/\{[\s\S]*\}/);

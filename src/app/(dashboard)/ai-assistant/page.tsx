@@ -1,4 +1,5 @@
 'use client';
+import { prepareChatHistory } from '@/lib/ai/chatHistory';
 import { chatErrorMessage } from '@/lib/ai/chatErrors';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
@@ -283,11 +284,12 @@ function AIAssistantContent() {
 
     const hasCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
 
-    // Check quota before modifying chat state so input isn't cleared and UI doesn't freeze
-    if (!hasCustomKey && quotaState && quotaState.remaining <= 0 && !quotaState.isPro) {
-      setShowQuotaExceededModal(true);
+    // The server checks the sliding window; a stale client snapshot must not block retries.
+    if (cleanText.length > 8000) {
+      setReadinessError('Mesaj en fazla 8000 karakter olabilir. Lütfen kısaltın.');
       return;
     }
+    setReadinessError('');
 
     const userMessage: Message = {
       id: `usr-${Date.now()}`,
@@ -315,7 +317,7 @@ function AIAssistantContent() {
           totalProfitLossPercent: safeNum(summary.totalPnLPercent),
           dailyProfitLoss: safeNum(summary.dailyPnL),
           dailyProfitLossPercent: safeNum(summary.dailyPnLPercent),
-          holdings: summary.holdings.map((h) => ({
+          holdings: summary.holdings.slice(0, 100).map((h) => ({
             symbol: h.symbol,
             name: (h as any).name || h.symbol,
             assetType: h.assetType || 'HISSE',
@@ -348,12 +350,7 @@ function AIAssistantContent() {
       (m) => m.id !== 'msg-welcome' && !m.id.startsWith('err-') && !m.id.startsWith('stop-')
     );
 
-    // Keep payload within a sliding window of the last 20 messages
-    const trimmedHistory = validHistory.slice(-20);
-    while (trimmedHistory.length > 0 && trimmedHistory[0].role !== 'user') {
-      trimmedHistory.shift();
-    }
-    const payloadMessages = trimmedHistory.length > 0 ? trimmedHistory : [userMessage];
+    const payloadMessages = prepareChatHistory(validHistory);
 
     try {
       const res = await fetch('/api/ai/chat', {
@@ -375,7 +372,7 @@ function AIAssistantContent() {
           setShowQuotaExceededModal(true);
         }
       }
-      if (data.success && data.message) {
+      if (res.ok && data.success && data.message) {
         const assistantMessage: Message = {
           id: `ast-${Date.now()}`,
           role: 'assistant',

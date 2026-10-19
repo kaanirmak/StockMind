@@ -3,6 +3,7 @@ export function chatErrorMessage(status: number, body: { code?: string; error?: 
   if (body.code === 'AUTH_REQUIRED') return 'Oturumunuz doğrulanamadı. Tekrar giriş yapıp mesajınızı yeniden gönderin.';
   if (body.code === 'AI_KEY_REQUIRED') return 'AI anahtarı tanımlı değil. Ayarlar > AI bölümünden OpenRouter anahtarınızı ekleyin.';
   if (body.code === 'AI_PROVIDER_UNAUTHORIZED') return 'OpenRouter anahtarı reddedildi. Ayarlar > AI bölümündeki anahtarı kontrol edin.';
+  if (body.code === 'AI_PROVIDER_FORBIDDEN') return 'Sağlayıcı isteği engelledi. Başka bir model seçin veya OpenRouter gizlilik ayarlarınızı kontrol edin.';
   if (body.code === 'AI_CREDITS_REQUIRED') return 'Seçilen model için OpenRouter kredisi yetersiz. Ücretsiz modeli seçin veya bakiyenizi kontrol edin.';
   if (body.code === 'FORBIDDEN_ORIGIN') return 'İstek adresi doğrulanamadı. Sayfayı uygulamanın kendi adresinden yeniden açın.';
   if (body.code === 'AI_TIMEOUT') return 'AI servisi zamanında yanıt vermedi. Biraz sonra tekrar deneyin.';
