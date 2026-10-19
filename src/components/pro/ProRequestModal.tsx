@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button, useToast } from '@/components/ui';
-import { Icon as UIIcon } from '@/components/ui/Icon';
+import { Modal } from '@/components/ui/Modal';
 
 interface ProRequestModalProps {
   isOpen: boolean;
@@ -65,29 +65,14 @@ export function ProRequestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg p-6 rounded-3xl bg-bg-card border border-border shadow-2xl space-y-5 animate-scale-up">
-        {/* Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full border border-border/80 flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors"
-          aria-label="Kapat"
-        >
-          ✕
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-2xl shadow-lg shadow-amber-500/20 shrink-0">
-            ⭐
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-text-primary">StockMind Pro Hesap İste</h2>
-            <p className="text-xs text-text-muted">Yönetici onayı ile anında aktif edilecek pro üyelik talebi</p>
-          </div>
-        </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="StockMind Pro Hesap İste"
+      description="Pro üyelik talebiniz yönetici tarafından değerlendirilecek."
+      size="md"
+    >
+      <div className="space-y-5 min-w-0">
         {/* Features Checklist */}
         <div className="p-4 rounded-2xl bg-bg-secondary/60 border border-border/60 space-y-2 text-xs">
           <p className="font-semibold text-text-primary mb-1">Pro Üyelik ile Açılacak Özellikler:</p>
@@ -97,7 +82,7 @@ export function ProRequestModal({
           </div>
           <div className="flex items-start gap-2 text-text-secondary">
             <span className="text-emerald-400 font-bold shrink-0">✓</span>
-            <span><strong>Gelişmiş AI Modelleri:</strong> GPT-4o, Claude 3.5 Sonnet ve premium modeller</span>
+            <span><strong>Gelişmiş AI Modelleri:</strong> Sağlayıcı kataloğundaki gelişmiş metin modelleri</span>
           </div>
           <div className="flex items-start gap-2 text-text-secondary">
             <span className="text-emerald-400 font-bold shrink-0">✓</span>
@@ -127,9 +112,9 @@ export function ProRequestModal({
             <label className="block text-xs font-semibold text-text-muted mb-1">
               Hesap Sahibi
             </label>
-            <div className="px-3.5 py-2.5 rounded-xl bg-bg-input border border-border text-xs text-text-primary flex items-center justify-between">
-              <span>{userName || 'Kullanıcı'}</span>
-              <span className="text-text-muted font-mono">{userEmail}</span>
+            <div className="px-3.5 py-2.5 rounded-xl bg-bg-input border border-border text-xs text-text-primary flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <span className="min-w-0 break-words">{userName || 'Kullanıcı'}</span>
+              <span className="min-w-0 break-all text-text-muted font-mono">{userEmail}</span>
             </div>
           </div>
 
@@ -149,8 +134,8 @@ export function ProRequestModal({
             <p className="text-[10px] text-text-muted mt-1 text-right">{note.length}/500</p>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-2">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={isSubmitting}>
+          <div className="flex flex-col-reverse gap-2.5 pt-2 sm:flex-row sm:items-center sm:justify-end">
+            <Button type="button" variant="ghost" size="sm" className="w-full sm:w-auto min-h-11" onClick={onClose} disabled={isSubmitting}>
               Vazgeç
             </Button>
             <Button
@@ -158,13 +143,13 @@ export function ProRequestModal({
               variant="primary"
               size="sm"
               isLoading={isSubmitting}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold shadow-lg shadow-amber-500/20"
+              className="w-full sm:w-auto min-h-11 whitespace-normal bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold shadow-lg shadow-amber-500/20"
             >
               🚀 Pro Talebini Gönder
             </Button>
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

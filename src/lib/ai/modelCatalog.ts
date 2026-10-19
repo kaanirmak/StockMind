@@ -17,6 +17,8 @@ export function parseModelCatalog(value: unknown): CatalogModel[] {
         !row.architecture.output_modalities.every((modality: unknown) => modality === 'text')) continue;
     const pricing = row.pricing;
     if (!pricing || pricing.prompt == null || pricing.completion == null) continue;
+    // Exclude moderation/classifier models that do not provide chat completions
+    if (row.id.includes('content-safety') || row.id.includes('moderation') || row.name.toLowerCase().includes('content safety')) continue;
     const free = Object.values(pricing).every(price => typeof price === 'string' && Number(price) === 0);
     models.push({ id: row.id, name: row.name, free,
       supportedParameters: Array.isArray(row.supported_parameters) ? row.supported_parameters.filter((param: unknown) => typeof param === 'string') : [],

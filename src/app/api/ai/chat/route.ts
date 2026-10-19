@@ -53,9 +53,14 @@ function parsePortfolio(value: unknown): PortfolioContextPayload | undefined {
 export async function POST(request: Request) {
   const quotaRequestId = crypto.randomUUID();
   let quotaConsumed = false;
+  let accessUserId: string | null = null;
+  let accessIsPro = false;
   try {
     const access = await authorizeAction(request, 'ai_chat');
     if (access.response) return access.response;
+    accessUserId = access.user.id;
+    const isPro = hasProAccess(access.user.app_metadata);
+    accessIsPro = isPro;
     const body = await readJsonObject(request);
     if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 40) {
       throw new ApiError(400, '1–40 mesaj gönderilmelidir.');
@@ -73,7 +78,6 @@ export async function POST(request: Request) {
     const model = optionalText(body.model, 120) || 'openrouter/free';
     const entry = model === AUTO_MODEL.id ? AUTO_MODEL : (await getModelCatalog()).find(entry => entry.id === model);
     if (!entry) throw new ApiError(400, 'Model artık listede bulunmuyor. Başka bir model seçin.');
-    const isPro = hasProAccess(access.user.app_metadata);
     if (!entry.free && !isPro) throw new ApiError(403, 'Bu model yalnızca Pro hesaplara açıktır.', 'PRO_REQUIRED');
     const apiKey = optionalText(body.apiKey, 512);
     if (!apiKey && !process.env.OPENROUTER_API_KEY?.trim()) throw new ApiError(401, 'AI anahtarı tanımlanmalıdır.', 'AI_KEY_REQUIRED');
@@ -81,7 +85,7 @@ export async function POST(request: Request) {
     // Enforce hourly question quota (20/hour for Pro, 5/hour for Standard) when using platform AI
     let quotaStatus: HourlyQuotaStatus | undefined = undefined;
     if (!apiKey) {
-      quotaStatus = await checkAndConsumeHourlyChatQuota(quotaRequestId);
+      quotaStatus = await checkAndConsumeHourlyChatQuota(quotaRequestId, access.user.id, isPro);
       if (!quotaStatus.allowed) {
         return NextResponse.json(
           {
@@ -155,7 +159,7 @@ export async function POST(request: Request) {
     let refundedQuota: HourlyQuotaStatus | undefined;
     if (quotaConsumed) {
       try {
-        refundedQuota = await refundHourlyChatQuota(quotaRequestId);
+        refundedQuota = await refundHourlyChatQuota(quotaRequestId, accessUserId || undefined, accessIsPro);
       } catch { console.warn('AI quota refund failed.'); }
     }
     if (error instanceof OpenRouterError) return NextResponse.json({ success: false, code: error.code, error: error.message, quota: refundedQuota }, { status: error.status });
@@ -170,7 +174,12 @@ export async function GET() {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) return NextResponse.json({ success: false, code: 'AUTH_REQUIRED', error: 'Oturumunuz doğrulanamadı. Tekrar giriş yapın.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
     const isPro = hasProAccess(data.user.app_metadata);
-    const quota = await getHourlyChatQuota();
+    let quota: HourlyQuotaStatus;
+    try {
+      quota = await getHourlyChatQuota(data.user.id, isPro);
+    } catch {
+      quota = { limit: isPro ? 20 : 5, used: 0, remaining: isPro ? 20 : 5, retryAfter: 0, allowed: true, isPro };
+    }
     return NextResponse.json({
       success: true,
       serverKeyConfigured: Boolean(process.env.OPENROUTER_API_KEY?.trim()),

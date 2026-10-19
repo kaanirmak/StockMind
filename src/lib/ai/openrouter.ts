@@ -39,13 +39,19 @@ Görevlerin:
 6. Yanıtının sonunda kısa bir "Yatırım Tavsiyesi Değildir (YTD)" uyarısı eklemek.`;
 
 
+export const FALLBACK_FREE_MODELS = [
+  'minimax/minimax-m3.1-flash:free',
+  'liquid/lfm-2.5-2.6b:free',
+  'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+];
+
 export async function callOpenRouter(
   messages: OpenRouterMessage[],
   options?: OpenRouterChatOptions
 ): Promise<string> {
   const cleanApiKey = (options?.apiKey || '').trim();
   const apiKey = cleanApiKey || process.env.OPENROUTER_API_KEY?.trim();
-  const model = options?.model || DEFAULT_MODEL;
+  const requestedModel = options?.model || DEFAULT_MODEL;
   const policy = getAIRuntimePolicy();
 
   if (!apiKey) {
@@ -58,37 +64,60 @@ export async function callOpenRouter(
     : FINANCIAL_SYSTEM_PROMPT;
   if (options?.concise ?? policy.briefByDefault) effectiveSystemPrompt += `\n\n${briefChatInstructions(policy.briefWordTarget)}`;
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      signal: options?.signal
-        ? AbortSignal.any([options.signal, AbortSignal.timeout(policy.timeoutMs)])
-        : AbortSignal.timeout(policy.timeoutMs),
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://stockmind.app',
-        'X-Title': 'StockMind Investment Platform',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: effectiveSystemPrompt },
-          ...messages,
-        ],
-        temperature: options?.temperature ?? 0.7,
-        max_tokens: policy.chatMaxTokens,
-      }),
-    });
-
-    return await readOpenRouterResponse(res);
-  } catch (error: any) {
-    if (options?.signal?.aborted) throw new OpenRouterError(499, 'AI_CANCELLED', 'AI isteği iptal edildi.');
-    console.error('OpenRouter call failed');
-    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new OpenRouterError(504, 'AI_TIMEOUT', 'AI isteği zaman aşımına uğradı.');
-    if (error instanceof OpenRouterError) throw error;
-    throw new OpenRouterError(503, 'AI_PROVIDER_UNAVAILABLE', 'AI sağlayıcısına ulaşılamadı. Lütfen tekrar deneyin.');
+  const modelsToTry = [requestedModel];
+  if (requestedModel === DEFAULT_MODEL) {
+    for (const fb of FALLBACK_FREE_MODELS) {
+      if (!modelsToTry.includes(fb)) modelsToTry.push(fb);
+    }
   }
+
+  let lastError: unknown = null;
+
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const currentModel = modelsToTry[i];
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        signal: options?.signal
+          ? AbortSignal.any([options.signal, AbortSignal.timeout(policy.timeoutMs)])
+          : AbortSignal.timeout(policy.timeoutMs),
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://stockmind.app',
+          'X-Title': 'StockMind Investment Platform',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: currentModel,
+          messages: [
+            { role: 'system', content: effectiveSystemPrompt },
+            ...messages,
+          ],
+          temperature: options?.temperature ?? 0.7,
+          max_tokens: policy.chatMaxTokens,
+        }),
+      });
+
+      return await readOpenRouterResponse(res);
+    } catch (error: any) {
+      if (options?.signal?.aborted) throw new OpenRouterError(499, 'AI_CANCELLED', 'AI isteği iptal edildi.');
+      lastError = error;
+      if (error instanceof OpenRouterError && (error.code === 'AI_PROVIDER_UNAUTHORIZED' || error.code === 'AI_KEY_REQUIRED')) {
+        throw error;
+      }
+      if (i < modelsToTry.length - 1) {
+        console.warn(`Model ${currentModel} failed (${error?.message || error}), trying fallback ${modelsToTry[i + 1]}...`);
+        continue;
+      }
+    }
+  }
+
+  console.error('OpenRouter call failed');
+  if (lastError instanceof OpenRouterError) throw lastError;
+  if (lastError && typeof lastError === 'object' && ('name' in lastError) && (lastError.name === 'TimeoutError' || lastError.name === 'AbortError')) {
+    throw new OpenRouterError(504, 'AI_TIMEOUT', 'AI isteği zaman aşımına uğradı.');
+  }
+  throw new OpenRouterError(503, 'AI_PROVIDER_UNAVAILABLE', 'AI sağlayıcısına ulaşılamadı. Lütfen tekrar deneyin.');
 }
 
 /** OpenRouter may return an error body even with HTTP 200. Never treat it as an answer. */
@@ -112,6 +141,9 @@ export async function readOpenRouterResponse(response: Response): Promise<string
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== 'string' || !content.trim()) {
     throw new OpenRouterError(502, 'AI_INVALID_RESPONSE', 'Model boş yanıt verdi. Başka bir model seçin veya tekrar deneyin.');
+  }
+  if (content.trim().startsWith('User Safety:')) {
+    throw new OpenRouterError(502, 'AI_INVALID_RESPONSE', 'Model bir sohbet yanıtı yerine güvenlik sınıflandırması döndürdü.');
   }
   return content.trim();
 }

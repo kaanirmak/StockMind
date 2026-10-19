@@ -85,9 +85,15 @@ function AIAssistantContent() {
     fetch('/api/ai/chat', { signal: controller.signal, cache: 'no-store' }).then(async response => {
       const data = await response.json();
       if (!controller.signal.aborted) {
-        setReadinessError(data.success ? '' : chatErrorMessage(response.status, data));
         if (data.quota) {
           setQuotaState(data.quota);
+        } else if (response.ok) {
+          setQuotaState({ limit: 5, remaining: 5, used: 0, isPro: false });
+        }
+        if (response.status === 401 || data.code === 'AUTH_REQUIRED') {
+          setReadinessError(chatErrorMessage(response.status, data));
+        } else {
+          setReadinessError('');
         }
       }
     }).catch(() => {});
