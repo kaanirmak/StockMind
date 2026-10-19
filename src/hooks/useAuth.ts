@@ -5,6 +5,8 @@ import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '@/types';
+import { hasProAccess } from '@/lib/ai/modelCatalog';
+import { getStoredOpenRouterKey, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 
 export function useAuth() {
   const supabase = createClient();
@@ -25,14 +27,8 @@ export function useAuth() {
       const pictureAvatar = currentUser?.user_metadata?.picture;
       const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
 
-      const isPro = Boolean(
-        currentUser?.app_metadata?.plan === 'pro' ||
-        currentUser?.app_metadata?.is_pro === true ||
-        data?.is_pro === true ||
-        data?.plan === 'pro' ||
-        currentUser?.user_metadata?.is_pro === true
-      );
-      const plan = (currentUser?.app_metadata?.plan || data?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+      const isPro = hasProAccess(currentUser?.app_metadata);
+      const plan = (isPro ? (currentUser?.app_metadata?.plan === 'enterprise' ? 'enterprise' : 'pro') : 'free');
       const proRequestStatus = (currentUser?.user_metadata?.pro_request_status || 'none') as 'none' | 'pending' | 'approved' | 'rejected';
 
       const userProf: UserProfile = {
@@ -59,12 +55,8 @@ export function useAuth() {
         const pictureAvatar = currentUser?.user_metadata?.picture;
         const safePicture = pictureAvatar && !pictureAvatar.startsWith('data:') ? pictureAvatar : null;
 
-        const isPro = Boolean(
-          currentUser?.app_metadata?.plan === 'pro' ||
-          currentUser?.app_metadata?.is_pro === true ||
-          currentUser?.user_metadata?.is_pro === true
-        );
-        const plan = (currentUser?.app_metadata?.plan || currentUser?.user_metadata?.plan || (isPro ? 'pro' : 'free')) as 'free' | 'pro' | 'enterprise';
+        const isPro = hasProAccess(currentUser?.app_metadata);
+        const plan = (isPro ? (currentUser?.app_metadata?.plan === 'enterprise' ? 'enterprise' : 'pro') : 'free');
         const proRequestStatus = (currentUser?.user_metadata?.pro_request_status || 'none') as 'none' | 'pending' | 'approved' | 'rejected';
 
         const fallbackProf: UserProfile = {
@@ -228,9 +220,8 @@ export function useAuth() {
           if (currentUser) {
             cleanupBloatedMetadata(currentUser);
             const metaKey = currentUser.user_metadata?.openrouter_api_key;
-            if (metaKey && typeof window !== 'undefined' && !localStorage.getItem('stockmind_openrouter_api_key')) {
-              localStorage.setItem('stockmind_openrouter_api_key', metaKey);
-              window.dispatchEvent(new CustomEvent('stockmind_ai_key_updated', { detail: { key: metaKey } }));
+            if (typeof metaKey === 'string' && !getStoredOpenRouterKey(currentUser.id)) {
+              saveStoredOpenRouterKey(metaKey, currentUser.id);
             }
             await fetchProfile(currentUser.id, currentUser);
             useWatchlistStore.getState().loadUserWatchlist(currentUser.id);
@@ -269,9 +260,8 @@ export function useAuth() {
           if (authUser) {
             cleanupBloatedMetadata(authUser);
             const metaKey = authUser.user_metadata?.openrouter_api_key;
-            if (metaKey && typeof window !== 'undefined' && !localStorage.getItem('stockmind_openrouter_api_key')) {
-              localStorage.setItem('stockmind_openrouter_api_key', metaKey);
-              window.dispatchEvent(new CustomEvent('stockmind_ai_key_updated', { detail: { key: metaKey } }));
+            if (typeof metaKey === 'string' && !getStoredOpenRouterKey(authUser.id)) {
+              saveStoredOpenRouterKey(metaKey, authUser.id);
             }
             await fetchProfile(authUser.id, authUser);
             useWatchlistStore.getState().loadUserWatchlist(authUser.id);

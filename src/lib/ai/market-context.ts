@@ -1,5 +1,5 @@
 // StockMind Live Market & Portfolio Context Engine for AI Assistant
-import { getStockBySymbolLive, StockMarketInfo } from '@/lib/data/stocks';
+import { getAllStocksLive, getStockBySymbolLive, StockMarketInfo } from '@/lib/data/stocks';
 
 export interface MacroRates {
   usdTry?: { price: number; changePercent: number };
@@ -67,126 +67,44 @@ export async function getLiveMacroSnapshot(): Promise<MacroRates> {
   return result;
 }
 
-// Company aliases for BIST and popular assets
-const COMPANY_ALIASES: Record<string, string> = {
-  'türk hava yolları': 'THYAO',
-  'havayolları': 'THYAO',
-  'thy': 'THYAO',
-  'aselsan': 'ASELS',
-  'tüpraş': 'TUPRS',
-  'tupras': 'TUPRS',
-  'ford': 'FROTO',
-  'ford otosan': 'FROTO',
-  'garanti': 'GARAN',
-  'garanti bbva': 'GARAN',
-  'akbank': 'AKBNK',
-  'yapı kredi': 'YKBNK',
-  'yapi kredi': 'YKBNK',
-  'iş bankası': 'ISCTR',
-  'is bankasi': 'ISCTR',
-  'ereğli': 'EREGL',
-  'eregli': 'EREGL',
-  'şişecam': 'SISE',
-  'sisecam': 'SISE',
-  'bim': 'BIMAS',
-  'bimaş': 'BIMAS',
-  'koç holding': 'KCHOL',
-  'koc holding': 'KCHOL',
-  'sabancı holding': 'SAHOL',
-  'sabanci holding': 'SAHOL',
-  'pegasus': 'PGSUS',
-  'turkcell': 'TCELL',
-  'türk telekom': 'TTKOM',
-  'telekom': 'TTKOM',
-  'sasa': 'SASA',
-  'hektas': 'HEKTS',
-  'hektaş': 'HEKTS',
-  'astor': 'ASTOR',
-  'kontrolmatik': 'KONTR',
-  'europower': 'EUPWR',
-  'koza altın': 'KOZAL',
-  'petkim': 'PETKM',
-  'tofaş': 'TOASO',
-  'tofas': 'TOASO',
-  'arçelik': 'ARCLK',
-  'arcelik': 'ARCLK',
-  'migros': 'MGROS',
-  'şok': 'SOKM',
-  'sok': 'SOKM',
-  'dolar': 'USDTRY',
-  'dollar': 'USDTRY',
-  'usd': 'USDTRY',
-  'euro': 'EURTRY',
-  'avro': 'EURTRY',
-  'eur': 'EURTRY',
-  'sterlin': 'GBPTRY',
-  'gbp': 'GBPTRY',
-  'altın': 'GRAM_ALTIN',
-  'altin': 'GRAM_ALTIN',
-  'gram altın': 'GRAM_ALTIN',
-  'ons altın': 'XAUUSD',
-  'gümüş': 'GRAM_GUMUS',
-  'gumus': 'GRAM_GUMUS',
-  'petrol': 'UKOIL',
-  'brent': 'UKOIL',
-  'bist': 'XU100',
-  'bist 100': 'XU100',
-  'borsa': 'XU100',
-  'nvidia': 'NVDA',
-  'apple': 'AAPL',
-  'tesla': 'TSLA',
-  'microsoft': 'MSFT',
-  'amazon': 'AMZN',
-  'google': 'GOOGL',
-};
-
-const TURKISH_STOP_WORDS = new Set([
-  'BEN', 'SEN', 'BIZ', 'SIZ', 'BIR', 'IKI', 'UC', 'DORT', 'BES', 'ALTI',
-  'ILE', 'ICIN', 'GIBI', 'GORE', 'KADAR', 'DAHA', 'COK', 'EN', 'AZ', 'FAZLA',
-  'EVET', 'HAYIR', 'NASIL', 'NEDEN', 'NICIN', 'HANGI', 'KAC', 'NE', 'KIM',
-  'BU', 'SU', 'O', 'BUNLAR', 'SUNLAR', 'ONLAR', 'BURADA', 'ORADA',
-  'VAR', 'YOK', 'PARA', 'FIYAT', 'HESAP', 'ALIM', 'SATIM', 'ALIS', 'SATIS',
-  'DURUM', 'DURUMU', 'ANALIZ', 'RAPOR', 'PORTFOY', 'HISSE', 'HISSELER',
-  'FON', 'FONLAR', 'SEPET', 'ORAN', 'ORANI', 'PUAN', 'KAZANC', 'GETIRI',
-  'ZARAR', 'KAR', 'BUGUN', 'YARIN', 'DUN', 'HAFTA', 'AY', 'YIL', 'ZAMAN',
-  'SAAT', 'DEGER', 'ALMAK', 'SATMAK', 'LUTFEN', 'MERHABA', 'SELAM', 'IYI',
-  'KOTU', 'TAMAM', 'PEKI', 'GUZEL', 'OLUR', 'ETMEK', 'YAPMAK', 'BAK', 'GOR',
-  'BILGI', 'YARDIM', 'HOCAM', 'SORU', 'CEVAP', 'ONER', 'ONERI', 'TAVSIYE',
-  'SENIN', 'BENIM', 'BIZIM', 'ONUN', 'SONRA', 'ONCE', 'SIMDI', 'SUAN', 'ANLIK',
-  'DETAY', 'DETAYLI', 'GENEL', 'OZET', 'OZETI', 'TABLO', 'KART', 'GRAFIK',
-  'BIST', 'BORSA', 'DOVIZ', 'ALTIN', 'DOLAR', 'EURO', 'AVRO', 'PETROL'
-]);
-
-export function detectSymbolsInText(text: string): string[] {
-  const lower = text.toLowerCase();
+/** Resolve names and symbols from the current market directory, with no company alias list. */
+export function detectSymbolsInText(text: string, directory: Array<{ symbol: string; name: string }> = []): string[] {
+  const segmenter = new Intl.Segmenter('tr', { granularity: 'word' });
+  const words = (value: string) => Array.from(segmenter.segment(value.toLocaleLowerCase('tr-TR')))
+    .filter(part => part.isWordLike).map(part => part.segment);
+  const query = words(text);
+  const aliases = new Map<string, Set<string>>();
+  const add = (tokens: string[], symbol: string) => {
+    const key = JSON.stringify(tokens);
+    const symbols = aliases.get(key) || new Set<string>();
+    symbols.add(symbol);
+    aliases.set(key, symbols);
+  };
+  for (const asset of directory) {
+    add(words(asset.symbol), asset.symbol);
+    const name = words(asset.name);
+    for (let length = 1; length <= name.length; length++) add(name.slice(0, length), asset.symbol);
+  }
   const detected = new Set<string>();
-
-  // 1. Check alias phrases
-  for (const [phrase, sym] of Object.entries(COMPANY_ALIASES)) {
-    if (lower.includes(phrase)) {
-      detected.add(sym);
+  for (const [key, symbols] of aliases) {
+    if (symbols.size !== 1) continue; // Ambiguous company prefixes never become a guessed quote.
+    const tokens: string[] = JSON.parse(key);
+    if (tokens.length && query.some((_, start) => tokens.every((token, index) => token === query[start + index]))) {
+      detected.add(symbols.values().next().value!);
     }
   }
-
-  // 2. Extract potential uppercase/alphanumeric tickers (3 to 6 chars)
-  // Exclude Turkish stop words and punctuation
-  const words = text.split(/[\s,?.!;:"'()\[\]{}]+/);
-  for (const w of words) {
-    const clean = w.trim().toUpperCase();
-    if (/^[A-Z0-9]{3,6}$/.test(clean) && !TURKISH_STOP_WORDS.has(clean)) {
-      detected.add(clean);
-    }
-  }
-
-  return Array.from(detected).slice(0, 6); // Max 6 symbols to keep prompt concise
+  return Array.from(detected).slice(0, 6);
 }
 
 export async function buildLiveAIContext(
   userPrompt: string,
   portfolioPayload?: PortfolioContextPayload
 ): Promise<string> {
-  const macro = await getLiveMacroSnapshot();
-  const detectedSymbols = detectSymbolsInText(userPrompt);
+  const [macro, directory] = await Promise.all([
+    getLiveMacroSnapshot(),
+    Promise.resolve().then(() => getAllStocksLive()).catch(() => []),
+  ]);
+  const detectedSymbols = detectSymbolsInText(userPrompt, directory);
 
   // Fetch live quotes for detected symbols in parallel
   const stockQuotes: Record<string, StockMarketInfo | null> = {};

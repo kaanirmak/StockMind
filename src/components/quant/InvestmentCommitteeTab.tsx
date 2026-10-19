@@ -14,8 +14,7 @@ import {
   ExternalLink,
 } from '@/components/quant/QuantIcons';
 import {
-  CommitteeReport,
-  runInvestmentCommittee,
+  type CommitteeReport,
 } from '@/lib/ai/investment-committee';
 import { useAuth } from '@/hooks/useAuth';
 import { Holding } from '@/types/portfolio';
@@ -57,6 +56,7 @@ export default function InvestmentCommitteeTab({
   const [tempKeyInput, setTempKeyInput] = useState('');
   const [showProModal, setShowProModal] = useState(false);
   const [isProRequired, setIsProRequired] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
 
   const DELIBERATION_STEPS = [
     'Komite üyeleri toplanıyor...',
@@ -70,9 +70,7 @@ export default function InvestmentCommitteeTab({
   // Load API key from settings and listen to updates
   useEffect(() => {
     const key = getStoredOpenRouterKey(user?.id);
-    if (key) {
-      setCustomApiKey(key);
-    }
+    setCustomApiKey(key);
 
     const handleSync = () => {
       const refreshed = getStoredOpenRouterKey(user?.id);
@@ -105,6 +103,7 @@ export default function InvestmentCommitteeTab({
     if (!cleanSym) return;
 
     setIsLoading(true);
+    setAnalysisError('');
     setDeliberationStep(0);
 
     // Synchronously resolve key from memory or storage
@@ -150,14 +149,11 @@ export default function InvestmentCommitteeTab({
         setIsProRequired(false);
         setReport(data.report);
       } else {
-        // Fallback directly to client logic
-        const fallback = await runInvestmentCommittee(cleanSym, undefined, activeKey);
-        setReport(fallback);
+        throw new Error(data.error || 'Komite analizi alınamadı. Lütfen tekrar deneyin.');
       }
     } catch (e) {
-      console.warn('API route failed, using local runner:', e);
-      const fallback = await runInvestmentCommittee(cleanSym, undefined, activeKey);
-      setReport(fallback);
+      setReport(null);
+      setAnalysisError(e instanceof Error ? e.message : 'Komite servisine ulaşılamadı.');
     } finally {
       clearInterval(interval);
       setIsLoading(false);
@@ -202,6 +198,7 @@ export default function InvestmentCommitteeTab({
 
   return (
     <div className="space-y-6">
+      {analysisError && <p role="alert" className="rounded-xl border border-border p-4 text-sm text-text-primary">{analysisError}</p>}
       {/* Top Controls: Symbol Selector & Key Notice */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

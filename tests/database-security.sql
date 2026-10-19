@@ -5,11 +5,13 @@ DO $$ BEGIN
     RAISE EXCEPTION 'This test requires a fresh disposable stockmind_security_test database';
   END IF;
 END $$;
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
-CREATE ROLE service_role NOLOGIN BYPASSRLS;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon NOLOGIN; END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated NOLOGIN; END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role NOLOGIN BYPASSRLS; END IF;
+END $$;
 CREATE SCHEMA auth;
-CREATE TABLE auth.users (id uuid PRIMARY KEY);
+CREATE TABLE auth.users (id uuid PRIMARY KEY, raw_app_meta_data jsonb NOT NULL DEFAULT '{}');
 CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
   $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 GRANT USAGE ON SCHEMA auth TO authenticated;
@@ -25,12 +27,14 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   symbol text NOT NULL
 );
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.portfolios, public.transactions TO authenticated;
 \ir ../supabase/migrations/006_api_quotas.sql
 \ir ../supabase/migrations/007_broadcasts.sql
 \ir ../supabase/migrations/008_transactions_rls.sql
+\ir ../supabase/migrations/20261019165130_durable_ai_hourly_quota.sql
 
 BEGIN;
-INSERT INTO auth.users VALUES ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
+INSERT INTO auth.users (id) VALUES ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
 INSERT INTO public.profiles VALUES ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');
 SET LOCAL ROLE anon;
 DO $$ BEGIN
@@ -112,7 +116,7 @@ DO $$ BEGIN
     INSERT INTO public.transactions (portfolio_id, user_id, symbol)
       VALUES ('aaaaaaaa-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', 'GARAN');
     RAISE EXCEPTION 'Cross-portfolio transaction attachment unexpectedly allowed';
-  EXCEPTION WHEN others THEN NULL; END;
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
 
   -- User 2 cannot view, update, or delete User 1's transaction
   IF EXISTS (SELECT 1 FROM public.transactions WHERE id = 'cccccccc-1111-4111-8111-111111111111') THEN
@@ -123,6 +127,47 @@ DO $$ BEGIN
   DELETE FROM public.transactions WHERE id = 'cccccccc-1111-4111-8111-111111111111';
 END $$;
 
+RESET ROLE;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
+DO $$ DECLARE result jsonb; first_request uuid := gen_random_uuid(); BEGIN
+  IF (public.ai_hourly_quota('inspect')->>'used')::int <> 0 THEN RAISE EXCEPTION 'Initial hourly count'; END IF;
+  PERFORM public.ai_hourly_quota('consume', first_request);
+  FOR i IN 2..5 LOOP PERFORM public.ai_hourly_quota('consume', gen_random_uuid()); END LOOP;
+  result := public.ai_hourly_quota('consume', gen_random_uuid());
+  IF result->>'allowed' <> 'false' OR (result->>'used')::int <> 5 THEN RAISE EXCEPTION 'Standard hourly cap failed'; END IF;
+  PERFORM public.ai_hourly_quota('refund', gen_random_uuid());
+  IF (public.ai_hourly_quota('inspect')->>'used')::int <> 5 THEN RAISE EXCEPTION 'Unknown refund changed quota'; END IF;
+  PERFORM public.ai_hourly_quota('refund', first_request);
+  IF (public.ai_hourly_quota('inspect')->>'used')::int <> 4 THEN RAISE EXCEPTION 'Specific request refund failed'; END IF;
+  PERFORM public.ai_hourly_quota('refund', first_request);
+  IF (public.ai_hourly_quota('inspect')->>'used')::int <> 4 THEN RAISE EXCEPTION 'Duplicate refund changed quota'; END IF;
+  BEGIN
+    PERFORM count(*) FROM private.ai_chat_credits;
+    RAISE EXCEPTION 'Direct quota table read allowed';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+END $$;
+SELECT set_config('request.jwt.claim.sub', '22222222-2222-4222-8222-222222222222', true);
+DO $$ BEGIN
+  IF (public.ai_hourly_quota('inspect')->>'used')::int <> 0 THEN RAISE EXCEPTION 'Cross-user quota leak'; END IF;
+END $$;
+RESET ROLE;
+UPDATE auth.users SET raw_app_meta_data = '{"plan":"enterprise"}' WHERE id = '22222222-2222-4222-8222-222222222222';
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE result jsonb; BEGIN
+  FOR i IN 1..20 LOOP result := public.ai_hourly_quota('consume', gen_random_uuid()); END LOOP;
+  IF result->>'allowed' <> 'true' OR (result->>'limit')::int <> 20 THEN RAISE EXCEPTION 'Pro quota failed'; END IF;
+  IF public.ai_hourly_quota('consume', gen_random_uuid())->>'allowed' <> 'false' THEN RAISE EXCEPTION 'Pro cap failed'; END IF;
+END $$;
+RESET ROLE;
+UPDATE private.ai_chat_credits SET created_at = now() - interval '2 hours';
+UPDATE private.ai_quota_policy SET standard_limit = 2;
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111', true);
+DO $$ DECLARE result jsonb; BEGIN
+  result := public.ai_hourly_quota('inspect');
+  IF (result->>'used')::int <> 0 OR (result->>'limit')::int <> 2 THEN RAISE EXCEPTION 'Expiry or dynamic policy failed'; END IF;
+END $$;
 RESET ROLE;
 ROLLBACK;
 \echo 'Database security assertions passed: identity, quotas, user isolation, window reset, transactions RLS and broadcast permissions.'

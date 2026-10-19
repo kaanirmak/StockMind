@@ -11,8 +11,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
 import { ProPlanCard } from '@/components/pro/ProPlanCard';
-import { AUTO_MODEL, type CatalogModel } from '@/lib/ai/modelCatalog';
-import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
+import { ProAdminRequests } from '@/components/pro/ProAdminRequests';
+import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
+import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import {
@@ -70,7 +71,7 @@ export default function SettingsPage() {
       if (!controller.signal.aborted && Array.isArray(data.models)) {
         setModels(data.models);
         setProModelsAllowed(data.pro === true);
-        setDefaultModel(current => data.models.some((model: CatalogModel) => model.id === current && (model.free || data.pro)) ? current : AUTO_MODEL.id);
+        setDefaultModel(resolvePreferredModel(getStoredDefaultModel(user?.id), data.models, data.pro === true, !data.warning));
       }
     }).catch(() => {});
     return () => controller.abort();
@@ -242,8 +243,8 @@ export default function SettingsPage() {
     // Load AI & notification preferences per user
     try {
       const storedAiKey = getStoredOpenRouterKey(user?.id);
+      setOpenRouterKey(storedAiKey);
       if (storedAiKey) {
-        setOpenRouterKey(storedAiKey);
         setIsAdvancedAiOpen(true);
       }
       const storedModel = getStoredDefaultModel(user?.id);
@@ -255,7 +256,6 @@ export default function SettingsPage() {
         if (parsed.notificationEmail) setNotificationEmail(parsed.notificationEmail);
         else if (user?.email) setNotificationEmail(user.email);
 
-        if (parsed.defaultModel) setDefaultModel(parsed.defaultModel);
         if (parsed.emailAlerts !== undefined) setEmailAlerts(parsed.emailAlerts);
         if (parsed.priceAlerts !== undefined) setPriceAlerts(parsed.priceAlerts);
         if (parsed.dailyReportEnabled !== undefined) setDailyReportEnabled(parsed.dailyReportEnabled);
@@ -659,6 +659,7 @@ export default function SettingsPage() {
             userEmail={user.email}
             userName={profile?.fullName || user.user_metadata?.full_name}
           />
+          <ProAdminRequests userId={user.id} />
         </div>
       )}
 
@@ -895,7 +896,7 @@ export default function SettingsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 className="text-base font-bold text-text-primary">{fullName || 'Kullanıcı'}</h4>
-                    {(profile?.isPro ?? true) && (
+                    {profile?.isPro && (
                       <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-violet-600 via-accent to-fuchsia-600 text-white text-[10px] font-black tracking-wider uppercase shadow-xs shadow-accent/30 flex items-center gap-1 shrink-0">
                         <span>★</span> PRO
                       </span>
@@ -1618,7 +1619,7 @@ export default function SettingsPage() {
                 onChange={(e) => {
                   const newM = e.target.value;
                   setDefaultModel(newM);
-                  saveStoredOpenRouterKey(openRouterKey, user?.id, newM);
+                  saveStoredDefaultModel(newM, user?.id);
                 }}
                 className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
               >

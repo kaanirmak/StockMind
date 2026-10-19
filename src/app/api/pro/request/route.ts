@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     }
 
     const currentStatus = user.user_metadata?.pro_request_status;
-    const requestedAt = user.user_metadata?.pro_requested_at;
+    const requestedAt = user.user_metadata?.pro_request_notified_at;
 
     // If requested within last 2 hours and still pending, prevent spamming admin
     if (currentStatus === 'pending' && requestedAt) {
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     // Update user metadata to mark pending
     try {
       const admin = createAdminClient();
-      await admin.auth.admin.updateUserById(user.id, {
+      const { error } = await admin.auth.admin.updateUserById(user.id, {
         user_metadata: {
           ...user.user_metadata,
           pro_request_status: 'pending',
@@ -74,15 +74,17 @@ export async function POST(request: Request) {
           pro_request_note: note,
         },
       });
+      if (error) throw error;
     } catch (updateErr) {
       console.warn('Could not record pending state via admin client, falling back to auth client:', updateErr);
-      await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         data: {
           pro_request_status: 'pending',
           pro_requested_at: new Date().toISOString(),
           pro_request_note: note,
         },
       });
+      if (error) throw error;
     }
 
     // Determine admin recipient
@@ -104,9 +106,18 @@ export async function POST(request: Request) {
       rejectUrl,
     });
 
+    if (emailResult.success) {
+      const { error } = await supabase.auth.updateUser({
+        data: { pro_request_notified_at: new Date().toISOString() },
+      });
+      if (error) console.warn('Pro notification timestamp could not be recorded.');
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Pro hesap talebiniz yöneticiye iletildi. Onaylandığında e-posta bildirimi alacaksınız.',
+      message: emailResult.success
+        ? 'Pro hesap talebiniz kaydedildi ve yöneticiye e-posta gönderildi. Onay durumunuzu Ayarlar bölümünden takip edebilirsiniz.'
+        : 'Pro hesap talebiniz kaydedildi; ancak yöneticiye e-posta gönderilemedi. Talebiniz yönetici panelinde onay bekliyor.',
       emailSent: emailResult.success,
     });
   } catch (error) {

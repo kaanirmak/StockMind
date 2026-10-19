@@ -7,6 +7,7 @@ export function chatErrorMessage(status: number, body: { code?: string; error?: 
   if (body.code === 'AI_CREDITS_REQUIRED') return 'Seçilen model için OpenRouter kredisi yetersiz. Ücretsiz modeli seçin veya bakiyenizi kontrol edin.';
   if (body.code === 'FORBIDDEN_ORIGIN') return 'İstek adresi doğrulanamadı. Sayfayı uygulamanın kendi adresinden yeniden açın.';
   if (body.code === 'AI_TIMEOUT') return 'AI servisi zamanında yanıt vermedi. Biraz sonra tekrar deneyin.';
+  if (body.code === 'AI_RATE_LIMITED') return 'Seçili modelin sağlayıcı sınırına ulaşıldı. Bu, StockMind soru kotanızdan farklıdır. Otomatik ücretsiz veya başka bir model seçip yeniden deneyin.';
   if (status === 429) return body.error || 'İstek sınırına ulaşıldı. Biraz bekleyip tekrar deneyin.';
   if (status === 401) return body.error || 'Oturumunuz doğrulanamadı. Tekrar giriş yapın.';
   return body.error || 'AI şu anda yanıt veremiyor. Lütfen tekrar deneyin.';
