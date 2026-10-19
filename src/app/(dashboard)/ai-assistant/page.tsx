@@ -6,14 +6,12 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AUTO_MODEL, type CatalogModel } from '@/lib/ai/modelCatalog';
+import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { Button, Badge } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import {
-  getStoredOpenRouterKey,
-  saveStoredOpenRouterKey,
-  getStoredDefaultModel,
+  useOpenRouterKey,
 } from '@/lib/ai/apiKeyStorage';
 import { StockMindMark } from '@/components/ui/StockMindMark';
 import { ChatMessageContent } from '@/components/ai/ChatMessageContent';
@@ -95,32 +93,39 @@ function AIAssistantContent() {
     }).catch(() => {});
     return () => controller.abort();
   }, [user?.id]);
-  const [selectedModel, setSelectedModel] = useState<string>(AUTO_MODEL.id);
+  const { apiKey: customApiKey, model: preferredModel, setModel: setSelectedModel } = useOpenRouterKey(user?.id);
   const [models, setModels] = useState<CatalogModel[]>([AUTO_MODEL]);
   const [proModelsAllowed, setProModelsAllowed] = useState(false);
+  const [catalogReady, setCatalogReady] = useState(false);
+  const selectedModel = resolvePreferredModel(preferredModel, models, proModelsAllowed, catalogReady);
   const [modelWarning, setModelWarning] = useState('');
   useEffect(() => {
     const controller = new AbortController();
+    setCatalogReady(false);
     fetch('/api/ai/models', { signal: controller.signal }).then(response => response.json()).then(data => {
       if (controller.signal.aborted || !Array.isArray(data.models)) return;
       setModels(data.models);
       setProModelsAllowed(data.pro === true);
       setModelWarning(data.warning || '');
-      setSelectedModel(current => data.models.some((model: CatalogModel) => model.id === current && (model.free || data.pro)) ? current : AUTO_MODEL.id);
+      setCatalogReady(!data.warning);
     }).catch(() => { if (!controller.signal.aborted) setModelWarning('Model listesi alınamadı. Otomatik ücretsiz kullanılabilir.'); });
     return () => controller.abort();
   }, [user?.id]);
-  const [customApiKey, setCustomApiKey] = useState<string>('');
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
   const { containerRef, contentRef, showLatest, followLatest, onScroll, onTouchStart, onTouchEnd, onWheel } = useChatScroll(messages, currentSessionId);
   const abortControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setLoading(false);
+    return () => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, [user?.id]);
 
   const handleStopGeneration = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-      setLoading(false);
     }
   };
 
@@ -130,11 +135,7 @@ function AIAssistantContent() {
 
     const storageKey = getSessionsStorageKey(user?.id);
     try {
-      let raw = localStorage.getItem(storageKey);
-      // Migration fallback from global key
-      if (!raw && user?.id && user.id !== 'guest') {
-        raw = localStorage.getItem(SESSIONS_STORAGE_KEY_PREFIX);
-      }
+      const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed: ChatSession[] = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -163,21 +164,6 @@ function AIAssistantContent() {
       localStorage.setItem(storageKey, JSON.stringify([firstSession]));
     } catch {}
   }, [user?.id]);
-
-  // 2. Load API key & model
-  useEffect(() => {
-    const key = getStoredOpenRouterKey(user?.id);
-    if (key) setCustomApiKey(key);
-    const model = getStoredDefaultModel(user?.id);
-    if (model) {
-      const isProModel = models.some((m) => m.id === model && !m.free);
-      if (isProModel && !proModelsAllowed && !key) {
-        setSelectedModel(AUTO_MODEL.id);
-      } else {
-        setSelectedModel(model);
-      }
-    }
-  }, [user, proModelsAllowed, models]);
 
   // 3. Sync active session messages to LocalStorage
   const updateCurrentSessionMessages = (newMessages: Message[], titleOverride?: string) => {
@@ -216,7 +202,10 @@ function AIAssistantContent() {
   };
 
   // 4. Create New Chat Session
-  const handleCreateNewSession = () => {
+  const createNewSession = (previousSessions: ChatSession[]) => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setLoading(false);
     const newSession: ChatSession = {
       id: `session-${Date.now()}`,
       title: 'Yeni Finansal Sohbet',
@@ -225,7 +214,7 @@ function AIAssistantContent() {
       messages: INITIAL_MESSAGES,
     };
 
-    const updated = [newSession, ...sessions];
+    const updated = [newSession, ...previousSessions];
     setSessions(updated);
     setCurrentSessionId(newSession.id);
     setMessages(INITIAL_MESSAGES);
@@ -237,9 +226,13 @@ function AIAssistantContent() {
       localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch {}
   };
+  const handleCreateNewSession = () => createNewSession(sessions);
 
   // 5. Select a Past Session
   const handleSelectSession = (session: ChatSession) => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setLoading(false);
     setCurrentSessionId(session.id);
     setMessages(session.messages || INITIAL_MESSAGES);
     setShowHistoryModal(false);
@@ -251,7 +244,7 @@ function AIAssistantContent() {
     const remaining = sessions.filter((s) => s.id !== sessionId);
 
     if (remaining.length === 0) {
-      handleCreateNewSession();
+      createNewSession([]);
       return;
     }
 
@@ -280,7 +273,7 @@ function AIAssistantContent() {
   // 8. Send Message
   const handleSendMessage = async (userText: string) => {
     const cleanText = userText.trim();
-    if (!cleanText || loading) return;
+    if (!cleanText || loading || abortControllerRef.current) return;
 
     const hasCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
 
@@ -342,7 +335,6 @@ function AIAssistantContent() {
     if (!isFreeModel && !proModelsAllowed && !customApiKey) {
       effectiveModel = AUTO_MODEL.id;
       setSelectedModel(AUTO_MODEL.id);
-      saveStoredOpenRouterKey(customApiKey, user?.id, AUTO_MODEL.id);
     }
 
     // Exclude welcome greeting and error/cancel alerts from model history
@@ -366,6 +358,7 @@ function AIAssistantContent() {
       });
 
       const data = await res.json();
+      if (abortControllerRef.current !== controller) return;
       if (data.quota) {
         setQuotaState(data.quota);
         if (data.quota.remaining === 0 && !data.quota.isPro && !hasCustomKey) {
@@ -390,7 +383,6 @@ function AIAssistantContent() {
         }
         if (data.code === 'PRO_REQUIRED') {
           setSelectedModel(AUTO_MODEL.id);
-          saveStoredOpenRouterKey(customApiKey, user?.id, AUTO_MODEL.id);
           setShowProModal(true);
         }
         updateCurrentSessionMessages([
@@ -404,6 +396,7 @@ function AIAssistantContent() {
         ]);
       }
     } catch (err: any) {
+      if (abortControllerRef.current !== controller) return;
       if (err?.name === 'AbortError') {
         updateCurrentSessionMessages([
           ...newMessages,
@@ -426,8 +419,10 @@ function AIAssistantContent() {
         ]);
       }
     } finally {
-      abortControllerRef.current = null;
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        setLoading(false);
+      }
     }
   };
 
@@ -504,15 +499,15 @@ function AIAssistantContent() {
               onChange={(e) => {
                 const newModel = e.target.value;
                 const isProModel = models.some((m) => m.id === newModel && !m.free);
-                if (isProModel && !proModelsAllowed && !customApiKey) {
+                if (isProModel && !proModelsAllowed) {
                   setShowProModal(true);
                   return;
                 }
                 setSelectedModel(newModel);
-                saveStoredOpenRouterKey(customApiKey, user?.id, newModel);
               }}
               className="flex-1 min-w-0 h-9 px-2.5 rounded-xl bg-bg-input border border-border text-xs text-text-primary focus:border-accent focus:outline-none"
             >
+              {!models.some(model => model.id === selectedModel) && <option value={selectedModel}>{selectedModel} · Kaydedilen seçim</option>}
               <optgroup label="Ücretsiz modeller">
                 {models.filter((model) => model.free).map((model) => (
                   <option key={model.id} value={model.id}>
@@ -621,7 +616,7 @@ function AIAssistantContent() {
                       {msg.sourceScope === 'live_market_data' ? (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          Canlı Piyasa & Portföy Doğrulandı
+                          Piyasa verisi bağlama eklendi
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium">
@@ -631,7 +626,7 @@ function AIAssistantContent() {
                       )}
                       {msg.asOf && (
                         <span className="text-text-muted">
-                          Veri saati: {new Date(msg.asOf).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                          Yanıt saati: {new Date(msg.asOf).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       )}
                     </div>

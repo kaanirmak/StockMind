@@ -3,10 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
+const path = require('node:path');
 function load(file, globals = {}) {
   const module = { exports: {} };
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(source, { module, exports: module.exports, Date, Map, Set, Symbol, console, ...globals });
+  vm.runInNewContext(source, { module, exports: module.exports, Date, Map, Set, Symbol, console, process: { env: {} },
+    require: name => name.startsWith('.') ? load(path.join(path.dirname(file), `${name}.ts`), globals) : require(name), ...globals });
   return module.exports;
 }
 test('Nested overlays keep background locked until the last overlay closes and restore scroll/style', () => {
@@ -374,68 +376,6 @@ test('PRO-02: price alert limit permits 3 alerts for free accounts while allowin
   );
 });
 
-test('PRO-03: hourly AI question quota allows 5 questions/hour for standard and 20 for pro', () => {
-  const {
-    checkAndConsumeHourlyChatQuota,
-    getHourlyChatQuota,
-    refundHourlyChatQuota,
-    resetHourlyChatQuota,
-    HOURLY_QUOTA_STANDARD,
-    HOURLY_QUOTA_PRO,
-  } = load('src/lib/ai/hourlyQuota.ts');
-
-  assert.equal(HOURLY_QUOTA_STANDARD, 5);
-  assert.equal(HOURLY_QUOTA_PRO, 20);
-
-  // Standard user test
-  resetHourlyChatQuota('user-std');
-  for (let i = 1; i <= 5; i++) {
-    const res = checkAndConsumeHourlyChatQuota('user-std', false);
-    assert.equal(res.allowed, true, `Standard question ${i} should be allowed`);
-    assert.equal(res.used, i);
-    assert.equal(res.remaining, 5 - i);
-  }
-  const stdOverLimit = checkAndConsumeHourlyChatQuota('user-std', false);
-  assert.equal(stdOverLimit.allowed, false, 'Standard 6th question must be blocked');
-  assert.equal(stdOverLimit.remaining, 0);
-  assert.ok(stdOverLimit.retryAfter > 0, 'Should return a positive retryAfter duration');
-
-  // Pro user test
-  resetHourlyChatQuota('user-pro');
-  for (let i = 1; i <= 20; i++) {
-    const res = checkAndConsumeHourlyChatQuota('user-pro', true);
-    assert.equal(res.allowed, true, `Pro question ${i} should be allowed`);
-    assert.equal(res.used, i);
-    assert.equal(res.remaining, 20 - i);
-  }
-  const proOverLimit = checkAndConsumeHourlyChatQuota('user-pro', true);
-  assert.equal(proOverLimit.allowed, false, 'Pro 21st question must be blocked');
-  assert.equal(proOverLimit.remaining, 0);
-  assert.ok(proOverLimit.retryAfter > 0, 'Should return a positive retryAfter duration');
-
-  // Inspect status test
-  const inspected = getHourlyChatQuota('user-pro', true);
-  assert.equal(inspected.limit, 20);
-  assert.equal(inspected.used, 20);
-  assert.equal(inspected.remaining, 0);
-  assert.equal(inspected.allowed, false);
-
-  // Refund quota test
-  resetHourlyChatQuota('user-refund');
-  checkAndConsumeHourlyChatQuota('user-refund', false);
-  assert.equal(getHourlyChatQuota('user-refund', false).used, 1);
-  refundHourlyChatQuota('user-refund');
-  assert.equal(getHourlyChatQuota('user-refund', false).used, 0);
-  assert.equal(getHourlyChatQuota('user-refund', false).remaining, 5);
-  resetHourlyChatQuota('user-refund');
-
-  // Clean up
-  resetHourlyChatQuota('user-std');
-  resetHourlyChatQuota('user-pro');
-});
-
-
-
 test('AI history fits server limits while preserving the latest user question', () => {
   const { prepareChatHistory } = load('src/lib/ai/chatHistory.ts');
   const messages = Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'user' : 'assistant', content: String(i).padEnd(4000, 'x') }));
@@ -474,4 +414,98 @@ test('AI context discloses unavailable market data and never inserts a fallback 
   assert.ok(context.startsWith('Piyasa verisi alınamadı'));
   assert.ok(!context.includes('48.78'));
   assert.ok(!context.includes('ASLA'));
+});
+
+test('Cancelling a chat aborts the provider request and returns a cancellation code', async () => {
+  const controller = new AbortController();
+  let providerSignal;
+  const { callOpenRouter } = load('src/lib/ai/openrouter.ts', {
+    process: { env: { OPENROUTER_API_KEY: 'test-key' } }, AbortSignal,
+    fetch: async (_, options) => {
+      providerSignal = options.signal;
+      return new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true }));
+    },
+  });
+  const result = callOpenRouter([{ role: 'user', content: 'hello' }], { signal: controller.signal });
+  controller.abort();
+  await assert.rejects(result, error => error.code === 'AI_CANCELLED' && error.status === 499);
+  assert.equal(providerSignal.aborted, true);
+});
+
+test('Model preference survives independent changes and never deletes or crosses API keys', () => {
+  const values = new Map();
+  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+  const events = [];
+  const api = load('src/lib/ai/apiKeyStorage.ts', {
+    require: () => ({}), localStorage: storage,
+    window: { dispatchEvent: event => events.push(event.type) },
+    Event: class { constructor(type) { this.type = type; } },
+    CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
+  });
+  api.saveStoredOpenRouterKey('private-key-a', 'user-a', 'catalog/model-a');
+  values.set('stockmind_settings_user-a', JSON.stringify({ defaultModel: 'old/model' }));
+  api.saveStoredDefaultModel('catalog/model-b', 'user-a');
+  assert.equal(api.getStoredOpenRouterKey('user-a'), 'private-key-a');
+  assert.equal(api.getStoredDefaultModel('user-a'), 'catalog/model-b');
+  assert.equal(api.getStoredDefaultModel('user-b'), 'openrouter/free');
+  assert.equal(api.getStoredOpenRouterKey('user-b'), '');
+  api.saveStoredDefaultModel('catalog/model-c', 'user-b');
+  assert.equal(api.getStoredDefaultModel('user-a'), 'catalog/model-b');
+  assert.equal(api.getStoredDefaultModel('user-b'), 'catalog/model-c');
+  api.saveStoredDefaultModel('guest/model', null);
+  assert.equal(api.getStoredDefaultModel(null), 'openrouter/free');
+  assert.ok(events.includes('stockmind_ai_key_updated'));
+});
+
+test('Catalog loading preserves saved selection and validates access only after a complete catalog', () => {
+  const { resolvePreferredModel, selectStructuredModel } = load('src/lib/ai/modelCatalog.ts');
+  const models = [{ id: 'openrouter/free', free: true }, { id: 'catalog/free', free: true }, { id: 'catalog/paid', free: false, supportedParameters: ['structured_outputs'] }];
+  assert.equal(resolvePreferredModel('catalog/free', [models[0]], false, false), 'catalog/free');
+  assert.equal(resolvePreferredModel('catalog/free', models, false, true), 'catalog/free');
+  assert.equal(resolvePreferredModel('catalog/paid', models, false, true), 'openrouter/free');
+  assert.equal(resolvePreferredModel('catalog/paid', models, true, true), 'catalog/paid');
+  assert.equal(resolvePreferredModel('removed/model', models, true, true), 'openrouter/free');
+  assert.equal(selectStructuredModel(models).id, 'catalog/paid');
+  assert.throws(() => selectStructuredModel(models, 'removed/model'));
+});
+
+test('Provider uses configurable budgets and a short-answer instruction without rewriting its response', async () => {
+  let payload;
+  const { callOpenRouter } = load('src/lib/ai/openrouter.ts', {
+    process: { env: { OPENROUTER_API_KEY: 'key', AI_CHAT_MAX_TOKENS: '2200', AI_CHAT_BRIEF_WORD_TARGET: '55' } }, AbortSignal,
+    fetch: async (_, options) => { payload = JSON.parse(options.body); return new Response(JSON.stringify({ choices: [{ message: { content: 'Provider reply stays intact.' } }] })); },
+  });
+  const result = await callOpenRouter([{ role: 'user', content: 'Explain briefly' }]);
+  assert.equal(result, 'Provider reply stays intact.');
+  assert.equal(payload.max_tokens, 2200);
+  assert.ok(payload.messages[0].content.includes('55'));
+  assert.ok(payload.messages[0].content.includes('önceliklidir'));
+});
+
+test('Committee rejects incomplete reports and preserves legitimate zero scores', () => {
+  const committee = load('src/lib/ai/investment-committee.ts', {
+    require: name => name === '@/theme/palette' ? { palette: {} } : name === './modelCatalog' ? {} : name === './runtimePolicy' ? {} : {},
+  });
+  const value = { consensusVerdict: 'AL', consensusScore: 0, consensusSummary: 'Observed report', agents: committee.COMMITTEE_AGENTS_CONFIG.map(agent => ({ id: agent.id, verdict: 'TUT', score: 0, speech: 'Observed data', keyArguments: ['Evidence'] })) };
+  assert.equal(committee.parseCommitteeResponse(JSON.stringify(value)).consensusScore, 0);
+  assert.throws(() => committee.parseCommitteeResponse('{}'));
+  assert.throws(() => committee.parseCommitteeResponse(JSON.stringify({ ...value, agents: value.agents.slice(1) })));
+  assert.throws(() => committee.parseCommitteeResponse('```json\n' + JSON.stringify(value) + '\n```'));
+});
+
+test('Market context resolves current catalog symbols and unique names without a company alias list', () => {
+  const { detectSymbolsInText } = load('src/lib/ai/market-context.ts', { require: () => ({}) });
+  const catalog = [{ symbol: 'NEW1', name: 'Yeni Şirket Teknoloji' }, { symbol: 'NEW2', name: 'Yeni Şirket Enerji' }, { symbol: 'FRESH', name: 'Dinamik Kurum' }];
+  assert.deepEqual(Array.from(detectSymbolsInText('FRESH ve NEW1 analizini yap', catalog)).sort(), ['FRESH', 'NEW1']);
+  assert.deepEqual(Array.from(detectSymbolsInText('Dinamik Kurum nasıl?', catalog)), ['FRESH']);
+  assert.deepEqual(Array.from(detectSymbolsInText('Yeni şirket nasıl?', catalog)), []);
+  assert.deepEqual(Array.from(detectSymbolsInText('NEW1X nedir?', catalog)), []);
+});
+
+test('A timeout while reading provider JSON remains a timeout, rather than an invalid-answer error', async () => {
+  const { callOpenRouter } = load('src/lib/ai/openrouter.ts', {
+    process: { env: { OPENROUTER_API_KEY: 'key' } }, AbortSignal,
+    fetch: async () => ({ ok: true, json: async () => { const error = new Error('timed out'); error.name = 'TimeoutError'; throw error; } }),
+  });
+  await assert.rejects(callOpenRouter([{ role: 'user', content: 'test' }]), error => error.code === 'AI_TIMEOUT');
 });

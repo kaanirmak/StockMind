@@ -8,7 +8,8 @@ interface TokenPayload {
 }
 
 function getSecretKey(): string {
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.CRON_SECRET || 'stockmind-pro-approval-secret-key-2026';
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.CRON_SECRET;
+  if (!secret?.trim()) throw new Error('Pro onay imzalama anahtarı yapılandırılmamış.');
   return secret.trim();
 }
 

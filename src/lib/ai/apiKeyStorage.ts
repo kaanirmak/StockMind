@@ -34,10 +34,21 @@ export function getStoredDefaultModel(userId?: string | null): string {
     if (userId && userId !== 'guest') {
       const scopedModel = localStorage.getItem(`${USER_MODEL_PREFIX}${userId}`);
       if (scopedModel) return scopedModel;
+      const legacy = JSON.parse(localStorage.getItem(`stockmind_settings_${userId}`) || '{}');
+      if (typeof legacy.defaultModel === 'string' && legacy.defaultModel.trim()) return legacy.defaultModel.trim();
     }
   } catch (_) {}
 
   return 'openrouter/free';
+}
+
+/** Model changes must never rewrite or remove a separately saved API key. */
+export function saveStoredDefaultModel(model: string, userId?: string | null): void {
+  if (typeof window === 'undefined' || !userId || userId === 'guest' || !model.trim()) return;
+  try {
+    localStorage.setItem(`${USER_MODEL_PREFIX}${userId}`, model.trim());
+    window.dispatchEvent(new Event('stockmind_ai_key_updated'));
+  } catch (error) { console.warn('AI model tercihi kaydedilemedi:', error); }
 }
 
 /**
@@ -133,7 +144,10 @@ export function useOpenRouterKey(userId?: string | null) {
     apiKey,
     setApiKey: updateKey,
     model,
-    setModel: (m: string) => updateKey(apiKey, m),
+    setModel: (m: string) => {
+      saveStoredDefaultModel(m, userId);
+      setModel(m);
+    },
     hasKey: Boolean(apiKey && apiKey.trim().length > 0),
   };
 }

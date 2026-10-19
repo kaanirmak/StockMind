@@ -27,6 +27,7 @@ function loader(stubs = {}, env = {}) {
         if (name === 'next/server') return { NextResponse: { json: (body, init) => Response.json(body, init) } };
         if (name === 'crypto' || name.startsWith('node:')) return require(name);
         if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
+        if (name.startsWith('.')) return load(path.relative(root, path.resolve(path.dirname(full), `${name}.ts`)));
         throw new Error(`Unmocked dependency: ${name}`);
       },
     }, { filename: full });
@@ -36,15 +37,15 @@ function loader(stubs = {}, env = {}) {
 }
 
 function fixture(options = {}) {
-  const calls = { quota: 0, ai: 0, mail: 0, quote: 0, write: 0 };
+  const calls = { quota: 0, ai: 0, mail: 0, quote: 0, write: 0, hourly: [] };
   const userMetadata = options.pro ? { plan: 'pro', is_pro: true } : (options.app_metadata || (options.plan ? { plan: options.plan } : {}));
   const supabase = {
     auth: { getUser: async () => ({ data: { user: options.anonymous ? null : { id: 'user-1', email: 'owner@example.com', email_confirmed_at: options.unverified ? null : '2026-01-01', app_metadata: userMetadata } }, error: options.authError || null }) },
-    rpc: async () => { calls.quota++; return { data: options.quota === undefined ? { allowed: true } : options.quota, error: options.quotaError || null }; },
+    rpc: async (name, args) => { if (name === 'ai_hourly_quota') { calls.hourly.push(args); return { data: options.hourlyQuota === undefined ? { allowed: true, limit: 5, used: 1, remaining: 4, retryAfter: 3600, isPro: false } : options.hourlyQuota, error: options.hourlyError || null }; } calls.quota++; return { data: options.quota === undefined ? { allowed: true } : options.quota, error: options.quotaError || null }; },
   };
   const load = loader({
     '@/lib/supabase/server': { createClient: async () => supabase },
-    '@/lib/ai/openrouter': { OpenRouterError: class extends Error {}, AVAILABLE_MODELS: [{ id: 'openrouter/free' }], callOpenRouter: async (...args) => { calls.ai++; calls.aiArgs = args; return 'answer'; } },
+    '@/lib/ai/openrouter': { OpenRouterError: class extends Error {}, AVAILABLE_MODELS: [{ id: 'openrouter/free' }], callOpenRouter: async (...args) => { calls.ai++; calls.aiArgs = args; if (options.aiError) throw options.aiError; return 'answer'; } },
     '@/lib/ai/modelCatalog': { AUTO_MODEL: { id: 'openrouter/free', free: true }, getModelCatalog: async () => [{ id: 'openrouter/free', free: true }, { id: 'paid/model', free: false }], hasProAccess: metadata => metadata?.plan === 'pro' },
     '@/lib/ai/market-context': { buildLiveAIContext: async () => 'server context' },
     '@/lib/ai/investment-committee': { runInvestmentCommittee: async (...args) => { calls.ai++; calls.aiArgs = args; return { isLiveLLM: true }; } },
@@ -241,12 +242,14 @@ test('model catalog includes text models and fails closed for unknown or nonzero
     row('paid', { prompt: '0.01', completion: '0' }),
     row('unknown', { prompt: '0', completion: 'unknown' }),
     row('image', { prompt: '0', completion: '0' }, ['image']),
+    row('mixed', { prompt: '0', completion: '0' }, ['text', 'audio']),
   ] });
   assert.equal(models[0].id, 'openrouter/free');
   assert.equal(models.find(m => m.id === 'free').free, true);
   assert.equal(models.find(m => m.id === 'paid').free, false);
   assert.equal(models.find(m => m.id === 'unknown').free, false);
   assert.equal(models.some(m => m.id === 'image'), false);
+  assert.equal(models.some(m => m.id === 'mixed'), false);
   assert.equal(hasProAccess({ plan: 'free' }), false);
   assert.equal(hasProAccess({ plan: 'pro' }), true);
 });
@@ -287,3 +290,91 @@ test('pro action token generates tamper-proof signatures and rejects expired or 
   assert.equal(verifyProActionToken(`${expiredPayload}.${expiredSig}`).valid, false, 'Expired token must be rejected');
 });
 
+
+test('Pro admin rejects spoofed metadata and unverified configured email', async () => {
+  for (const user of [
+    { email: 'other@example.com', email_confirmed_at: '2026-01-01', user_metadata: { role: 'admin' }, app_metadata: {} },
+    { email: 'admin@example.com', email_confirmed_at: null, app_metadata: {} },
+  ]) {
+    const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user } }) } }) } }, { ADMIN_EMAIL: 'admin@example.com' });
+    await assert.rejects(load('src/lib/pro/admin.ts').requireProAdmin(), error => error.status === 403);
+  }
+});
+
+test('Pro admin accepts verified configured email or trusted admin claim', async () => {
+  for (const user of [
+    { email: 'ADMIN@example.com', email_confirmed_at: '2026-01-01', app_metadata: {} },
+    { email: 'other@example.com', app_metadata: { role: 'admin' } },
+  ]) {
+    const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user } }) } }) } }, { ADMIN_EMAIL: 'admin@example.com' });
+    assert.equal(await load('src/lib/pro/admin.ts').requireProAdmin(), user);
+  }
+});
+
+test('Pro decisions reject foreign origins, preserve claims, and report write failures', async () => {
+  for (const writeError of [null, new Error('database unavailable')]) {
+    let update;
+    const load = loader({
+      '@/lib/pro/admin': { requireProAdmin: async () => ({ id: 'admin-id' }) },
+      '@/lib/supabase/server': { createClient: async () => ({}) },
+      '@/lib/supabase/admin': { createAdminClient: () => ({ auth: { admin: {
+        getUserById: async () => ({ data: { user: { id: '12345678-1234-1234-1234-123456789abc', app_metadata: { existing: true }, user_metadata: { pro_request_status: 'pending' } } } }),
+        updateUserById: async (_, value) => { update = value; return { error: writeError }; },
+      } } }) },
+    });
+    const route = load('src/app/api/admin/pro-requests/route.ts');
+    const body = { userId: '12345678-1234-1234-1234-123456789abc', action: 'approve' };
+    assert.equal((await route.POST(request(body, { origin: 'https://evil.test' }))).status, 403);
+    assert.equal(update, undefined);
+    const response = await route.POST(request(body, { origin: 'https://stockmind.test' }));
+    assert.equal(response.status, writeError ? 503 : 200);
+    assert.equal(update.app_metadata.existing, true);
+    assert.equal(update.app_metadata.is_pro, true);
+    assert.equal(update.user_metadata.pro_request_status, 'approved');
+  }
+});
+
+test('Pro signing fails closed without a configured secret', () => {
+  const { createProActionToken } = loader()('src/lib/pro/tokens.ts');
+  assert.throws(() => createProActionToken('user', 'user@example.com', 'approve'));
+});
+
+test('Pro request keeps pending request but does not claim email delivery when SMTP fails', async () => {
+  const user = { id: 'request-user', email: 'owner@example.com', app_metadata: {}, user_metadata: {} };
+  let saved;
+  const load = loader({
+    '@/lib/supabase/server': { createClient: async () => ({ auth: {
+      getUser: async () => ({ data: { user } }),
+      updateUser: async () => ({ error: null }),
+    } }) },
+    '@/lib/supabase/admin': { createAdminClient: () => ({ auth: { admin: {
+      updateUserById: async (_, value) => { saved = value; return { error: null }; },
+    } } }) },
+    '@/lib/pro/tokens': { createProActionToken: () => 'signed-token' },
+    '@/lib/email/service': { sendProRequestAdminEmail: async () => ({ success: false }) },
+  });
+  const response = await load('src/app/api/pro/request/route.ts').POST(request({ note: 'Please review' }));
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(saved.user_metadata.pro_request_status, 'pending');
+  assert.equal(body.emailSent, false);
+  assert.match(body.message, /e-posta gönderilemedi/);
+});
+
+test('Persistent quota fails closed when unavailable or malformed', async () => {
+  for (const options of [{ hourlyError: new Error('unavailable') }, { hourlyQuota: { allowed: true } }]) {
+    const { load, calls } = fixture(options);
+    assert.equal((await load(routes[0]).POST(request(chat))).status, 503);
+    assert.equal(calls.ai, 0);
+  }
+});
+
+test('Provider failure refunds the exact reserved request rather than another concurrent credit', async () => {
+  const { load, calls } = fixture({ aiError: new Error('provider unavailable') });
+  assert.equal((await load(routes[0]).POST(request(chat))).status, 503);
+  assert.equal(calls.hourly.length, 2);
+  assert.equal(calls.hourly[0].p_mode, 'consume');
+  assert.equal(calls.hourly[1].p_mode, 'refund');
+  assert.equal(calls.hourly[0].p_request_id, calls.hourly[1].p_request_id);
+  assert.ok(calls.hourly[0].p_request_id);
+});
