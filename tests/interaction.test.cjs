@@ -435,3 +435,43 @@ test('PRO-03: hourly AI question quota allows 5 questions/hour for standard and 
 });
 
 
+
+test('AI history fits server limits while preserving the latest user question', () => {
+  const { prepareChatHistory } = load('src/lib/ai/chatHistory.ts');
+  const messages = Array.from({ length: 40 }, (_, i) => ({ role: i % 2 ? 'user' : 'assistant', content: String(i).padEnd(4000, 'x') }));
+  const history = prepareChatHistory(messages);
+  assert.equal(history[0].role, 'user');
+  assert.equal(history.at(-1).content, messages.at(-1).content);
+  assert.ok(history.reduce((total, m) => total + m.content.length, 0) <= 32000);
+  assert.ok(history.every(m => m.content.length <= 8000));
+});
+
+test('AI rejects HTTP 200 error envelopes and empty answers instead of reporting success', async () => {
+  const { readOpenRouterResponse } = load('src/lib/ai/openrouter.ts');
+  const response = (status, data) => ({ ok: status >= 200 && status < 300, status, json: async () => data });
+  await assert.rejects(readOpenRouterResponse(response(200, { error: { code: 429 } })), e => e.code === 'AI_RATE_LIMITED');
+  await assert.rejects(readOpenRouterResponse(response(200, { choices: [{ message: { content: '  ' } }] })), e => e.code === 'AI_INVALID_RESPONSE');
+  await assert.rejects(readOpenRouterResponse(response(403, {})), e => e.code === 'AI_PROVIDER_FORBIDDEN');
+  await assert.rejects(readOpenRouterResponse(response(408, {})), e => e.code === 'AI_TIMEOUT');
+  assert.equal(await readOpenRouterResponse(response(200, { choices: [{ message: { content: ' Yanıt ' } }] })), 'Yanıt');
+});
+
+test('AI trims server credentials and maps connection errors without leaking details', async () => {
+  let authorization;
+  const { callOpenRouter } = load('src/lib/ai/openrouter.ts', {
+    process: { env: { OPENROUTER_API_KEY: ' key-with-space ' } }, AbortSignal,
+    fetch: async (_, options) => { authorization = options.headers.Authorization; throw new TypeError('private network detail'); },
+  });
+  await assert.rejects(callOpenRouter([{ role: 'user', content: 'Merhaba' }]), e => e.code === 'AI_PROVIDER_UNAVAILABLE' && !e.message.includes('private'));
+  assert.equal(authorization, 'Bearer key-with-space');
+});
+
+test('AI context discloses unavailable market data and never inserts a fallback dollar price', async () => {
+  const { buildLiveAIContext } = load('src/lib/ai/market-context.ts', {
+    require: () => ({ getStockBySymbolLive: async () => null }),
+  });
+  const context = await buildLiveAIContext('dolar kaç tl');
+  assert.ok(context.startsWith('Piyasa verisi alınamadı'));
+  assert.ok(!context.includes('48.78'));
+  assert.ok(!context.includes('ASLA'));
+});

@@ -1,3 +1,4 @@
+import { OpenRouterError } from '@/lib/ai/openrouter';
 import { NextResponse } from 'next/server';
 import { runInvestmentCommittee } from '@/lib/ai/investment-committee';
 import { getStockBySymbolLive } from '@/lib/data/stocks';
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     const report = await runInvestmentCommittee(symbol, liveQuote, apiKey);
     return NextResponse.json({ success: true, report });
   } catch (error) {
+    if (error instanceof OpenRouterError) return NextResponse.json({ success: false, code: error.code, error: error.message }, { status: error.status });
     return apiErrorResponse(error);
   }
 }

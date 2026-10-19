@@ -272,16 +272,14 @@ export async function buildLiveAIContext(
     }
   }
 
-  // 4. Strict Directive to NEVER say "I don't have real-time access"
   lines.push('');
-  lines.push('**[ÖNEMLİ VE KESİN DİREKTİF]:**');
-  lines.push('1. Yukarıdaki tüm döviz, altın, borsa endeksi, hisse ve portföy verileri StockMind platformunun anlık canlı sisteminden doğrudan çekilmiştir.');
-  lines.push('2. Kullanıcı piyasa fiyatlarını (Dolar, Euro, Altın, BIST endeksi, hisse senetleri veya fonlar) veya kendi portföyünü sorduğunda:');
-  lines.push('   - ASLA "gerçek zamanlı piyasa verilerine erişimim yoktur" DEME!');
-  lines.push('   - ASLA "bilgim güncel değildir" veya "canlı verileri göremiyorum" DEME!');
-  lines.push('   - Doğrudan yukarıdaki anlık canlı StockMind verilerini kullanarak kullanıcıya kesin, net, doğru ve profesyonel yanıt ver.');
-  lines.push('3. Örneğin kullanıcı "dolar kaç tl" diye sorduğunda, yukarıda listelenen güncel USD/TRY kurunu (₺' + (macro.usdTry?.price.toFixed(4) || '48.78') + ') doğrudan vererek günlük değişimini açıkla.');
-  lines.push('4. Kullanıcı "portföyüm nasıl" dediğinde, yukarıdaki gerçek portföy rakamlarını, en kârlı ve zarardaki varlıklarını analiz ederek tavsiye sun.');
+  lines.push('**[VERİ KULLANIM KURALLARI]:**');
+  lines.push('Yalnızca yukarıda açıkça verilen fiyat ve göstergeleri kullan. Eksik verileri tahmin etme.');
+  lines.push('Portföy bilgileri kullanıcı tarafından gönderilmiştir; doğrulanmış hesap kaydı değildir.');
+  lines.push('Fiyatların alındığı zamanı belirt; alınamayan veya eksik verileri açıkça söyle.');
+  if (!Object.values(stockQuotes).some(Boolean) && !Object.entries(macro).some(([key, value]) => key !== 'timestamp' && value)) {
+    lines.unshift('Piyasa verisi alınamadı. Güncel fiyat veya teknik gösterge varmış gibi yorum yapma.');
+  }
 
   return lines.join('\n');
 }
