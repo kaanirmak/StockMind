@@ -509,3 +509,45 @@ test('A timeout while reading provider JSON remains a timeout, rather than an in
   });
   await assert.rejects(callOpenRouter([{ role: 'user', content: 'test' }]), error => error.code === 'AI_TIMEOUT');
 });
+
+test('Hourly quota gracefully falls back to in-memory sliding window when RPC is missing from schema cache', async () => {
+  const { getHourlyChatQuota, checkAndConsumeHourlyChatQuota, refundHourlyChatQuota } = load('src/lib/ai/hourlyQuota.ts', {
+    require: name => name === '@/lib/supabase/server' ? ({
+      createClient: async () => ({
+        rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.ai_hourly_quota(p_mode) in the schema cache' } })
+      })
+    }) : {}
+  });
+
+  const inspect = await getHourlyChatQuota('user-fallback-test', false);
+  assert.equal(inspect.limit, 5);
+  assert.equal(inspect.used, 0);
+  assert.equal(inspect.remaining, 5);
+  assert.equal(inspect.allowed, true);
+
+  const consumed = await checkAndConsumeHourlyChatQuota('req-1', 'user-fallback-test', false);
+  assert.equal(consumed.limit, 5);
+  assert.equal(consumed.used, 1);
+  assert.equal(consumed.remaining, 4);
+  assert.equal(consumed.allowed, true);
+
+  const refunded = await refundHourlyChatQuota('req-1', 'user-fallback-test', false);
+  assert.equal(refunded.used, 0);
+  assert.equal(refunded.remaining, 5);
+});
+
+test('AI response parser rejects safety classifier outputs and model catalog filters out classifier models', async () => {
+  const { readOpenRouterResponse } = load('src/lib/ai/openrouter.ts');
+  const response = (content) => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content } }] }) });
+  await assert.rejects(readOpenRouterResponse(response('User Safety: safe')), e => e.code === 'AI_INVALID_RESPONSE');
+
+  const { parseModelCatalog } = load('src/lib/ai/modelCatalog.ts');
+  const catalog = parseModelCatalog({
+    data: [
+      { id: 'minimax/minimax-m3.1-flash:free', name: 'MiniMax', architecture: { output_modalities: ['text'] }, pricing: { prompt: '0', completion: '0' } },
+      { id: 'nvidia/nemotron-3.5-content-safety:free', name: 'Nemotron Content Safety', architecture: { output_modalities: ['text'] }, pricing: { prompt: '0', completion: '0' } },
+    ]
+  });
+  assert.ok(catalog.some(m => m.id === 'minimax/minimax-m3.1-flash:free'));
+  assert.ok(!catalog.some(m => m.id === 'nvidia/nemotron-3.5-content-safety:free'));
+});
