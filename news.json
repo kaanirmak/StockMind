@@ -2,6 +2,45 @@
   "schemaVersion": 2,
   "data": [
     {
+      "id": "f6c40a7e13a380a12ca9",
+      "title": "JP Morgan Türkiye'deki bankacılık faaliyetlerini büyütüyor",
+      "summary": "JP Morgan İstanbul Şubesi, Türkiye'deki bankacılık faaliyetlerini büyütme kararını KAP'a bildirdi.",
+      "source": "TRT Haber",
+      "feedId": "trt-economy",
+      "url": "https://www.trthaber.com/haber/ekonomi/jp-morgan-turkiyedeki-bankacilik-faaliyetlerini-buyutuyor-960817.html",
+      "publishedAt": "2026-10-21T18:25:00.000Z",
+      "category": "MACRO",
+      "sentiment": "neutral",
+      "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
+      "collectedAt": "2026-10-21T20:16:07.201Z"
+    },
+    {
+      "id": "2d30afd29f46ad9995c7",
+      "title": "Bakan Bayraktar: Türkiye ile Japonya'nın iş birliğini daha ileri taşıyacağız",
+      "summary": "Enerji ve Tabii Kaynaklar Bakanı Alparslan Bayraktar, küresel enerji krizi karşısında Türkiye ile Japonya'nın ikili ve bölgesel işbirliklerini güçlendirerek zorlukların üstesinden birlikte gelebileceğini söyledi.",
+      "source": "TRT Haber",
+      "feedId": "trt-economy",
+      "url": "https://www.trthaber.com/haber/ekonomi/bakan-bayraktar-turkiye-ile-japonyanin-is-birligini-daha-ileri-tasiyacagiz-960812.html",
+      "publishedAt": "2026-10-21T17:48:00.000Z",
+      "category": "MACRO",
+      "sentiment": "neutral",
+      "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
+      "collectedAt": "2026-10-21T20:16:07.201Z"
+    },
+    {
+      "id": "69275bf220a971ded9a3",
+      "title": "Bakan Bolat: Türkiye dünyanın 11'inci büyük ekonomisi konumuna ulaştı",
+      "summary": "Ticaret Bakanı Ömer Bolat, Türkiye'nin dünyanın satın alma gücü paritesine göre 11'nci büyük ekonomisi konumuna ulaştığını ifade etti.",
+      "source": "TRT Haber",
+      "feedId": "trt-economy",
+      "url": "https://www.trthaber.com/haber/ekonomi/bakan-bolat-turkiye-dunyanin-11inci-buyuk-ekonomisi-konumuna-ulasti-960807.html",
+      "publishedAt": "2026-10-21T16:26:00.000Z",
+      "category": "MACRO",
+      "sentiment": "neutral",
+      "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
+      "collectedAt": "2026-10-21T20:16:07.201Z"
+    },
+    {
       "id": "10700416b61c7f5e8263",
       "title": "Tanzanya'ya bir yılda ikinci demir yolu aracı ihracatı",
       "summary": "Tanzanya'ya daha önce gerçekleştirilen DE10000 tipi ana hat lokomotifi ihracatının ardından aynı ülkeye bir yıl içinde ikinci demir yolu aracı dış satımı yapılacak. TÜRASAŞ tarafından yerli ve milli imkanlarla üretilecek 100 yük vagon daha Tanzanya'ya ihraç edilecek.",
@@ -12,7 +51,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "62b65f4d1e629bf94bc0",
@@ -25,7 +64,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "296e9d61c7342e3e1777",
@@ -38,7 +77,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "a36969cdaee9b2b9edaa",
@@ -51,7 +90,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "d6a8874879d141e52927",
@@ -64,7 +103,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "4d68f81c5b612941a1dd",
@@ -77,7 +116,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "4ebe791bb369ef6aed10",
@@ -90,7 +129,7 @@
       "category": "MACRO",
       "sentiment": "negative",
       "sentimentReason": "Varlık veya endeks fiyatında düşüş",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "23b18278c4fa0580df2f",
@@ -103,7 +142,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "b4ea2e04057f7b7c9be0",
@@ -116,7 +155,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "3bf662e97d13854778d0",
@@ -129,7 +168,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "468e849a15778e9b0886",
@@ -142,7 +181,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "97be88c3e27621bd82b6",
@@ -155,7 +194,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "c39c225ecf1c6bb3f426",
@@ -168,7 +207,7 @@
       "category": "BIST",
       "sentiment": "positive",
       "sentimentReason": "Varlık veya endeks fiyatında yükseliş",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "e1cb7e1b92fee7b8ea91",
@@ -181,7 +220,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "a017cd053137103e3028",
@@ -194,7 +233,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "ac044d5981b255d33070",
@@ -207,7 +246,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "d71a5ad9b16dff47a0c4",
@@ -220,7 +259,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "a5f396f62877635e823a",
@@ -233,7 +272,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "953a5110413c23a2de04",
@@ -246,7 +285,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "2eed4c11d1ae6aef8f85",
@@ -259,7 +298,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "757ef1fb7989a90461ed",
@@ -272,7 +311,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "1cdd92f5bb3cd06940d0",
@@ -285,7 +324,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "66865c9dc66e9ac9ef41",
@@ -298,7 +337,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "af7528dc200c6df30f5b",
@@ -311,7 +350,7 @@
       "category": "MACRO",
       "sentiment": "negative",
       "sentimentReason": "Varlık veya endeks fiyatında düşüş",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "dc14a1a407ad256f3abd",
@@ -324,7 +363,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "373da3c0773a6b1dd3f4",
@@ -337,7 +376,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "bde7fe8f13e59e2d9f96",
@@ -350,7 +389,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "b5cd5e01e5fdfad5aebb",
@@ -363,7 +402,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "b5ee8ada94000ec3c641",
@@ -376,7 +415,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "4a4835efb955bf2e10c5",
@@ -389,7 +428,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "811c725e673bf37d5587",
@@ -402,7 +441,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "a897a3aac52b416242a3",
@@ -415,7 +454,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "33d4eeb24dc402c4b413",
@@ -428,7 +467,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "ef2a2323192ac88dffdd",
@@ -441,7 +480,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "ddf7d126f5495cd0792b",
@@ -454,7 +493,7 @@
       "category": "BIST",
       "sentiment": "positive",
       "sentimentReason": "Varlık veya endeks fiyatında yükseliş",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "627c80d67de021b17c68",
@@ -467,7 +506,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "4997392d26d47be1e728",
@@ -480,7 +519,7 @@
       "category": "MACRO",
       "sentiment": "positive",
       "sentimentReason": "Varlık veya endeks fiyatında yükseliş",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "43a6b8752436a8e37b52",
@@ -493,7 +532,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "04ac0e6a7648dcfe1cd1",
@@ -506,7 +545,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "d82eb68fcbafa966b52b",
@@ -519,7 +558,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "b1c94de78e61f7755df8",
@@ -532,7 +571,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "c892fd7cf70a31577f65",
@@ -545,7 +584,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "b767ba046167a0520c5e",
@@ -558,7 +597,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "5a49e8ac3102637770fc",
@@ -571,7 +610,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "57826a0822898407e6d3",
@@ -584,7 +623,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "76f1348194b6ef2b6184",
@@ -597,7 +636,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "8750526770c392ac07bf",
@@ -610,7 +649,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "6325a5c3844a62f714ce",
@@ -623,7 +662,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "55605774b5978eb6a1c9",
@@ -636,7 +675,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "dc74c785ed9967b1df90",
@@ -649,7 +688,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "05bfe8261fce6bb19863",
@@ -662,7 +701,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "f9a6cee1e04d56431b77",
@@ -675,7 +714,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "5764294f103346f127da",
@@ -688,7 +727,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "6027683c5ba3b9fef92b",
@@ -701,7 +740,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "6dd919b6747c6e4224e2",
@@ -714,7 +753,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "e864aee7e243eebd32d1",
@@ -727,7 +766,7 @@
       "category": "MACRO",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "479c89903e5998c9f4c2",
@@ -740,46 +779,7 @@
       "category": "MACRO",
       "sentiment": "positive",
       "sentimentReason": "Varlık veya endeks fiyatında yükseliş",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
-    },
-    {
-      "id": "f945563c750de1965e28",
-      "title": "Kamu ihalelerinde vergi ve prim borcu limiti yükseltildi",
-      "summary": "Kamu ihalelerine katılan isteklilerin, ihale dışı bırakılmasına yol açan kesinleşmiş sosyal güvenlik prim ve vergi borcu sınırı, 5 bin liradan 50 bin liraya yükseltildi.",
-      "source": "TRT Haber",
-      "feedId": "trt-economy",
-      "url": "https://www.trthaber.com/haber/ekonomi/kamu-ihalelerinde-vergi-ve-prim-borcu-limiti-yukseltildi-960280.html",
-      "publishedAt": "2026-10-16T07:37:00.000Z",
-      "category": "MACRO",
-      "sentiment": "neutral",
-      "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
-    },
-    {
-      "id": "30994c337f1dfdc8a1c9",
-      "title": "Eylül ayında konut satışları yüzde 9,3 azaldı",
-      "summary": "Türkiye genelinde eylülde satılan toplam konut sayısı, geçen yılın aynı ayına göre yüzde 9,3 azalışla 142 bin 390 olarak hesaplandı.",
-      "source": "TRT Haber",
-      "feedId": "trt-economy",
-      "url": "https://www.trthaber.com/haber/ekonomi/eylul-ayinda-konut-satislari-yuzde-93-azaldi-960278.html",
-      "publishedAt": "2026-10-16T07:26:00.000Z",
-      "category": "MACRO",
-      "sentiment": "neutral",
-      "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
-    },
-    {
-      "id": "1633704ce2dfe23e2823",
-      "title": "Kurutma makinelerinin etiketlerine 'onarılabilirlik sınıfı' eklenecek",
-      "summary": "Ev tipi çamaşır kurutma makinelerinin enerji etiketlerine ve ürün bilgi formlarına \"onarılabilirlik bilgileri\" ve \"onarılabilirlik sınıfı\" dahil edilecek.",
-      "source": "TRT Haber",
-      "feedId": "trt-economy",
-      "url": "https://www.trthaber.com/haber/ekonomi/kurutma-makinelerinin-etiketlerine-onarilabilirlik-sinifi-eklenecek-960277.html",
-      "publishedAt": "2026-10-16T07:23:00.000Z",
-      "category": "MACRO",
-      "sentiment": "neutral",
-      "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:58.128Z"
+      "collectedAt": "2026-10-21T20:16:07.201Z"
     },
     {
       "id": "072d53504945317d1e6e",
@@ -792,7 +792,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "9d0c3f7fb6db288c84ff",
@@ -805,7 +805,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "0de9b4c1021a7c35a896",
@@ -818,7 +818,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "6dad08c6a40d3fdea524",
@@ -831,7 +831,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "06f5c3b3308e77d07f4a",
@@ -844,7 +844,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "9b6e93b48f207022f81d",
@@ -857,7 +857,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "2c9018217f537673540d",
@@ -870,7 +870,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "a37490dc6bf90744a929",
@@ -883,7 +883,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "69f37d867634f06885b5",
@@ -896,7 +896,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "a8eb6bf790b72864987d",
@@ -909,7 +909,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "28500ac6a43a82aa5bb0",
@@ -922,7 +922,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "83020bb1c63ef28c45f7",
@@ -935,7 +935,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "6e91d203ed24e7087375",
@@ -948,7 +948,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "f4c67ec69a48b6b67d66",
@@ -961,7 +961,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "2837bd77bb1bb2492714",
@@ -974,7 +974,7 @@
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.885Z"
+      "collectedAt": "2026-10-21T20:16:06.795Z"
     },
     {
       "id": "3cd17cb88722144ee8b5",
@@ -987,7 +987,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "47d53e38eefce62b956b",
@@ -1000,7 +1000,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "279c127563bddabce02e",
@@ -1013,7 +1013,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "d73eef74d78719c97826",
@@ -1026,7 +1026,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "fb6f012b3cf30bf3c409",
@@ -1039,7 +1039,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "8888cc7f7b1df53af127",
@@ -1052,7 +1052,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "a09ec1beee4924e8a93a",
@@ -1065,7 +1065,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "029b14e50677f58a59f6",
@@ -1078,7 +1078,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "49ac18a052f2fb019447",
@@ -1091,7 +1091,7 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
       "id": "9668dd4bbae0f05348ae",
@@ -1104,267 +1104,267 @@
       "category": "BIST",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.703Z"
+      "collectedAt": "2026-10-21T20:16:06.657Z"
     },
     {
-      "id": "88823246d1198f02b854",
-      "title": "Barclays, Central Asia Metals’daki payını %5,5’e düşürdü",
+      "id": "20f5c8bf83afcbf9410a",
+      "title": "Agree Realty Corp hissesi 64,43 dolarda 52 haftalık dip yaptı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/barclays-central-asia-metalsdaki-payn-55e-dusurdu-93CH-4113535",
-      "publishedAt": "2026-10-21T15:45:19.000Z",
+      "url": "https://tr.investing.com/news/company-news/agree-realty-corp-hissesi-6443-dolarda-52-haftalk-dip-yapt-93CH-4113742",
+      "publishedAt": "2026-10-21T19:55:02.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "b657cd1e26b1adefd431",
-      "title": "PensionBee varlıkları 9 milyar sterline ulaştı, gelir %31 arttı",
+      "id": "996699ae79879f45b9d9",
+      "title": "FactSet hissesi 320,67 dolarda 52 haftalık zirve yaptı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/pensionbee-varlklar-9-milyar-sterline-ulast-gelir-31-artt-93CH-4113526",
-      "publishedAt": "2026-10-21T15:39:40.000Z",
+      "url": "https://tr.investing.com/news/company-news/factset-hissesi-32067-dolarda-52-haftalk-zirve-yapt-93CH-4113740",
+      "publishedAt": "2026-10-21T19:54:31.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "53ebccee536183e39318",
-      "title": "Cintas hissesi 219,21 dolarla 52 haftalık zirve yaptı",
+      "id": "3c885e7167bc60aeb387",
+      "title": "Broadstone Net Lease hissesi 17,15 dolarda 52 haftalık dibe vurdu",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/cintas-hissesi-21921-dolarla-52-haftalk-zirve-yapt-93CH-4113522",
-      "publishedAt": "2026-10-21T15:37:02.000Z",
+      "url": "https://tr.investing.com/news/company-news/broadstone-net-lease-hissesi-1715-dolarda-52-haftalk-dibe-vurdu-93CH-4113737",
+      "publishedAt": "2026-10-21T19:50:13.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "c8ec807d3173d97c2455",
-      "title": "Tufton Assets hissedarları genel kurulda tüm kararları onayladı",
+      "id": "d7878d919a17e5080b56",
+      "title": "Travelers Companies hissesi 398,70 dolarla rekor kırdı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/tufton-assets-hissedarlar-genel-kurulda-tum-kararlar-onaylad-93CH-4113519",
-      "publishedAt": "2026-10-21T15:35:32.000Z",
+      "url": "https://tr.investing.com/news/company-news/travelers-companies-hissesi-39870-dolarla-rekor-krd-93CH-4113735",
+      "publishedAt": "2026-10-21T19:47:12.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "713a25cd8bef0de628c4",
-      "title": "Mountview Estates 16 Kasım’da genel kurul toplantısı yapacak",
+      "id": "47be00d25ea0c7e50ed3",
+      "title": "Group 1 Automotive hissesi 225,30 dolarla dip yaptı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/mountview-estates-16-kasmda-genel-kurul-toplants-yapacak-93CH-4113513",
-      "publishedAt": "2026-10-21T15:31:26.000Z",
+      "url": "https://tr.investing.com/news/company-news/group-1-automotive-hissesi-22530-dolarla-dip-yapt-93CH-4113732",
+      "publishedAt": "2026-10-21T19:44:16.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "a9faff505df2e3e8c743",
-      "title": "Molecule Group, başkan Susan Clement Davies’e opsiyon verdi",
+      "id": "c03586ea1395c140b579",
+      "title": "ConocoPhillips hissesi 147,15 dolarla rekor kırdı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/molecule-group-baskan-susan-clement-daviese-opsiyon-verdi-93CH-4113496",
-      "publishedAt": "2026-10-21T15:13:21.000Z",
+      "url": "https://tr.investing.com/news/company-news/conocophillips-hissesi-14715-dolarla-rekor-krd-93CH-4113713",
+      "publishedAt": "2026-10-21T19:09:59.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "b3801701df1cb59003d0",
-      "title": "Ping An Bio, Perşembe günü 1’e 40 ters hisse bölünmesi yapacak",
+      "id": "0c1f5014a95ffb679dd8",
+      "title": "J.B. Hunt hisse başına 0,45 dolar temettü açıkladı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/ping-an-bio-persembe-gunu-1e-40-ters-hisse-bolunmesi-yapacak-93CH-4113487",
-      "publishedAt": "2026-10-21T15:05:27.000Z",
+      "url": "https://tr.investing.com/news/company-news/jb-hunt-hisse-basna-045-dolar-temettu-acklad-93CH-4113712",
+      "publishedAt": "2026-10-21T19:09:34.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "2f7585300e81519bd396",
-      "title": "Zephyr Minerals 260.000 dolarlık özel yerleştirmeyi kapattı",
+      "id": "5802d700bc83f8fb2cad",
+      "title": "Chipotle hisseleri 28,03 dolara düşerek dibe vurdu",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/zephyr-minerals-260000-dolarlk-ozel-yerlestirmeyi-kapatt-93CH-4113486",
-      "publishedAt": "2026-10-21T15:05:24.000Z",
+      "url": "https://tr.investing.com/news/company-news/chipotle-hisseleri-2803-dolara-duserek-dibe-vurdu-93CH-4113707",
+      "publishedAt": "2026-10-21T19:00:17.000Z",
       "category": "GLOBAL",
-      "sentiment": "neutral",
-      "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "sentiment": "negative",
+      "sentimentReason": "Varlık veya endeks fiyatında düşüş",
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "3044c744d7cd5aac244e",
-      "title": "MasTec Inc hissesi 182,33 dolarda 52 haftalık dip yaptı",
+      "id": "95264c03cd7746e6cd84",
+      "title": "Brightstar Lottery hissesi 9,27 dolarda 52 haftalık dibe vurdu",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/mastec-inc-hissesi-18233-dolarda-52-haftalk-dip-yapt-93CH-4113485",
-      "publishedAt": "2026-10-21T15:04:10.000Z",
+      "url": "https://tr.investing.com/news/company-news/brightstar-lottery-hissesi-927-dolarda-52-haftalk-dibe-vurdu-93CH-4113703",
+      "publishedAt": "2026-10-21T18:54:31.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "a2604def2a4508a0906d",
-      "title": "Charles River Laboratories hissesi 333,31 dolarda zirve yaptı",
+      "id": "4eea3e305e4e2d8b1004",
+      "title": "Chevron hissesi 227,28 dolarda rekor kırdı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-companies",
-      "url": "https://tr.investing.com/news/company-news/charles-river-laboratories-hissesi-33331-dolarda-zirve-yapt-93CH-4113482",
-      "publishedAt": "2026-10-21T14:58:57.000Z",
+      "url": "https://tr.investing.com/news/company-news/chevron-hissesi-22728-dolarda-rekor-krd-93CH-4113702",
+      "publishedAt": "2026-10-21T18:52:50.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.710Z"
+      "collectedAt": "2026-10-21T20:16:06.649Z"
     },
     {
-      "id": "9de7aea5ae8d53098c39",
-      "title": "Moody’s TSMC’nin notunu yapay zeka talebi ile Aa2’ye yükseltti",
+      "id": "745a97d6b4ca34bef342",
+      "title": "Waste Connections hissesi bugün neden düşüyor?",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/moodys-tsmcnin-notunu-yapay-zeka-talebi-ile-aa2ye-yukseltti-4113539",
-      "publishedAt": "2026-10-21T15:46:37.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/waste-connections-hissesi-bugun-neden-dusuyor-93CH-4113734",
+      "publishedAt": "2026-10-21T19:47:01.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "bdac7e3eb2fc494d356d",
-      "title": "S&P, Lamb Weston’ın notunu yüksek borca karşın ’BB’ye düşürdü",
+      "id": "1af206ab216141e2486b",
+      "title": "Fed’in bilançosu 4,5 trilyon dolara düşebilir",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/sp-lamb-westonn-notunu-yuksek-borca-karsn-bbye-dusurdu-4113532",
-      "publishedAt": "2026-10-21T15:42:55.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/fedin-bilancosu-45-trilyon-dolara-dusebilir-93CH-4113726",
+      "publishedAt": "2026-10-21T19:31:07.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "f388b913efa2dcaea3e2",
-      "title": "Whop’un değerlemesi 5,1 milyar dolara ulaştı",
+      "id": "2fa0199f098e1d791596",
+      "title": "Meta, yapay zeka harcamalarını finanse etmek için oysuz hisse ihracını değerlendiriyor",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/whopun-degerlemesi-51-milyar-dolara-ulast-93CH-4113525",
-      "publishedAt": "2026-10-21T15:38:12.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/meta-yapay-zeka-harcamalarn-finanse-etmek-icin-oysuz-hisse-ihracn-degerlendiriyor-4113723",
+      "publishedAt": "2026-10-21T19:25:07.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "98c0894d124f586b1838",
-      "title": "Intel, çip talebi görünümü iyileşirken Arizona ve Ohio fabrika projelerinde ilerliyor",
+      "id": "1ffb07681704882ccc9f",
+      "title": "Six Flags, bilanço baskısı ve nakit açığı uyarısıyla düştü",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/intel-cip-talebi-gorunumu-iyilesirken-arizona-ve-ohio-fabrika-projelerinde-ilerliyor-4113498",
-      "publishedAt": "2026-10-21T15:16:54.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/six-flags-bilanco-basks-ve-nakit-acg-uyarsyla-dustu-4113717",
+      "publishedAt": "2026-10-21T19:15:09.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "9f8a115c84d4b4f2d278",
-      "title": "United Airlines CEO’su yakıt fiyatlarının 2027’de yüksek kalmasını bekliyor",
+      "id": "f605bd6965eb653b2441",
+      "title": "Teledyne Technologies hissesi bugün neden düşüyor?",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/united-airlines-ceosu-yakt-fiyatlarnn-2027de-yuksek-kalmasn-bekliyor-93CH-4113478",
-      "publishedAt": "2026-10-21T14:51:29.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/teledyne-technologies-hissesi-bugun-neden-dusuyor-93CH-4113706",
+      "publishedAt": "2026-10-21T18:55:47.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "79b38e980f2cd87b21f8",
-      "title": "BofA zor 3Ç görünümüne rağmen beş kimya hissesini işaretledi",
+      "id": "eeebac740817c6168c52",
+      "title": "BofA Securities kuantum bilişim hisse senetlerini açıkladı",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/bofa-zor-3c-gorunumune-ragmen-bes-kimya-hissesini-isaretledi-4113471",
-      "publishedAt": "2026-10-21T14:41:55.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/bofa-securities-kuantum-bilisim-hisse-senetlerini-acklad-4113697",
+      "publishedAt": "2026-10-21T18:36:10.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "e675a8c750f961ae9ee4",
-      "title": "PHP kritik açığı yamaladı; Cloudflare ve diğerleri yükseldi",
+      "id": "f74c280612c231b6501a",
+      "title": "Hakim Meta’ya New Mexico davasında 25 milyar dolar ceza verdi",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/php-web-sitelerinin-70ini-vuran-kritik-acga-yama-yaynlad-4113470",
-      "publishedAt": "2026-10-21T14:40:52.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/hakim-metaya-new-mexico-davasnda-25-milyar-dolar-ceza-verdi-4113678",
+      "publishedAt": "2026-10-21T17:31:30.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "c67510a889ad9e353a91",
-      "title": "Meta Platforms hissesi bugün neden yükseliyor?",
+      "id": "1c7f88c809ab1d5e3b67",
+      "title": "Danışmanlık firması SEC’e hissedar anonimliğini bitirmesi için lobi yapıyor",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/meta-platforms-hissesi-bugun-neden-yukseliyor-93CH-4113462",
-      "publishedAt": "2026-10-21T14:36:05.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/dansmanlk-firmas-sece-hissedar-anonimligini-bitirmesi-icin-lobi-yapyor-4113672",
+      "publishedAt": "2026-10-21T17:25:53.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "1d7599c418c0813dec5f",
-      "title": "Alphabet hisseleri neden bugün düşüyor?",
+      "id": "f439664916e1d6b9b343",
+      "title": "Reliance’ın Ambani’si Jamnagar’da Marco Rubio ile görüştü",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/alphabet-hisseleri-neden-bugun-dusuyor-93CH-4113454",
-      "publishedAt": "2026-10-21T14:31:56.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/reliancen-ambanisi-jamnagarda-marco-rubio-ile-gorustu-93CH-4113655",
+      "publishedAt": "2026-10-21T17:13:36.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     },
     {
-      "id": "8efbacfd20a6065d2666",
-      "title": "GE Vernova opsiyonları 28 Ekim kazanç açıklamasında %5,7 hareket sinyali veriyor",
+      "id": "58763ba163e445ebafa7",
+      "title": "John Malone: SpaceX, Skydance’e 10 milyar dolar yatırım yapabilir",
       "summary": "",
       "source": "Investing.com",
       "feedId": "investing-markets",
-      "url": "https://tr.investing.com/news/stock-market-news/ge-vernova-opsiyonlar-28-ekim-kazanc-acklamasnda-57-hareket-sinyali-veriyor-93CH-4113450",
-      "publishedAt": "2026-10-21T14:27:42.000Z",
+      "url": "https://tr.investing.com/news/stock-market-news/john-malone-spacex-skydancee-10-milyar-dolar-yatrm-yapabilir-4113648",
+      "publishedAt": "2026-10-21T17:07:02.000Z",
       "category": "GLOBAL",
       "sentiment": "neutral",
       "sentimentReason": "Metinden net bir yön çıkarılamadı; faiz kararları ve beklentiler tek başına yön belirtmez.",
-      "collectedAt": "2026-10-21T16:07:57.712Z"
+      "collectedAt": "2026-10-21T20:16:06.628Z"
     }
   ]
 }
