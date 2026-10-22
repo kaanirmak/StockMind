@@ -1,4 +1,5 @@
 'use client';
+import QuantSymbolSelect from './QuantSymbolSelect';
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -199,7 +200,7 @@ export default function InvestmentCommitteeTab({
   return (
     <div className="space-y-6">
       {analysisError && <p role="alert" className="rounded-xl border border-border p-4 text-sm text-text-primary">{analysisError}</p>}
-      {/* Top Controls: Symbol Selector & Key Notice */}
+      {/* Symbol selection and committee settings */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -216,88 +217,54 @@ export default function InvestmentCommitteeTab({
             </p>
           </div>
 
-          {/* Quick Custom Input */}
-          <form onSubmit={handleCustomSubmit} className="flex items-center gap-2">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Sembol örn. THYAO..."
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                className="w-36 sm:w-44 px-3 py-2 text-xs font-semibold rounded-xl bg-bg-input border border-border text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none uppercase"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md shadow-accent/20"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>İnceleniyor...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Komiteyi Topla</span>
-                </>
-              )}
-            </button>
-          </form>
         </div>
 
-        {/* Chips: Portfolio Stocks Priority */}
-        <div className="mt-4 pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center gap-2">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-xs font-bold text-accent uppercase tracking-wider">
-              {portfolioStocks.length > 0 ? " Portföy Hisseleriniz:" : 'Gösterge Hisseleri:'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-            {portfolioStocks.length > 0
-              ? portfolioStocks.map((h) => {
-                  const isSelected = symbol.toUpperCase() === h.symbol.toUpperCase();
-                  return (
-                    <button
-                      key={h.symbol}
-                      onClick={() => handleSelectSymbol(h.symbol)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-accent text-white shadow-md shadow-accent/25 ring-2 ring-accent/30'
-                          : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border'
-                      }`}
-                    >
-                      <span>{h.symbol}</span>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-bg-tertiary text-text-muted'
-                        }`}
-                      >
-                        %{h.weight.toFixed(1)}
-                      </span>
-                    </button>
-                  );
-                })
-              : POPULAR_SYMBOLS.map((item) => {
-                  const isSelected = symbol === item.symbol;
-                  return (
-                    <button
-                      key={item.symbol}
-                      onClick={() => handleSelectSymbol(item.symbol)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                        isSelected
-                          ? 'bg-accent text-white shadow-sm'
-                          : 'bg-bg-secondary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border'
-                      }`}
-                    >
-                      {item.symbol}
-                    </button>
-                  );
-                })}
-          </div>
+        <div className="mt-4 border-t border-border pt-3">
+          <QuantSymbolSelect
+            value={symbol}
+            onChange={handleSelectSymbol}
+            portfolioStocks={portfolioStocks}
+            fallbackSymbols={POPULAR_SYMBOLS.map((item) => item.symbol)}
+          />
         </div>
+
+        <details className="mt-3 rounded-xl border border-border p-3">
+          <summary className="min-h-11 cursor-pointer content-center text-sm font-semibold text-text-secondary">Farklı sembol gir</summary>
+          <div className="mt-2">
+            <form onSubmit={handleCustomSubmit} className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:shrink-0 sm:flex-row sm:items-center">
+              <div className="relative min-w-0 flex-1">
+                <input
+                  type="text"
+                  aria-label="Farklı bir hisse sembolü"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="Sembol örn. THYAO..."
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  className="min-h-11 w-full sm:w-44 px-3 py-2 text-base sm:text-sm font-semibold rounded-xl bg-bg-input border border-border text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none uppercase"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="min-h-11 justify-center px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md shadow-accent/20"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>İnceleniyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Komiteyi Topla</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </details>
 
         {/* API Key Status Notice */}
         {customApiKey ? (

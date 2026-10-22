@@ -1,4 +1,5 @@
 'use client';
+import QuantSymbolSelect from './QuantSymbolSelect';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 import { palette } from '@/theme/palette';
@@ -107,7 +108,7 @@ export default function StressTestTab({
 
   return (
     <div className="space-y-6">
-      {/* Top Controls: Preset Chips with Portfolio Priority */}
+      {/* Analysis header and symbol selection */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -124,61 +125,21 @@ export default function StressTestTab({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex w-full min-w-0 flex-col-reverse gap-3 sm:w-auto sm:items-end">
             <button
               onClick={() => setSeed((s) => s + 1)}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="min-h-11 justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Shuffle className="w-3.5 h-3.5 text-accent" />
               <span>Yeniden Simüle Et</span>
             </button>
 
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar">
-              <span className="text-xs font-bold text-accent uppercase tracking-wider mr-1 shrink-0">
-                {portfolioStocks.length > 0 ? " Portföy:" : 'Şirket:'}
-              </span>
-
-              {portfolioStocks.length > 0
-                ? portfolioStocks.map((h) => {
-                    const isSelected = currentSymbol.toUpperCase() === h.symbol.toUpperCase();
-                    return (
-                      <button
-                        key={h.symbol}
-                        onClick={() => handleSelect(h.symbol)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                          isSelected
-                            ? 'bg-accent text-white shadow-md shadow-accent/25 ring-2 ring-accent/30'
-                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary border border-border'
-                        }`}
-                      >
-                        <span>{h.symbol}</span>
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                            isSelected ? 'bg-white/20 text-white' : 'bg-bg-tertiary text-text-muted'
-                          }`}
-                        >
-                          %{h.weight.toFixed(1)}
-                        </span>
-                      </button>
-                    );
-                  })
-                : Object.keys(PRESET_FINANCIAL_PROFILES).map((sym) => {
-                    const isSelected = currentSymbol === sym;
-                    return (
-                      <button
-                        key={sym}
-                        onClick={() => handleSelect(sym)}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
-                          isSelected
-                            ? 'bg-accent text-white shadow-sm'
-                            : 'bg-bg-secondary text-text-secondary hover:text-text-primary border border-border'
-                        }`}
-                      >
-                        {sym}
-                      </button>
-                    );
-                  })}
-            </div>
+            <QuantSymbolSelect
+              value={currentSymbol}
+              onChange={handleSelect}
+              portfolioStocks={portfolioStocks}
+              fallbackSymbols={Object.keys(PRESET_FINANCIAL_PROFILES)}
+            />
           </div>
         </div>
 
