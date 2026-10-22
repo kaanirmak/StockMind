@@ -11,6 +11,7 @@ export interface PortfolioStatusWidgetProps {
   transparent?: boolean;
   hideFooter?: boolean;
   forceDemo?: boolean;
+  theme?: 'dark' | 'light';
 }
 
 const SAMPLE_SUMMARY = {
@@ -30,6 +31,7 @@ export default function PortfolioStatusWidget({
   transparent = false,
   hideFooter = false,
   forceDemo = false,
+  theme = 'dark',
 }: PortfolioStatusWidgetProps) {
   const { getSummary, livePrices, fetchPortfoliosAndTransactions } = usePortfolioStore();
   const rawSummary = getSummary();
@@ -97,19 +99,25 @@ export default function PortfolioStatusWidget({
     }
   };
 
+  const isLight = theme === 'light';
+
   return (
     <div
       className={`relative w-full rounded-3xl p-5 sm:p-6 transition-all duration-300 overflow-hidden select-none border ${
         transparent
-          ? 'bg-transparent border-white/10'
+          ? 'bg-transparent border-border'
+          : isLight
+          ? isPositive
+            ? 'bg-gradient-to-br from-emerald-50 via-white to-teal-50 border-emerald-300 shadow-[0_12px_40px_rgba(16,185,129,0.12)] text-slate-900'
+            : 'bg-gradient-to-br from-rose-50 via-white to-orange-50 border-rose-300 shadow-[0_12px_40px_rgba(244,63,94,0.12)] text-slate-900'
           : isPositive
-          ? 'bg-gradient-to-br from-[#121c24] via-[#0d2222] to-[#071317] border-emerald-500/30 shadow-[0_12px_40px_rgba(16,185,129,0.12)]'
-          : 'bg-gradient-to-br from-[#240e22] via-[#200b1a] to-[#12040c] border-rose-500/30 shadow-[0_12px_40px_rgba(244,63,94,0.12)]'
+          ? 'bg-gradient-to-br from-[#121c24] via-[#0d2222] to-[#071317] border-emerald-500/30 shadow-[0_12px_40px_rgba(16,185,129,0.12)] text-white'
+          : 'bg-gradient-to-br from-[#240e22] via-[#200b1a] to-[#12040c] border-rose-500/30 shadow-[0_12px_40px_rgba(244,63,94,0.12)] text-white'
       }`}
     >
       {/* Ambient background glows */}
       <div
-        className="absolute inset-0 pointer-events-none transition-all duration-700 opacity-80"
+        className={`absolute inset-0 pointer-events-none transition-all duration-700 ${isLight ? 'opacity-40' : 'opacity-80'}`}
         style={{
           background: isPositive
             ? 'radial-gradient(ellipse at 85% 15%, rgba(16, 185, 129, 0.28) 0%, transparent 60%), radial-gradient(ellipse at 15% 85%, rgba(168, 85, 247, 0.3) 0%, transparent 60%)'
@@ -118,16 +126,16 @@ export default function PortfolioStatusWidget({
       />
 
       {/* Glass sheen highlight */}
-      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/[0.06] to-transparent pointer-events-none" />
+      <div className={`absolute inset-x-0 top-0 h-24 pointer-events-none ${isLight ? 'bg-gradient-to-b from-white/40 to-transparent' : 'bg-gradient-to-b from-white/[0.06] to-transparent'}`} />
 
       <div className="relative z-10 space-y-4">
         {/* Top bar: Brand + Live Dot + Period Tabs + Privacy Eye */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <img
-              src="/logo-white.png"
+              src={isLight ? "/logo.png" : "/logo-white.png"}
               alt="StockMind"
-              className="h-6 sm:h-7 w-auto object-contain drop-shadow-[0_0_12px_rgba(168,85,247,0.4)]"
+              className="h-6 sm:h-7 w-auto object-contain drop-shadow-[0_0_12px_rgba(168,85,247,0.3)]"
             />
             {/* Live Indicator */}
             <span className="relative flex h-2 w-2">
@@ -135,7 +143,7 @@ export default function PortfolioStatusWidget({
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
             </span>
             {isSample && (
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/10 text-white/70">
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-white/10 text-white/70'}`}>
                 Örnek Portföy
               </span>
             )}
@@ -146,11 +154,15 @@ export default function PortfolioStatusWidget({
             <button
               type="button"
               onClick={togglePrivacyMode}
-              className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer"
+              className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+                isLight
+                  ? 'bg-slate-200/80 hover:bg-slate-300 border border-slate-300 text-slate-700'
+                  : 'bg-white/5 hover:bg-white/15 border border-white/10 text-white/70 hover:text-white'
+              }`}
               title={isPrivacyMode ? 'Tutarları Göster' : 'Tutarları Gizle'}
             >
               {isPrivacyMode ? (
-                <svg className="w-3.5 h-3.5 text-violet-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                 </svg>
               ) : (
@@ -162,16 +174,16 @@ export default function PortfolioStatusWidget({
             </button>
 
             {/* Period Pills */}
-            <div className="flex items-center p-0.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold">
+            <div className={`flex items-center p-0.5 rounded-full text-[11px] font-bold ${isLight ? 'bg-slate-200/80 border border-slate-300' : 'bg-white/5 border border-white/10'}`}>
               <button
                 type="button"
                 onClick={() => setPeriod('daily')}
                 className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
                   period === 'daily'
                     ? isPositive
-                      ? 'bg-emerald-500 text-white shadow-xs'
-                      : 'bg-rose-500 text-white shadow-xs'
-                    : 'text-white/60 hover:text-white'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-rose-600 text-white shadow-xs'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-white/60 hover:text-white'
                 }`}
               >
                 Günlük
@@ -182,9 +194,9 @@ export default function PortfolioStatusWidget({
                 className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
                   period === 'monthly'
                     ? isPositive
-                      ? 'bg-emerald-500 text-white shadow-xs'
-                      : 'bg-rose-500 text-white shadow-xs'
-                    : 'text-white/60 hover:text-white'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-rose-600 text-white shadow-xs'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-white/60 hover:text-white'
                 }`}
               >
                 Aylık
@@ -195,9 +207,9 @@ export default function PortfolioStatusWidget({
                 className={`px-2.5 py-1 rounded-full transition-all cursor-pointer hidden sm:block ${
                   period === 'total'
                     ? isPositive
-                      ? 'bg-emerald-500 text-white shadow-xs'
-                      : 'bg-rose-500 text-white shadow-xs'
-                    : 'text-white/60 hover:text-white'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-rose-600 text-white shadow-xs'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-white/60 hover:text-white'
                 }`}
               >
                 Toplam
@@ -208,15 +220,15 @@ export default function PortfolioStatusWidget({
 
         {/* Portfolio Value & Period P&L */}
         <div className="space-y-1.5">
-          <div className="text-[11px] uppercase tracking-wider text-white/50 font-semibold">
+          <div className={`text-[11px] uppercase tracking-wider font-semibold ${isLight ? 'text-slate-500' : 'text-white/50'}`}>
             Toplam Portföy Değeri
           </div>
 
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2
-              className={`text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums transition-all ${
-                isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''
-              }`}
+              className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums transition-all ${
+                isLight ? 'text-slate-900' : 'text-white'
+              } ${isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''}`}
             >
               ₺{summary.totalValue.toLocaleString('tr-TR', {
                 minimumFractionDigits: 2,
@@ -228,8 +240,8 @@ export default function PortfolioStatusWidget({
             <div
               className={`inline-flex items-center gap-1 text-xs sm:text-sm font-bold tabular-nums px-2 py-0.5 rounded-lg border ${
                 isPositive
-                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                  : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                  ? isLight ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : isLight ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
               } ${isPrivacyMode ? 'filter blur-[6px] select-none opacity-60' : ''}`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -246,20 +258,20 @@ export default function PortfolioStatusWidget({
         </div>
 
         {/* Quick Multi-Period Strip (Bugün + Bu Ay) */}
-        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/10 text-xs">
+        <div className={`grid grid-cols-2 gap-2 pt-1 border-t text-xs ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
           {/* Günlük kutu */}
           <div
             onClick={() => setPeriod('daily')}
             className={`p-2 rounded-xl transition-all cursor-pointer border ${
               period === 'daily'
-                ? 'bg-white/10 border-white/20'
-                : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
+                ? isLight ? 'bg-slate-100 border-slate-300' : 'bg-white/10 border-white/20'
+                : isLight ? 'bg-slate-50 border-slate-200 hover:bg-slate-100' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
             }`}
           >
-            <div className="text-[10px] text-white/50 font-medium">Günlük Değişim</div>
+            <div className={`text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-white/50'}`}>Günlük Değişim</div>
             <div
               className={`font-bold tabular-nums text-xs mt-0.5 ${
-                summary.dailyPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                summary.dailyPnL >= 0 ? isLight ? 'text-emerald-700' : 'text-emerald-400' : isLight ? 'text-rose-700' : 'text-rose-400'
               } ${isPrivacyMode ? 'filter blur-[5px]' : ''}`}
             >
               {getPnLSign(summary.dailyPnL)}{formatCurrency(Math.abs(summary.dailyPnL))}
@@ -272,14 +284,14 @@ export default function PortfolioStatusWidget({
             onClick={() => setPeriod('monthly')}
             className={`p-2 rounded-xl transition-all cursor-pointer border ${
               period === 'monthly'
-                ? 'bg-white/10 border-white/20'
-                : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
+                ? isLight ? 'bg-slate-100 border-slate-300' : 'bg-white/10 border-white/20'
+                : isLight ? 'bg-slate-50 border-slate-200 hover:bg-slate-100' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]'
             }`}
           >
-            <div className="text-[10px] text-white/50 font-medium">Bu Ay Getirisi</div>
+            <div className={`text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-white/50'}`}>Bu Ay Getirisi</div>
             <div
               className={`font-bold tabular-nums text-xs mt-0.5 ${
-                actual.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                actual.pnl >= 0 ? isLight ? 'text-emerald-700' : 'text-emerald-400' : isLight ? 'text-rose-700' : 'text-rose-400'
               } ${isPrivacyMode ? 'filter blur-[5px]' : ''}`}
             >
               {period !== 'monthly' ? 'Görmek için seçin' : !isSample && actual.available ? `${getPnLSign(actual.pnl)}${formatCurrency(Math.abs(actual.pnl))}` : actual.loading ? 'Hesaplanıyor…' : 'Veri eksik'}
@@ -289,7 +301,7 @@ export default function PortfolioStatusWidget({
 
         {/* Footer info: USD Equivalent + Popout Link */}
         {!hideFooter && (
-          <div className="flex items-center justify-between text-[11px] text-white/40 pt-1">
+          <div className={`flex items-center justify-between text-[11px] pt-1 ${isLight ? 'text-slate-500' : 'text-white/40'}`}>
             <div className="flex items-center gap-1.5">
               <span>{summary.cash?.configured ? 'Net Yatırılan' : 'Maliyet'}: {isPrivacyMode ? '•••' : formatCurrency(summary.totalCost)}</span>
               {usdTry > 0 && summary.totalValue > 0 && (
@@ -305,7 +317,7 @@ export default function PortfolioStatusWidget({
             <button
               type="button"
               onClick={openFullApp}
-              className="text-white/60 hover:text-white flex items-center gap-1 hover:underline cursor-pointer"
+              className={`flex items-center gap-1 hover:underline cursor-pointer ${isLight ? 'text-slate-700 hover:text-slate-900' : 'text-white/60 hover:text-white'}`}
             >
               <span>Portföy Detayı</span>
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

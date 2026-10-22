@@ -20,6 +20,7 @@ function HeatmapWidgetInner() {
       <div className="w-full max-w-2xl">
         <HeatmapWidget
           standalone
+          theme={theme === 'light' ? 'light' : 'dark'}
           defaultMetric={defaultMetric}
           transparent={isTransparent}
           height={320}

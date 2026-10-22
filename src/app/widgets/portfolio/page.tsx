@@ -22,6 +22,7 @@ function PortfolioWidgetInner() {
           standalone
           initialPeriod={initialPeriod}
           transparent={isTransparent}
+          theme={theme === 'light' ? 'light' : 'dark'}
         />
       </div>
     </div>

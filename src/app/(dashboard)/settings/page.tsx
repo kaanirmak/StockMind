@@ -648,52 +648,20 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Pro Membership Card */}
-      {user && (
-        <div hidden={settingsSection !== 'profile'}>
-          <ProPlanCard
-            isPro={profile?.isPro}
-            plan={profile?.plan}
-            proRequestStatus={profile?.proRequestStatus}
-            userEmail={user.email}
-            userName={profile?.fullName || user.user_metadata?.full_name}
-          />
-          {/* Executive Workstation Link (Admin only) */}
-          {(user.email?.toLowerCase() === 'kaanrmak7@gmail.com' || user.app_metadata?.role === 'admin') && (
-            <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="space-y-0.5">
-                <div className="font-bold text-white flex items-center gap-1.5">
-                  <span>🛡️</span> Güvenli Yönetici Konsolu (Yalnızca Masaüstü & Biyometrik)
-                </div>
-                <div className="text-slate-400 text-[11px]">
-                  Tüm kullanıcıları, Pro taleplerini ve arka plan cron görevlerini Touch ID donanım korumalı konsoldan yönetin.
-                </div>
-              </div>
-              <a
-                href="/admin"
-                className="shrink-0 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-md shadow-indigo-600/20 text-center"
-              >
-                Yönetici Konsolunu Aç &rarr;
-              </a>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Theme Selection Card (Görünüm ve Plan Tercihi) */}
+      {/* Theme Selection Card (Görünüm ve Tema Tercihi) */}
       <div hidden={settingsSection !== 'appearance'} id="appearance" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div>
-            <h3 className="text-base font-bold text-text-primary">Görünüm & Tema (Plan Seçimi)</h3>
-            <p className="text-xs text-text-muted">Arayüz için göz yormayan Siyah Plan (Koyu) veya aydınlık ferah Beyaz Plan (Açık) seçin.</p>
+            <h3 className="text-base font-bold text-text-primary">Görünüm & Tema</h3>
+            <p className="text-xs text-text-muted">Arayüz için göz yormayan Koyu Tema veya aydınlık ferah Açık Tema seçin.</p>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent border border-accent/30 self-start sm:self-auto">
-            Aktif: {resolvedTheme === 'dark' ? 'Siyah Plan (Koyu)' : 'Beyaz Plan (Açık)'}
+            Aktif: {resolvedTheme === 'dark' ? 'Koyu Tema' : 'Açık Tema'}
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          {/* Siyah Plan Card */}
+          {/* Koyu Tema Card */}
           <button
             type="button"
             onClick={() => setTheme('dark')}
@@ -706,7 +674,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                <span className="font-bold text-sm text-text-primary">Siyah Plan</span>
+                <span className="font-bold text-sm text-text-primary">Koyu Tema</span>
               </div>
               {resolvedTheme === 'dark' ? (
                 <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
@@ -737,7 +705,7 @@ export default function SettingsPage() {
             </p>
           </button>
 
-          {/* Beyaz Plan Card */}
+          {/* Açık Tema Card */}
           <button
             type="button"
             onClick={() => setTheme('light')}
@@ -750,7 +718,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                <span className="font-bold text-sm text-text-primary">Beyaz Plan</span>
+                <span className="font-bold text-sm text-text-primary">Açık Tema</span>
               </div>
               {resolvedTheme === 'light' ? (
                 <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
@@ -1042,6 +1010,38 @@ export default function SettingsPage() {
           </div>
         </form>
       </div>
+
+      {/* Pro Membership Card (Placed below account settings) */}
+      {user && (
+        <div hidden={settingsSection !== 'profile'}>
+          <ProPlanCard
+            isPro={profile?.isPro}
+            plan={profile?.plan}
+            proRequestStatus={profile?.proRequestStatus}
+            userEmail={user.email}
+            userName={profile?.fullName || user.user_metadata?.full_name}
+          />
+          {/* Executive Workstation Link (Admin only) */}
+          {(user.email?.toLowerCase() === 'kaanrmak7@gmail.com' || user.app_metadata?.role === 'admin') && (
+            <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="space-y-0.5">
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>🛡️</span> Güvenli Yönetici Konsolu (Yalnızca Masaüstü & Biyometrik)
+                </div>
+                <div className="text-slate-400 text-[11px]">
+                  Tüm kullanıcıları, Pro taleplerini ve arka plan cron görevlerini Touch ID donanım korumalı konsoldan yönetin.
+                </div>
+              </div>
+              <a
+                href="/admin"
+                className="shrink-0 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-md shadow-indigo-600/20 text-center"
+              >
+                Yönetici Konsolunu Aç &rarr;
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════
           MOBILE PHONE & PUSH NOTIFICATIONS CARD
@@ -1548,22 +1548,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Cost Guidance */}
-        <div className="p-4 rounded-xl bg-bg-secondary border border-border/70 space-y-2 text-xs">
-          <div className="font-semibold text-text-primary flex items-center gap-1.5">
-            <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-            <span>Model Maliyet ve Sağlayıcı Rehberi</span>
-          </div>
-          <p className="text-text-muted leading-relaxed">
-            Sistem kotaları dahilinde yapılan tüm AI analizleri platform tarafından ücretsiz karşılanır. Kendi OpenRouter API anahtarınızı tanımladığınızda sistem kotaları devre dışı kalır ve model kullanım ücretleri doğrudan OpenRouter bakiyenizden tahsil edilir.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
-            <div className="text-emerald-400">Gemini 2.0 Flash: $0.00 / 1M token</div>
-            <div className="text-cyan-400">DeepSeek V3: ~$0.14 / 1M token</div>
-            <div className="text-purple-400">Claude 3.5 Sonnet: ~$3.00 / 1M token</div>
-          </div>
-        </div>
-
         {/* Advanced AI Settings Collapsible Button */}
         <div className="pt-2">
           <button
@@ -1591,6 +1575,21 @@ export default function SettingsPage() {
         {/* Collapsible Advanced Form */}
         {isAdvancedAiOpen && (
           <form onSubmit={handleSaveAIConfig} className="space-y-4 pt-2 border-t border-border/60 animate-fade-in">
+            {/* Cost Guidance (Inside Advanced Section) */}
+            <div className="p-3.5 rounded-xl bg-bg-secondary/70 border border-border/70 space-y-2 text-xs">
+              <div className="font-semibold text-text-primary flex items-center gap-1.5">
+                <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
+                <span>Model Maliyet ve Sağlayıcı Rehberi</span>
+              </div>
+              <p className="text-text-muted leading-relaxed">
+                Sistem kotaları dahilinde yapılan tüm AI analizleri platform tarafından ücretsiz karşılanır. Kendi OpenRouter API anahtarınızı tanımladığınızda sistem kotaları devre dışı kalır ve model kullanım ücretleri doğrudan OpenRouter bakiyenizden tahsil edilir.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 font-mono text-[11px]">
+                <div className="text-emerald-400">Gemini 2.0 Flash: $0.00 / 1M token</div>
+                <div className="text-cyan-400">DeepSeek V3: ~$0.14 / 1M token</div>
+                <div className="text-purple-400">Claude 3.5 Sonnet: ~$3.00 / 1M token</div>
+              </div>
+            </div>
             <Input
               label="Özel OpenRouter API Anahtarı"
               type="password"

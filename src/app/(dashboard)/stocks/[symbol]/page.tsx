@@ -166,7 +166,7 @@ export default function StockDetailPage({
     stock?.exchange === 'FOREX' ? 'emerald' : 'info';
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-36 sm:pb-16">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-44 sm:pb-16">
       {/* Midas-Style Top Navigation Bar (Back, Instrument Name, Bookmark, Alert, Share) */}
       <div className="flex items-center justify-between py-1 gap-2">
         <div className="flex items-center gap-2.5 min-w-0">

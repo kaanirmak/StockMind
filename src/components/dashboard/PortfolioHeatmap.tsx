@@ -475,17 +475,21 @@ export default function PortfolioHeatmap() {
                 {/* Ultra-Micro Layout (Thin/small slivers) */}
                 {isUltraMicro ? (
                   <div className="h-full w-full flex items-center justify-center text-center overflow-hidden leading-none select-none">
-                    <span className="font-black text-[9px] text-white truncate max-w-full">
-                      {holding.symbol.slice(0, 4)}
-                    </span>
+                    {tileW >= 32 && tileH >= 20 ? (
+                      <span className="font-black text-[9px] text-white truncate max-w-full">
+                        {holding.symbol.slice(0, 4)}
+                      </span>
+                    ) : null}
                   </div>
                 ) : isMicro ? (
                   /* Micro Layout */
                   <div className="h-full w-full flex flex-col items-center justify-center text-center leading-none gap-0.5 overflow-hidden select-none">
-                    <span className="font-black text-[10px] text-white truncate max-w-full">
-                      {holding.symbol}
-                    </span>
-                    {tileH >= 34 && (
+                    {tileW >= 36 ? (
+                      <span className="font-black text-[10px] text-white truncate max-w-full">
+                        {holding.symbol}
+                      </span>
+                    ) : null}
+                    {tileH >= 34 && tileW >= 42 && (
                       <span className={`font-bold text-[9px] tabular-nums ${style.text} truncate max-w-full`}>
                         {sign}%{absMetric.toFixed(0)}
                       </span>

@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
-import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView } from '@/components/ui';
+import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -81,6 +81,7 @@ function PiyasalarContent() {
   // Shared view mode
   const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
 
   const { showToast } = useToast();
   const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
@@ -590,28 +591,36 @@ function PiyasalarContent() {
             <button type="button" aria-pressed={watchlistOnly} onClick={() => setWatchlistOnly(!watchlistOnly)} className={`px-3 rounded-xl border ${watchlistOnly ? 'bg-accent/15 border-accent text-accent' : 'border-border'}`}>Takip Ettiklerim</button>
             <span className="hidden sm:inline">{stocksUpdatedAt ? `Son kontrol: ${stocksUpdatedAt.toLocaleTimeString('tr-TR')}` : 'Fiyatlar yükleniyor'}</span>
           </div>
-          {/* Filters */}
-          <div className="glass-card p-2 sm:p-4 space-y-1 sm:space-y-3 sm:static z-20 !bg-bg-card">
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+          {/* Filters Bar */}
+          <div className="glass-card p-2 sm:p-3 space-y-2 !bg-bg-card">
+            <div className="flex items-center gap-2">
               {/* Search */}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <Input
-                  placeholder={`${MARKETS.find((m) => m.id === activeMarket)?.name || activeMarket} ara... (örn: ${
-                    activeMarket === 'BIST' ? 'THYAO, ASELS' :
-                    activeMarket === 'COMMODITY' ? 'Altın, Gümüş, Petrol' :
-                    activeMarket === 'CRYPTO' ? 'BTC, ETH, SOL' :
-                    activeMarket === 'FOREX' ? 'Dolar, Euro, GBP' :
-                    activeMarket === 'INDEX' ? 'S&P 500, DAX, BIST' :
-                    activeMarket === 'NASDAQ' ? 'NVDA, AAPL' : 'BRK.B, JPM'
-                  })`}
+                  placeholder={`${MARKETS.find((m) => m.id === activeMarket)?.name || activeMarket} ara...`}
                   value={stockSearch}
                   onChange={(e) => setStockSearch(e.target.value)}
                   leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
                 />
               </div>
 
+              {/* Mobile Filter & Sort Drawer Button */}
+              <button
+                type="button"
+                onClick={() => setShowFilterSheet(true)}
+                className="sm:hidden flex items-center gap-1.5 h-10 px-3 rounded-xl border border-border bg-bg-secondary hover:bg-bg-hover text-xs font-semibold text-text-primary shrink-0 transition-colors cursor-pointer"
+                aria-label="Filtre ve Sıralama"
+              >
+                <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filtre</span>
+                {(selectedSector !== 'ALL' || stockSortBy !== 'marketCap' || watchlistOnly) && (
+                  <span className="w-2 h-2 rounded-full bg-accent" />
+                )}
+              </button>
 
-              {/* Quick Sort Options */}
+              {/* Desktop Quick Sort Options */}
               <div className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0 bg-bg-tertiary/50 p-1 rounded-xl border border-border/60">
                 <span className="text-[11px] text-text-muted px-2 font-medium shrink-0">Sırala:</span>
                 <button
@@ -656,107 +665,65 @@ function PiyasalarContent() {
                 </button>
               </div>
             </div>
-            <details className="rounded-xl border border-border px-3">
-              <summary className="min-h-11 flex items-center text-xs font-semibold text-text-secondary cursor-pointer"><span className="sm:hidden">Sırala ve filtrele</span><span className="hidden sm:inline">Gelişmiş Filtreler</span></summary>
-              <div className="space-y-2 pb-2">
-              <label className="sm:hidden flex items-center gap-3 text-xs font-medium text-text-secondary">Sırala
-                <select aria-label="Piyasa sıralaması" value={`${stockSortBy}:${stockSortOrder}`} onChange={(e) => { const [field, direction] = e.target.value.split(':'); setStockSortBy(field as typeof stockSortBy); setStockSortOrder(direction as 'asc' | 'desc'); }} className="min-w-0 flex-1 h-11 rounded-xl border border-border bg-bg-input text-text-primary px-3 text-xs">
-                  <option value="marketCap:desc">Piyasa değeri · Büyükten küçüğe</option><option value="marketCap:asc">Piyasa değeri · Küçükten büyüğe</option><option value="changePercent:desc">En çok yükselenler</option><option value="changePercent:asc">En çok düşenler</option><option value="volume:desc">En yüksek hacim</option><option value="volume:asc">En düşük hacim</option><option value="price:desc">Fiyat · Yüksekten düşüğe</option><option value="price:asc">Fiyat · Düşükten yükseğe</option>
-                </select>
-              </label>
-            {/* Sub-Category / Sector Filter Chips */}
-            {activeMarket === 'INDEX' && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <span className="text-text-muted text-[11px] shrink-0 font-medium">Bölge:</span>
-                {indexCategories.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedSector(c.id)}
-                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
-                      selectedSector === c.id
-                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
-                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            )}
 
-            {activeMarket === 'COMMODITY' && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <span className="text-text-muted text-[11px] shrink-0 font-medium">Kategori:</span>
-                {commodityCategories.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedSector(c.id)}
-                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
-                      selectedSector === c.id
-                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
-                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {activeMarket === 'FOREX' && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <span className="text-text-muted text-[11px] shrink-0 font-medium">Grup:</span>
-                {forexCategories.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedSector(c.id)}
-                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
-                      selectedSector === c.id
-                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
-                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {activeMarket === 'CRYPTO' && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <span className="text-text-muted text-[11px] shrink-0 font-medium">Varlık:</span>
-                {cryptoCategories.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedSector(c.id)}
-                    className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
-                      selectedSector === c.id
-                        ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs'
-                        : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
-                    }`}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {['BIST', 'NASDAQ', 'NYSE'].includes(activeMarket) && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <span className="text-text-muted text-[11px] shrink-0 font-medium">Sektör:</span>
-                {sectors.map((sector) => (
-                  <button
-                    key={sector}
-                    onClick={() => setSelectedSector(sector)}
-                    className={`px-2.5 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${selectedSector === sector ? 'bg-accent/20 border-accent text-accent font-semibold' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'}`}
-                  >
-                    {sector === 'ALL' ? 'Tüm Sektörler' : sector}
-                  </button>
-                ))}
-              </div>
-            )}
-              </div>
-            </details>
+            {/* Desktop Category / Sector Chips */}
+            <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-xs">
+              {['BIST', 'NASDAQ', 'NYSE'].includes(activeMarket) && sectors.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSelectedSector(s)}
+                  className={`px-2.5 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                    selectedSector === s ? 'bg-accent/20 border-accent text-accent font-semibold' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                  }`}
+                >
+                  {s === 'ALL' ? 'Tüm Sektörler' : s}
+                </button>
+              ))}
+              {activeMarket === 'INDEX' && indexCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedSector(c.id)}
+                  className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                    selectedSector === c.id ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+              {activeMarket === 'COMMODITY' && commodityCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedSector(c.id)}
+                  className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                    selectedSector === c.id ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+              {activeMarket === 'FOREX' && forexCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedSector(c.id)}
+                  className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                    selectedSector === c.id ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+              {activeMarket === 'CRYPTO' && cryptoCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedSector(c.id)}
+                  className={`px-3 py-1 rounded-full border transition-all cursor-pointer shrink-0 text-[11px] ${
+                    selectedSector === c.id ? 'bg-accent/20 border-accent text-accent font-bold shadow-xs' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Stocks Content */}
@@ -981,10 +948,9 @@ function PiyasalarContent() {
       {activeMarket === 'TEFAS' && (
         <div className="space-y-4">
           {/* Funds Filters */}
-          <div className="glass-card p-3 sm:p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-              {/* Search */}
-              <div className="flex-1">
+          <div className="glass-card p-2 sm:p-3 space-y-2 !bg-bg-card">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
                 <Input
                   placeholder="Fon kodu veya kurucu ara (örn: TI2, MAC)..."
                   value={fundSearch}
@@ -992,9 +958,24 @@ function PiyasalarContent() {
                   leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
                 />
               </div>
+
+              {/* Mobile Filter Button */}
+              <button
+                type="button"
+                onClick={() => setShowFilterSheet(true)}
+                className="sm:hidden flex items-center gap-1.5 h-10 px-3 rounded-xl border border-border bg-bg-secondary hover:bg-bg-hover text-xs font-semibold text-text-primary shrink-0 transition-colors cursor-pointer"
+                aria-label="Fon Kategori ve Sıralama"
+              >
+                <svg className="w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                <span>Filtre</span>
+                {selectedCategory !== 'ALL' && <span className="w-2 h-2 rounded-full bg-accent" />}
+              </button>
             </div>
-            {/* Category Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+
+            {/* Desktop Category Chips */}
+            <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
               {fundCategories.map((cat) => (
                 <button
                   key={cat.id}
@@ -1168,6 +1149,227 @@ function PiyasalarContent() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Mobile Filter & Sort Drawer (Bottom Sheet) */}
+      {showFilterSheet && (
+        <Modal
+          isOpen={showFilterSheet}
+          onClose={() => setShowFilterSheet(false)}
+          presentation="sheet"
+          title="Filtre & Sıralama"
+          description="Piyasa listesini kriterlerinize göre özelleştirin"
+          size="md"
+        >
+          <div className="space-y-4 py-2">
+            {/* 1. Sort Section */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                Sıralama Ölçütü
+              </span>
+              {activeMarket === 'TEFAS' ? (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: 'yearlyReturn', label: '1 Yıllık Getiri' },
+                    { id: 'monthlyReturn', label: '1 Aylık Getiri' },
+                    { id: 'dailyReturn', label: 'Günlük Getiri' },
+                    { id: 'return3y', label: '3 Yıllık Getiri' },
+                    { id: 'price', label: 'Birim Fiyat' },
+                    { id: 'riskValue', label: 'Risk Değeri' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleFundSort(opt.id as typeof fundSortBy)}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-colors cursor-pointer flex items-center justify-between ${
+                        fundSortBy === opt.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {fundSortBy === opt.id && <span>{fundSortOrder === 'desc' ? '↓' : '↑'}</span>}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: 'marketCap', label: 'Piyasa Değeri' },
+                    { id: 'changePercent', label: 'Günlük Değişim' },
+                    { id: 'volume', label: 'İşlem Hacmi' },
+                    { id: 'price', label: 'Fiyat' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleStockSort(opt.id as typeof stockSortBy)}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold text-left transition-colors cursor-pointer flex items-center justify-between ${
+                        stockSortBy === opt.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {stockSortBy === opt.id && <span>{stockSortOrder === 'desc' ? '↓' : '↑'}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Category / Sector Section */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                {activeMarket === 'TEFAS' ? 'Fon Kategorisi' : 'Sektör / Kategori'}
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto custom-scrollbar p-0.5">
+                {activeMarket === 'TEFAS' &&
+                  fundCategories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setSelectedCategory(c.id); setFundLimit(30); }}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        selectedCategory === c.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+
+                {['BIST', 'NASDAQ', 'NYSE'].includes(activeMarket) &&
+                  sectors.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSelectedSector(s)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        selectedSector === s
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      {s === 'ALL' ? 'Tüm Sektörler' : s}
+                    </button>
+                  ))}
+
+                {activeMarket === 'INDEX' &&
+                  indexCategories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedSector(c.id)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        selectedSector === c.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+
+                {activeMarket === 'COMMODITY' &&
+                  commodityCategories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedSector(c.id)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        selectedSector === c.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+
+                {activeMarket === 'FOREX' &&
+                  forexCategories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedSector(c.id)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        selectedSector === c.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+
+                {activeMarket === 'CRYPTO' &&
+                  cryptoCategories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedSector(c.id)}
+                      className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        selectedSector === c.id
+                          ? 'border-accent bg-accent/15 text-accent'
+                          : 'border-border bg-bg-secondary text-text-secondary'
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+              </div>
+            </div>
+
+            {/* 3. Watchlist Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-bg-secondary border border-border">
+              <div>
+                <span className="text-xs font-bold text-text-primary block">Yalnızca Takip Listem</span>
+                <span className="text-[11px] text-text-muted">Favoriye eklediğiniz varlıkları filtreleyin</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWatchlistOnly(!watchlistOnly)}
+                className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                  watchlistOnly ? 'bg-accent' : 'bg-bg-tertiary border border-border'
+                }`}
+              >
+                <span
+                  className={`w-5 h-5 rounded-full bg-white transition-transform block shadow-sm ${
+                    watchlistOnly ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 pt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSelectedSector('ALL');
+                  setSelectedCategory('ALL');
+                  setStockSortBy('marketCap');
+                  setStockSortOrder('desc');
+                  setWatchlistOnly(false);
+                }}
+                className="flex-1"
+              >
+                Sıfırla
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setShowFilterSheet(false)}
+                className="flex-1"
+              >
+                Uygula
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ export default function ReportsPage() {
   const { portfolios, activePortfolioId, getSummary, fetchPortfoliosAndTransactions, loading: pricesLoading } = usePortfolioStore();
   const [isMounted, setIsMounted] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -197,88 +198,138 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="reports-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12">
-      {/* Header */}
-      <div className="product-hero p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="w-8 h-8 rounded-xl bg-accent/15 text-accent flex items-center justify-center text-base">▥</span>
-            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-accent">Portföy merkezi</span>
+    <div className="reports-page space-y-4 sm:space-y-5 animate-fade-in pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12">
+      {/* Compact Header with Unified "Paylaş / Dışa Aktar" Menu */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Performans Raporları</h1>
+            <Badge variant="purple" size="sm">
+              {activePortfolio.name}
+            </Badge>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">Performans Raporları</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Detaylı getiri analizleri, varlık dağılımı ve vergi/kar-zarar dökümü.
+          <p className="text-text-muted text-xs sm:text-sm mt-0.5">
+            Portföy özet dökümü, varlık dağılımı ve getiri analizi
           </p>
         </div>
 
-        {/* Action buttons — responsive: stacked on mobile, row on desktop */}
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-2 w-full lg:w-auto">
-          {/* Email button — glassmorphic card on mobile */}
-          <button
-            onClick={handleSendEmailReport}
-            disabled={sendingEmail || pricesLoading}
-            className="glass-card flex items-center gap-3 px-3.5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group min-w-0"
+        {/* Unified "Paylaş / Dışa aktar" Action Button & Dropdown */}
+        <div className="relative shrink-0">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+            className="w-full sm:w-auto font-semibold flex items-center justify-center gap-2"
           >
-            <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-accent/15 sm:bg-transparent flex items-center justify-center shrink-0">
-              {(sendingEmail || pricesLoading) ? (
-                <svg className="animate-spin h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              )}
-            </div>
-            <div className="text-left sm:hidden">
-              <span className="text-text-primary block font-semibold">
-                {pricesLoading ? 'Fiyatlar yükleniyor...' : sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}
-              </span>
-              <span className="text-[11px] text-text-muted">
-                {pricesLoading ? 'TEFAS fon fiyatları alınıyor' : 'Raporu e-posta ile paylaş'}
-              </span>
-            </div>
-            <span className="hidden sm:inline text-text-primary">
-              {pricesLoading ? 'Fiyatlar yükleniyor...' : sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}
-            </span>
-          </button>
+            <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            <span>Paylaş / Dışa Aktar</span>
+            <svg className={`w-3.5 h-3.5 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </Button>
 
-          {/* Print button */}
-          <button
-            onClick={handlePrint}
-            disabled={summary.holdings.length === 0}
-            className="glass-card flex items-center gap-3 px-3.5 py-3 sm:py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:border-accent/30 active:scale-[0.98] disabled:opacity-50 cursor-pointer group min-w-0"
-          >
-            <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-accent/15 sm:bg-transparent flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 text-accent-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-            </div>
-            <div className="text-left sm:hidden">
-              <span className="text-text-primary block font-semibold">Yazdır / PDF</span>
-              <span className="text-[11px] text-text-muted">Raporu yazdır veya PDF olarak kaydet</span>
-            </div>
-            <span className="hidden sm:inline text-text-primary">Yazdır / PDF</span>
-          </button>
+          {isExportMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setIsExportMenuOpen(false)}
+              />
+              <div className="absolute right-0 top-full mt-1.5 w-60 z-50 bg-bg-card border border-border/80 rounded-2xl shadow-xl p-2 space-y-1 animate-in fade-in zoom-in-95">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handlePrint();
+                  }}
+                  disabled={summary.holdings.length === 0}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-text-primary hover:bg-bg-hover rounded-xl transition-colors text-left cursor-pointer disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4 text-accent-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  <div>
+                    <span className="font-semibold block">PDF / Yazdır</span>
+                    <span className="text-[10px] text-text-muted">Raporu yazdır veya PDF kaydet</span>
+                  </div>
+                </button>
 
-          {/* CSV Export button */}
-          <button
-            onClick={handleExportCSV}
-            disabled={summary.holdings.length === 0}
-            className="flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 cursor-pointer bg-gradient-to-r from-accent to-accent-secondary text-white shadow-lg shadow-accent/25 hover:shadow-accent/40 hover:brightness-110"
-          >
-            <div className="w-9 h-9 sm:w-auto sm:h-auto rounded-lg sm:rounded-none bg-white/10 sm:bg-transparent flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </div>
-            <div className="text-left sm:hidden">
-              <span className="block">CSV Dışa Aktar</span>
-              <span className="text-[11px] text-white/70 font-normal">Verileri CSV dosyası olarak indir</span>
-            </div>
-            <span className="hidden sm:inline">CSV Dışa Aktar</span>
-          </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleExportCSV();
+                  }}
+                  disabled={summary.holdings.length === 0}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-text-primary hover:bg-bg-hover rounded-xl transition-colors text-left cursor-pointer disabled:opacity-50"
+                >
+                  <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <div>
+                    <span className="font-semibold block">CSV Dışa Aktar</span>
+                    <span className="text-[10px] text-text-muted">Tablo verilerini CSV indir</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsExportMenuOpen(false);
+                    handleSendEmailReport();
+                  }}
+                  disabled={sendingEmail || pricesLoading}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-text-primary hover:bg-bg-hover rounded-xl transition-colors text-left cursor-pointer disabled:opacity-50"
+                >
+                  {sendingEmail || pricesLoading ? (
+                    <svg className="animate-spin h-4 w-4 text-accent" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                  <div>
+                    <span className="font-semibold block">
+                      {pricesLoading ? 'Fiyatlar Alınıyor...' : sendingEmail ? 'Gönderiliyor...' : 'E-posta Gönder'}
+                    </span>
+                    <span className="text-[10px] text-text-muted">Raporu e-posta ile ilet</span>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Primary Report Summary KPI Row (Appears right at top) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
+          <span className="text-[11px] text-text-muted block">Toplam Piyasa Değeri</span>
+          <span className="text-base sm:text-xl font-bold font-mono text-text-primary mt-1 block">
+            ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
+          <span className="text-[11px] text-text-muted block">Toplam Yatırım Maliyeti</span>
+          <span className="text-base sm:text-xl font-bold font-mono text-text-secondary mt-1 block">
+            ₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
+          <span className="text-[11px] text-text-muted block">Net Kar / Zarar</span>
+          <span className={`text-base sm:text-xl font-bold font-mono ${summary.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+            {summary.totalPnL >= 0 ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
+          <span className="text-[11px] text-text-muted block">Toplam Getiri Oranı</span>
+          <span className={`text-base sm:text-xl font-bold font-mono ${summary.totalPnLPercent >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+            {summary.totalPnLPercent >= 0 ? '+' : ''}%{summary.totalPnLPercent.toFixed(2)}
+          </span>
         </div>
       </div>
 
@@ -324,8 +375,8 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* High-level Summary Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {/* High-level Summary Metrics (Print-only document view) */}
+          <div className="hidden print:grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="glass-purple p-4 rounded-xl">
               <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Piyasa Değeri</span>
               <span className="text-lg sm:text-xl font-bold font-mono text-text-primary mt-1 block">

@@ -284,37 +284,45 @@ export default function QuantLabPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Top Header Banner */}
-      <div className="glass-card p-5 sm:p-7 rounded-3xl border border-border bg-gradient-to-r from-accent/10 via-bg-card to-transparent relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 relative z-10">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-accent to-accent-secondary flex items-center justify-center text-white shadow-lg shadow-accent/25">
-                <Cpu className="w-5 h-5" />
+      {/* Top Header Banner - Compact with 'Nasıl çalışır?' Disclosure */}
+      <div className="glass-card p-3.5 sm:p-5 rounded-2xl border border-border bg-gradient-to-r from-accent/10 via-bg-card to-transparent relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-accent to-accent-secondary flex items-center justify-center text-white shadow-sm shadow-accent/25">
+                <Cpu className="w-4 h-4" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">
+              <h1 className="text-lg sm:text-xl font-black text-text-primary tracking-tight">
                 Quant Lab
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-accent/15 border border-accent/30 text-accent">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-accent/15 border border-accent/30 text-accent">
                 PRO TERMINAL
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-text-muted max-w-2xl leading-relaxed">
-              İleri seviye temel ve kantitatif değerleme modelleri, 4 efsane yatırımcı personasıyla çoklu AI komitesi simülasyonu, DCF adil değerleme motoru ve makro stres testleri.
-            </p>
+
+            {/* Collapsible 'Nasıl çalışır?' disclosure */}
+            <details className="group mt-1.5">
+              <summary className="text-xs text-accent hover:underline cursor-pointer list-none font-semibold flex items-center gap-1">
+                <span>Nasıl çalışır?</span>
+                <span className="transition-transform group-open:rotate-180 text-[10px]">▼</span>
+              </summary>
+              <p className="text-xs text-text-muted mt-2 max-w-2xl leading-relaxed p-2.5 bg-bg-secondary/70 rounded-xl border border-border/50">
+                İleri seviye temel ve kantitatif değerleme modelleri: 4 efsane yatırımcı personasıyla çoklu AI komitesi simülasyonu, 5 yıllık DCF adil değerleme motoru, Piotroski & Altman finansal sağlık skorları ve 10.000 koşulu Monte Carlo stres testleri.
+              </p>
+            </details>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+          <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
             <Link
               href="/portfolio"
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border transition-colors flex items-center gap-1.5"
             >
               <span>Portföyüm</span>
               <ArrowRight className="w-3.5 h-3.5 text-text-muted" />
             </Link>
             <Link
               href="/ai-assistant"
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-all flex items-center gap-1.5 shadow-md shadow-accent/20"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent/90 transition-all flex items-center gap-1.5 shadow-sm shadow-accent/20"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>AI Danışman</span>

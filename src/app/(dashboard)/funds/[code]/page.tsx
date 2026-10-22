@@ -109,10 +109,11 @@ export default function FundDetailPage({
     );
   }
 
+  const [isNameExpanded, setIsNameExpanded] = useState<boolean>(false);
   const isDailyPos = fund.dailyReturn >= 0;
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="space-y-5 sm:space-y-6 animate-fade-in pb-32 sm:pb-16">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-text-muted">
         <Link href="/funds" className="hover:text-text-primary transition-colors">
@@ -122,65 +123,61 @@ export default function FundDetailPage({
         <span className="text-text-primary font-semibold">{code}</span>
       </div>
 
-      {/* Main Header */}
-      <div className="glass-card p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="flex items-start gap-4">
-          <InstrumentLogo symbol={code} name={fund.name} size="xl" rounded="2xl" />
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-black tracking-tight text-text-primary">{code}</h1>
-              <Badge variant="purple" size="sm">
-                {fund.category}
-              </Badge>
-              <Badge variant={fund.riskValue <= 3 ? 'success' : fund.riskValue <= 5 ? 'warning' : 'danger'} size="sm">
-                Risk Değeri: {fund.riskValue}/7
-              </Badge>
-            </div>
-            <p className="text-sm text-text-secondary mt-1 max-w-2xl">{fund.name}</p>
-            <p className="text-xs text-text-muted mt-0.5">Kurucu: {fund.founder}</p>
-          </div>
-        </div>
+      {/* Main Header - Prioritized Price & Clean Collapsible Name */}
+      <div className="glass-card p-4 sm:p-6 flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <InstrumentLogo symbol={code} name={fund.name} size="lg" rounded="2xl" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-primary">{code}</h1>
+                <Badge variant="purple" size="sm">
+                  {fund.category}
+                </Badge>
+                <Badge variant={fund.riskValue <= 3 ? 'success' : fund.riskValue <= 5 ? 'warning' : 'danger'} size="sm">
+                  Risk: {fund.riskValue}/7
+                </Badge>
+              </div>
 
-        {/* Live Price & Actions */}
-        <div className="flex flex-wrap items-center gap-6 justify-between lg:justify-end">
-          <div className="text-left lg:text-right">
-            <div className="text-3xl font-black font-mono text-text-primary">
-              ₺{fund.price.toFixed(4)}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span
-                className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg ${
-                  isDailyPos ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
-                }`}
-              >
-                {isDailyPos ? '+' : ''}
-                {fund.dailyReturn.toFixed(2)}% (Günlük)
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-text-muted mt-1.5 justify-start lg:justify-end">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span>TEFAS Gün Sonu Takas Fiyatı</span>
-              {fund.lastSyncAt && <span>({new Date(fund.lastSyncAt).toLocaleDateString('tr-TR')})</span>}
+              {/* Collapsible Fund Name */}
+              <div className="mt-1">
+                <p className={`text-xs sm:text-sm text-text-secondary leading-relaxed ${isNameExpanded ? '' : 'line-clamp-1 sm:line-clamp-2'}`}>
+                  {fund.name}
+                </p>
+                {fund.name.length > 40 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsNameExpanded(!isNameExpanded)}
+                    className="text-[11px] text-accent hover:underline font-semibold mt-0.5 cursor-pointer"
+                  >
+                    {isNameExpanded ? 'Daha az göster ▲' : 'Tam adı göster ▼'}
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-text-muted mt-0.5">Kurucu: {fund.founder}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Quick Actions (Desktop & Mobile) */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={handleWatchlistToggle}
+              aria-label={isWatchlisted ? 'Takip listesinden çıkar' : 'Takip listesine ekle'}
               className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
                 isWatchlisted
                   ? 'bg-warning/20 border-warning text-warning'
                   : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
               }`}
+              title={isWatchlisted ? 'Takip Listesinde' : 'Takip Listesine Ekle'}
             >
-              <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
             </button>
 
             <Link href={`/ai-assistant?prompt=${encodeURIComponent(`${code} TEFAS fonu hakkında detaylı analiz yap, getirilerini ve risk profilini değerlendir.`)}`}>
-              <Button variant="secondary" size="md" leftIcon={
-                <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <Button variant="secondary" size="sm" leftIcon={
+                <svg className="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               }>
@@ -188,11 +185,112 @@ export default function FundDetailPage({
               </Button>
             </Link>
 
-            <Button variant="primary" size="md" onClick={() => setIsTradeModalOpen(true)}>
-              Fon Al / Sat
+            <Button variant="primary" size="sm" onClick={() => setIsTradeModalOpen(true)}>
+              İşlem Yap
             </Button>
           </div>
         </div>
+
+        {/* Priority Price & Daily Return Banner */}
+        <div className="flex flex-wrap items-baseline justify-between gap-3 pt-3 border-t border-border/60">
+          <div className="flex items-baseline gap-3">
+            <span className="text-2xl sm:text-3xl font-black font-mono text-text-primary">
+              ₺{fund.price.toFixed(4)}
+            </span>
+            <span
+              className={`font-mono text-xs sm:text-sm font-bold px-2.5 py-0.5 rounded-lg ${
+                isDailyPos ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
+              }`}
+            >
+              {isDailyPos ? '+' : ''}
+              %{fund.dailyReturn.toFixed(2)} (Günlük)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>TEFAS Gün Sonu Takas Fiyatı</span>
+            {fund.lastSyncAt && <span>({new Date(fund.lastSyncAt).toLocaleDateString('tr-TR')})</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Price Trend Chart & Timeframe Selector */}
+      <div className="glass-card p-4 sm:p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm sm:text-base font-semibold text-text-primary">Fiyat Değişimi</h3>
+          {/* Timeframe capsule pills */}
+          <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-full border border-border">
+            {[
+              { label: '1A', days: 30 },
+              { label: '3A', days: 90 },
+              { label: '6A', days: 180 },
+              { label: '1Y', days: 365 },
+            ].map((tf) => (
+              <button
+                key={tf.days}
+                type="button"
+                onClick={() => setDays(tf.days)}
+                className={`py-1 px-3 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                  days === tf.days
+                    ? 'bg-accent text-white shadow-sm shadow-accent/25'
+                    : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                {tf.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* SVG Mini Trend Chart */}
+        {fund.history && fund.history.length > 1 ? (
+          <div className="h-44 sm:h-52 w-full pt-2">
+            {(() => {
+              const prices = fund.history.map((h) => h.price);
+              const minPrice = Math.min(...prices);
+              const maxPrice = Math.max(...prices);
+              const range = maxPrice - minPrice || 1;
+              const points = fund.history.map((h, i) => {
+                const x = (i / (fund.history.length - 1)) * 100;
+                const y = 90 - ((h.price - minPrice) / range) * 80;
+                return `${x},${y}`;
+              }).join(' ');
+
+              const isNetPositive = fund.history[fund.history.length - 1].price >= fund.history[0].price;
+              const strokeColor = isNetPositive ? '#10b981' : '#ef4444';
+              const fillColor = isNetPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
+
+              const firstPoint = points.split(' ')[0];
+              const lastPoint = points.split(' ')[points.split(' ').length - 1];
+              const areaPoints = `${firstPoint.split(',')[0]},100 ${points} ${lastPoint.split(',')[0]},100`;
+
+              return (
+                <div className="relative w-full h-full flex flex-col justify-between">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-36">
+                    <polygon fill={fillColor} points={areaPoints} />
+                    <polyline
+                      fill="none"
+                      stroke={strokeColor}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={points}
+                    />
+                  </svg>
+                  <div className="flex items-center justify-between text-[11px] text-text-muted font-mono px-1">
+                    <span>{fund.history[0]?.date ? new Date(fund.history[0].date).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' }) : ''} (₺{minPrice.toFixed(4)})</span>
+                    <span>{fund.history[fund.history.length - 1]?.date ? new Date(fund.history[fund.history.length - 1].date).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' }) : ''} (₺{maxPrice.toFixed(4)})</span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
+          <div className="h-32 flex items-center justify-center text-xs text-text-muted bg-bg-secondary/40 rounded-xl">
+            Bu dönem için geçmiş fiyat verisi hazırlanıyor...
+          </div>
+        )}
       </div>
 
       {/* Historical Performance Matrix */}

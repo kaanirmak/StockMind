@@ -87,87 +87,66 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
           const dailyChange = h.dailyChangePercent || 0;
           const isExpanded = expandedSymbols.has(h.symbol);
           const hasLots = h.lots && h.lots.length > 0;
-
           const assetInfo = getAssetTypeLabel(h);
 
           return (
-            <div key={`m-${h.assetType}-${h.symbol}`} className="p-4 hover:bg-bg-hover/60 transition-colors">
-              {/* Top Row: Symbol, Exchange & Weight */}
-              <div className="flex items-center justify-between mb-3">
-                <Link href={link} className="flex items-center gap-2.5">
-                  <InstrumentLogo symbol={h.symbol} size="md" />
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-sm text-text-primary">{h.symbol}</span>
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium border ${
-                        assetInfo.typeLabel === 'ETF'
-                          ? 'bg-sky-500/15 border-sky-500/30 text-sky-400'
-                          : assetInfo.typeLabel === 'Fon'
-                          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                          : assetInfo.isUs
-                          ? 'bg-blue-500/15 border-blue-500/30 text-blue-400'
-                          : 'bg-bg-tertiary border-border/60 text-text-muted'
-                      }`}>
-                        {assetInfo.typeLabel}
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-text-muted line-clamp-1">
-                      {assetInfo.exchangeLabel}
+            <div key={`m-${h.assetType}-${h.symbol}`} className="p-3 hover:bg-bg-hover/60 transition-colors">
+              {/* Row 1: Symbol + Badge on left; Current Value + Weight on right */}
+              <div className="flex items-center justify-between gap-2">
+                <Link href={link} className="flex items-center gap-2 min-w-0">
+                  <InstrumentLogo symbol={h.symbol} size="sm" />
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-bold text-sm text-text-primary truncate">{h.symbol}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium border shrink-0 ${
+                      assetInfo.typeLabel === 'ETF'
+                        ? 'bg-sky-500/15 border-sky-500/30 text-sky-400'
+                        : assetInfo.typeLabel === 'Fon'
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                        : assetInfo.isUs
+                        ? 'bg-blue-500/15 border-blue-500/30 text-blue-400'
+                        : 'bg-bg-tertiary border-border/60 text-text-muted'
+                    }`}>
+                      {assetInfo.typeLabel}
                     </span>
                   </div>
                 </Link>
 
-                {/* Weight badge */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-text-muted px-2 py-0.5 rounded-full bg-bg-tertiary border border-border">
-                    %{h.weight.toFixed(1)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Middle Grid: Price, Quantity, Cost & Total Value */}
-              <div className="grid grid-cols-2 gap-2 text-xs py-2.5 px-3 rounded-2xl bg-bg-secondary/50 border border-border/40 mb-2.5 font-mono">
-                <div>
-                  <span className="text-[10px] text-text-muted block font-sans">Son Fiyat</span>
-                  <div className="flex items-center gap-1 font-bold text-text-primary mt-0.5">
-                    <span>₺{h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}</span>
-                    {dailyChange !== 0 && (
-                      <span className={`text-[10px] ${dailyChange >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[10px] text-text-muted block font-sans">Güncel Değer</span>
-                  <span className="text-text-secondary font-medium mt-0.5 block">
-                    ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom Row: Profit / Loss Pill & FIFO Lots Drawer Trigger */}
-              <div className="flex items-center justify-between pt-1 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-text-muted font-medium">Toplam Getiri:</span>
-                  <div className={`flex items-center gap-1.5 font-bold font-mono ${isProfit ? 'text-success' : 'text-danger'}`}>
-                    <span>{isProfit ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isProfit ? 'bg-success/15' : 'bg-danger/15'}`}>
-                      {isProfit ? '+' : ''}{h.pnlPercent.toFixed(2)}%
+                <div className="text-right shrink-0">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span className="font-bold text-sm text-text-primary tabular-nums font-mono">
+                      ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] font-semibold text-text-muted px-1.5 py-0.2 rounded bg-bg-tertiary border border-border">
+                      %{h.weight.toFixed(1)}
                     </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2">
+              {/* Row 2: Price & Daily Change on left; Total Return & Details Trigger on right */}
+              <div className="flex items-center justify-between gap-2 mt-1.5 text-xs">
+                <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                  <span className="text-text-muted">
+                    ₺{h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
+                  </span>
+                  {dailyChange !== 0 && (
+                    <span className={`font-semibold ${dailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                      {dailyChange >= 0 ? '+' : ''}{dailyChange.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`font-mono text-[11px] font-bold ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {isProfit ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({isProfit ? '+' : ''}{h.pnlPercent.toFixed(1)}%)
+                  </span>
                   <button
                     type="button"
                     onClick={() => toggleExpand(h.symbol)}
                     aria-expanded={isExpanded}
-                    aria-label={`${h.symbol} lot ve maliyet detayları`}
-                    className="flex items-center gap-1 text-[11px] font-medium text-text-muted hover:text-text-primary cursor-pointer"
+                    aria-label={`${h.symbol} detayları`}
+                    className="p-1 rounded text-text-muted hover:text-text-primary cursor-pointer transition-transform"
                   >
-                    <span>{isExpanded ? 'Daralt' : 'Lot & Maliyet'}</span>
                     <svg className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -175,36 +154,62 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
                 </div>
               </div>
 
-              {isExpanded && <div className="text-xs grid grid-cols-2 gap-2 p-3 bg-bg-tertiary rounded-xl"><span>Adet: {h.totalQuantity.toLocaleString('tr-TR')}</span><span>Ort. maliyet: ₺{h.averageCost.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}</span></div>}
-              {/* Mobile Accordion: FIFO Lots Breakdown */}
-              {isExpanded && hasLots && (
-                <div className="mt-3 p-3 rounded-xl bg-bg-tertiary/70 border border-border/60 text-xs space-y-2">
-                  <div className="flex items-center justify-between font-bold text-text-primary text-[11px] border-b border-border/40 pb-1.5">
-                    <span>FIFO Alış Lotları</span>
-                    <span className="text-text-muted font-normal text-[10px]">{h.lots!.length} aktif lot</span>
+              {/* Accordion: Cost, Quantity and FIFO lots */}
+              {isExpanded && (
+                <div className="mt-2.5 pt-2.5 border-t border-border/40 space-y-2 text-xs animate-fade-in">
+                  <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-bg-secondary/70 border border-border/40 font-mono text-[11px]">
+                    <div>
+                      <span className="text-[10px] text-text-muted font-sans block">Adet / Pay</span>
+                      <span className="font-semibold text-text-primary">{h.totalQuantity.toLocaleString('tr-TR')}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-text-muted font-sans block">Ort. Maliyet</span>
+                      <span className="font-semibold text-text-primary">
+                        ₺{h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-text-muted font-sans block">Toplam Maliyet</span>
+                      <span className="font-semibold text-text-primary">
+                        ₺{h.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-text-muted font-sans block">Borsa / Pazar</span>
+                      <span className="text-text-secondary font-sans">{assetInfo.exchangeLabel}</span>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    {h.lots!.map((lot, idx) => {
-                      const lotCostPerShare = lot.shares > 0 ? lot.costTry / lot.shares : 0;
-                      const lotVal = lot.shares * h.currentPrice;
-                      const lotPnL = lotVal - lot.costTry;
-                      const lotProfit = lotPnL >= 0;
-                      return (
-                        <div key={idx} className="flex items-center justify-between py-1 border-b border-border/20 last:border-0 font-mono text-[11px]">
-                          <div>
-                            <span className="text-text-muted block text-[10px] font-sans">{lot.date || 'İlk Lot'}</span>
-                            <span className="font-semibold text-text-primary">{lot.shares.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} Adet</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-text-secondary block">₺{lotCostPerShare.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            <span className={`text-[10px] font-bold ${lotProfit ? 'text-success' : 'text-danger'}`}>
-                              {lotProfit ? '+' : ''}₺{lotPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+
+                  {hasLots && (
+                    <div className="p-2.5 rounded-xl bg-bg-tertiary/70 border border-border/60 text-xs space-y-2">
+                      <div className="flex items-center justify-between font-bold text-text-primary text-[11px] border-b border-border/40 pb-1.5">
+                        <span>FIFO Alış Lotları</span>
+                        <span className="text-text-muted font-normal text-[10px]">{h.lots!.length} aktif lot</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {h.lots!.map((lot, idx) => {
+                          const lotCostPerShare = lot.shares > 0 ? lot.costTry / lot.shares : 0;
+                          const lotVal = lot.shares * h.currentPrice;
+                          const lotPnL = lotVal - lot.costTry;
+                          const lotProfit = lotPnL >= 0;
+                          return (
+                            <div key={idx} className="flex items-center justify-between py-1 border-b border-border/20 last:border-0 font-mono text-[11px]">
+                              <div>
+                                <span className="text-text-muted block text-[10px] font-sans">{lot.date || 'İlk Lot'}</span>
+                                <span className="font-semibold text-text-primary">{lot.shares.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} Adet</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-text-secondary block">₺{lotCostPerShare.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className={`text-[10px] font-bold ${lotProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                  {lotProfit ? '+' : ''}₺{lotPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

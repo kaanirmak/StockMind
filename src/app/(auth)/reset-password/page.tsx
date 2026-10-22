@@ -94,7 +94,7 @@ export default function ResetPasswordPage() {
       ) : (
         <form onSubmit={handleUpdatePassword} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-text-secondary mb-1.5">
               Yeni Şifre
             </label>
             <input
@@ -105,12 +105,12 @@ export default function ResetPasswordPage() {
               required
               minLength={6}
               disabled={loading}
-              className="w-full px-4 py-3 rounded-xl bg-bg-card border border-border text-text-primary placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all text-sm"
+              className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 text-base sm:text-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-text-secondary mb-1.5">
               Yeni Şifre (Tekrar)
             </label>
             <input
@@ -121,14 +121,14 @@ export default function ResetPasswordPage() {
               required
               minLength={6}
               disabled={loading}
-              className="w-full px-4 py-3 rounded-xl bg-bg-card border border-border text-text-primary placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-accent/40 focus:border-accent transition-all text-sm"
+              className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 text-base sm:text-sm"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 via-accent to-fuchsia-600 hover:opacity-95 text-white font-bold text-sm shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white font-bold text-sm sm:text-base shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30 hover:opacity-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2 mt-6"
           >
             {loading ? (
               <>

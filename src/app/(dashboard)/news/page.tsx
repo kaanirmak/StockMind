@@ -299,30 +299,27 @@ export default function NewsPage() {
 
             // Identify if this news relates to any of the user's portfolio holdings
             const matchedPortfolioSymbols = portfolioSymbols.filter(symbol => mentionsNewsSymbol(`${item.title} ${item.summary}`, symbol));
-
             const isPortfolioRelated = matchedPortfolioSymbols.length > 0;
+
+            const isDuplicateSummary =
+              !item.summary ||
+              item.summary.trim().toLowerCase() === item.title.trim().toLowerCase() ||
+              item.title.trim().toLowerCase().startsWith(item.summary.trim().toLowerCase().slice(0, 30));
 
             return (
               <div
                 key={item.id || `news-card-${idx}`}
-                className={`glass-card p-5 transition-all duration-300 flex flex-col justify-between space-y-4 hover:border-accent/40 ${
+                className={`glass-card p-3.5 sm:p-4 rounded-2xl transition-all duration-200 flex flex-col justify-between space-y-2.5 hover:border-accent/40 ${
                   isPortfolioRelated ? 'border-emerald-500/40 bg-emerald-500/[0.02]' : ''
                 }`}
               >
-                <div className="space-y-3">
-                  {/* Top Bar: Source, Portfolio Match Badge, Sentiment & Date */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-accent">{item.source}</span>
-                      {isPortfolioRelated && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          <span><UIIcon name="sparkles" className="w-4 h-4" /></span> Portföyünüzde: {matchedPortfolioSymbols.join(', ')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span title={item.sentimentReason} aria-label={`Haber tonu: ${item.sentiment === 'positive' ? 'Olumlu' : item.sentiment === 'negative' ? 'Olumsuz' : 'Nötr'}. ${item.sentimentReason || ''}`}>{sentimentBadge}</span>
-                      <span className="text-[11px] text-text-muted">
+                <div className="space-y-2">
+                  {/* Single Clean Row: Source, Date, and Sentiment Badge */}
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-semibold text-accent truncate text-[11px] sm:text-xs">{item.source}</span>
+                      <span className="text-text-muted text-[10px]">•</span>
+                      <span className="text-[11px] text-text-muted whitespace-nowrap">
                         {new Date(item.publishedAt).toLocaleDateString('tr-TR', {
                           day: 'numeric',
                           month: 'short',
@@ -330,6 +327,14 @@ export default function NewsPage() {
                           minute: '2-digit',
                         })}
                       </span>
+                      {isPortfolioRelated && (
+                        <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          Portföyüm
+                        </span>
+                      )}
+                    </div>
+                    <div className="shrink-0" title={item.sentimentReason}>
+                      {sentimentBadge}
                     </div>
                   </div>
 
@@ -340,62 +345,64 @@ export default function NewsPage() {
                     rel="noopener noreferrer"
                     className="block group"
                   >
-                    <h3 className="text-base font-bold text-text-primary leading-snug group-hover:text-accent transition-colors">
+                    <h3 className="text-sm sm:text-base font-bold text-text-primary leading-snug group-hover:text-accent transition-colors line-clamp-2">
                       {item.title}
                     </h3>
                   </a>
 
-                  {/* Summary */}
-                  <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
-                    {item.summary}
-                  </p>
+                  {/* Summary (Omitted if it just duplicates the title) */}
+                  {!isDuplicateSummary && (
+                    <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
+                      {item.summary}
+                    </p>
+                  )}
                 </div>
 
                 {/* Footer: Related Symbols & Action Links */}
-                <div className="pt-3 border-t border-border/50 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {item.relatedSymbols?.map((sym, sIdx) => {
+                <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    {item.relatedSymbols?.slice(0, 4).map((sym, sIdx) => {
                       const inPort = portfolioSymbols.includes(sym.toUpperCase());
                       return (
                         <Link key={`sym-${item.id || idx}-${sym}-${sIdx}`} href={`/stocks/${sym}`}>
-                          <Badge
-                            variant={inPort ? 'success' : 'purple'}
-                            size="sm"
-                            className="hover:scale-105 transition-transform cursor-pointer"
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                              inPort
+                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-bg-tertiary text-text-muted hover:text-text-primary border border-border/60'
+                            }`}
                           >
-                            ${sym}
-                          </Badge>
+                            {sym}
+                          </span>
                         </Link>
                       );
                     })}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {item.url && item.url !== '#' && (
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-text-muted hover:text-text-primary transition-colors flex items-center gap-1"
-                        title="Haberi Kaynağında Aç"
-                      >
-                        <span>Kaynak</span>
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    )}
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-medium text-text-muted hover:text-text-primary transition-colors flex items-center gap-0.5"
+                      title="Haberi Kaynağında Aç"
+                    >
+                      <span>Kaynak</span>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
 
                     <Link
                       href={`/ai-assistant?prompt=${encodeURIComponent(
                         isPortfolioRelated
-                          ? `Portföyümde bulunan (${matchedPortfolioSymbols.join(', ')}) hisselerim/fonlarım açısından şu haberi analiz et ve etkisini yorumla: "${item.title}" - ${item.summary}`
-                          : `Şu haberin piyasaya ve ilgili hisselere etkisini analiz et: "${item.title}" - ${item.summary}`
+                          ? `Portföyümdeki (${matchedPortfolioSymbols.join(', ')}) varlıklarım açısından şu haberi analiz et: "${item.title}"`
+                          : `Şu haberi piyasa açısından analiz et: "${item.title}"`
                       )}`}
+                      className="text-[11px] font-semibold text-accent hover:underline flex items-center gap-0.5"
                     >
-                      <Button variant="ghost" size="sm" className="text-accent hover:text-accent text-xs">
-                        {isPortfolioRelated ? "AI Portföy Yorumu " : 'AI Yorumla →'}
-                      </Button>
+                      <span>AI Analiz</span>
+                      <span>&rarr;</span>
                     </Link>
                   </div>
                 </div>
