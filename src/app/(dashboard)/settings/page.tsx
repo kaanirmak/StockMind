@@ -11,7 +11,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Button, Input, Badge, useToast } from '@/components/ui';
 import { ProPlanCard } from '@/components/pro/ProPlanCard';
-import { ProAdminRequests } from '@/components/pro/ProAdminRequests';
 import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { useAuth } from '@/hooks/useAuth';
@@ -659,7 +658,25 @@ export default function SettingsPage() {
             userEmail={user.email}
             userName={profile?.fullName || user.user_metadata?.full_name}
           />
-          <ProAdminRequests userId={user.id} />
+          {/* Executive Workstation Link (Admin only) */}
+          {(user.email?.toLowerCase() === 'kaanrmak7@gmail.com' || user.app_metadata?.role === 'admin') && (
+            <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-indigo-950/40 to-slate-900 border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="space-y-0.5">
+                <div className="font-bold text-white flex items-center gap-1.5">
+                  <span>🛡️</span> Güvenli Yönetici Konsolu (Yalnızca Masaüstü & Biyometrik)
+                </div>
+                <div className="text-slate-400 text-[11px]">
+                  Tüm kullanıcıları, Pro taleplerini ve arka plan cron görevlerini Touch ID donanım korumalı konsoldan yönetin.
+                </div>
+              </div>
+              <a
+                href="/admin"
+                className="shrink-0 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition shadow-md shadow-indigo-600/20 text-center"
+              >
+                Yönetici Konsolunu Aç &rarr;
+              </a>
+            </div>
+          )}
         </div>
       )}
 

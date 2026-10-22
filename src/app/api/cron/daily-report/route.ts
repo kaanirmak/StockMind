@@ -95,10 +95,14 @@ async function handleDailyReport(request: Request) {
     if (recipients.length === 0) recipients = await loadConfirmedUsers();
 
     if (recipients.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Alıcı e-posta adresi belirtilmelidir.' },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: true,
+        message: 'Bülten gönderilecek aktif Pro abone bulunmuyor.',
+        recipientsCount: 0,
+        successfulCount: 0,
+        results: [],
+        timestamp: new Date().toISOString(),
+      }, { status: 200 });
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -158,8 +162,10 @@ async function handleDailyReport(request: Request) {
 
     const successfulCount = results.filter((r) => r.success).length;
 
+    const hasSuccessfulOrSkipped = results.some((r) => r.success || r.skipped);
+
     return NextResponse.json({
-      success: successfulCount > 0,
+      success: hasSuccessfulOrSkipped,
       timestamp: new Date().toISOString(),
       recipientsCount: recipients.length,
       successfulCount,
@@ -171,7 +177,7 @@ async function handleDailyReport(request: Request) {
         thyao: thyao?.price,
         bist100: xu100?.price,
       },
-    }, { status: successfulCount > 0 ? 200 : 400 });
+    }, { status: 200 });
   } catch (error: any) {
     console.error('Daily Report Cron Error:', error);
     return NextResponse.json(

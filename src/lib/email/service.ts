@@ -1,6 +1,5 @@
 import { palette } from '@/theme/palette';
 import nodemailer from 'nodemailer';
-import { createClient } from '@supabase/supabase-js';
 
 export interface EmailPayload {
   to: string;
@@ -216,103 +215,211 @@ export interface SendEmailResult {
   error?: string;
 }
 
-export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailResult> {
-  const { to, userName = 'Değerli Yatırımcı' } = payload;
+export interface SendEmailOptions {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+  customSmtp?: EmailPayload['customSmtp'];
+}
+
+/**
+ * Universal email transport:
+ * 1. Resend REST API (Pure HTTPS fetch - ideal for Cloudflare Workers & Edge)
+ * 2. Brevo REST API (HTTPS fetch alternative)
+ * 3. Nodemailer SMTP (for Node.js runtime / local dev with timeout)
+ * 4. Admin Webhook ping fallback (Discord/Telegram/Slack)
+ */
+export async function sendEmailTransport(options: SendEmailOptions): Promise<SendEmailResult> {
+  const { to, subject, html, from, customSmtp } = options;
 
   if (!to || !to.includes('@')) {
     return { success: false, message: 'Geçersiz e-posta adresi' };
   }
 
+  // 1. Resend REST API (Primary for Cloudflare Workers Edge runtime)
+  const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+  if (resendApiKey) {
+    try {
+      const resendFrom =
+        from ||
+        process.env.RESEND_FROM ||
+        process.env.SMTP_FROM ||
+        'StockMind <onboarding@resend.dev>';
+
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: resendFrom.includes('<') ? resendFrom : `StockMind <${resendFrom}>`,
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+
+      const data: any = await res.json().catch(() => null);
+
+      if (res.ok && data?.id) {
+        return {
+          success: true,
+          message: `E-posta başarıyla ${to} adresine iletildi! (Resend: ${data.id})`,
+          method: 'resend_api',
+        };
+      } else {
+        console.warn('Resend API returned error:', data);
+      }
+    } catch (err: any) {
+      console.warn('Resend API delivery failed:', err.message);
+    }
+  }
+
+  // 2. Brevo (Sendinblue) REST API (HTTPS fetch)
+  const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
+  if (brevoApiKey) {
+    try {
+      const senderEmail = (process.env.BREVO_SENDER || process.env.SMTP_USER || 'noreply@stockmind.app').trim();
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { email: senderEmail, name: 'StockMind' },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+
+      const data: any = await res.json().catch(() => null);
+      if (res.ok && (data?.messageId || data?.id)) {
+        return {
+          success: true,
+          message: `E-posta başarıyla iletildi! (Brevo: ${data.messageId || data.id})`,
+          method: 'brevo_api',
+        };
+      }
+    } catch (err: any) {
+      console.warn('Brevo API delivery failed:', err.message);
+    }
+  }
+
+  // 3. Nodemailer SMTP (for local Node.js environments / Node runtime)
+  const smtpUser = (customSmtp?.user || process.env.SMTP_USER || '').trim();
+  const smtpPass = (customSmtp?.pass || process.env.SMTP_PASS || '').trim();
+  const smtpHost = (customSmtp?.host || process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+  const smtpPort = customSmtp?.port || Number(process.env.SMTP_PORT) || 587;
+  const smtpFrom = (from || customSmtp?.from || process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
+  const smtpService = customSmtp?.service || process.env.SMTP_SERVICE || 'gmail';
+
+  if (smtpUser && smtpPass) {
+    try {
+      const isGmail =
+        smtpService === 'gmail' ||
+        smtpHost?.includes('gmail') ||
+        (!smtpHost && smtpUser?.includes('@gmail.com'));
+
+      const cleanPass = smtpPass.replace(/\s+/g, '');
+      const portNum = Number(smtpPort) || (isGmail ? 465 : 587);
+
+      const transporter = isGmail
+        ? nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: portNum === 587 ? 587 : 465,
+            secure: portNum !== 587,
+            auth: { user: smtpUser, pass: cleanPass },
+            requireTLS: true,
+            connectionTimeout: 6_000,
+            greetingTimeout: 6_000,
+            socketTimeout: 8_000,
+            tls: { rejectUnauthorized: true },
+          })
+        : nodemailer.createTransport({
+            host: smtpHost,
+            port: portNum,
+            secure: portNum === 465,
+            auth: { user: smtpUser, pass: cleanPass },
+            connectionTimeout: 6_000,
+            greetingTimeout: 6_000,
+            socketTimeout: 8_000,
+            tls: { rejectUnauthorized: true },
+          });
+
+      const info = await transporter.sendMail({
+        from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
+        to,
+        subject,
+        html,
+      });
+
+      return {
+        success: true,
+        message: `E-posta başarıyla ${to} adresine iletildi! (${info.messageId})`,
+        method: isGmail ? 'google_smtp' : 'custom_smtp',
+      };
+    } catch (err: any) {
+      console.warn('SMTP transport attempt failed:', err.message);
+    }
+  }
+
+  // 4. Webhook Notification fallback for Admin alerts
+  const adminWebhookUrl = (process.env.ADMIN_WEBHOOK_URL || '').trim();
+  if (adminWebhookUrl) {
+    try {
+      await fetch(adminWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: `🔔 **StockMind Bildirimi**\n**Alıcı:** ${to}\n**Konu:** ${subject}`,
+        }),
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  const hasSmtpConfig = Boolean(smtpUser && smtpPass);
+  const hasResendConfig = Boolean(resendApiKey);
+
+  let errorDetails = '';
+  if (!hasResendConfig && !hasSmtpConfig) {
+    errorDetails = 'Sunucu ortam değişkenlerinde RESEND_API_KEY veya SMTP_USER/SMTP_PASS tanımlanmamış.';
+  } else if (!hasResendConfig && hasSmtpConfig) {
+    errorDetails = 'Cloudflare Worker ortamında doğrudan SMTP engellendi. Lütfen Resend (RESEND_API_KEY) API anahtarı ekleyin.';
+  } else {
+    errorDetails = 'E-posta servis sağlayıcısına ulaşılamadı.';
+  }
+
+  return {
+    success: false,
+    error: 'EMAIL_DISPATCH_FAILED',
+    message: `E-posta gönderilemedi: ${errorDetails}`,
+    method: 'failed',
+  };
+}
+
+export async function sendTestEmail(payload: EmailPayload): Promise<SendEmailResult> {
+  const { to, userName = 'Değerli Yatırımcı' } = payload;
+  if (!to || !to.includes('@')) {
+    return { success: false, message: 'Geçersiz e-posta adresi' };
+  }
+
   const html = generateStockMindEmailHtml(userName, payload);
-  const subject = payload.subject || `StockMind Test Bildirimi • ${userName} (${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})`;
+  const subject =
+    payload.subject ||
+    `StockMind Test Bildirimi • ${userName} (${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})`;
 
-  // Determine SMTP Configuration: Server-side environment variables as primary, with optional custom override
-  const smtpUser = (payload.customSmtp?.user || process.env.SMTP_USER || '').trim();
-  const smtpPass = (payload.customSmtp?.pass || process.env.SMTP_PASS || '').trim();
-  const smtpHost = (payload.customSmtp?.host || process.env.SMTP_HOST || 'smtp.gmail.com').trim();
-  const smtpPort = payload.customSmtp?.port || Number(process.env.SMTP_PORT) || 587;
-  const smtpFrom = (payload.customSmtp?.from || process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
-  const smtpService = payload.customSmtp?.service || process.env.SMTP_SERVICE || 'gmail';
-
-  // If neither custom nor server environment SMTP is configured
-  if (!smtpUser || !smtpPass) {
-    console.warn('System SMTP credentials are not configured on the server (SMTP_USER/SMTP_PASS).');
-    return {
-      success: false,
-      requiresSmtpConfig: false,
-      error: 'SMTP_NOT_CONFIGURED',
-      message:
-        'Sistem e-posta sunucusu geçici olarak aktif değil. Lütfen sunucu ortam değişkenlerini (SMTP_USER, SMTP_PASS) kontrol edin.',
-      method: 'failed',
-    };
-  }
-
-  // 2. Real SMTP delivery via Gmail or Custom Server
-  try {
-    const isGmail =
-      smtpService === 'gmail' ||
-      smtpHost?.includes('gmail') ||
-      (!smtpHost && smtpUser?.includes('@gmail.com'));
-
-    const cleanPass = smtpPass.replace(/\s+/g, '');
-    const portNum = Number(smtpPort) || (isGmail ? 465 : 587);
-
-    const transporter = isGmail
-      ? nodemailer.createTransport({
-          host: 'smtp.gmail.com',
-          port: portNum === 587 ? 587 : 465,
-          secure: portNum === 587 ? false : true,
-          auth: {
-            user: smtpUser,
-            pass: cleanPass,
-          },
-          requireTLS: true,
-          connectionTimeout: 10_000,
-          greetingTimeout: 10_000,
-          socketTimeout: 20_000,
-          tls: {
-            rejectUnauthorized: true,
-          },
-        })
-      : nodemailer.createTransport({
-          host: smtpHost || 'smtp.gmail.com',
-          port: portNum,
-          secure: portNum === 465,
-          auth: {
-            user: smtpUser,
-            pass: cleanPass,
-          },
-          requireTLS: true,
-          connectionTimeout: 10_000,
-          greetingTimeout: 10_000,
-          socketTimeout: 20_000,
-          tls: {
-            rejectUnauthorized: true,
-          },
-        });
-
-    await transporter.verify();
-
-    const info = await transporter.sendMail({
-      from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
-      to,
-      subject,
-      html,
-    });
-
-    return {
-      success: true,
-      message: `E-posta başarıyla ${to} adresine iletildi! (${info.messageId})`,
-      method: isGmail ? 'google_smtp' : 'custom_smtp',
-    };
-  } catch (err: any) {
-    console.error('SMTP delivery failed:', err);
-    return {
-      success: false,
-      message: `E-posta gönderilemedi (${err.code || 'HATA'}): ${err.message}. Gmail kullanıyorsanız 16 haneli 'Uygulama Şifresi' (App Password) oluşturduğunuzdan emin olun.`,
-      method: 'failed',
-    };
-  }
+  return sendEmailTransport({
+    to,
+    subject,
+    html,
+    customSmtp: payload.customSmtp,
+  });
 }
 
 export interface ProRequestEmailParams {
@@ -383,38 +490,11 @@ export async function sendProRequestAdminEmail(params: ProRequestEmailParams): P
 </body>
 </html>`;
 
-  // Send to admin email via transport
-  const smtpUser = (process.env.SMTP_USER || '').trim();
-  const smtpPass = (process.env.SMTP_PASS || '').trim();
-  const smtpHost = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
-  const smtpFrom = (process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
-
-  if (!smtpUser || !smtpPass) {
-    return { success: false, message: 'SMTP yapılandırılmamış.', method: 'failed' };
-  }
-
-  try {
-    const isGmail = smtpHost.includes('gmail') || smtpUser.includes('@gmail.com');
-    const transporter = nodemailer.createTransport({
-      host: isGmail ? 'smtp.gmail.com' : smtpHost,
-      port: smtpPort === 587 ? 587 : 465,
-      secure: smtpPort !== 587,
-      auth: { user: smtpUser, pass: smtpPass.replace(/\s+/g, '') },
-    });
-
-    await transporter.sendMail({
-      from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
-      to: adminEmail,
-      subject: `🔔 Yeni StockMind Pro Talebi: ${userName} (${userEmail})`,
-      html,
-    });
-
-    return { success: true, message: `Pro onay e-postası yöneticiye iletildi.` };
-  } catch (err: any) {
-    console.error('sendProRequestAdminEmail error:', err);
-    return { success: false, message: err.message };
-  }
+  return sendEmailTransport({
+    to: adminEmail,
+    subject: `🔔 Yeni StockMind Pro Talebi: ${userName} (${userEmail})`,
+    html,
+  });
 }
 
 export async function sendProApprovedUserEmail(params: { to: string; userName: string; appUrl: string }): Promise<SendEmailResult> {
@@ -471,36 +551,11 @@ export async function sendProApprovedUserEmail(params: { to: string; userName: s
 </body>
 </html>`;
 
-  const smtpUser = (process.env.SMTP_USER || '').trim();
-  const smtpPass = (process.env.SMTP_PASS || '').trim();
-  const smtpHost = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
-  const smtpFrom = (process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
-
-  if (!smtpUser || !smtpPass) {
-    return { success: false, message: 'SMTP yapılandırılmamış.', method: 'failed' };
-  }
-
-  try {
-    const isGmail = smtpHost.includes('gmail') || smtpUser.includes('@gmail.com');
-    const transporter = nodemailer.createTransport({
-      host: isGmail ? 'smtp.gmail.com' : smtpHost,
-      port: smtpPort === 587 ? 587 : 465,
-      secure: smtpPort !== 587,
-      auth: { user: smtpUser, pass: smtpPass.replace(/\s+/g, '') },
-    });
-
-    await transporter.sendMail({
-      from: smtpFrom.includes('<') ? smtpFrom : `StockMind <${smtpFrom}>`,
-      to,
-      subject: `🎉 Tebrikler! StockMind Pro Hesabınız Onaylandı`,
-      html,
-    });
-
-    return { success: true, message: `Kullanıcıya Pro onay bildirimi gönderildi.` };
-  } catch (err: any) {
-    console.error('sendProApprovedUserEmail error:', err);
-    return { success: false, message: err.message };
-  }
+  return sendEmailTransport({
+    to,
+    subject: `🎉 Tebrikler! StockMind Pro Hesabınız Onaylandı`,
+    html,
+  });
 }
+
 

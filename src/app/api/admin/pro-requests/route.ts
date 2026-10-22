@@ -48,6 +48,33 @@ export async function POST(request: Request) {
       },
     });
     if (updateError) throw updateError;
+
+    // Sync profiles table if present
+    try {
+      await admin.from('profiles').update({ is_pro: approved, plan: approved ? 'pro' : 'standard' }).eq('id', target.id);
+    } catch {
+      // profiles table is secondary
+    }
+
+    // If approved, send celebratory email to user
+    if (approved && target.email) {
+      const targetName =
+        target.user_metadata?.full_name ||
+        target.user_metadata?.name ||
+        target.email.split('@')[0] ||
+        'Değerli Yatırımcı';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev';
+      import('@/lib/email/service')
+        .then((m) =>
+          m.sendProApprovedUserEmail({
+            to: target.email!,
+            userName: targetName,
+            appUrl: baseUrl,
+          })
+        )
+        .catch((emailErr) => console.warn('Could not send pro approval user email:', emailErr));
+    }
+
     return NextResponse.json({ success: true, message: approved ? 'Pro hesabı aktif edildi.' : 'Talep reddedildi.' });
   } catch (error) { return apiErrorResponse(error); }
 }
