@@ -7,7 +7,7 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
-import { Button, Badge } from '@/components/ui';
+import { Button, Badge, Modal } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import {
@@ -40,11 +40,7 @@ const INITIAL_MESSAGES: Message[] = [
   {
     id: 'msg-welcome',
     role: 'assistant',
-    content: ` **Merhaba! Ben StockMind AI Finansal Danışmanınız.**
-
-Uygulamamızın canlı piyasa motoruna doğrudan bağlıyım. Anlık döviz kurları (USD/TRY, EUR/TRY), altın fiyatları, BIST 100 endeksi, hisse ve TEFAS fonları ile kendi portföyünüz hakkında gerçek zamanlı sorular sorabilirsiniz.
-
-Aşağıdaki hızlı konulardan birini seçebilir veya aklınızdaki soruyu doğrudan iletebilirsiniz:`,
+    content: `👋 **Merhaba! StockMind AI Finans Danışmanınıza hoş geldiniz.** Canlı piyasalar, hisseler, TEFAS fonları ve portföyünüz hakkında dilediğinizi sorabilirsiniz.`,
     createdAt: new Date().toISOString(),
   },
 ];
@@ -79,6 +75,20 @@ function AIAssistantContent() {
   } | null>(null);
   const [showProModal, setShowProModal] = useState(false);
   const [showQuotaExceededModal, setShowQuotaExceededModal] = useState(false);
+  const [showQuotaDetailsModal, setShowQuotaDetailsModal] = useState(false);
+  const [showModelModal, setShowModelModal] = useState(false);
+  const [modelSearchQuery, setModelSearchQuery] = useState('');
+  const [recentModels, setRecentModels] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('stockmind_recent_models');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setRecentModels(parsed);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -118,6 +128,33 @@ function AIAssistantContent() {
     return () => controller.abort();
   }, [user?.id]);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+
+  const handleSelectModel = (modelId: string) => {
+    const isProModel = models.some((m) => m.id === modelId && !m.free);
+    if (isProModel && !proModelsAllowed) {
+      setShowModelModal(false);
+      setShowProModal(true);
+      return;
+    }
+    setSelectedModel(modelId);
+    setShowModelModal(false);
+    try {
+      const nextRecent = [modelId, ...recentModels.filter((id) => id !== modelId)].slice(0, 4);
+      setRecentModels(nextRecent);
+      localStorage.setItem('stockmind_recent_models', JSON.stringify(nextRecent));
+    } catch {}
+  };
+
+  const currentModel = models.find((m) => m.id === selectedModel) || { id: selectedModel, name: selectedModel, free: true };
+  const queryLower = modelSearchQuery.trim().toLowerCase();
+  const searchFilter = (m: CatalogModel) =>
+    !queryLower || m.name.toLowerCase().includes(queryLower) || m.id.toLowerCase().includes(queryLower);
+
+  const filteredFreeModels = models.filter((m) => m.free && searchFilter(m));
+  const filteredProModels = models.filter((m) => !m.free && searchFilter(m));
+  const recentModelObjects = recentModels
+    .map((id) => models.find((m) => m.id === id))
+    .filter((m): m is CatalogModel => Boolean(m));
 
   const { containerRef, contentRef, showLatest, followLatest, onScroll, onTouchStart, onTouchEnd, onWheel } = useChatScroll(messages, currentSessionId);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -469,7 +506,38 @@ function AIAssistantContent() {
           <div className="flex items-center gap-2 min-w-0">
             <StockMindMark className={`${isKeyboardOpen ? 'w-6 h-6' : 'w-7 h-7'} shrink-0`} />
             <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm font-bold text-text-primary truncate">StockMind AI</h1>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="text-xs sm:text-sm font-bold text-text-primary truncate">StockMind AI</h1>
+                {customApiKey ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuotaDetailsModal(true)}
+                    title="Özel OpenRouter API anahtarı aktif (Limitsiz). Ayrıntılar için dokunun."
+                    className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors cursor-pointer shrink-0"
+                  >
+                    Limitsiz
+                  </button>
+                ) : quotaState ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowQuotaDetailsModal(true)}
+                    title={
+                      quotaState.remaining === 0
+                        ? 'Saatlik soru limitiniz doldu. Ayrıntılar için dokunun.'
+                        : `Kalan soru hakkı: ${quotaState.remaining}/${quotaState.isPro ? 20 : 5}. Ayrıntılar için dokunun.`
+                    }
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors cursor-pointer shrink-0 ${
+                      quotaState.remaining === 0
+                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/40 font-bold'
+                        : quotaState.remaining === 1
+                        ? 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/30 font-bold'
+                        : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
+                    }`}
+                  >
+                    {quotaState.remaining === 0 ? 'Limit doldu' : `${quotaState.remaining}/${quotaState.isPro ? 20 : 5}`}
+                  </button>
+                ) : null}
+              </div>
               <p className="text-[10px] text-text-muted truncate">Finans asistanı</p>
             </div>
           </div>
@@ -495,80 +563,38 @@ function AIAssistantContent() {
           </div>
         </div>
 
-        {/* Row 2: Model selector & Quota display - hide on mobile when typing to maximize chat space */}
-        <div className={`${isKeyboardOpen ? 'hidden sm:flex' : 'flex'} flex-col sm:flex-row sm:items-center gap-2 pt-1.5 border-t border-border/50`}>
-          <label className="flex items-center gap-2 text-xs text-text-muted flex-1 min-w-0">
-            <span className="shrink-0 font-medium">Model:</span>
-            <select
-              aria-label="AI modeli"
-              value={selectedModel}
-              onChange={(e) => {
-                const newModel = e.target.value;
-                const isProModel = models.some((m) => m.id === newModel && !m.free);
-                if (isProModel && !proModelsAllowed) {
-                  setShowProModal(true);
-                  return;
-                }
-                setSelectedModel(newModel);
+        {/* Row 2: Compact Model selector chip - hide on mobile when typing */}
+        <div className={`${isKeyboardOpen ? 'hidden sm:flex' : 'flex'} items-center justify-between gap-2 pt-1.5 border-t border-border/50`}>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <span className="text-[11px] text-text-muted shrink-0 font-medium">Model:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setModelSearchQuery('');
+                setShowModelModal(true);
               }}
-              className="flex-1 min-w-0 h-9 px-2.5 rounded-xl bg-bg-input border border-border text-xs text-text-primary focus:border-accent focus:outline-none"
+              className="inline-flex items-center gap-1.5 h-7.5 px-2.5 rounded-xl bg-bg-secondary hover:bg-bg-hover border border-border text-xs text-text-primary transition-colors cursor-pointer max-w-full truncate"
+              title="AI Modeli Seçin"
             >
-              {!models.some(model => model.id === selectedModel) && <option value={selectedModel}>{selectedModel} · Kaydedilen seçim</option>}
-              <optgroup label="Ücretsiz modeller">
-                {models.filter((model) => model.free).map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Pro modeller">
-                {models.filter((model) => !model.free).map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name} {proModelsAllowed ? '· Pro' : '🔒 (Pro)'}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </label>
-
-          {customApiKey ? (
-            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-              <span
-                title="Kendi OpenRouter API anahtarınız aktif: Platform saatlik soru kotası uygulanmaz."
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 text-[11px] font-semibold"
-              >
-                <UIIcon name="sparkles" className="w-3.5 h-3.5" />
-                <span>Özel Anahtar (Limitsiz)</span>
-              </span>
-            </div>
-          ) : (
-            quotaState && (
-              <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
-                {quotaState.isPro ? (
-                  <span
-                    title="StockMind Pro: Saatte 20 soru hakkı"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/25 text-[11px] font-semibold"
-                  >
-                    <UIIcon name="sparkles" className="w-3.5 h-3.5" />
-                    <span>{quotaState.remaining}/20 Hak</span>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowQuotaExceededModal(true)}
-                    title="Saatlik Soru Hakkı (Pro'da saat başı 20 soru)"
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium shrink-0 cursor-pointer transition-colors ${
-                      quotaState.remaining === 0
-                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20 font-bold'
-                        : 'bg-bg-secondary text-text-secondary border-border hover:border-accent/40 hover:text-text-primary'
-                    }`}
-                  >
-                    <span>{quotaState.remaining}/5 Hak</span>
-                    {quotaState.remaining === 0 && <span className="font-bold text-rose-400">(Dolu)</span>}
-                  </button>
-                )}
-              </div>
-            )
+              <span className="truncate font-medium">{currentModel.name}</span>
+              {currentModel.free ? (
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 font-semibold shrink-0">
+                  Ücretsiz
+                </span>
+              ) : (
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-800 dark:text-amber-400 font-semibold shrink-0">
+                  Pro
+                </span>
+              )}
+              <svg className="w-3 h-3 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+          {modelWarning && (
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 truncate max-w-[150px] shrink-0" title={modelWarning}>
+              {modelWarning}
+            </span>
           )}
         </div>
         {modelWarning && <p className="text-xs text-text-muted">{modelWarning}</p>}
@@ -907,6 +933,217 @@ function AIAssistantContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quota Details Modal */}
+      {showQuotaDetailsModal && (
+        <Modal
+          isOpen={showQuotaDetailsModal}
+          onClose={() => setShowQuotaDetailsModal(false)}
+          title="StockMind AI Soru Kotası"
+          size="sm"
+        >
+          <div className="space-y-4 py-2">
+            <div className="p-4 rounded-2xl bg-bg-secondary border border-border text-center space-y-1.5">
+              <p className="text-xs text-text-muted">Kalan Saatlik Soru Hakkı</p>
+              <p className="text-3xl font-extrabold text-text-primary">
+                {customApiKey ? 'Limitsiz' : quotaState ? `${quotaState.remaining} / ${quotaState.isPro ? 20 : 5}` : '5 / 5'}
+              </p>
+              <p className="text-[11px] text-text-muted">
+                {customApiKey
+                  ? 'Kendi OpenRouter anahtarınız aktif olduğu için soru kotası uygulanmaz.'
+                  : quotaState?.isPro
+                  ? 'StockMind Pro üyesisiniz. Her saat başı 20 soru hakkınız yenilenir.'
+                  : 'Ücretsiz plandasınız. Her saat başı 5 soru hakkınız yenilenir.'}
+              </p>
+            </div>
+
+            {!quotaState?.isPro && !customApiKey && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/25 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-500 text-sm">⭐</span>
+                  <p className="text-xs font-bold text-text-primary">StockMind Pro ile 4 Kat Fazla Soru</p>
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed">
+                  Pro üyeler saat başı 20 soru sorabilir ve GPT-4o, Claude 3.5 Sonnet gibi gelişmiş modelleri sınırsız kullanabilir.
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setShowQuotaDetailsModal(false);
+                    setShowProModal(true);
+                  }}
+                  className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-2 shadow-sm"
+                >
+                  Pro&apos;ya Yükselt (20 Soru/Saat)
+                </Button>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-1">
+              <Button variant="secondary" size="sm" onClick={() => setShowQuotaDetailsModal(false)}>
+                Kapat
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Model Selector Modal with Search, Recent, Free and Pro groups */}
+      {showModelModal && (
+        <Modal
+          isOpen={showModelModal}
+          onClose={() => setShowModelModal(false)}
+          title="AI Modeli Seçin"
+          description="Finans analizleri için optimize edilmiş açık ve ticari modeller"
+          size="md"
+        >
+          <div className="space-y-3 pt-1">
+            {/* Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Model ara... (örn: gpt, gemini, claude, deepseek)"
+                value={modelSearchQuery}
+                onChange={(e) => setModelSearchQuery(e.target.value)}
+                className="w-full h-10 pl-9 pr-8 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+                autoFocus
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">🔍</span>
+              {modelSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setModelSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted hover:text-text-primary"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="max-h-[55vh] overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+              {/* Son Kullanılanlar */}
+              {!modelSearchQuery && recentModelObjects.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+                    Son Kullanılanlar
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {recentModelObjects.map((model) => (
+                      <button
+                        key={`recent-${model.id}`}
+                        type="button"
+                        onClick={() => handleSelectModel(model.id)}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                          selectedModel === model.id
+                            ? 'border-accent bg-accent/10 text-text-primary'
+                            : 'border-border bg-bg-card hover:border-accent/40 text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-medium truncate">{model.name}</p>
+                        </div>
+                        {model.free ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 font-semibold shrink-0">
+                            Ücretsiz
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-800 dark:text-amber-400 font-semibold shrink-0">
+                            Pro
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ücretsiz Modeller */}
+              {filteredFreeModels.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
+                    Ücretsiz Modeller ({filteredFreeModels.length})
+                  </p>
+                  <div className="space-y-1">
+                    {filteredFreeModels.map((model) => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => handleSelectModel(model.id)}
+                        className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                          selectedModel === model.id
+                            ? 'border-accent bg-accent/10 text-text-primary'
+                            : 'border-border bg-bg-card hover:border-accent/40 text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-semibold truncate text-text-primary">{model.name}</p>
+                          <p className="text-[10px] text-text-muted truncate">{model.id}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+                            Ücretsiz
+                          </span>
+                          {selectedModel === model.id && (
+                            <span className="text-accent text-xs font-bold">✓</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pro Modeller */}
+              {filteredProModels.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-400 uppercase tracking-wider">
+                      Pro Modeller ({filteredProModels.length})
+                    </p>
+                    {!proModelsAllowed && (
+                      <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">Pro üyelik gerekir</span>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {filteredProModels.map((model) => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => handleSelectModel(model.id)}
+                        className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                          selectedModel === model.id
+                            ? 'border-accent bg-accent/10 text-text-primary'
+                            : 'border-border bg-bg-card hover:border-accent/40 text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-semibold truncate text-text-primary">{model.name}</p>
+                          <p className="text-[10px] text-text-muted truncate">{model.id}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {proModelsAllowed ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-800 dark:text-amber-400 font-semibold border border-amber-500/20">
+                              Pro
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-bg-secondary text-text-muted border border-border flex items-center gap-1">
+                              🔒 Pro
+                            </span>
+                          )}
+                          {selectedModel === model.id && (
+                            <span className="text-accent text-xs font-bold">✓</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Pro Upgrade Request Modal */}

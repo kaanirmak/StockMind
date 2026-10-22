@@ -66,10 +66,10 @@
 :root,
 html.light {
   color-scheme: light;
-  --semantic-success: #047857;
-  --semantic-danger: #b91c1c;
-  --semantic-warning: #92400e;
-  --semantic-info: #1d4ed8;
+  --semantic-success: #065f46;
+  --semantic-danger: #991b1b;
+  --semantic-warning: #854d0e;
+  --semantic-info: #1e40af;
 
   /* Backgrounds */
   --bg-primary: #f8fafc;
@@ -83,7 +83,7 @@ html.light {
   --accent: #7c3aed;
   --accent-hover: #6d28d9;
   --accent-secondary: #9333ea;
-  --accent-glow: rgba(124, 58, 237, 0.2);
+  --accent-glow: rgba(124, 58, 237, 0.15);
 
   /* Text */
   --text-primary: #0f172a;
@@ -97,10 +97,10 @@ html.light {
   --border-accent: rgba(124, 58, 237, 0.35);
 
   /* Shadows */
-  --shadow-glow: 0 0 20px rgba(124, 58, 237, 0.15), 0 0 40px rgba(124, 58, 237, 0.08);
+  --shadow-glow: 0 0 16px rgba(124, 58, 237, 0.10);
   --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
   --shadow-elevated: 0 12px 36px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
-  --shadow-purple: 0 8px 30px -4px rgba(124, 58, 237, 0.15);
+  --shadow-purple: 0 4px 20px -2px rgba(124, 58, 237, 0.12);
 
   /* Scrollbar */
   --scrollbar-thumb: #cbd5e1;
@@ -108,7 +108,7 @@ html.light {
 }
 
 /* ═══════════════════════════════════════════
-   Dark Theme (Siyah Plan) — Sleek, Violet Glassmorphic
+   Dark Theme (Siyah Plan) — Refined Slate Dark with Crisp Card Boundaries
    ═══════════════════════════════════════════ */
 html.dark {
   color-scheme: dark;
@@ -117,19 +117,19 @@ html.dark {
   --semantic-warning: #fbbf24;
   --semantic-info: #60a5fa;
 
-  /* Backgrounds — True OLED Pitch Black */
+  /* Backgrounds — True OLED Pitch Black Base with Clear Card Contrast */
   --bg-primary: #000000;
-  --bg-secondary: #08080a;
-  --bg-tertiary: #101014;
-  --bg-card: #0c0d12;
-  --bg-hover: #151620;
-  --bg-input: #060608;
+  --bg-secondary: #0d0f17;
+  --bg-tertiary: #141722;
+  --bg-card: #12141e;
+  --bg-hover: #1a1e2c;
+  --bg-input: #08090f;
 
   /* Accent */
   --accent: #8b5cf6;
   --accent-hover: #a78bfa;
   --accent-secondary: #c084fc;
-  --accent-glow: rgba(139, 92, 246, 0.3);
+  --accent-glow: rgba(139, 92, 246, 0.15);
 
   /* Text */
   --text-primary: #f8fafc;
@@ -138,15 +138,15 @@ html.dark {
   --text-inverse: #000000;
 
   /* Border */
-  --border: rgba(255, 255, 255, 0.09);
-  --border-hover: rgba(255, 255, 255, 0.18);
-  --border-accent: rgba(139, 92, 246, 0.35);
+  --border: rgba(255, 255, 255, 0.11);
+  --border-hover: rgba(255, 255, 255, 0.20);
+  --border-accent: rgba(139, 92, 246, 0.30);
 
-  /* Shadows */
-  --shadow-glow: 0 0 24px rgba(139, 92, 246, 0.2), 0 0 60px rgba(139, 92, 246, 0.08);
-  --shadow-card: 0 4px 28px rgba(0, 0, 0, 0.75), 0 1px 4px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 10px 48px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.5);
-  --shadow-purple: 0 0 35px rgba(139, 92, 246, 0.25), 0 0 90px rgba(139, 92, 246, 0.12);
+  /* Shadows — Subdued, focused shadows replacing heavy purple neon spills */
+  --shadow-glow: 0 0 16px rgba(139, 92, 246, 0.10);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.70), 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 10px 40px rgba(0, 0, 0, 0.85), 0 2px 10px rgba(0, 0, 0, 0.5);
+  --shadow-purple: 0 4px 24px -2px rgba(139, 92, 246, 0.10), 0 2px 8px -1px rgba(0, 0, 0, 0.6);
 
   /* Scrollbar */
   --scrollbar-thumb: #232433;

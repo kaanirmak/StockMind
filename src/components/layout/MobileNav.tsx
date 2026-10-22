@@ -150,14 +150,14 @@ export default function MobileNav() {
                     <svg className="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
                     </svg>
-                    <span>Açık</span>
+                    <span>Açık Tema</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                     </svg>
-                    <span>Koyu</span>
+                    <span>Koyu Tema</span>
                   </>
                 )}
               </button>
@@ -220,7 +220,7 @@ export default function MobileNav() {
                 }`}
               >
                 <span className={isActive ? 'text-accent animate-scale-in' : ''}>{item.icon}</span>
-                <span className="text-[10px] font-medium leading-none whitespace-nowrap">{'shortLabel' in item ? item.shortLabel : item.label}</span>
+                <span className="text-[11px] font-semibold tracking-tight leading-none whitespace-nowrap">{'shortLabel' in item ? item.shortLabel : item.label}</span>
                 {isActive && (
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-accent" />
                 )}
@@ -251,7 +251,7 @@ export default function MobileNav() {
                 </svg>
               )}
             </span>
-            <span className="text-[10px] font-medium leading-none whitespace-nowrap">Diğer</span>
+            <span className="text-[11px] font-semibold tracking-tight leading-none whitespace-nowrap">Diğer</span>
             {isMoreActive && !showMore && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-b-full bg-accent" />
             )}

@@ -12,7 +12,7 @@ import { type PerformancePeriod as MetricView } from '@/lib/portfolio/periodPerf
 
 export default function PortfolioSummary() {
   const router = useRouter();
-  const { getSummary, livePrices } = usePortfolioStore();
+  const { getSummary, livePrices, loading } = usePortfolioStore();
   const summary = getSummary();
   const [period, setPeriod] = useState<MetricView>('daily');
   const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
@@ -108,6 +108,24 @@ export default function PortfolioSummary() {
     }
   }, [summary, periodData, usdTry, currentPeriodObj]);
 
+  if (loading) {
+    return (
+      <div className="relative overflow-hidden rounded-3xl border border-border/50 bg-bg-card/80 backdrop-blur-xl p-3.5 sm:p-5 animate-pulse">
+        <div className="flex items-center justify-between gap-2.5 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-28 rounded-xl bg-bg-secondary/70" />
+            <div className="h-2 w-2 rounded-full bg-emerald-500/40" />
+          </div>
+          <div className="h-7 w-20 rounded-full bg-bg-secondary/70" />
+        </div>
+        <div className="space-y-2 py-1">
+          <div className="h-8 sm:h-9 w-48 rounded-xl bg-bg-secondary/80" />
+          <div className="h-4 w-36 rounded-lg bg-bg-secondary/50" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* ═══════════════════════════════════════════════════════
@@ -151,7 +169,7 @@ export default function PortfolioSummary() {
         />
 
         {/* Glass reflection top highlight */}
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-white/[0.07] to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/[0.07] to-transparent pointer-events-none" />
 
         {/* Subtle glass texture overlay */}
         <div
@@ -162,15 +180,15 @@ export default function PortfolioSummary() {
           }}
         />
 
-        <div className="relative z-10 p-4 sm:p-7">
+        <div className="relative z-10 p-3.5 sm:p-5">
           {/* Top row: Brand Logo + Single Period Switcher + Portföy Arrow */}
-          <div className="flex items-center justify-between gap-2.5 mb-4 sm:mb-6">
+          <div className="flex items-center justify-between gap-2.5 mb-2.5 sm:mb-3.5">
             {/* StockMind Logo on dark background */}
             <div className="flex items-center gap-2">
               <img
                 src="/logo-white.png"
                 alt="StockMind"
-                className="h-7 sm:h-9 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
+                className="h-6 sm:h-8 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
               />
               {/* Online/Canlı Göstergesi: Daima Yeşil */}
               <span className="relative flex h-2 w-2 ml-0.5">
