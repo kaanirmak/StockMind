@@ -220,7 +220,7 @@ export default function RegisterPage() {
             onChange={(e) => setFullName(e.target.value)}
             required
             placeholder="Adınız Soyadınız"
-            className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 text-sm"
+            className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 text-base sm:text-sm"
           />
         </div>
 
@@ -235,7 +235,7 @@ export default function RegisterPage() {
             onChange={(e) => setEmail(e.target.value)}
             required
             placeholder="ornek@email.com"
-            className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 text-sm"
+            className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 text-base sm:text-sm"
           />
         </div>
 
@@ -251,7 +251,7 @@ export default function RegisterPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="En az 6 karakter"
-              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 pr-12 text-sm"
+              className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 pr-12 text-base sm:text-sm"
             />
             <button
               type="button"
@@ -301,7 +301,7 @@ export default function RegisterPage() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
             placeholder="Şifrenizi tekrar girin"
-            className={`w-full px-4 py-3 rounded-xl bg-white border text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
+            className={`w-full min-h-[48px] px-4 py-3 rounded-xl bg-white border text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:ring-2 transition-all duration-200 text-base sm:text-sm ${
               confirmPassword.length > 0 && password !== confirmPassword
                 ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
                 : 'border-slate-200 dark:border-border focus:border-violet-500 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30'
@@ -315,7 +315,7 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading || (confirmPassword.length > 0 && password !== confirmPassword)}
-          className="w-full py-3.5 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white font-semibold shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30 hover:opacity-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm"
+          className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white font-bold text-sm sm:text-base shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30 hover:opacity-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
         >
           {loading ? (
             <div className="flex items-center justify-center gap-2">

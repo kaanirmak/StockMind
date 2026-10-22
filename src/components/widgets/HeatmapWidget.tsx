@@ -218,6 +218,7 @@ export interface HeatmapWidgetProps {
   transparent?: boolean;
   height?: number;
   hideFooter?: boolean;
+  theme?: 'dark' | 'light';
 }
 
 export default function HeatmapWidget({
@@ -226,6 +227,7 @@ export default function HeatmapWidget({
   transparent = false,
   height = 260,
   hideFooter = false,
+  theme = 'dark',
 }: HeatmapWidgetProps) {
   const { getSummary, livePrices, fetchPortfoliosAndTransactions } = usePortfolioStore();
   const summary = getSummary();
@@ -293,12 +295,16 @@ export default function HeatmapWidget({
     }
   };
 
+  const isLight = theme === 'light';
+
   return (
     <div
       className={`relative w-full rounded-3xl p-4 sm:p-5 transition-all duration-300 overflow-hidden select-none border ${
         transparent
-          ? 'bg-transparent border-white/10'
-          : 'bg-[var(--palette-color0f1422)] border-white/10 shadow-2xl'
+          ? 'bg-transparent border-border'
+          : isLight
+          ? 'bg-white border-slate-200 shadow-xl shadow-slate-900/5 text-slate-900'
+          : 'bg-[var(--palette-color0f1422)] border-white/10 shadow-2xl text-white'
       }`}
     >
       {/* Header Bar */}
@@ -309,23 +315,23 @@ export default function HeatmapWidget({
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
             </svg>
           </div>
-          <h3 className="text-xs sm:text-sm font-bold text-white tracking-tight flex items-center gap-1.5">
+          <h3 className={`text-xs sm:text-sm font-bold tracking-tight flex items-center gap-1.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
             <span>Isı Haritası</span>
-            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-white/10 text-white/70">
+            <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-full ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/10 text-white/70'}`}>
               {nodes.length} Varlık
             </span>
           </h3>
         </div>
 
         {/* Metric Switcher */}
-        <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold">
+        <div className={`flex items-center p-0.5 rounded-lg text-[10px] font-bold ${isLight ? 'bg-slate-100 border border-slate-200' : 'bg-white/5 border border-white/10'}`}>
           <button
             type="button"
             onClick={() => setMetric('daily')}
             className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
               metric === 'daily'
                 ? 'bg-accent text-white shadow-xs'
-                : 'text-white/60 hover:text-white'
+                : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-white/60 hover:text-white'
             }`}
           >
             Günlük

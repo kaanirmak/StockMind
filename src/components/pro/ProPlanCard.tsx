@@ -99,78 +99,84 @@ export function ProPlanCard({
           </div>
         )}
 
-        {/* Feature Matrix / Benefits */}
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">Yatırım Komitesi (4 Çoklu AI)</span>
-              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
-                {effectivePro ? '✓ Açık' : '🔒 Pro'}
-              </span>
+        {/* Collapsible Feature Matrix / Benefits */}
+        <details className="mt-3 group">
+          <summary className="text-xs text-amber-500 hover:text-amber-400 font-semibold cursor-pointer list-none flex items-center justify-between p-2.5 rounded-xl bg-bg-secondary/60 border border-border/50">
+            <span>✨ Tüm Pro Ayrıcalıklarını İncele (7 Özellik)</span>
+            <span className="transition-transform group-open:rotate-180 text-[10px]">▼</span>
+          </summary>
+          <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1">
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-text-primary">Yatırım Komitesi (4 AI)</span>
+                <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                  {effectivePro ? '✓ Açık' : '🔒 Pro'}
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted">Buffett, Lynch, Simons, Burry simülasyonu.</p>
             </div>
-            <p className="text-[11px] text-text-muted">Warren Buffett, Peter Lynch, Ray Dalio simülasyonları.</p>
-          </div>
 
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">Gelişmiş AI Modelleri</span>
-              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
-                {effectivePro ? '✓ Açık' : '🔒 Pro'}
-              </span>
+            <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1">
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-text-primary">Gelişmiş AI Modelleri</span>
+                <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                  {effectivePro ? '✓ Açık' : '🔒 Pro'}
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted">GPT-4o, Claude 3.5 Sonnet ve premium modeller.</p>
             </div>
-            <p className="text-[11px] text-text-muted">GPT-4o, Claude 3.5 Sonnet ve premium modeller.</p>
-          </div>
 
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">1.000 Simülasyonlu Monte Carlo</span>
-              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
-                {effectivePro ? '✓ Açık' : '🔒 Pro'}
-              </span>
+            <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1">
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-text-primary">Monte Carlo & Stres Testi</span>
+                <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                  {effectivePro ? '✓ Açık' : '🔒 Pro'}
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted">10.000 koşulu GBM simülasyonu ve VaR analizi.</p>
             </div>
-            <p className="text-[11px] text-text-muted">Gelişmiş volatilite ve adil değerleme analizleri.</p>
-          </div>
 
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">StockMind AI Bülteni (Canlı & E-posta)</span>
-              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
-                {effectivePro ? '✓ Açık' : '🔒 Pro'}
-              </span>
+            <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1">
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-text-primary">Günlük AI Kapanış Bülteni</span>
+                <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                  {effectivePro ? '✓ Açık' : '🔒 Pro'}
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted">Hisse bazlı sinyaller ve 18:30 e-posta bülteni.</p>
             </div>
-            <p className="text-[11px] text-text-muted">Hisse bazlı canlı zeka sinyalleri ve 18:30 günlük AI kapanış bülteni.</p>
-          </div>
 
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">Sınırsız Çoklu Portföy</span>
-              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
-                {effectivePro ? '✓ Açık' : '🔒 Pro'}
-              </span>
+            <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1">
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-text-primary">Sınırsız Portföy</span>
+                <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                  {effectivePro ? '✓ Sınırsız' : '🔒 1 Portföy'}
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted">Temettü, büyüme ve fonlar için ayrı portföyler.</p>
             </div>
-            <p className="text-[11px] text-text-muted">Farklı stratejiler (Temettü, Büyüme, Fon) için sınırsız portföy (Standart: 1).</p>
-          </div>
 
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">Sınırsız Akıllı Fiyat Alarmı</span>
-              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
-                {effectivePro ? '✓ Açık' : '🔒 Pro'}
-              </span>
+            <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1">
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-text-primary">Sınırsız Akıllı Alarm</span>
+                <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                  {effectivePro ? '✓ Sınırsız' : '🔒 3 Alarm'}
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted">Hedef fiyat ve yüzdesel eşik bildirimleri.</p>
             </div>
-            <p className="text-[11px] text-text-muted">Yüzdesel ve hedef fiyat bazlı sınırsız anlık sesli bildirim (Standart: 3).</p>
-          </div>
 
-          <div className="p-3 rounded-2xl bg-bg-secondary/40 border border-border/50 space-y-1.5">
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-text-primary">Genişletilmiş AI Soru Kotası</span>
-              <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
-                {effectivePro ? '✓ 20 Soru / Saat' : '🔒 5 Soru / Saat'}
-              </span>
+            <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1 sm:col-span-2">
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-text-primary">20 AI Soru / Saat Kotası</span>
+                <span className={effectivePro ? 'text-amber-400 font-bold' : 'text-text-muted'}>
+                  {effectivePro ? '✓ 20 Soru / Saat' : '🔒 5 Soru / Saat'}
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted">StockMind AI asistanıyla genişletilmiş saatlik soru limiti.</p>
             </div>
-            <p className="text-[11px] text-text-muted">StockMind AI ile saatte 20 soru sorabilme imkanı (Standart: 5 soru/saat).</p>
           </div>
-        </div>
+        </details>
       </div>
 
       <ProRequestModal

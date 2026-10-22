@@ -387,37 +387,49 @@ export default function AdminConsolePage() {
     );
   }
 
-  // View 1: Mobile Lockout Shield (Hardware Rule Enforcement)
+  // View 1: Mobile Friendly Desktop Requirement Information
   if (!isDesktop) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#05070e] p-6 text-center">
-        <div className="max-w-md rounded-3xl border border-red-500/30 bg-gradient-to-b from-[#110d18] to-[#0a0812] p-8 shadow-2xl shadow-red-500/10">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/15 text-3xl text-red-400 border border-red-500/30">
-            ⚠️
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-bg-primary p-6 text-center">
+        <div className="max-w-md w-full rounded-3xl border border-border bg-card/90 p-8 sm:p-10 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+          {/* Subtle Glow */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Desktop Screen Icon */}
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/15 text-accent border border-accent/25 shadow-sm">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3" />
+            </svg>
           </div>
-          <span className="inline-block rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-[11px] font-bold text-red-400 uppercase tracking-widest mb-3">
-            GÜVENLİK PROTOKOLÜ 403
-          </span>
-          <h1 className="text-xl font-extrabold text-white mb-2">Yetkisiz Cihaz Tipi</h1>
-          <p className="text-xs text-slate-300 leading-relaxed mb-6">
-            StockMind Yönetici Konsolu, kullanıcı yetkilendirmesi ve kritik finansal veritabanı işlemlerini barındırdığı için <strong>mobil ve tablet cihazlara kapalıdır</strong>.
+
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-bold mb-3">
+            <span>💻 Masaüstü Konsolu</span>
+          </div>
+
+          <h1 className="text-xl font-bold text-text-primary mb-2">
+            Masaüstü Cihaz Gerekli
+          </h1>
+
+          <p className="text-xs sm:text-sm text-text-secondary leading-relaxed mb-6">
+            StockMind Yönetici Konsolu; geniş veri tabloları, kullanıcı denetimi ve biyometrik donanım sensörü (Touch ID / Windows Hello) gerektirdiğinden yalnızca masaüstü tarayıcılarda çalışacak şekilde optimize edilmiştir.
           </p>
-          <div className="rounded-xl border border-white/5 bg-slate-900/60 p-4 text-left text-[11px] text-slate-400 space-y-2 mb-6">
+
+          <div className="rounded-2xl border border-border bg-bg-secondary/60 p-4 text-left text-xs text-text-muted space-y-2.5 mb-6">
             <div className="flex items-center gap-2">
-              <span className="text-emerald-400">✓</span> Yalnızca masaüstü tarayıcılardan erişilebilir.
+              <span className="text-emerald-500 font-bold">✓</span>
+              <span>Mac veya Windows bilgisayarınızın tarayıcısından bağlanabilirsiniz.</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-emerald-400">✓</span> Donanım biyometrik sensörü (Touch ID) gereklidir.
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-red-400">✕</span> Dokunmatik telefon ve tabletler engellenir.
+              <span className="text-accent font-bold">✓</span>
+              <span>Giriş sırasında parmak izi / biyometrik sensör ile doğrulanır.</span>
             </div>
           </div>
+
           <Link
             href="/dashboard"
-            className="inline-block w-full rounded-xl bg-slate-800 py-3 text-xs font-bold text-white hover:bg-slate-700 transition"
+            className="w-full min-h-[44px] py-3 px-4 rounded-xl bg-accent text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-accent/20 hover:opacity-90 transition-all cursor-pointer"
           >
-            ← Standart Uygulama Paneline Dön
+            <span>← Uygulama Paneline Dön</span>
           </Link>
         </div>
       </div>

@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
       ) : (
         <form onSubmit={handleReset} className="space-y-5">
           <div>
-            <label htmlFor="email" className="block text-xs font-medium text-text-secondary mb-1.5">
+            <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-text-secondary mb-1.5">
               E-posta Adresi
             </label>
             <div className="relative">
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
                 placeholder="ornek@email.com"
                 required
                 autoFocus
-                className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent transition placeholder:text-text-muted/60"
+                className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 shadow-xs dark:bg-bg-input dark:border-border dark:text-text-primary dark:placeholder:text-text-muted focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:focus:border-accent dark:focus:ring-accent/30 transition-all duration-200 text-base sm:text-sm"
               />
             </div>
           </div>
@@ -105,14 +105,11 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 bg-accent hover:bg-accent-secondary text-white font-medium text-sm rounded-xl transition duration-200 shadow-lg shadow-accent/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white font-bold text-sm sm:text-base shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30 hover:opacity-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 <span>Gönderiliyor...</span>
               </>
             ) : (

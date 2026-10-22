@@ -42,41 +42,36 @@ export default function WidgetsHubPage() {
 
   return (
     <div className="space-y-8 animate-fade-in max-w-7xl mx-auto pb-12">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-purple-900/20 via-accent/10 to-teal-900/20 border border-border backdrop-blur-xl relative overflow-hidden">
-        {/* Glow */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-accent/15 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 space-y-2 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 border border-accent/30 text-accent text-xs font-bold">
-            <span><UIIcon name="sparkles" className="w-4 h-4" /></span> CANLI STOCKMIND WIDGET MERKEZİ
+      {/* Compact Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent/15 border border-accent/25 text-accent text-[11px] font-bold mb-1.5">
+            <UIIcon name="sparkles" className="w-3.5 h-3.5" /> Canlı StockMind Widget'ları
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text-primary tracking-tight">
-            Piyasayı ve Portföyünüzü <br />
-            <span className="gradient-text">Her Yerden Anlık İzleyin</span>
+          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">
+            Widget Merkezi & Önizleme
           </h1>
-          <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
-            StockMind widget'larını Notion sayfalarınıza veya kendi web sitelerinize gömün,
-            masaüstünüzde yüzen bağımsız mini pencere olarak çalıştırın ya da Android telefonunuzdan takip edin.
+          <p className="text-xs text-text-muted mt-0.5">
+            Canlı widget önizlemeleriyle anlık verinizi deneyimleyin; sitenize gömün veya masaüstü penceresi açın.
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2.5 shrink-0">
           <button
             type="button"
             onClick={() => setApkModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+            className="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 min-h-[44px]"
           >
             <svg className="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993s-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.152-.5684.417.417 0 00-.569.152l-2.0223 3.503C15.583 8.359 13.856 8 12 8s-3.583.359-5.1352.949L4.8425 5.446a.417.417 0 00-.569-.152.416.416 0 00-.152.5684l1.997 3.459C2.688 11.086 0 14.887 0 19.341h24c0-4.454-2.688-8.255-6.1185-10.0196" />
             </svg>
-            <span> APK İndir (5.9 MB)</span>
+            <span>APK İndir</span>
           </button>
 
           <button
             type="button"
             onClick={() => openEmbedModal('portfolio')}
-            className="px-4 py-2.5 rounded-xl bg-accent text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-accent/25 hover:opacity-90 transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-accent text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-accent/25 hover:opacity-90 transition-all cursor-pointer min-h-[44px]"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
@@ -86,7 +81,7 @@ export default function WidgetsHubPage() {
         </div>
       </div>
 
-      {/* Widget Showcase Grid */}
+      {/* Widget Showcase Grid - Shows previews first! */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* WIDGET 1: Portföy Durumu (Günlük & Aylık) */}
         <div className="glass-card rounded-3xl border border-border p-6 flex flex-col justify-between space-y-6">
@@ -232,6 +227,18 @@ export default function WidgetsHubPage() {
               <span>iFrame</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Platform Capabilities Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-purple-950/40 via-card/80 to-teal-950/40 border border-border backdrop-blur-xl">
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-text-primary">
+            Masaüstü Akrilik Pencereler & Web Gömme
+          </h3>
+          <p className="text-xs text-text-secondary leading-relaxed">
+            Widget'ları macOS Sonoma akrilik pencere, Windows 11 Widget Panosu, Notion / web siteleri ve Android APK ile her yerden kesintisiz takip edebilirsiniz.
+          </p>
         </div>
       </div>
 

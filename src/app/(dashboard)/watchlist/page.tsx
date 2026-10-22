@@ -15,6 +15,7 @@ export default function WatchlistPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [selectedItemForAlert, setSelectedItemForAlert] = useState<WatchlistItem | null>(null);
+  const [activeOptionsId, setActiveOptionsId] = useState<string | null>(null);
 
   const [newAssetType, setNewAssetType] = useState<'stock' | 'fund'>('stock');
   const [selectedSymbol, setSelectedSymbol] = useState('');
@@ -93,79 +94,64 @@ export default function WatchlistPage() {
       </div>
 
       {syncStatus === 'error' && <div role="alert" className="rounded-xl p-3 bg-warning/10 text-warning text-sm flex items-center justify-between gap-2"><p>Değişiklikleriniz henüz hesabınıza kaydedilemedi.</p><Button variant="secondary" onClick={() => { retrySync(); void refreshFromServer(); }}>Tekrar Dene</Button></div>}
-      {/* Watchlist Mobile Card View (md:hidden) */}
-      <div className="md:hidden space-y-3">
+      {/* Watchlist Mobile Compact Card View (md:hidden) */}
+      <div className="md:hidden space-y-2.5">
         {items.length === 0 ? (
           <div className="glass-card p-8 text-center text-text-muted space-y-3">
             <p className="text-sm font-medium text-text-secondary">İzleme listenizde henüz varlık bulunmuyor.</p>
             <p className="text-xs">Takip etmek istediğiniz hisse veya fonları ekleyebilirsiniz.</p>
-
           </div>
         ) : (
           items.map((item) => {
             const isPositive = item.changePercent >= 0;
             const link = item.assetType === 'stock' ? `/stocks/${item.symbol}` : `/funds/${item.symbol}`;
             const curr = item.exchange === 'NASDAQ' || item.exchange === 'NYSE' ? '$' : '₺';
+            const isOptionsOpen = activeOptionsId === item.id;
 
             return (
               <div
                 key={`m-wl-${item.id}`}
                 data-watchlist-id={item.id}
-                className="glass-card p-4 rounded-3xl border border-border/80 shadow-xs hover:border-accent/40 transition-all flex flex-col gap-3"
+                className="glass-card p-3 rounded-2xl border border-border/70 hover:border-accent/40 transition-all flex flex-col gap-2 relative"
               >
-                {/* Header: Logo, Symbol, Name & Market Badge */}
-                <div className="flex items-center justify-between">
+                {/* Row 1: Symbol, Logo, Market & Price + Change in single row */}
+                <div className="flex items-center justify-between gap-2">
                   <Link href={link} className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <InstrumentLogo symbol={item.symbol} name={item.name} size="md" />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-text-primary hover:text-accent transition-colors">
+                    <InstrumentLogo symbol={item.symbol} name={item.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-sm text-text-primary hover:text-accent transition-colors font-mono">
                           {item.symbol}
                         </span>
                         <Badge variant={item.assetType === 'stock' ? 'purple' : 'info'} size="sm">
                           {item.exchange || item.assetType}
                         </Badge>
                       </div>
-                      <span className="text-xs text-text-muted truncate block">
+                      <span className="text-[11px] text-text-muted truncate block max-w-[130px]">
                         {item.name}
                       </span>
                     </div>
                   </Link>
 
-                  <ReorderHandle id={item.id} symbol={item.symbol} />
-                  {/* Remove Button */}
-                  <button
-                    onClick={() => handleRemoveItem(item.id, item.symbol)}
-                    className="p-1.5 text-text-muted hover:text-danger rounded-lg transition-colors cursor-pointer shrink-0"
-                    title="Listeden Çıkar"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Price & Change Row */}
-                <div className="flex items-center justify-between pt-3 border-t border-border/40">
-                  <div>
-                    <span className="text-[10px] text-text-muted block">Anlık Fiyat</span>
-                    <span className="text-base font-bold font-mono text-text-primary">
+                  {/* Price & Change */}
+                  <div className="text-right shrink-0">
+                    <div className="font-mono text-sm font-bold text-text-primary">
                       {curr}{item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: item.assetType === 'fund' ? 4 : 2 })}
+                    </div>
+                    <span
+                      className={`font-semibold text-[11px] px-1.5 py-0.5 rounded font-mono inline-block ${
+                        isPositive ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
+                      }`}
+                    >
+                      {isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%
                     </span>
                   </div>
-
-                  <span
-                    className={`font-semibold text-xs px-2.5 py-1 rounded-lg font-mono ${
-                      isPositive ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
-                    }`}
-                  >
-                    {isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%
-                  </span>
                 </div>
 
-                {/* Footer: Target Price / Alarm & Quick Actions */}
-                <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs">
-                  <div>
+                {/* Row 2: Alarm Status, Reorder Handle & Options Menu */}
+                <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-xs">
+                  {/* Alarm chip */}
+                  <div className="min-w-0">
                     {item.targetPrice ? (
                       <button
                         type="button"
@@ -173,17 +159,15 @@ export default function WatchlistPage() {
                           setSelectedItemForAlert(item);
                           setIsAlertModalOpen(true);
                         }}
-                        className="inline-flex items-center gap-1.5 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-1 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded-lg text-[11px] font-mono font-semibold transition-colors cursor-pointer"
                         title="Alarmı düzenle veya kaldır"
                       >
-                        <Icon name="bell" className="h-4 w-4" />
-                        <span>
+                        <Icon name="bell" className="h-3 w-3" />
+                        <span className="truncate max-w-[150px]">
                           {item.alertType === 'percent_up'
-                            ? `+%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                            ? `+${item.alertPercent}% (₺${item.targetPrice.toFixed(2)})`
                             : item.alertType === 'percent_down'
-                            ? `-%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
-                            : item.alertType === 'percent_both'
-                            ? `±%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                            ? `-${item.alertPercent}% (₺${item.targetPrice.toFixed(2)})`
                             : `₺${item.targetPrice.toFixed(2)}`}
                         </span>
                       </button>
@@ -194,19 +178,79 @@ export default function WatchlistPage() {
                           setSelectedItemForAlert(item);
                           setIsAlertModalOpen(true);
                         }}
-                        className="text-xs text-text-muted hover:text-accent font-medium flex items-center gap-1 transition-colors cursor-pointer py-1"
+                        className="text-[11px] text-text-muted hover:text-accent font-medium flex items-center gap-1 transition-colors cursor-pointer py-0.5"
                       >
-                        <Icon name="bell" className="h-4 w-4" />
+                        <Icon name="bell" className="h-3 w-3" />
                         <span>Alarm Kur</span>
                       </button>
                     )}
                   </div>
 
-                  <Link href={link}>
-                    <Button variant="ghost" size="sm" className="text-xs font-semibold">
-                      Grafik & Detay &rarr;
-                    </Button>
-                  </Link>
+                  {/* Right side: Reorder + Options Button */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <ReorderHandle id={item.id} symbol={item.symbol} />
+
+                    {/* Options (Three Dots) Trigger */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setActiveOptionsId(isOptionsOpen ? null : item.id)}
+                        aria-label={`${item.symbol} seçenekleri`}
+                        className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors cursor-pointer"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                        </svg>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isOptionsOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setActiveOptionsId(null)}
+                          />
+                          <div className="absolute right-0 bottom-full mb-1 w-44 z-50 bg-bg-card border border-border/80 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in zoom-in-95">
+                            <Link
+                              href={link}
+                              onClick={() => setActiveOptionsId(null)}
+                              className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-text-primary hover:bg-bg-hover rounded-lg transition-colors"
+                            >
+                              <Icon name="chart" className="w-3.5 h-3.5 text-accent" />
+                              <span>Grafik & Detay</span>
+                            </Link>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveOptionsId(null);
+                                setSelectedItemForAlert(item);
+                                setIsAlertModalOpen(true);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-text-primary hover:bg-bg-hover rounded-lg transition-colors cursor-pointer text-left"
+                            >
+                              <Icon name="bell" className="w-3.5 h-3.5 text-warning" />
+                              <span>Fiyat Alarmı</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveOptionsId(null);
+                                handleRemoveItem(item.id, item.symbol);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-danger hover:bg-danger/10 rounded-lg transition-colors cursor-pointer text-left font-medium"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              <span>Listeden Kaldır</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             );

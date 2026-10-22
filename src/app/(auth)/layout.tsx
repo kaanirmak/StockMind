@@ -117,7 +117,7 @@ export default function AuthLayout({
       </div>
 
       {/* Right Side — Form Container */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative bg-white dark:bg-bg-primary">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-5 sm:px-10 pt-16 sm:pt-12 pb-8 sm:pb-12 relative bg-white dark:bg-bg-primary min-h-screen">
         <div className="w-full max-w-md animate-fade-in-up">
           {children}
         </div>
