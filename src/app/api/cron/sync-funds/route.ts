@@ -34,10 +34,13 @@ async function handleSync(request: Request) {
     }
 
     const code = searchParams.get('code') || undefined;
-    const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
+    const rawLimit = searchParams.get('limit');
+    // Cloudflare Workers enforces a strict limit on subrequests (max 50 per free invocation).
+    // Default to a safe batch of 25 funds unless explicitly overridden or syncing a specific code.
+    const limit = rawLimit ? (rawLimit === 'all' ? undefined : Number(rawLimit)) : (code ? 1 : 25);
     const includeHistory = searchParams.get('includeHistory') === 'true';
 
-    console.log(`[Cron:sync-funds] Starting daily TEFAS sync at 18:30 (code=${code || 'all'}, limit=${limit || 'all'})...`);
+    console.log(`[Cron:sync-funds] Starting daily TEFAS sync at 18:30 (code=${code || 'top'}, limit=${limit || 'all'})...`);
 
     const result = await syncTefasFundsToDatabase({
       code,

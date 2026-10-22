@@ -192,19 +192,31 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
     let priceHistory: { tarih: string; fiyat: number }[] = [];
 
     if (bilgiRes && bilgiRes.ok) {
-      const bJson = await bilgiRes.json();
-      bilgi = bJson.resultList?.[0] || null;
+      try {
+        const bJson = await bilgiRes.json();
+        bilgi = bJson.resultList?.[0] || null;
+      } catch {
+        bilgi = null;
+      }
     }
 
     if (profilRes && profilRes.ok) {
-      const pJson = await profilRes.json();
-      profil = pJson.resultList?.[0] || null;
+      try {
+        const pJson = await profilRes.json();
+        profil = pJson.resultList?.[0] || null;
+      } catch {
+        profil = null;
+      }
     }
 
     if (fiyatRes && fiyatRes.ok) {
-      const fJson = await fiyatRes.json();
-      if (Array.isArray(fJson.resultList)) {
-        priceHistory = fJson.resultList.filter((p: any) => Number(p.fiyat) > 0);
+      try {
+        const fJson = await fiyatRes.json();
+        if (Array.isArray(fJson.resultList)) {
+          priceHistory = fJson.resultList.filter((p: any) => Number(p.fiyat) > 0);
+        }
+      } catch {
+        priceHistory = [];
       }
     }
 

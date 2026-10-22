@@ -91,9 +91,38 @@ export async function POST(request: Request) {
     const adminEmail = (
       process.env.ADMIN_EMAIL ||
       process.env.SMTP_USER ||
-      process.env.SMTP_FROM ||
-      'admin@stockmind.com'
+      'kaanrmak7@gmail.com'
     ).trim();
+
+    // If the requesting user is the system administrator, grant Pro immediately
+    if (userEmail.toLowerCase() === adminEmail.toLowerCase()) {
+      try {
+        const admin = createAdminClient();
+        await admin.auth.admin.updateUserById(user.id, {
+          app_metadata: { ...user.app_metadata, plan: 'pro', is_pro: true },
+          user_metadata: {
+            ...user.user_metadata,
+            plan: 'pro',
+            is_pro: true,
+            pro_request_status: 'approved',
+            pro_approved_at: new Date().toISOString(),
+          },
+        });
+        try {
+          await admin.from('profiles').update({ is_pro: true, plan: 'pro' }).eq('id', user.id);
+        } catch {
+          // profiles table is secondary
+        }
+        return NextResponse.json({
+          success: true,
+          alreadyPro: false,
+          approved: true,
+          message: 'Yönetici hesabınız için StockMind Pro yetkileri başarıyla aktif edildi! 🎉',
+        });
+      } catch (autoErr) {
+        console.warn('Auto-approval for admin account encountered an issue:', autoErr);
+      }
+    }
 
     // Dispatch email to admin
     const emailResult = await sendProRequestAdminEmail({
