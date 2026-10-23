@@ -1,4 +1,4 @@
-import { readOpenRouterResponse } from './openrouter';
+import { OpenRouterError, readOpenRouterResponse } from './openrouter';
 import { palette } from '@/theme/palette';
 import { getModelCatalog, selectStructuredModel } from './modelCatalog';
 import { getAIRuntimePolicy } from './runtimePolicy';
