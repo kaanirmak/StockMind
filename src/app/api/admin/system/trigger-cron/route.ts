@@ -12,7 +12,10 @@ export async function POST(request: Request) {
     const job = String(body.job || '').trim();
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev';
-    const cronSecret = process.env.CRON_SECRET || 'stockmind_cron_secret_2026_secure';
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    if (!cronSecret) {
+      throw new ApiError(500, 'CRON_SECRET sunucu ortamında yapılandırılmamış.');
+    }
 
     switch (job) {
       case 'sync-funds': {

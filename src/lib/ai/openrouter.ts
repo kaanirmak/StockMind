@@ -40,8 +40,9 @@ Görevlerin:
 
 
 export const FALLBACK_FREE_MODELS = [
-  'minimax/minimax-m3.1-flash:free',
-  'liquid/lfm-2.5-2.6b:free',
+  'openrouter/free',
+  'recursive/flint-v1.0:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
   'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
 ];
 
@@ -65,10 +66,8 @@ export async function callOpenRouter(
   if (options?.concise ?? policy.briefByDefault) effectiveSystemPrompt += `\n\n${briefChatInstructions(policy.briefWordTarget)}`;
 
   const modelsToTry = [requestedModel];
-  if (requestedModel === DEFAULT_MODEL) {
-    for (const fb of FALLBACK_FREE_MODELS) {
-      if (!modelsToTry.includes(fb)) modelsToTry.push(fb);
-    }
+  for (const fb of FALLBACK_FREE_MODELS) {
+    if (!modelsToTry.includes(fb)) modelsToTry.push(fb);
   }
 
   let lastError: unknown = null;
@@ -102,7 +101,12 @@ export async function callOpenRouter(
     } catch (error: any) {
       if (options?.signal?.aborted) throw new OpenRouterError(499, 'AI_CANCELLED', 'AI isteği iptal edildi.');
       lastError = error;
-      if (error instanceof OpenRouterError && (error.code === 'AI_PROVIDER_UNAUTHORIZED' || error.code === 'AI_KEY_REQUIRED')) {
+      if (error instanceof OpenRouterError && (
+        error.code === 'AI_PROVIDER_UNAUTHORIZED' ||
+        error.code === 'AI_KEY_REQUIRED' ||
+        error.code === 'AI_DAILY_FREE_LIMIT_REACHED' ||
+        error.code === 'AI_CREDITS_REQUIRED'
+      )) {
         throw error;
       }
       if (i < modelsToTry.length - 1) {
@@ -131,14 +135,44 @@ export async function readOpenRouterResponse(response: Response): Promise<string
   }
   if (!response.ok || data?.error) {
     const code = response.ok ? Number(data.error.code) : response.status;
+    const errDetail = typeof data?.error === 'object' ? String(data?.error?.message || '') : '';
+    const limitSource = typeof data?.error?.metadata?.limit_source === 'string' ? data.error.metadata.limit_source : '';
     if (code === 401) throw new OpenRouterError(401, 'AI_PROVIDER_UNAUTHORIZED', 'OpenRouter anahtarı reddedildi.');
     if (code === 403) throw new OpenRouterError(403, 'AI_PROVIDER_FORBIDDEN', 'Sağlayıcı bu isteğe izin vermiyor. Model veya gizlilik ayarlarınızı kontrol edin.');
     if (code === 402) throw new OpenRouterError(402, 'AI_CREDITS_REQUIRED', 'OpenRouter kredisi yetersiz.');
-    if (code === 429) throw new OpenRouterError(429, 'AI_RATE_LIMITED', 'AI servisinin istek sınırına ulaşıldı.');
+    if (code === 429) {
+      if (errDetail.includes('free-models-per-day') || limitSource === 'openrouter_free_tier_daily') {
+        throw new OpenRouterError(429, 'AI_DAILY_FREE_LIMIT_REACHED', 'OpenRouter günlük ücretsiz model kotası (50 istek/gün) doldu. Ayarlar > AI bölümünden kendi API anahtarınızı tanımlayabilir veya yarın tekrar deneyebilirsiniz.');
+      }
+      throw new OpenRouterError(429, 'AI_RATE_LIMITED', 'AI servisinin istek sınırına ulaşıldı.');
+    }
     if (code === 408 || code === 504) throw new OpenRouterError(504, 'AI_TIMEOUT', 'AI isteği zaman aşımına uğradı.');
     throw new OpenRouterError(503, 'AI_PROVIDER_UNAVAILABLE', 'AI sağlayıcısı şu anda yanıt veremiyor.');
   }
-  const content = data?.choices?.[0]?.message?.content;
+  let content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) {
+    if (typeof data?.choices?.[0]?.text === 'string' && data.choices[0].text.trim()) {
+      content = data.choices[0].text.trim();
+    }
+  }
+  if (typeof content !== 'string' || !content.trim()) {
+    const reasoning = data?.choices?.[0]?.message?.reasoning;
+    if (typeof reasoning === 'string' && reasoning.trim()) {
+      const trimmed = reasoning.trim();
+      const jsonStart = trimmed.indexOf('{');
+      const jsonEnd = trimmed.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        const potentialJson = trimmed.slice(jsonStart, jsonEnd + 1);
+        try {
+          JSON.parse(potentialJson);
+          content = potentialJson;
+        } catch (_) {}
+      }
+      if (typeof content !== 'string' || !content.trim()) {
+        content = trimmed;
+      }
+    }
+  }
   if (typeof content !== 'string' || !content.trim()) {
     throw new OpenRouterError(502, 'AI_INVALID_RESPONSE', 'Model boş yanıt verdi. Başka bir model seçin veya tekrar deneyin.');
   }

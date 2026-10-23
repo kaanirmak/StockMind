@@ -551,3 +551,34 @@ test('AI response parser rejects safety classifier outputs and model catalog fil
   assert.ok(catalog.some(m => m.id === 'minimax/minimax-m3.1-flash:free'));
   assert.ok(!catalog.some(m => m.id === 'nvidia/nemotron-3.5-content-safety:free'));
 });
+
+test('AI response parser detects openrouter_free_tier_daily rate limit and falls back to reasoning text when content is null', async () => {
+  const { readOpenRouterResponse } = load('src/lib/ai/openrouter.ts');
+  const rateLimitResponse = {
+    ok: false,
+    status: 429,
+    json: async () => ({
+      error: {
+        message: 'Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day',
+        code: 429,
+        metadata: { limit_source: 'openrouter_free_tier_daily' }
+      }
+    })
+  };
+  await assert.rejects(readOpenRouterResponse(rateLimitResponse), e => e.code === 'AI_DAILY_FREE_LIMIT_REACHED');
+
+  const reasoningOnlyResponse = {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      choices: [{
+        finish_reason: 'stop',
+        message: { content: null, reasoning: 'Modelin analiz düşüncesi ve cevabı buradadır.' }
+      }]
+    })
+  };
+  const extracted = await readOpenRouterResponse(reasoningOnlyResponse);
+  assert.equal(extracted, 'Modelin analiz düşüncesi ve cevabı buradadır.');
+});
+
+

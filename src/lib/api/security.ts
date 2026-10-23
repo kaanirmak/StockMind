@@ -139,3 +139,15 @@ export function optionalText(value: unknown, maxLength: number): string | undefi
   }
   return value.trim() || undefined;
 }
+
+/** Escapes untrusted text before interpolation into HTML documents or emails (SEC-01, SEC-03). */
+export function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
