@@ -101,7 +101,12 @@ export async function callOpenRouter(
     } catch (error: any) {
       if (options?.signal?.aborted) throw new OpenRouterError(499, 'AI_CANCELLED', 'AI isteği iptal edildi.');
       lastError = error;
-      if (error instanceof OpenRouterError && (error.code === 'AI_PROVIDER_UNAUTHORIZED' || error.code === 'AI_KEY_REQUIRED')) {
+      if (error instanceof OpenRouterError && (
+        error.code === 'AI_PROVIDER_UNAUTHORIZED' ||
+        error.code === 'AI_KEY_REQUIRED' ||
+        error.code === 'AI_DAILY_FREE_LIMIT_REACHED' ||
+        error.code === 'AI_CREDITS_REQUIRED'
+      )) {
         throw error;
       }
       if (i < modelsToTry.length - 1) {
@@ -130,10 +135,17 @@ export async function readOpenRouterResponse(response: Response): Promise<string
   }
   if (!response.ok || data?.error) {
     const code = response.ok ? Number(data.error.code) : response.status;
+    const errDetail = typeof data?.error === 'object' ? String(data?.error?.message || '') : '';
+    const limitSource = typeof data?.error?.metadata?.limit_source === 'string' ? data.error.metadata.limit_source : '';
     if (code === 401) throw new OpenRouterError(401, 'AI_PROVIDER_UNAUTHORIZED', 'OpenRouter anahtarı reddedildi.');
     if (code === 403) throw new OpenRouterError(403, 'AI_PROVIDER_FORBIDDEN', 'Sağlayıcı bu isteğe izin vermiyor. Model veya gizlilik ayarlarınızı kontrol edin.');
     if (code === 402) throw new OpenRouterError(402, 'AI_CREDITS_REQUIRED', 'OpenRouter kredisi yetersiz.');
-    if (code === 429) throw new OpenRouterError(429, 'AI_RATE_LIMITED', 'AI servisinin istek sınırına ulaşıldı.');
+    if (code === 429) {
+      if (errDetail.includes('free-models-per-day') || limitSource === 'openrouter_free_tier_daily') {
+        throw new OpenRouterError(429, 'AI_DAILY_FREE_LIMIT_REACHED', 'OpenRouter günlük ücretsiz model kotası (50 istek/gün) doldu. Ayarlar > AI bölümünden kendi API anahtarınızı tanımlayabilir veya yarın tekrar deneyebilirsiniz.');
+      }
+      throw new OpenRouterError(429, 'AI_RATE_LIMITED', 'AI servisinin istek sınırına ulaşıldı.');
+    }
     if (code === 408 || code === 504) throw new OpenRouterError(504, 'AI_TIMEOUT', 'AI isteği zaman aşımına uğradı.');
     throw new OpenRouterError(503, 'AI_PROVIDER_UNAVAILABLE', 'AI sağlayıcısı şu anda yanıt veremiyor.');
   }
@@ -147,13 +159,17 @@ export async function readOpenRouterResponse(response: Response): Promise<string
     const reasoning = data?.choices?.[0]?.message?.reasoning;
     if (typeof reasoning === 'string' && reasoning.trim()) {
       const trimmed = reasoning.trim();
-      const jsonStart = trimmed.lastIndexOf('{');
-      if (jsonStart !== -1) {
-        const potentialJson = trimmed.slice(jsonStart);
+      const jsonStart = trimmed.indexOf('{');
+      const jsonEnd = trimmed.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        const potentialJson = trimmed.slice(jsonStart, jsonEnd + 1);
         try {
           JSON.parse(potentialJson);
           content = potentialJson;
         } catch (_) {}
+      }
+      if (typeof content !== 'string' || !content.trim()) {
+        content = trimmed;
       }
     }
   }
