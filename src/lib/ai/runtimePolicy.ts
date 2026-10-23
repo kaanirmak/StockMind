@@ -8,7 +8,7 @@ export function getAIRuntimePolicy(env: Record<string, string | undefined> = pro
   return {
     timeoutMs: positiveSetting(env.AI_PROVIDER_TIMEOUT_MS, 30_000, 120_000),
     chatMaxTokens: positiveSetting(env.AI_CHAT_MAX_TOKENS, 1500, 16000),
-    committeeMaxTokens: positiveSetting(env.AI_COMMITTEE_MAX_TOKENS, 2000, 16000),
+    committeeMaxTokens: positiveSetting(env.AI_COMMITTEE_MAX_TOKENS, 3500, 16000),
     briefWordTarget: positiveSetting(env.AI_CHAT_BRIEF_WORD_TARGET, 80, 500),
     briefByDefault: env.AI_CHAT_RESPONSE_STYLE !== 'standard',
     committeeModel: env.AI_COMMITTEE_MODEL?.trim(),

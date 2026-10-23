@@ -40,8 +40,9 @@ Görevlerin:
 
 
 export const FALLBACK_FREE_MODELS = [
-  'minimax/minimax-m3.1-flash:free',
-  'liquid/lfm-2.5-2.6b:free',
+  'openrouter/free',
+  'recursive/flint-v1.0:free',
+  'nvidia/nemotron-3-ultra-550b-a55b:free',
   'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
 ];
 
@@ -65,10 +66,8 @@ export async function callOpenRouter(
   if (options?.concise ?? policy.briefByDefault) effectiveSystemPrompt += `\n\n${briefChatInstructions(policy.briefWordTarget)}`;
 
   const modelsToTry = [requestedModel];
-  if (requestedModel === DEFAULT_MODEL) {
-    for (const fb of FALLBACK_FREE_MODELS) {
-      if (!modelsToTry.includes(fb)) modelsToTry.push(fb);
-    }
+  for (const fb of FALLBACK_FREE_MODELS) {
+    if (!modelsToTry.includes(fb)) modelsToTry.push(fb);
   }
 
   let lastError: unknown = null;
@@ -138,7 +137,26 @@ export async function readOpenRouterResponse(response: Response): Promise<string
     if (code === 408 || code === 504) throw new OpenRouterError(504, 'AI_TIMEOUT', 'AI isteği zaman aşımına uğradı.');
     throw new OpenRouterError(503, 'AI_PROVIDER_UNAVAILABLE', 'AI sağlayıcısı şu anda yanıt veremiyor.');
   }
-  const content = data?.choices?.[0]?.message?.content;
+  let content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) {
+    if (typeof data?.choices?.[0]?.text === 'string' && data.choices[0].text.trim()) {
+      content = data.choices[0].text.trim();
+    }
+  }
+  if (typeof content !== 'string' || !content.trim()) {
+    const reasoning = data?.choices?.[0]?.message?.reasoning;
+    if (typeof reasoning === 'string' && reasoning.trim()) {
+      const trimmed = reasoning.trim();
+      const jsonStart = trimmed.lastIndexOf('{');
+      if (jsonStart !== -1) {
+        const potentialJson = trimmed.slice(jsonStart);
+        try {
+          JSON.parse(potentialJson);
+          content = potentialJson;
+        } catch (_) {}
+      }
+    }
+  }
   if (typeof content !== 'string' || !content.trim()) {
     throw new OpenRouterError(502, 'AI_INVALID_RESPONSE', 'Model boş yanıt verdi. Başka bir model seçin veya tekrar deneyin.');
   }
