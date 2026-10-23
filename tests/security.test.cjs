@@ -24,7 +24,12 @@ function loader(stubs = {}, env = {}) {
       process: { env },
       require(name) {
         if (Object.hasOwn(stubs, name)) return stubs[name];
-        if (name === 'next/server') return { NextResponse: { json: (body, init) => Response.json(body, init) } };
+        if (name === 'next/server') {
+          class NextResponse extends Response {
+            static json(body, init) { return Response.json(body, init); }
+          }
+          return { NextResponse };
+        }
         if (name === 'crypto' || name.startsWith('node:')) return require(name);
         if (name.startsWith('@/')) return load(`src/${name.slice(2)}.ts`);
         if (name.startsWith('.')) return load(path.relative(root, path.resolve(path.dirname(full), `${name}.ts`)));
@@ -378,3 +383,107 @@ test('Provider failure refunds the exact reserved request rather than another co
   assert.equal(calls.hourly[0].p_request_id, calls.hourly[1].p_request_id);
   assert.ok(calls.hourly[0].p_request_id);
 });
+
+test('SEC-01 & SEC-03: escapeHtml neutralizes XSS and HTML markup characters', () => {
+  const { escapeHtml } = loader()('src/lib/utils/html.ts');
+  assert.equal(escapeHtml('<script>alert("xss")</script>'), '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+  assert.equal(escapeHtml("Tom & 'Jerry'"), 'Tom &amp; &#39;Jerry&#39;');
+  assert.equal(escapeHtml(null), '');
+  assert.equal(escapeHtml(undefined), '');
+});
+
+test('SEC-01: sendProRequestAdminEmail sanitizes user note, name and email against HTML injection', async () => {
+  let capturedHtml = '';
+  const load = loader({
+    nodemailer: {
+      createTransport: () => ({
+        sendMail: async (mail) => {
+          capturedHtml = mail.html;
+          return { messageId: 'msg-1' };
+        },
+      }),
+    },
+  }, {
+    SMTP_USER: 'admin@example.com',
+    SMTP_PASS: 'test-pass',
+  });
+  const service = load('src/lib/email/service.ts');
+
+  await service.sendProRequestAdminEmail({
+    adminEmail: 'admin@example.com',
+    userName: '<img src=x onerror=alert(1)>Malicious Name',
+    userEmail: 'user<hack>@example.com',
+    userId: '12345',
+    requestNote: '<script>evil()</script><a href="phish">Click</a>',
+    approveUrl: 'https://stockmind.test/approve',
+    rejectUrl: 'https://stockmind.test/reject',
+  });
+
+  assert.equal(capturedHtml.includes('<script>evil()</script>'), false);
+  assert.equal(capturedHtml.includes('&lt;script&gt;evil()&lt;/script&gt;'), true);
+  assert.equal(capturedHtml.includes('<img src=x'), false);
+  assert.equal(capturedHtml.includes('&lt;img src=x'), true);
+  assert.equal(capturedHtml.includes('user&lt;hack&gt;@example.com'), true);
+});
+
+test('SEC-02: Pro approval rejects replay when pro_request_status is not pending', async () => {
+  const token = 'valid.token';
+  const makeLoader = (requestStatus) => loader({
+    '@/lib/pro/tokens': {
+      verifyProActionToken: () => ({ valid: true, action: 'approve', userId: 'user-42', email: 'investor@example.com' }),
+    },
+    '@/lib/supabase/admin': {
+      createAdminClient: () => ({
+        auth: {
+          admin: {
+            getUserById: async () => ({
+              data: {
+                user: {
+                  id: 'user-42',
+                  email: 'investor@example.com',
+                  app_metadata: {},
+                  user_metadata: { pro_request_status: requestStatus },
+                },
+              },
+              error: null,
+            }),
+            updateUserById: async () => ({ error: null }),
+          },
+        },
+        from: () => ({ update: () => ({ eq: async () => ({}) }) }),
+      }),
+    },
+    '@/lib/email/service': { sendProApprovedUserEmail: async () => ({ success: true }) },
+  });
+
+  // Replay attempt on an already-approved user must be rejected with 400
+  const approvedRoute = makeLoader('approved')('src/app/api/admin/pro-request/approve/route.ts');
+  const replayRes = await approvedRoute.GET(new Request('https://stockmind.test/api/admin/pro-request/approve?userId=user-42&token=valid.token'));
+  assert.equal(replayRes.status, 400);
+  const replayBody = await replayRes.text();
+  assert.match(replayBody, /daha önce sonuçlandırılmış veya beklemede değil/);
+
+  // Fresh pending request must succeed with 200
+  const pendingRoute = makeLoader('pending')('src/app/api/admin/pro-request/approve/route.ts');
+  const validRes = await pendingRoute.GET(new Request('https://stockmind.test/api/admin/pro-request/approve?userId=user-42&token=valid.token'));
+  assert.equal(validRes.status, 200);
+});
+
+test('SEC-04: trigger-cron fails closed when CRON_SECRET is not configured in environment', async () => {
+  const load = loader({
+    '@/lib/admin/desktopGuard': { requireDesktopAdmin: async () => ({ id: 'admin-id' }) },
+    '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'admin-id' } } }) } }) },
+    '@/lib/cron/syncTefasFunds': { syncTefasFundsToDatabase: async () => ({ success: true }) },
+    '@supabase/supabase-js': {},
+  }, {
+    // CRON_SECRET intentionally omitted
+  });
+  const route = load('src/app/api/admin/system/trigger-cron/route.ts');
+  const res = await route.POST(request({ job: 'daily-report' }));
+  assert.equal(res.status, 500);
+  const data = await res.json();
+  assert.match(data.error, /CRON_SECRET sunucu ortamında yapılandırılmamış/);
+});
+
+
+
