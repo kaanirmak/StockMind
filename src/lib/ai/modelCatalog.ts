@@ -1,5 +1,10 @@
 export interface CatalogModel { id: string; name: string; free: boolean; supportedParameters?: string[] }
-export const AUTO_MODEL: CatalogModel = { id: 'openrouter/free', name: 'Otomatik ücretsiz', free: true };
+export const AUTO_MODEL: CatalogModel = {
+  id: 'openrouter/free',
+  name: 'Otomatik ücretsiz',
+  free: true,
+  supportedParameters: ['response_format', 'structured_outputs'],
+};
 
 /** Loading or temporarily unavailable catalogs must not erase a saved preference. */
 export function resolvePreferredModel(preferred: string, models: CatalogModel[], pro: boolean, catalogReady: boolean): string {
@@ -17,8 +22,11 @@ export function parseModelCatalog(value: unknown): CatalogModel[] {
         !row.architecture.output_modalities.every((modality: unknown) => modality === 'text')) continue;
     const pricing = row.pricing;
     if (!pricing || pricing.prompt == null || pricing.completion == null) continue;
-    // Exclude moderation/classifier models that do not provide chat completions
-    if (row.id.includes('content-safety') || row.id.includes('moderation') || row.name.toLowerCase().includes('content safety')) continue;
+    // Exclude moderation, classifier, note preview, and non-chat models
+    const rowId = row.id.toLowerCase();
+    const rowName = row.name.toLowerCase();
+    if (rowId.includes('content-safety') || rowId.includes('moderation') || rowName.includes('content safety') ||
+        rowId.includes('dots-3-note') || rowId.includes('thinkingmachines/inkling')) continue;
     const free = Object.values(pricing).every(price => typeof price === 'string' && Number(price) === 0);
     models.push({ id: row.id, name: row.name, free,
       supportedParameters: Array.isArray(row.supported_parameters) ? row.supported_parameters.filter((param: unknown) => typeof param === 'string') : [],
@@ -41,7 +49,12 @@ export function hasProAccess(metadata?: Record<string, unknown>): boolean {
 }
 
 export function selectStructuredModel(models: CatalogModel[], configuredId?: string): CatalogModel {
-  const eligible = models.filter(model => model.supportedParameters?.includes('response_format') || model.supportedParameters?.includes('structured_outputs'));
+  const eligible = models.filter(model => {
+    const hasStructured = model.supportedParameters?.includes('response_format') || model.supportedParameters?.includes('structured_outputs');
+    if (!hasStructured) return false;
+    const id = model.id.toLowerCase();
+    return !id.includes('dots-3-note') && !id.includes('content-safety') && !id.includes('moderation');
+  });
   const selected = configuredId ? eligible.find(model => model.id === configuredId) : eligible[0];
   if (!selected) throw new Error('Yapılandırılmış yanıtı destekleyen bir model bulunamadı.');
   return selected;
