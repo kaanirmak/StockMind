@@ -205,7 +205,12 @@ KRİTİK TALİMATLAR:
       };
     } catch (err: any) {
       lastError = err;
-      if (err instanceof OpenRouterError && (err.code === 'AI_PROVIDER_UNAUTHORIZED' || err.code === 'AI_KEY_REQUIRED')) {
+      if (err instanceof OpenRouterError && (
+        err.code === 'AI_PROVIDER_UNAUTHORIZED' ||
+        err.code === 'AI_KEY_REQUIRED' ||
+        err.code === 'AI_DAILY_FREE_LIMIT_REACHED' ||
+        err.code === 'AI_CREDITS_REQUIRED'
+      )) {
         throw err;
       }
       if (i < candidateModels.length - 1) {
