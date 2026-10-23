@@ -110,7 +110,6 @@ export default function FundDetailPage({
     );
   }
 
-  const [isNameExpanded, setIsNameExpanded] = useState<boolean>(false);
   const isDailyPos = fund.dailyReturn >= 0;
 
   return (
