@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyProActionToken } from '@/lib/pro/tokens';
+import { escapeHtml } from '@/lib/utils/html';
 
 export const dynamic = 'force-dynamic';
 
 function renderHtml(title: string, message: string, isSuccess: boolean) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev';
+  const safeTitle = escapeHtml(title);
+
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} • StockMind Yönetim</title>
+  <title>${safeTitle} • StockMind Yönetim</title>
   <style>
     body {
       margin: 0;
@@ -77,7 +80,7 @@ function renderHtml(title: string, message: string, isSuccess: boolean) {
   <div class="card">
     <div class="icon">${isSuccess ? '❌' : '⚠️'}</div>
     <div class="badge">${isSuccess ? 'TALEP REDDEDİLDİ' : 'HATA'}</div>
-    <h1>${title}</h1>
+    <h1>${safeTitle}</h1>
     <p>${message}</p>
     <a href="${baseUrl}/dashboard" class="btn">StockMind Paneline Git</a>
   </div>
@@ -94,7 +97,7 @@ export async function GET(request: Request) {
     const verification = verifyProActionToken(token);
     if (!verification.valid || verification.action !== 'reject' || verification.userId !== userId) {
       const errorMsg = verification.error || 'Geçersiz veya süresi dolmuş bağlantı.';
-      return new NextResponse(renderHtml('İşlem Başarısız', errorMsg, false), {
+      return new NextResponse(renderHtml('İşlem Başarısız', escapeHtml(errorMsg), false), {
         status: 400,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
@@ -102,7 +105,7 @@ export async function GET(request: Request) {
 
     const admin = createAdminClient();
     const { data: userData, error: userError } = await admin.auth.admin.getUserById(userId);
-    if (userError || !userData.user) {
+    if (userError || !userData?.user) {
       return new NextResponse(renderHtml('Kullanıcı Bulunamadı', 'Kullanıcı sistemde bulunamadı.', false), {
         status: 404,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -110,6 +113,17 @@ export async function GET(request: Request) {
     }
 
     const targetUser = userData.user;
+
+    // SEC-02: Ensure request is actually pending
+    if (targetUser.user_metadata?.pro_request_status !== 'pending') {
+      return new NextResponse(
+        renderHtml('İşlem Gerçekleştirilemedi', 'Bu talep daha önce sonuçlandırılmış veya beklemede değil.', false),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        }
+      );
+    }
 
     await admin.auth.admin.updateUserById(userId, {
       user_metadata: {
@@ -122,7 +136,7 @@ export async function GET(request: Request) {
     return new NextResponse(
       renderHtml(
         'Talep Reddedildi',
-        `<strong>${targetUser.email}</strong> kullanıcısının Pro hesap talebi kayıtlarda reddedildi olarak işaretlendi.`,
+        `<strong>${escapeHtml(targetUser.email || '')}</strong> kullanıcısının Pro hesap talebi kayıtlarda reddedildi olarak işaretlendi.`,
         true
       ),
       {
@@ -132,7 +146,7 @@ export async function GET(request: Request) {
     );
   } catch (error: any) {
     return new NextResponse(
-      renderHtml('Sistem Hatası', error.message || 'İşlem gerçekleştirilemedi.', false),
+      renderHtml('Sistem Hatası', escapeHtml(error?.message || 'İşlem gerçekleştirilemedi.'), false),
       {
         status: 500,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -140,3 +154,4 @@ export async function GET(request: Request) {
     );
   }
 }
+

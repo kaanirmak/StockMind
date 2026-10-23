@@ -2,17 +2,21 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { verifyProActionToken } from '@/lib/pro/tokens';
 import { sendProApprovedUserEmail } from '@/lib/email/service';
+import { escapeHtml } from '@/lib/utils/html';
 
 export const dynamic = 'force-dynamic';
 
 function renderHtml(title: string, message: string, isSuccess: boolean, userEmail?: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev';
+  const safeTitle = escapeHtml(title);
+  const safeEmail = userEmail ? escapeHtml(userEmail) : '';
+
   return `<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} • StockMind Yönetim</title>
+  <title>${safeTitle} • StockMind Yönetim</title>
   <style>
     body {
       margin: 0;
@@ -82,9 +86,9 @@ function renderHtml(title: string, message: string, isSuccess: boolean, userEmai
   <div class="card">
     <div class="icon">${isSuccess ? '🎉' : '⚠️'}</div>
     <div class="badge">${isSuccess ? 'PRO ONAYLANDI' : 'İŞLEM BAŞARISIZ'}</div>
-    <h1>${title}</h1>
+    <h1>${safeTitle}</h1>
     <p>${message}</p>
-    ${userEmail ? `<p style="font-family: monospace; font-size: 12px; color: #64748b;">Kullanıcı: ${userEmail}</p>` : ''}
+    ${safeEmail ? `<p style="font-family: monospace; font-size: 12px; color: #64748b;">Kullanıcı: ${safeEmail}</p>` : ''}
     <a href="${baseUrl}/dashboard" class="btn">StockMind Paneline Git</a>
   </div>
 </body>
@@ -100,7 +104,7 @@ export async function GET(request: Request) {
     const verification = verifyProActionToken(token);
     if (!verification.valid || verification.action !== 'approve' || verification.userId !== userId) {
       const errorMsg = verification.error || 'Geçersiz veya süresi dolmuş onay bağlantısı.';
-      return new NextResponse(renderHtml('Onay Başarısız', errorMsg, false), {
+      return new NextResponse(renderHtml('Onay Başarısız', escapeHtml(errorMsg), false), {
         status: 400,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
       });
@@ -110,7 +114,7 @@ export async function GET(request: Request) {
 
     // 1. Fetch user to confirm existence and current email
     const { data: userData, error: userError } = await admin.auth.admin.getUserById(userId);
-    if (userError || !userData.user) {
+    if (userError || !userData?.user) {
       return new NextResponse(renderHtml('Kullanıcı Bulunamadı', 'Belirtilen kullanıcı sistemde bulunamadı.', false), {
         status: 404,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -124,6 +128,22 @@ export async function GET(request: Request) {
       targetUser.user_metadata?.name ||
       targetEmail.split('@')[0] ||
       'Değerli Yatırımcı';
+
+    // SEC-02: Ensure request is actually in pending state (prevents replay or resurrected privileges)
+    if (targetUser.user_metadata?.pro_request_status !== 'pending') {
+      return new NextResponse(
+        renderHtml(
+          'İşlem Gerçekleştirilemedi',
+          'Bu Pro hesap talebi daha önce sonuçlandırılmış veya beklemede değil.',
+          false,
+          targetEmail
+        ),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        }
+      );
+    }
 
     // 2. Grant Pro entitlements in app_metadata (canonical source of truth)
     const { error: updateError } = await admin.auth.admin.updateUserById(userId, {
@@ -163,7 +183,7 @@ export async function GET(request: Request) {
     return new NextResponse(
       renderHtml(
         'Pro Hesap Başarıyla Onaylandı!',
-        `<strong>${targetEmail}</strong> kullanıcısının hesabı StockMind Pro'ya yükseltildi ve kullanıcıya tebrik e-postası iletildi.`,
+        `<strong>${escapeHtml(targetEmail)}</strong> kullanıcısının hesabı StockMind Pro'ya yükseltildi ve kullanıcıya tebrik e-postası iletildi.`,
         true,
         targetEmail
       ),
@@ -175,7 +195,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('Pro approval endpoint error:', error);
     return new NextResponse(
-      renderHtml('Sistem Hatası', error.message || 'İşlem gerçekleştirilirken bir hata oluştu.', false),
+      renderHtml('Sistem Hatası', escapeHtml(error?.message || 'İşlem gerçekleştirilirken bir hata oluştu.'), false),
       {
         status: 500,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -183,3 +203,4 @@ export async function GET(request: Request) {
     );
   }
 }
+
