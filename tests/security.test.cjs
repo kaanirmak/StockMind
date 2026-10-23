@@ -427,7 +427,6 @@ test('SEC-01: sendProRequestAdminEmail sanitizes user note, name and email again
 });
 
 test('SEC-02: Pro approval rejects replay when pro_request_status is not pending', async () => {
-  const token = 'valid.token';
   const makeLoader = (requestStatus) => loader({
     '@/lib/pro/tokens': {
       verifyProActionToken: () => ({ valid: true, action: 'approve', userId: 'user-42', email: 'investor@example.com' }),
