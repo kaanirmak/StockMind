@@ -22,6 +22,7 @@ export default function FundDetailPage({
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
   const [lotCount, setLotCount] = useState<number>(100);
+  const [isNameExpanded, setIsNameExpanded] = useState<boolean>(false);
 
   const { fund, loading, error } = useFundDetail(code, days);
   const isWatchlisted = checkWatchlisted(code);
@@ -109,7 +110,6 @@ export default function FundDetailPage({
     );
   }
 
-  const [isNameExpanded, setIsNameExpanded] = useState<boolean>(false);
   const isDailyPos = fund.dailyReturn >= 0;
 
   return (
