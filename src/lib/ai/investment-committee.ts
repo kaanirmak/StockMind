@@ -1,4 +1,4 @@
-import { readOpenRouterResponse } from './openrouter';
+import { OpenRouterError, readOpenRouterResponse } from './openrouter';
 import { palette } from '@/theme/palette';
 import { getModelCatalog, selectStructuredModel } from './modelCatalog';
 import { getAIRuntimePolicy } from './runtimePolicy';
@@ -148,51 +148,80 @@ KRİTİK TALİMATLAR:
   ]
 }`;
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    signal: AbortSignal.timeout(policy.timeoutMs),
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://stockmind.app',
-      'X-Title': 'StockMind Quant Lab',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: selectedModel.id,
-      messages: [{ role: 'user', content: prompt }],
-      ...(selectedModel.supportedParameters?.includes('temperature') ? { temperature: 0.5 } : {}),
-      max_tokens: policy.committeeMaxTokens,
-      response_format: selectedModel.supportedParameters?.includes('structured_outputs')
-        ? { type: 'json_schema', json_schema: { name: 'committee_report', strict: true, schema: COMMITTEE_RESPONSE_SCHEMA } }
-        : { type: 'json_object' },
-    }),
-  });
+  const candidateModels: string[] = [selectedModel.id];
+  const fallbacks = ['openrouter/free', 'recursive/flint-v1.0:free'];
+  for (const fb of fallbacks) {
+    if (!candidateModels.includes(fb)) candidateModels.push(fb);
+  }
 
-  const rawText = await readOpenRouterResponse(res);
+  let lastError: unknown = null;
 
-  const parsed = parseCommitteeResponse(rawText);
+  for (let i = 0; i < candidateModels.length; i++) {
+    const currentModelId = candidateModels[i];
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        signal: AbortSignal.timeout(policy.timeoutMs),
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://stockmind.app',
+          'X-Title': 'StockMind Quant Lab',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: currentModelId,
+          messages: [{ role: 'user', content: prompt }],
+          ...(selectedModel.supportedParameters?.includes('temperature') ? { temperature: 0.5 } : {}),
+          max_tokens: Math.max(policy.committeeMaxTokens, 3500),
+          response_format: selectedModel.id === currentModelId && selectedModel.supportedParameters?.includes('structured_outputs')
+            ? { type: 'json_schema', json_schema: { name: 'committee_report', strict: true, schema: COMMITTEE_RESPONSE_SCHEMA } }
+            : { type: 'json_object' },
+        }),
+      });
 
-  const agents: CommitteeAgent[] = COMMITTEE_AGENTS_CONFIG.map((cfg) => {
-    const fromLlm = parsed.agents.find((a: any) => a.id === cfg.id)!;
-    return {
-      ...cfg,
-      verdict: fromLlm.verdict,
-      score: fromLlm.score,
-      speech: fromLlm.speech,
-      keyArguments: fromLlm.keyArguments,
-    };
-  });
+      const rawText = await readOpenRouterResponse(res);
+      const parsed = parseCommitteeResponse(rawText);
 
-  return {
-    symbol,
-    companyName: stockQuote?.name || symbol,
-    consensusVerdict: parsed.consensusVerdict,
-    consensusScore: parsed.consensusScore,
-    consensusSummary: parsed.consensusSummary,
-    agents,
-    generatedAt: new Date().toISOString(),
-    isLiveLLM: true,
-  };
+      const agents: CommitteeAgent[] = COMMITTEE_AGENTS_CONFIG.map((cfg) => {
+        const fromLlm = parsed.agents.find((a: any) => a.id === cfg.id)!;
+        return {
+          ...cfg,
+          verdict: fromLlm.verdict,
+          score: fromLlm.score,
+          speech: fromLlm.speech,
+          keyArguments: fromLlm.keyArguments,
+        };
+      });
+
+      return {
+        symbol,
+        companyName: stockQuote?.name || symbol,
+        consensusVerdict: parsed.consensusVerdict,
+        consensusScore: parsed.consensusScore,
+        consensusSummary: parsed.consensusSummary,
+        agents,
+        generatedAt: new Date().toISOString(),
+        isLiveLLM: true,
+      };
+    } catch (err: any) {
+      lastError = err;
+      if (err instanceof OpenRouterError && (
+        err.code === 'AI_PROVIDER_UNAUTHORIZED' ||
+        err.code === 'AI_KEY_REQUIRED' ||
+        err.code === 'AI_DAILY_FREE_LIMIT_REACHED' ||
+        err.code === 'AI_CREDITS_REQUIRED'
+      )) {
+        throw err;
+      }
+      if (i < candidateModels.length - 1) {
+        console.warn(`Committee model ${currentModelId} failed (${err?.message || err}), trying fallback ${candidateModels[i + 1]}...`);
+        continue;
+      }
+    }
+  }
+
+  if (lastError instanceof OpenRouterError) throw lastError;
+  throw lastError instanceof Error ? lastError : new Error('Komite analizi alınamadı. Lütfen tekrar deneyin.');
 }
 
 const AGENT_VERDICTS = ['AL', 'GÜÇLÜ AL', 'TUT', 'SAT', 'TEMKİNLİ'];

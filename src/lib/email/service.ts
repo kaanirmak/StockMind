@@ -1,4 +1,5 @@
 import { palette } from '@/theme/palette';
+import { escapeHtml } from '@/lib/utils/html';
 import nodemailer from 'nodemailer';
 
 export interface EmailPayload {
@@ -47,6 +48,7 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
   const btcPrice = payload?.marketData?.btc || 75871.58;
   const isDaily = payload?.isDailyReport ?? true;
   const pSummary = payload?.portfolioSummary || { totalValue: 184500, totalPnL: 8420, totalPnLPercent: 4.78 };
+  const safeUserName = escapeHtml(userName);
 
   return `
 <!DOCTYPE html>
@@ -84,7 +86,7 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
         <span class="badge ${isDaily ? 'badge-daily' : ''}">${isDaily ? '⏰ HER GÜN 18:30 BÜLTENİ' : 'CANLI TEST BİLDİRİMİ'}</span>
       </div>
 
-      <div class="title">Merhaba ${userName}, ${isDaily ? 'Günün Piyasa Kapanış Raporu Hazır!' : 'Test e-postan başarıyla ulaştı! 🎉'}</div>
+      <div class="title">Merhaba ${safeUserName}, ${isDaily ? 'Günün Piyasa Kapanış Raporu Hazır!' : 'Test e-postan başarıyla ulaştı! 🎉'}</div>
       <div class="text">
         ${isDaily 
           ? `BIST ve küresel piyasaların günlük seans kapanışı tamamlandı. Portföyünüzün bugünkü performansı ve anlık TradingView & TEFAS piyasa özeti aşağıda sunulmuştur:` 
@@ -436,6 +438,11 @@ export async function sendProRequestAdminEmail(params: ProRequestEmailParams): P
   const { adminEmail, userName, userEmail, userId, requestNote, approveUrl, rejectUrl } = params;
   const dateStr = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
 
+  const safeUserName = escapeHtml(userName);
+  const safeUserEmail = escapeHtml(userEmail);
+  const safeUserId = escapeHtml(userId);
+  const safeRequestNote = requestNote ? escapeHtml(requestNote) : undefined;
+
   const html = `
 <!DOCTYPE html>
 <html lang="tr">
@@ -472,11 +479,11 @@ export async function sendProRequestAdminEmail(params: ProRequestEmailParams): P
       </p>
 
       <div class="info-box">
-        <div class="info-row"><span class="info-label">Ad Soyad:</span><span class="info-val">${userName}</span></div>
-        <div class="info-row"><span class="info-label">E-posta:</span><span class="info-val">${userEmail}</span></div>
-        <div class="info-row"><span class="info-label">Kullanıcı ID:</span><span class="info-val" style="font-family: monospace; font-size: 11px;">${userId}</span></div>
+        <div class="info-row"><span class="info-label">Ad Soyad:</span><span class="info-val">${safeUserName}</span></div>
+        <div class="info-row"><span class="info-label">E-posta:</span><span class="info-val">${safeUserEmail}</span></div>
+        <div class="info-row"><span class="info-label">Kullanıcı ID:</span><span class="info-val" style="font-family: monospace; font-size: 11px;">${safeUserId}</span></div>
         <div class="info-row"><span class="info-label">Talep Tarihi:</span><span class="info-val">${dateStr}</span></div>
-        ${requestNote ? `<div class="info-row" style="flex-direction: column; gap: 4px;"><span class="info-label">Kullanıcı Notu:</span><span class="info-val" style="font-style: italic; color: #cbd5e1;">"${requestNote}"</span></div>` : ''}
+        ${safeRequestNote ? `<div class="info-row" style="flex-direction: column; gap: 4px;"><span class="info-label">Kullanıcı Notu:</span><span class="info-val" style="font-style: italic; color: #cbd5e1;">"${safeRequestNote}"</span></div>` : ''}
       </div>
 
       <a href="${approveUrl}" class="btn-approve">✅ Pro Hesabı Onayla ve Aktif Et</a>
@@ -492,13 +499,14 @@ export async function sendProRequestAdminEmail(params: ProRequestEmailParams): P
 
   return sendEmailTransport({
     to: adminEmail,
-    subject: `🔔 Yeni StockMind Pro Talebi: ${userName} (${userEmail})`,
+    subject: `🔔 Yeni StockMind Pro Talebi: ${safeUserName} (${safeUserEmail})`,
     html,
   });
 }
 
 export async function sendProApprovedUserEmail(params: { to: string; userName: string; appUrl: string }): Promise<SendEmailResult> {
   const { to, userName, appUrl } = params;
+  const safeUserName = escapeHtml(userName);
 
   const html = `
 <!DOCTYPE html>
@@ -527,7 +535,7 @@ export async function sendProApprovedUserEmail(params: { to: string; userName: s
         <span class="badge">⭐ PRO ÜYELİK AKTİF</span>
       </div>
 
-      <div class="title">Tebrikler ${userName}, Hesabınız Pro'ya Yükseltildi! 🎉</div>
+      <div class="title">Tebrikler ${safeUserName}, Hesabınız Pro'ya Yükseltildi! 🎉</div>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.6;">
         StockMind Pro talebiniz yönetici tarafından incelendi ve onaylandı. Artık en gelişmiş kantitatif analiz ve çoklu yapay zeka araçları hesabınızda sınırsız olarak açık!
       </p>

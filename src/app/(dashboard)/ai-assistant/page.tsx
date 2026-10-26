@@ -158,12 +158,15 @@ function AIAssistantContent() {
 
   const { containerRef, contentRef, showLatest, followLatest, onScroll, onTouchStart, onTouchEnd, onWheel } = useChatScroll(messages, currentSessionId);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const previousUserIdRef = useRef<string | undefined>(user?.id);
   useEffect(() => {
-    setLoading(false);
-    return () => {
+    const prev = previousUserIdRef.current;
+    previousUserIdRef.current = user?.id;
+    if (prev && user?.id !== prev) {
+      setLoading(false);
       abortControllerRef.current?.abort();
       abortControllerRef.current = null;
-    };
+    }
   }, [user?.id]);
 
   const handleStopGeneration = () => {
