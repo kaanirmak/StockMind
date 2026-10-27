@@ -2,7 +2,7 @@ import { WindowedRows } from '@/components/ui/WindowedRows';
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Holding } from '@/types/portfolio';
-import { Badge, Button, InstrumentLogo } from '@/components/ui';
+import { Button, InstrumentLogo } from '@/components/ui';
 import { getAssetTypeLabel } from '@/lib/utils/symbol';
 
 function MiniSparkline({ changePercent }: { changePercent: number }) {
@@ -13,11 +13,6 @@ function MiniSparkline({ changePercent }: { changePercent: number }) {
       <path d={path} fill="none" stroke={positive ? 'var(--color-success)' : 'var(--color-danger)'} strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
-}
-
-function getAssetBadgeInfo(h: Holding) {
-  const info = getAssetTypeLabel(h);
-  return { bg: info.badgeColor, label: info.badgeLabel, icon: info.badgeIcon };
 }
 
 export interface HoldingsTableProps {
@@ -226,7 +221,6 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
             <tr>
               <th className="py-3.5 px-3 w-8"></th>
               <th className="py-3.5 px-3 font-semibold">Varlık / Sembol</th>
-              <th className="py-3.5 px-3 font-semibold">Tür</th>
               <th className="py-3.5 px-3 font-semibold text-center">7G Trend</th>
               <th className="py-3.5 px-3 font-semibold text-right">Adet / Pay</th>
               <th className="py-3.5 px-3 font-semibold text-right">Ort. Maliyet (TL)</th>
@@ -239,13 +233,12 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            <WindowedRows columns={9}>{holdings.map((h) => {
+            <WindowedRows columns={11}>{holdings.map((h) => {
               const isProfit = h.pnl >= 0;
               const link = h.assetType === 'stock' ? `/stocks/${h.symbol}` : `/funds/${h.symbol}`;
               const dailyChange = h.dailyChangePercent || 0;
               const assetInfo = getAssetTypeLabel(h);
               const isUsd = h.originalCurrency === 'USD' || assetInfo.isUs;
-              const badgeInfo = getAssetBadgeInfo(h);
               const isExpanded = expandedSymbols.has(h.symbol);
               const hasLots = h.lots && h.lots.length > 0;
 
@@ -290,14 +283,6 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
                           </span>
                         </div>
                       </Link>
-                    </td>
-
-                    {/* Asset Type Badge */}
-                    <td className="py-3.5 px-3">
-                      <span className={`text-[11px] px-2 py-0.5 rounded-full border font-semibold inline-flex items-center gap-1 ${badgeInfo.bg}`}>
-                        <span>{badgeInfo.icon}</span>
-                        <span>{badgeInfo.label}</span>
-                      </span>
                     </td>
 
                     {/* 7-Day Mini Sparkline */}
@@ -390,7 +375,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
                   {/* FIFO Lots Expansion Row */}
                   {isExpanded && hasLots && (
                     <tr className="bg-bg-tertiary/40 border-b border-border/60">
-                      <td colSpan={12} className="py-3 px-6">
+                      <td colSpan={11} className="py-3 px-6">
                         <div className="rounded-xl border border-border/60 bg-bg-card/90 p-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
@@ -462,7 +447,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
           </tbody>
           <tfoot className="bg-bg-secondary/90 border-t-2 border-border text-xs font-semibold text-text-primary">
             <tr>
-              <td className="py-3.5 px-3 uppercase tracking-wider text-text-muted" colSpan={4}>
+              <td className="py-3.5 px-3 uppercase tracking-wider text-text-muted" colSpan={3}>
                 Toplam ({holdings.length} Varlık)
               </td>
               <td className="py-3.5 px-3 text-right font-mono text-text-muted">-</td>
@@ -487,6 +472,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
               <td className="py-3.5 px-3 text-right font-mono text-text-secondary">
                 %100.0
               </td>
+              <td className="py-3.5 px-3"></td>
             </tr>
           </tfoot>
         </table>
