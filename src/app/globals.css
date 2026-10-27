@@ -516,6 +516,19 @@ html.dark .glass-purple {
   }
 }
 
+@keyframes hero-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-hero-shimmer {
+  animation: hero-shimmer 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }

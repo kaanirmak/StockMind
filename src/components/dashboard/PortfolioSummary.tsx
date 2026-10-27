@@ -110,17 +110,110 @@ export default function PortfolioSummary() {
 
   if (loading) {
     return (
-      <div className="relative overflow-hidden rounded-3xl border border-border/50 bg-bg-card/80 backdrop-blur-xl p-3.5 sm:p-5 animate-pulse">
-        <div className="flex items-center justify-between gap-2.5 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-28 rounded-xl bg-bg-secondary/70" />
-            <div className="h-2 w-2 rounded-full bg-emerald-500/40" />
-          </div>
-          <div className="h-7 w-20 rounded-full bg-bg-secondary/70" />
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 backdrop-blur-xl shadow-[0_12px_45px_rgba(16,185,129,0.12),0_0_80px_rgba(147,51,234,0.1)] select-none">
+        {/* Dynamic gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#24114f] via-[#10272b] to-[#071318]" />
+
+        {/* Ambient radial glows: Mor + Yeşil karışımı */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse at 85% 15%, rgba(16, 185, 129, 0.32) 0%, transparent 60%), radial-gradient(ellipse at 15% 85%, rgba(168, 85, 247, 0.35) 0%, transparent 60%), radial-gradient(ellipse at 50% 50%, rgba(5, 150, 105, 0.12) 0%, transparent 60%)',
+          }}
+        />
+
+        {/* Glass reflection top highlight */}
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/[0.07] to-transparent pointer-events-none" />
+
+        {/* Subtle glass texture overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.025]"
+          style={{
+            backgroundImage:
+              'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
+          }}
+        />
+
+        {/* Shimmer Light Sweep across the entire card */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.09] to-transparent animate-hero-shimmer -skew-x-12" />
         </div>
-        <div className="space-y-2 py-1">
-          <div className="h-8 sm:h-9 w-48 rounded-xl bg-bg-secondary/80" />
-          <div className="h-4 w-36 rounded-lg bg-bg-secondary/50" />
+
+        {/* Card Content Shell */}
+        <div className="relative z-10 p-3.5 sm:p-5">
+          {/* Top row: Brand Logo + Controls Skeleton */}
+          <div className="flex items-center justify-between gap-2.5 mb-2.5 sm:mb-3.5">
+            {/* StockMind Logo on dark background with living radar ping */}
+            <div className="flex items-center gap-2">
+              <img
+                src="/logo-white.png"
+                alt="StockMind"
+                className="h-6 sm:h-8 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
+              />
+              <span className="relative flex h-2 w-2 ml-0.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
+            </div>
+
+            {/* Right side: Skeleton controls matching loaded layout */}
+            <div className="flex items-center gap-2">
+              {/* Privacy Eye Skeleton */}
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/40">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+
+              {/* Period Pill Skeleton */}
+              <div className="px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold text-white/80 bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-1.5 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                <span className="text-[11px] text-white/70 font-medium">Bugün</span>
+              </div>
+
+              {/* Portföy Arrow Skeleton */}
+              <div className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/30">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Middle Row: Big Value and K/Z Shimmer Skeleton */}
+          <div className="space-y-2 py-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+              {/* Currency Symbol and Balance Bar */}
+              <div className="flex items-center gap-1">
+                <span className="text-2xl sm:text-4xl lg:text-[44px] font-black text-white/35 select-none leading-none">
+                  ₺
+                </span>
+                <div className="h-7 sm:h-10 lg:h-11 w-44 sm:w-60 rounded-2xl bg-white/[0.12] border border-white/[0.08] relative overflow-hidden backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-hero-shimmer" />
+                </div>
+              </div>
+
+              {/* Daily Change Badge Skeleton */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm font-bold shadow-sm">
+                <svg className="w-4 h-4 text-emerald-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25" />
+                </svg>
+                <div className="h-3.5 w-16 sm:w-20 rounded-md bg-emerald-400/30 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Sub-info Row: Cost & USD Equivalent */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium pt-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-white/40">Net Yatırılan:</span>
+                <div className="h-3.5 w-20 sm:w-24 rounded-md bg-white/[0.10] animate-pulse" />
+                <span className="text-white/25">•</span>
+                <span className="text-white/40">Dolar Karşılığı:</span>
+                <div className="h-3.5 w-16 sm:w-20 rounded-md bg-white/[0.10] animate-pulse" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
