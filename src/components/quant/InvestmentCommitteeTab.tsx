@@ -22,6 +22,7 @@ import { Holding } from '@/types/portfolio';
 import { getStoredOpenRouterKey, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { Button } from '@/components/ui/Button';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
+import { hasProAccess } from '@/lib/ai/modelCatalog';
 
 const POPULAR_SYMBOLS = [
   { symbol: 'THYAO', name: 'Türk Hava Yolları' },
@@ -46,6 +47,7 @@ export default function InvestmentCommitteeTab({
   portfolioStocks = [],
 }: InvestmentCommitteeTabProps) {
   const { user, profile } = useAuth();
+  const isUserPro = Boolean(profile?.isPro || (user?.app_metadata && hasProAccess(user.app_metadata)));
   const initialSym = selectedSymbol || portfolioStocks[0]?.symbol || 'THYAO';
   const [symbol, setSymbol] = useState(initialSym);
   const [customInput, setCustomInput] = useState('');
@@ -336,7 +338,7 @@ export default function InvestmentCommitteeTab({
       )}
 
       {/* Pro Gate Banner (when not Pro or Pro is required) */}
-      {!isLoading && !report && (isProRequired || (!profile?.isPro && !user?.app_metadata?.is_pro)) && (
+      {!isLoading && !report && (isProRequired || !isUserPro) && (
         <div className="glass-card p-6 sm:p-8 rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-bg-card to-bg-card text-center space-y-4 shadow-xl animate-fade-in">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-white flex items-center justify-center text-3xl mx-auto shadow-lg shadow-amber-500/25">
             ⭐

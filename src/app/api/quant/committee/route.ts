@@ -16,7 +16,6 @@ export async function POST(request: Request) {
     const symbol = optionalText(body.symbol, 40)?.toUpperCase();
     if (!symbol || !/^[A-Z0-9_.:=^/-]+$/.test(symbol)) throw new ApiError(400, 'Geçerli bir sembol zorunludur.');
     const apiKey = optionalText(body.apiKey, 512) || process.env.OPENROUTER_API_KEY?.trim();
-    if (!apiKey) throw new ApiError(401, 'AI anahtarı tanımlanmalıdır.');
     // Never trust a caller-supplied quote for the committee's market context.
     const liveQuote = await getStockBySymbolLive(symbol);
     if (!liveQuote || !Number.isFinite(liveQuote.price) || liveQuote.price <= 0) throw new ApiError(503, 'Bu varlık için piyasa verisi alınamadı.');
