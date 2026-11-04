@@ -107,7 +107,8 @@ export async function updateSession(request: NextRequest) {
     '/settings',
   ];
 
-  const isProtectedRoute = protectedPaths.some((path) => pathname.startsWith(path));
+  const isAdminRoute = pathname === '/admin' || pathname.startsWith('/admin/');
+  const isProtectedRoute = protectedPaths.some((path) => pathname.startsWith(path)) || isAdminRoute;
   const authPaths = ['/login', '/register'];
   const isAuthRoute = authPaths.some((path) => pathname.startsWith(path));
   const isLandingPage = pathname === '/';
@@ -122,6 +123,13 @@ export async function updateSession(request: NextRequest) {
 
   // If user has NO auth cookies and is not a guest:
   if (!hasAuthCookie) {
+    // Completely mask admin route from unauthenticated visitors with 404 Not Found
+    if (isAdminRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/not-found';
+      return NextResponse.rewrite(url, { status: 404 });
+    }
+
     if (isGuest && isLandingPage) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
@@ -168,6 +176,27 @@ export async function updateSession(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    // Verify admin privileges strictly on /admin routes (fail-closed with 404 Not Found)
+    if (isAdminRoute) {
+      const adminEmail = (
+        process.env.ADMIN_EMAIL ||
+        process.env.SMTP_USER ||
+        'kaanrmak7@gmail.com'
+      ).trim().toLowerCase();
+      const isConfiguredAdmin = Boolean(
+        adminEmail &&
+        user?.email_confirmed_at &&
+        user?.email?.toLowerCase() === adminEmail
+      );
+      const isAdmin = Boolean(user && (isConfiguredAdmin || user.app_metadata?.role === 'admin'));
+
+      if (!isAdmin) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/not-found';
+        return NextResponse.rewrite(url, { status: 404 });
+      }
+    }
+
     if (!user && !isGuest && isProtectedRoute) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
@@ -187,6 +216,11 @@ export async function updateSession(request: NextRequest) {
     }
   } catch (error) {
     console.error('Supabase middleware session check error:', error);
+    if (isAdminRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/not-found';
+      return NextResponse.rewrite(url, { status: 404 });
+    }
     return supabaseResponse;
   }
 
