@@ -93,15 +93,15 @@ export default function AdminConsolePage() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          router.replace('/login?next=/admin');
+          router.replace('/not-found');
           return;
         }
 
         const email = user.email?.toLowerCase() || '';
-        const isAdmin = email === 'kaanrmak7@gmail.com' || user.app_metadata?.role === 'admin';
+        const isAdmin = user.app_metadata?.role === 'admin' || email === 'kaanrmak7@gmail.com';
 
         if (!isAdmin) {
-          router.replace('/dashboard');
+          router.replace('/not-found');
           return;
         }
 
@@ -151,7 +151,7 @@ export default function AdminConsolePage() {
             rp: { name: 'StockMind Güvenli Yönetici Konsolu', id: window.location.hostname },
             user: {
               id: userIdBytes,
-              name: currentUserEmail || 'kaanrmak7@gmail.com',
+              name: currentUserEmail || 'admin',
               displayName: 'StockMind Yönetici',
             },
             pubKeyCredParams: [

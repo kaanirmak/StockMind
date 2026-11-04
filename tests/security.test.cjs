@@ -484,5 +484,16 @@ test('SEC-04: trigger-cron fails closed when CRON_SECRET is not configured in en
   assert.match(data.error, /CRON_SECRET sunucu ortamında yapılandırılmamış/);
 });
 
+test('SEC-05: /admin route is shielded in middleware and absent from user settings', () => {
+  const settingsCode = fs.readFileSync(path.join(root, 'src/app/(dashboard)/settings/page.tsx'), 'utf8');
+  assert.equal(settingsCode.includes('href="/admin"'), false, 'Settings page must not contain admin console links');
+  assert.equal(settingsCode.includes('kaanrmak7@gmail.com'), false, 'Settings page must not expose admin email');
+
+  const proxyCode = fs.readFileSync(path.join(root, 'src/lib/supabase/proxy.ts'), 'utf8');
+  assert.match(proxyCode, /isAdminRoute/, 'Middleware must explicitly classify admin routes');
+  assert.match(proxyCode, /url\.pathname = '\/not-found'/, 'Middleware must rewrite unauthorized admin requests to not-found');
+  assert.match(proxyCode, /status: 404/, 'Middleware must return 404 status for unauthorized admin requests');
+});
+
 
 
