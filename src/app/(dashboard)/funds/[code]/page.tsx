@@ -22,6 +22,8 @@ export default function FundDetailPage({
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
   const [lotCount, setLotCount] = useState<number>(100);
+  const [manualPrice, setManualPrice] = useState('');
+  const [saving, setSaving] = useState(false);
   const [isNameExpanded, setIsNameExpanded] = useState<boolean>(false);
 
   const { fund, loading, error } = useFundDetail(code, days);
@@ -32,7 +34,7 @@ export default function FundDetailPage({
       symbol: code,
       name: fund?.name || code,
       assetType: 'fund',
-      price: fund?.price || 1,
+      price: fund?.price ?? 0,
       changePercent: fund?.dailyReturn || 0,
       exchange: 'TEFAS',
     });
@@ -44,32 +46,45 @@ export default function FundDetailPage({
     });
   };
 
+  const tradePrice = fund?.price ?? Number(manualPrice.trim().replace(',', '.'));
+  const canSaveTrade = Number.isFinite(tradePrice) && tradePrice > 0 && Number.isFinite(lotCount) && lotCount >= 1;
+
   const handleTradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const price = fund?.price || 1;
-    const total = price * lotCount;
+    if (!canSaveTrade || saving) return;
 
-    await addTransaction({
-      portfolioId: activePortfolioId,
-      symbol: code,
-      assetType: 'fund',
-      transactionType: tradeType.toLowerCase() as 'buy' | 'sell',
-      quantity: lotCount,
-      price: price,
-      commission: 0,
-      currency: 'TRY',
-      transactionDate: new Date().toISOString().split('T')[0],
-      exchange: 'TEFAS',
-      notes: `${code} TEFAS fon detayından hızlı işlem`,
-    });
+    setSaving(true);
+    try {
+      const transaction = await addTransaction({
+        portfolioId: activePortfolioId,
+        symbol: code,
+        assetType: 'fund',
+        transactionType: tradeType.toLowerCase() as 'buy' | 'sell',
+        quantity: lotCount,
+        price: tradePrice,
+        commission: 0,
+        currency: 'TRY',
+        transactionDate: new Date().toISOString().split('T')[0],
+        exchange: 'TEFAS',
+        notes: `${code} TEFAS fon detayından hızlı işlem`,
+      });
 
-    showToast({
-      type: 'success',
-      title: `${tradeType === 'BUY' ? 'Fon Alımı' : 'Fon Satımı'} Kaydedildi!`,
-      message: `${lotCount} adet ${code} payı ₺${price.toFixed(4)} fiyattan portföyünüze eklendi. Toplam: ₺${total.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`,
-    });
-    setIsTradeModalOpen(false);
-    fetchLivePrices();
+      if (!transaction) {
+        showToast({ type: 'danger', title: 'İşlem kaydedilemedi', message: 'Portföy ve işlem bilgilerini kontrol edip tekrar deneyin.' });
+        return;
+      }
+
+      showToast({
+        type: 'success',
+        title: tradeType === 'BUY' ? 'Fon alımı kaydedildi' : 'Fon satımı kaydedildi',
+        message: `${lotCount} adet ${code} payı için ₺${tradePrice.toFixed(4)} birim fiyatla işlem kaydedildi.`,
+      });
+      setIsTradeModalOpen(false);
+      setManualPrice('');
+      void fetchLivePrices();
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -195,23 +210,22 @@ export default function FundDetailPage({
         <div className="flex flex-wrap items-baseline justify-between gap-3 pt-3 border-t border-border/60">
           <div className="flex items-baseline gap-3">
             <span className="text-2xl sm:text-3xl font-black font-mono text-text-primary">
-              ₺{fund.price.toFixed(4)}
+              {fund.price === null ? 'Fiyat alınamadı' : `₺${fund.price.toFixed(4)}`}
             </span>
-            <span
+            {fund.price !== null && <span
               className={`font-mono text-xs sm:text-sm font-bold px-2.5 py-0.5 rounded-lg ${
                 isDailyPos ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
               }`}
             >
               {isDailyPos ? '+' : ''}
               %{fund.dailyReturn.toFixed(2)} (Günlük)
-            </span>
+            </span>}
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          {fund.price !== null && <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
             <span>TEFAS Gün Sonu Takas Fiyatı</span>
-            {fund.lastSyncAt && <span>({new Date(fund.lastSyncAt).toLocaleDateString('tr-TR')})</span>}
-          </div>
+            {fund.lastSyncAt && <span>· Son eşitleme {new Date(fund.lastSyncAt).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' })}</span>}
+          </div>}
         </div>
       </div>
 
@@ -421,10 +435,21 @@ export default function FundDetailPage({
             </button>
           </div>
 
-          <div className="bg-bg-tertiary p-3 rounded-xl border border-border">
-            <span className="text-xs text-text-muted block">Birim Pay Fiyatı</span>
-            <span className="text-lg font-bold font-mono text-text-primary">₺{fund.price.toFixed(4)}</span>
-          </div>
+          {fund.price === null ? (
+            <Input
+              label="İşlemdeki birim pay fiyatı (TL)"
+              inputMode="decimal"
+              value={manualPrice}
+              onChange={event => setManualPrice(event.target.value)}
+              helperText="TEFAS fiyatı alınamadı. Ekstrenizdeki birim fiyatı girin."
+              required
+            />
+          ) : (
+            <div className="bg-bg-tertiary p-3 rounded-xl border border-border">
+              <span className="text-xs text-text-muted block">Birim Pay Fiyatı</span>
+              <span className="text-lg font-bold font-mono text-text-primary">₺{fund.price.toFixed(4)}</span>
+            </div>
+          )}
 
           <Input
             label="Pay Adedi"
@@ -438,7 +463,7 @@ export default function FundDetailPage({
           <div className="bg-bg-tertiary p-3 rounded-xl border border-border flex justify-between items-center text-sm">
             <span className="text-text-secondary">Toplam Tutar:</span>
             <span className="font-bold font-mono text-text-primary">
-              ₺{(fund.price * lotCount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+              {canSaveTrade ? `₺${(tradePrice * lotCount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : '—'}
             </span>
           </div>
 
@@ -452,9 +477,10 @@ export default function FundDetailPage({
             </Button>
             <Button
               type="submit"
+              disabled={!canSaveTrade || saving}
               variant={tradeType === 'BUY' ? 'success' : 'danger'}
             >
-              {tradeType === 'BUY' ? 'Alış Emrini Tamamla' : 'Satış Emrini Tamamla'}
+              {saving ? 'Kaydediliyor…' : tradeType === 'BUY' ? 'Alışı Kaydet' : 'Satışı Kaydet'}
             </Button>
           </div>
         </form>

@@ -225,12 +225,11 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
       const founder = dirEntry?.founder || `${sym} Portföy Yönetimi A.Ş.`;
       const category = (bilgi.fonKategori as FundCategory) || dirEntry?.category || 'Değişken Fon';
 
-      const lastPrice =
-        Number(bilgi.sonFiyat) > 0
-          ? Number(bilgi.sonFiyat)
-          : priceHistory.length > 0
-          ? Number(priceHistory[priceHistory.length - 1].fiyat)
-          : 1.0;
+      const currentPrice = Number(bilgi.sonFiyat);
+      const lastPrice = Number.isFinite(currentPrice) && currentPrice > 0
+        ? currentPrice
+        : Number(priceHistory.at(-1)?.fiyat);
+      if (!Number.isFinite(lastPrice) || lastPrice <= 0) return null;
 
       let dailyReturn = bilgi.gunlukGetiri != null ? Number(bilgi.gunlukGetiri) : 0;
 
@@ -314,6 +313,7 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
         managementFee,
         assetAllocation,
         kapLink,
+        lastSyncAt: new Date().toISOString(),
       };
 
       liveFundCache.set(sym, { data: result, timestamp: Date.now() });

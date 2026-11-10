@@ -73,7 +73,11 @@ async function fetchLiveFundDetail(code) {
     const priceHistory = ((await fiyatRes?.json())?.resultList || []).filter((p) => Number(p.fiyat) > 0);
 
     if (bilgi && (bilgi.sonFiyat != null || priceHistory.length > 0)) {
-      const lastPrice = Number(bilgi.sonFiyat) || Number(priceHistory[priceHistory.length - 1]?.fiyat) || 1.0;
+      const currentPrice = Number(bilgi.sonFiyat);
+      const lastPrice = Number.isFinite(currentPrice) && currentPrice > 0
+        ? currentPrice
+        : Number(priceHistory.at(-1)?.fiyat);
+      if (!Number.isFinite(lastPrice) || lastPrice <= 0) return null;
       let dailyReturn = Number(bilgi.gunlukGetiri) || 0;
 
       let monthlyReturn = 0;

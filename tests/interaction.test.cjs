@@ -633,3 +633,69 @@ test('AI response parser detects openrouter_free_tier_daily rate limit and falls
 });
 
 
+
+test('Market overview returns unavailable for configured fallback prices and keeps observed quote metadata', async () => {
+  const observation = {
+    source: 'Yahoo Finance',
+    asOf: '2026-11-10T10:00:00.000Z',
+    fetchedAt: '2026-11-10T10:01:00.000Z',
+    changePercent: null,
+  };
+  const { GET } = load('src/app/api/markets/overview/route.ts', {
+    require: name => {
+      if (name === 'next/server') return { NextResponse: { json: body => body } };
+      assert.equal(name, '@/lib/data/stocks');
+      return {
+        fetchAllAlternativeMarkets: async () => ({
+          indices: [{ symbol: 'XU100', price: 12188.73 }, { symbol: 'SPX', price: 7000, observation }],
+          commodity: [{ symbol: 'XAUTRYG', price: 6645 }],
+          forex: [],
+          crypto: [],
+        }),
+      };
+    },
+  });
+  const result = await GET();
+  assert.equal(result.success, true);
+  const bist = result.data.find(item => item.symbol === 'XU100');
+  const gold = result.data.find(item => item.symbol === 'GA');
+  const spx = result.data.find(item => item.symbol === 'SPX');
+  assert.equal(bist.value, null);
+  assert.equal(bist.status, 'unavailable');
+  assert.equal(gold.value, null);
+  assert.equal(result.sections.indices.length, 1);
+  assert.equal(result.sections.commodity.length, 0);
+  assert.equal(spx.value, 7000);
+  assert.equal(spx.unit, 'points');
+  assert.equal(spx.change, null);
+  assert.equal(spx.observation, observation);
+});
+
+test('Fund directory has no price and a verified one-lira database price remains usable', async () => {
+  const directory = [
+    { code: 'AAA', name: 'First Fund', founder: 'Manager', category: 'Değişken Fon' },
+    { code: 'BBB', name: 'Second Fund', founder: 'Manager', category: 'Değişken Fon' },
+  ];
+  const rows = [
+    { ...directory[0], price: '1.0', last_sync_at: null },
+    { ...directory[1], price: '1.0', last_sync_at: '2026-11-10T10:00:00.000Z' },
+  ];
+  const { getAllFunds, getFundByCode, getFundsFromDatabase } = load('src/lib/data/funds.ts', {
+    process: { env: { NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'fixture' } },
+    require: name => {
+      if (name === './tefas_funds_directory.json') return { default: directory };
+      if (name === '@/lib/utils/search') return {};
+      assert.equal(name, '@supabase/supabase-js');
+      return {
+        createClient: () => ({
+          from: () => ({ select: () => ({ neq: () => ({ order: async () => ({ data: rows, error: null }) }) }) }),
+        }),
+      };
+    },
+  });
+  assert.equal(getAllFunds()[0].price, null);
+  assert.equal(getFundByCode('AAA').price, null);
+  const funds = await getFundsFromDatabase();
+  assert.equal(funds[0].price, null);
+  assert.equal(funds[1].price, 1);
+});

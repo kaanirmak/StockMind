@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal, InstrumentLogo, Icon } from '@/components/ui';
 
-type Result = { symbol: string; name: string; path: string; price: number; currency: string; kind: string };
+type Result = { symbol: string; name: string; path: string; price: number | null; currency: string; kind: string };
 
 export function SearchPalette() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export function SearchPalette() {
         if (controller.signal.aborted) return;
         setResults([
           ...(stocks.success ? stocks.data.slice(0, 6) : []).map((s: { symbol: string; name: string; price: number; currency: string }) => ({ ...s, path: `/stocks/${s.symbol}`, kind: 'Hisse' })),
-          ...(funds.success ? funds.data.slice(0, 6) : []).map((f: { code: string; name: string; price: number }) => ({ symbol: f.code, name: f.name, price: f.price, currency: 'TRY', path: `/funds/${f.code}`, kind: 'Fon' })),
+          ...(funds.success ? funds.data.slice(0, 6) : []).map((f: { code: string; name: string; price: number | null }) => ({ symbol: f.code, name: f.name, price: f.price, currency: 'TRY', path: `/funds/${f.code}`, kind: 'Fon' })),
         ]);
       } catch { if (!controller.signal.aborted) { setError(true); setResults([]); } }
       finally { if (!controller.signal.aborted) setLoading(false); }
@@ -71,7 +71,7 @@ export function SearchPalette() {
         {loading ? <p role="status" className="p-4 text-sm text-text-muted">Aranıyor…</p> : error ? <p role="status" className="p-4 text-sm text-danger">Arama yüklenemedi. Tekrar deneyin.</p> : results.map((result, index) => <button key={result.path} id={`${listId}-${index}`} role="option" aria-selected={active === index} onClick={() => navigate(result.path)} className={`w-full min-w-0 flex items-center gap-3 p-3 rounded-xl text-left ${active === index ? 'bg-accent/10' : 'hover:bg-bg-hover'}`}>
           <InstrumentLogo symbol={result.symbol} name={result.name} size="md" />
           <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-text-primary">{result.symbol}<span className="ml-2 text-xs font-normal text-text-muted">{result.kind}</span></span><span className="block truncate text-xs text-text-secondary">{result.name}</span></span>
-          <span className="shrink-0 text-xs tabular-nums text-text-primary">{Number(result.price || 0).toLocaleString('tr-TR', { style: 'currency', currency: result.currency || 'TRY', maximumFractionDigits: result.kind === 'Fon' ? 4 : 2 })}</span>
+          <span className="shrink-0 text-xs tabular-nums text-text-primary">{result.price == null ? 'Fiyat yok' : result.price.toLocaleString('tr-TR', { style: 'currency', currency: result.currency || 'TRY', maximumFractionDigits: result.kind === 'Fon' ? 4 : 2 })}</span>
         </button>)}
         {!loading && !error && !results.length && <p role="status" className="p-4 text-sm text-text-muted">{query.trim() ? 'Eşleşen varlık bulunamadı.' : 'Aramaya başlamak için bir şirket adı veya kod yazın.'}</p>}
       </div>
