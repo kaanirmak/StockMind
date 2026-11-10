@@ -1,8 +1,8 @@
 # News collection and fallback
 
-The app first reads the public `news-data/news.json` snapshot from this repository. When every requested general feed was collected within 30 minutes, no publisher requests are made by the Worker. Otherwise, direct publisher requests have an eight-second deadline and failed feeds use snapshot articles collected within the last 24 hours. Stale responses include a warning and collection time. No portfolio symbols are sent to the snapshot host.
+The app first reads the public `news-data/news.json` snapshot from this repository. Each feed collected within 30 minutes is served from the snapshot. The Worker fetches older or missing feeds with an eight-second deadline. Failed feeds use snapshot articles collected within the last 24 hours. Stale responses include a warning and collection time. No portfolio symbols are sent to the snapshot host.
 
-`.github/workflows/collect-news.yml` collects TRT Haber economy and European Central Bank press RSS feeds on a GitHub runner approximately every 20 minutes. Scheduled Actions can be delayed. Successful collections update the isolated `news-data` branch without triggering the app's main-branch deployment. Failed categories retain their previous collection timestamps, and a total failure leaves the previous snapshot untouched and fails the job visibly.
+`.github/workflows/collect-news.yml` collects TRT Haber economy, European Central Bank press and Investing.com market and company RSS feeds on a GitHub runner approximately every 20 minutes. Scheduled Actions can be delayed. Successful collections update the isolated `news-data` branch without triggering the app's main-branch deployment. Failed categories retain their previous collection timestamps, and a total failure leaves the previous snapshot untouched and fails the job visibly.
 
 ## Activation
 
@@ -28,3 +28,7 @@ Each article carries a feed ID. Snapshot validation accepts only enabled publish
 ## Sentiment
 
 `src/lib/news/sentiment.ts` is shared by the live API and scheduled collector. The API recalculates snapshot labels so older classifications do not survive a rule update. The classifier uses explicit financial phrases in Turkish and English, treats ambiguous or mixed signals as neutral, and skips negated, forecast and question clauses. Generic words such as "karar", "rekor" or "artış" alone cannot mark a story positive. Interest-rate changes alone are neutral because their effects depend on the asset and expectations. Labels describe text tone, not investment signals; this remains a conservative rule-based classifier rather than a semantic AI model.
+
+## Feed order
+
+The news page defaults to highlighting the last 48 hours of portfolio matches and headlines about identifiable events such as earnings, dividends and rate decisions. Event labels explain the topic. Readers can switch to publication order.

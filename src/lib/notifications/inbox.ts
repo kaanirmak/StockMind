@@ -20,9 +20,14 @@ export function readInbox(): InboxItem[] {
   } catch { return []; }
 }
 export function safeInboxLink(value: unknown): string | undefined {
-  return typeof value === 'string' && /^\/(stocks\/|funds\/|portfolio|watchlist|dashboard|piyasalar|news|settings)/.test(value) && !value.includes('\\') ? value : undefined;
+  return typeof value === 'string' && /^\/(stocks\/|funds\/|portfolio|watchlist|dashboard|piyasalar|news|settings|reports|ai-assistant|quant-lab|widgets)/.test(value) && !value.includes('\\') ? value : undefined;
 }
 export function saveInbox(items: InboxItem[]) {
-  try { localStorage.setItem(INBOX_KEY, JSON.stringify(items.slice(0, 200))); } catch { /* Storage may be unavailable in private browsing. */ }
+  try {
+    localStorage.setItem(INBOX_KEY, JSON.stringify(items.slice(0, 200)));
+  } catch {
+    return false;
+  }
   window.dispatchEvent(new Event('stockmind:inbox'));
+  return true;
 }

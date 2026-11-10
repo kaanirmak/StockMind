@@ -68,12 +68,12 @@ export function AppUpdateNotifier() {
             // Send native push notification to status bar/lock screen once per new release
             const notifSentKey = `stockmind_update_push_sent_${data.versionCode}`;
             if (!localStorage.getItem(notifSentKey)) {
-              localStorage.setItem(notifSentKey, 'true');
-              sendPushNotification(
+              const delivered = sendPushNotification(
                 `🚀 Yeni StockMind Güncellemesi Mevcut (v${data.version})`,
                 'StockMind yeni sürümü hazır! Performans, logolar ve kapalıyken fiyat alarmları için hemen güncelleyin.',
                 '/settings'
               );
+              if (delivered) localStorage.setItem(notifSentKey, 'true');
             }
           } else if (!isAndroid && typeof window !== 'undefined') {
             // Also check if on Android browser and dismissed
@@ -98,12 +98,12 @@ export function AppUpdateNotifier() {
           if (data && data.broadcast && data.broadcast.id && data.broadcast.message) {
             const bcKey = `stockmind_broadcast_seen_${data.broadcast.id}`;
             if (!localStorage.getItem(bcKey)) {
-              localStorage.setItem(bcKey, 'true');
-              sendPushNotification(
+              const delivered = sendPushNotification(
                 data.broadcast.title || "StockMind 📢",
                 data.broadcast.message,
                 data.broadcast.route || '/dashboard'
               );
+              if (delivered) localStorage.setItem(bcKey, 'true');
             }
           }
         }
@@ -115,7 +115,13 @@ export function AppUpdateNotifier() {
     checkUpdate();
     // Re-check after bridge is guaranteed to have attached
     const timer = setTimeout(checkUpdate, 500);
-    return () => clearTimeout(timer);
+    const pollBroadcast = setInterval(() => { if (!document.hidden) void checkUpdate(); }, 60_000);
+    window.addEventListener('focus', checkUpdate);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(pollBroadcast);
+      window.removeEventListener('focus', checkUpdate);
+    };
   }, []);
 
   if (!updateAvailable || dismissed || !versionInfo) {

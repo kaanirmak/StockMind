@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
 import { Button } from '@/components/ui/Button';
+import { hasProAccess } from '@/lib/ai/modelCatalog';
 
 type QuantTabId = 'committee' | 'dcf' | 'health' | 'stress';
 
@@ -39,7 +40,7 @@ const TABS: TabItem[] = [
     shortLabel: 'Yatırım Komitesi',
     icon: Users,
     badge: 'AI Hub',
-    description: '4 Efsane fon yöneticisinin çoklu ajan simülasyonu ve konsensüs kararı',
+    description: 'Dört yatırım yaklaşımını karşılaştıran komite simülasyonu',
   },
   {
     id: 'dcf',
@@ -74,11 +75,7 @@ export default function QuantLabPage() {
   const [activeTab, setActiveTab] = useState<QuantTabId>('committee');
   const { getSummary, fetchPortfoliosAndTransactions } = usePortfolioStore();
 
-  const isPro = Boolean(
-    user?.app_metadata?.plan === 'pro' ||
-    user?.app_metadata?.is_pro === true ||
-    profile?.isPro
-  );
+  const isPro = hasProAccess(user?.app_metadata);
 
   const isPending =
     profile?.proRequestStatus === 'pending' ||
@@ -94,19 +91,8 @@ export default function QuantLabPage() {
     return (summary.holdings || []).filter((h) => h.assetType === 'stock');
   }, [summary.holdings]);
 
-  const [selectedSymbol, setSelectedSymbol] = useState<string>('THYAO');
-
-  // Once portfolio stocks are loaded, auto-select the user's primary portfolio stock
-  useEffect(() => {
-    if (portfolioStocks.length > 0) {
-      const inPortfolio = portfolioStocks.some(
-        (h) => h.symbol.toUpperCase() === selectedSymbol.toUpperCase()
-      );
-      if (!inPortfolio) {
-        setSelectedSymbol(portfolioStocks[0].symbol);
-      }
-    }
-  }, [portfolioStocks]);
+  const [explicitSymbol, setSelectedSymbol] = useState<string>();
+  const selectedSymbol = explicitSymbol ?? portfolioStocks[0]?.symbol ?? 'THYAO';
 
   if (authLoading) {
     return (

@@ -1,37 +1,24 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import pkg from '../../../../../package.json';
-
-declare global {
-  var __stockmind_latest_broadcast: any;
-}
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
-  let broadcast = globalThis.__stockmind_latest_broadcast || null;
-
-  if (!broadcast) {
-    try {
-      const supabase = createAdminClient();
-      const { data } = await supabase
-        .from('funds')
-        .select('asset_allocation')
-        .eq('code', 'SYS_BROADCAST')
-        .single();
-
-      if (data?.asset_allocation) {
-        const sentTime = new Date(data.asset_allocation.sentAt || 0).getTime();
-        // Only broadcast if sent within the last 2 hours to prevent stale alert spam
-        if (Date.now() - sentTime < 2 * 60 * 60 * 1000) {
-          broadcast = data.asset_allocation;
-          globalThis.__stockmind_latest_broadcast = broadcast;
-        } else {
-          broadcast = null;
-        }
-      }
-    } catch (_) {}
+  let broadcast = null;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('broadcasts')
+      .select('payload')
+      .eq('id', 'latest')
+      .maybeSingle();
+    if (error) throw error;
+    const age = Date.now() - Date.parse(data?.payload?.sentAt ?? '');
+    if (age >= 0 && age < 2 * 60 * 60 * 1000) broadcast = data?.payload;
+  } catch (error) {
+    console.warn('App version broadcast lookup failed', error);
   }
 
   return NextResponse.json(

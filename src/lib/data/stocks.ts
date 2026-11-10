@@ -1082,6 +1082,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       }).then((r) => r.json()).catch(() => null);
 
       const meta = res?.chart?.result?.[0]?.meta;
+      if (!allowSynthetic && !(meta?.regularMarketPrice > 0)) return null;
       const currentPrice = meta?.regularMarketPrice || indexDef.basePrice;
       const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
       const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
@@ -1113,6 +1114,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       } as any;
     } catch (e) {
       console.warn(`Error resolving index ${sym}:`, e);
+      if (!allowSynthetic) return null;
       return {
         symbol: indexDef.symbol,
         name: indexDef.name,
@@ -1250,6 +1252,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         }).then((r) => r.json()).catch(() => null);
 
         const meta = res?.chart?.result?.[0]?.meta;
+        if (!allowSynthetic && !(meta?.regularMarketPrice > 0)) return null;
         const currentPrice = meta?.regularMarketPrice || commDef.basePrice;
         const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
         const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
@@ -1599,6 +1602,7 @@ export async function getAllStocksLive(filter?: {
   exchange?: string;
   sector?: string;
   search?: string;
+  liveOnly?: boolean;
 }): Promise<(StockMarketInfo & StockQuote)[]> {
   const exUpper = filter?.exchange?.toUpperCase();
 
@@ -1675,7 +1679,7 @@ export async function getAllStocksLive(filter?: {
   let allStocks = [...bist, ...us];
 
   // If list is empty due to initial fetch, fallback to POPULAR_STOCKS
-  if (allStocks.length === 0) {
+  if (allStocks.length === 0 && !filter?.liveOnly) {
     allStocks = [...POPULAR_STOCKS] as any;
   }
 

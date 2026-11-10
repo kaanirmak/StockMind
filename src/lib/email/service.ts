@@ -36,176 +36,48 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
   if (payload?.isDailyReport === false) {
     return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>StockMind test e-postası</title></head><body><h1>StockMind</h1><p>Bu bir test e-postasıdır. Doğrulanmış hesabınıza e-posta gönderimi başarılı oldu.</p><p>Bu mesaj piyasa verisi veya portföy raporu içermez.</p></body></html>';
   }
-  const dateStr = new Date().toLocaleDateString('tr-TR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  const date = new Date().toLocaleDateString('tr-TR', { dateStyle: 'long', timeZone: 'Europe/Istanbul' });
+  const market = payload?.marketData;
+  const gram = market?.gramAltin ?? (market?.gold && market?.usdtry ? market.gold * market.usdtry / 31.1034768 : undefined);
+  const marketRows = [
+    { label: 'BIST 100', value: market?.bist100, unit: 'puan' },
+    { label: 'Türk Hava Yolları (THYAO)', value: market?.thyao, unit: 'TRY' },
+    { label: 'Dolar / TL', value: market?.usdtry, unit: 'TRY' },
+    { label: 'Ons Altın', value: market?.gold, unit: 'USD' },
+    { label: 'Gram Altın (hesaplanan)', value: gram, unit: 'TRY' },
+    { label: 'Bitcoin', value: market?.btc, unit: 'USD' },
+  ].filter(row => typeof row.value === 'number' && Number.isFinite(row.value) && row.value > 0);
+  const formatValue = (value: number, unit: string) =>
+    unit === 'puan'
+      ? `${value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} puan`
+      : value.toLocaleString('tr-TR', { style: 'currency', currency: unit });
+  const portfolio = payload?.portfolioSummary;
+  const appUrl = escapeHtml(process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev');
 
-  const goldPrice = payload?.marketData?.gold || 4309.66;
-  const usdPrice = payload?.marketData?.usdtry || 48.63;
-  const gramAltin = payload?.marketData?.gramAltin || ((goldPrice * usdPrice) / 31.1034768);
-  const btcPrice = payload?.marketData?.btc || 75871.58;
-  const isDaily = payload?.isDailyReport ?? true;
-  const pSummary = payload?.portfolioSummary || { totalValue: 184500, totalPnL: 8420, totalPnLPercent: 4.78 };
-  const safeUserName = escapeHtml(userName);
-
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="tr">
-<head>
-  <meta charset="utf-8">
-  <title>StockMind ${isDaily ? 'Günlük Piyasa Kapanış Bülteni (18:30)' : 'Portföy ve Piyasa Bildirimi'}</title>
-  <style>
-    body { margin: 0; padding: 0; background-color: ${palette.color060913}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: ${palette.colorf1f5f9}; }
-    .container { max-width: 600px; margin: 0 auto; padding: 32px 20px; }
-    .card { background: linear-gradient(135deg, ${palette.color0d1527} 0%, ${palette.color111a33} 100%); border: 1px solid ${palette.color1e293b}; border-radius: 20px; padding: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-    .logo { font-size: 24px; font-weight: 900; background: linear-gradient(to right, ${palette.color6366f1}, ${palette.primaryDark}, ${palette.color06b6d4}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px; }
-    .badge { display: inline-block; padding: 4px 12px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 100px; font-size: 11px; font-weight: 700; color: ${palette.color818cf8}; margin-top: 8px; }
-    .badge-daily { background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: ${palette.color34d399}; }
-    .title { font-size: 20px; font-weight: 800; color: ${palette.colorffffff}; margin-top: 24px; margin-bottom: 8px; }
-    .text { font-size: 14px; line-height: 1.6; color: ${palette.color94a3b8}; margin-bottom: 24px; }
-    .metrics-grid { display: table; width: 100%; margin-bottom: 16px; }
-    .metric-cell { display: table-cell; width: 50%; padding: 12px 14px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 14px; }
-    .metric-cell:first-child { border-right: 6px solid transparent; }
-    .metric-cell:last-child { border-left: 6px solid transparent; }
-    .metric-label { font-size: 11px; color: ${palette.color64748b}; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
-    .metric-val { font-size: 17px; font-weight: 800; font-family: monospace; color: ${palette.colorf8fafc}; }
-    .positive { color: ${palette.success}; }
-    .portfolio-box { background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
-    .ai-box { background: rgba(99, 102, 241, 0.08); border-left: 3px solid ${palette.color6366f1}; padding: 14px 16px; border-radius: 8px; margin-bottom: 24px; }
-    .btn { display: inline-block; background: linear-gradient(135deg, ${palette.color6366f1}, ${palette.color4f46e5}); color: ${palette.colorffffff}; text-decoration: none; padding: 12px 28px; border-radius: 12px; font-size: 14px; font-weight: 700; text-align: center; margin-top: 8px; }
-    .footer { text-align: center; font-size: 11px; color: ${palette.color475569}; margin-top: 28px; line-height: 1.5; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 16px;">
-        <span class="logo">⚡ StockMind</span>
-        <span class="badge ${isDaily ? 'badge-daily' : ''}">${isDaily ? '⏰ HER GÜN 18:30 BÜLTENİ' : 'CANLI TEST BİLDİRİMİ'}</span>
-      </div>
-
-      <div class="title">Merhaba ${safeUserName}, ${isDaily ? 'Günün Piyasa Kapanış Raporu Hazır!' : 'Test e-postan başarıyla ulaştı! 🎉'}</div>
-      <div class="text">
-        ${isDaily 
-          ? `BIST ve küresel piyasaların günlük seans kapanışı tamamlandı. Portföyünüzün bugünkü performansı ve anlık TradingView & TEFAS piyasa özeti aşağıda sunulmuştur:` 
-          : `Bu e-posta, <strong>StockMind Finansal Zeka Sistemi</strong> bildirim hattının ve günlük bülten servisinin başarıyla çalıştığını doğrulamak için gönderilmiştir.`
-        }
-      </div>
-
-      <!-- Portfolio Section -->
-      <div class="portfolio-box">
-        <div style="font-size: 11px; font-weight: 700; color: ${palette.color34d399}; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">💼 Günlük Portföy Durumu (18:30 Kapanış)</div>
-        <div style="display: table; width: 100%;">
-          <div style="display: table-cell; width: 50%;">
-            <div style="font-size: 11px; color: ${palette.color64748b};">Toplam Portföy Değeri</div>
-            <div style="font-size: 19px; font-weight: 800; font-family: monospace; color: ${palette.colorffffff};">₺${pSummary.totalValue?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-          </div>
-          <div style="display: table-cell; width: 50%; text-align: right;">
-            <div style="font-size: 11px; color: ${palette.color64748b};">Net Günlük Kâr / Getiri</div>
-            <div style="font-size: 19px; font-weight: 800; font-family: monospace; color: ${palette.success};">
-              +₺${pSummary.totalPnL?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} (+%${pSummary.totalPnLPercent?.toFixed(2)})
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Market Live Grid -->
-      <div class="metrics-grid">
-        <div class="metric-cell">
-          <div class="metric-label">Ons Altın (XAU/USD)</div>
-          <div class="metric-val">$${goldPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span class="positive" style="font-size: 11px;">+0.27%</span></div>
-        </div>
-        <div class="metric-cell">
-          <div class="metric-label">Gram Altın (TL)</div>
-          <div class="metric-val">₺${gramAltin.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} <span class="positive" style="font-size: 11px;">+0.26%</span></div>
-        </div>
-      </div>
-
-      <div class="metrics-grid">
-        <div class="metric-cell">
-          <div class="metric-label">Dolar / TL (USDTRY)</div>
-          <div class="metric-val">₺${usdPrice.toFixed(2)}</div>
-        </div>
-        <div class="metric-cell">
-          <div class="metric-label">Bitcoin (BTC/USD)</div>
-          <div class="metric-val">$${btcPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-        </div>
-      </div>
-
-      <!-- Technical Analysis Levels Section -->
-      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
-        <div style="font-size: 12px; font-weight: 700; color: ${palette.color38bdf8}; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📊 18:30 Kapanış Teknik Seviyeleri (AI Özeti)</div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: ${palette.colorcbd5e1};">
-          <thead>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: ${palette.color64748b}; font-size: 11px; text-align: left;">
-              <th style="padding: 6px 4px;">Varlık</th>
-              <th style="padding: 6px 4px;">Destek (S1)</th>
-              <th style="padding: 6px 4px;">Pivot (PP)</th>
-              <th style="padding: 6px 4px;">Direnç (R1)</th>
-              <th style="padding: 6px 4px;">Sinyal</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.colorffffff};">Gram Altın</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.color34d399};">₺${((gramAltin * 0.985)).toFixed(2)}</td>
-              <td style="padding: 8px 4px; font-family: monospace;">₺${gramAltin.toFixed(2)}</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.warning};">₺${((gramAltin * 1.025)).toFixed(2)}</td>
-              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.color34d399};">GÜÇLÜ AL</td>
-            </tr>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
-              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.colorffffff};">BIST 100 (XU100)</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.color34d399};">9.820</td>
-              <td style="padding: 8px 4px; font-family: monospace;">10.050</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.warning};">10.280</td>
-              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.color38bdf8};">POZİTİF</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.colorffffff};">Ons Altın (XAU)</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.color34d399};">$${((goldPrice * 0.985)).toFixed(1)}</td>
-              <td style="padding: 8px 4px; font-family: monospace;">$${goldPrice.toFixed(1)}</td>
-              <td style="padding: 8px 4px; font-family: monospace; color: ${palette.warning};">$${((goldPrice * 1.025)).toFixed(1)}</td>
-              <td style="padding: 8px 4px; font-weight: 700; color: ${palette.color34d399};">AL</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Critical Market News Section -->
-      <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 20px;">
-        <div style="font-size: 12px; font-weight: 700; color: ${palette.color818cf8}; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px;">📰 Günün Öne Çıkan Piyasa & Finans Gelişmeleri</div>
-        <div style="margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-          <div style="font-size: 13px; font-weight: 700; color: ${palette.colorffffff}; margin-bottom: 2px;">• BIST Kapanışında Sanayi ve Bankacılık Hisselerinde Alım Hacmi Arttı</div>
-          <div style="font-size: 11px; color: ${palette.color94a3b8}; line-height: 1.4;">BIST 100 endeksi günü yabancı para girişlerinin desteğiyle kritik direnç testinde kapattı. AI duyarlılığı: <span style="color: ${palette.color34d399}; font-weight: 700;">Pozitif</span></div>
-        </div>
-        <div>
-          <div style="font-size: 13px; font-weight: 700; color: ${palette.colorffffff}; margin-bottom: 2px;">• Küresel Merkez Bankaları ve Altın Fiyatlarında Rekor Seviyeler Korunuyor</div>
-          <div style="font-size: 11px; color: ${palette.color94a3b8}; line-height: 1.4;">Fed faiz indirimi beklentileri ve jeopolitik gelişmeler ons ve gram altında güvenli liman talebini canlı tutuyor. AI duyarlılığı: <span style="color: ${palette.color34d399}; font-weight: 700;">Pozitif</span></div>
-        </div>
-      </div>
-
-      <div class="ai-box">
-        <div style="font-size: 12px; font-weight: 700; color: ${palette.colora5b4fc}; margin-bottom: 4px;">🧠 StockMind Finansal Zeka Notu</div>
-        <div style="font-size: 12px; color: ${palette.colorcbd5e1}; line-height: 1.5;">
-          Tüm teknik seviyeler, varlık kurları ve TEFAS fon değerlemeleri Takasbank ve TradingView canlı veri ağından anlık olarak doğrulanmıştır. Her iş günü 18:30'da otomatik bülteniniz gönderilmeye devam edecektir.
-        </div>
-      </div>
-
-      <div style="text-align: center;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev'}/dashboard" class="btn">StockMind Paneline Git &rarr;</a>
-      </div>
-
-      <div class="footer">
-        © ${new Date().getFullYear()} StockMind Teknoloji A.Ş. • Tüm hakları saklıdır.<br>
-        Alıcı: ${userName} &bull; Zamanlanmış Gönderim Saati: Her Gün 18:30 &bull; Tarih: ${dateStr}
-      </div>
-    </div>
+<head><meta charset="utf-8"><title>StockMind 18:30 Piyasa Bülteni</title></head>
+<body style="margin:0;background:#f1f5f9;color:#0f172a;font-family:Arial,sans-serif">
+  <div style="max-width:580px;margin:24px auto;padding:28px;background:#fff;border-radius:16px">
+    <p style="font-weight:bold;color:#4f46e5">StockMind · ${date}</p>
+    <h1 style="font-size:24px">18:30 Piyasa Bülteni</h1>
+    <p>Merhaba ${escapeHtml(userName)},</p>
+    ${marketRows.length ? `
+    <p>Bülten hazırlanırken alınabilen son piyasa fiyatları</p>
+    <table style="width:100%;border-collapse:collapse">
+      <tbody>${marketRows.map(({ label, value, unit }) => `
+        <tr>
+          <th scope="row" style="text-align:left;border-bottom:1px solid #e2e8f0;padding:8px">${label}</th>
+          <td style="text-align:right;border-bottom:1px solid #e2e8f0;padding:8px">${formatValue(value!, unit)}</td>
+        </tr>`).join('')}</tbody>
+    </table>` : '<p>Bu gönderim için piyasa fiyatı alınamadı.</p>'}
+    ${typeof portfolio?.totalValue === 'number' && Number.isFinite(portfolio.totalValue)
+      ? `<p>Portföy değeri ${formatValue(portfolio.totalValue, 'TRY')}</p>`
+      : ''}
+    <p style="margin-top:24px"><a href="${appUrl}/dashboard" style="color:#4f46e5">StockMind panelini aç</a></p>
   </div>
 </body>
-</html>
-`;
+</html>`;
 }
 
 export interface SendEmailResult {
@@ -225,13 +97,7 @@ export interface SendEmailOptions {
   customSmtp?: EmailPayload['customSmtp'];
 }
 
-/**
- * Universal email transport:
- * 1. Resend REST API (Pure HTTPS fetch - ideal for Cloudflare Workers & Edge)
- * 2. Brevo REST API (HTTPS fetch alternative)
- * 3. Nodemailer SMTP (for Node.js runtime / local dev with timeout)
- * 4. Admin Webhook ping fallback (Discord/Telegram/Slack)
- */
+/** Explicit Gmail configuration uses the authenticated mailbox for all outgoing mail. */
 export async function sendEmailTransport(options: SendEmailOptions): Promise<SendEmailResult> {
   const { to, subject, html, from, customSmtp } = options;
 
@@ -239,18 +105,20 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
     return { success: false, message: 'Geçersiz e-posta adresi' };
   }
 
-  // 1. Resend REST API (Primary for Cloudflare Workers Edge runtime)
-  const resendApiKey = (process.env.RESEND_API_KEY || '').trim();
+  const gmailOnly = process.env.EMAIL_TRANSPORT?.trim() === 'gmail';
+  const resendApiKey = gmailOnly ? '' : (process.env.RESEND_API_KEY || '').trim();
+  let senderVerificationFailed = false;
   if (resendApiKey) {
     try {
       const resendFrom =
         from ||
-        process.env.RESEND_FROM ||
-        process.env.SMTP_FROM ||
+        process.env.RESEND_FROM?.trim() ||
+        process.env.SMTP_FROM?.trim() ||
         'StockMind <onboarding@resend.dev>';
 
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
+        signal: AbortSignal.timeout(8_000),
         headers: {
           Authorization: `Bearer ${resendApiKey}`,
           'Content-Type': 'application/json',
@@ -268,24 +136,26 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
       if (res.ok && data?.id) {
         return {
           success: true,
-          message: `E-posta başarıyla ${to} adresine iletildi! (Resend: ${data.id})`,
+          message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
           method: 'resend_api',
         };
       } else {
-        console.warn('Resend API returned error:', data);
+        senderVerificationFailed = res.status === 403 &&
+          (/@resend\.dev\b/i.test(resendFrom) || /verify|verified|verification/i.test(String(data?.message || '')));
+        console.warn('Resend API rejected email', { status: res.status, code: data?.name });
       }
     } catch (err: any) {
-      console.warn('Resend API delivery failed:', err.message);
+      console.warn('Resend API delivery failed', { name: err?.name });
     }
   }
 
-  // 2. Brevo (Sendinblue) REST API (HTTPS fetch)
-  const brevoApiKey = (process.env.BREVO_API_KEY || '').trim();
+  const brevoApiKey = gmailOnly ? '' : (process.env.BREVO_API_KEY || '').trim();
   if (brevoApiKey) {
     try {
       const senderEmail = (process.env.BREVO_SENDER || process.env.SMTP_USER || 'noreply@stockmind.app').trim();
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
+        signal: AbortSignal.timeout(8_000),
         headers: {
           'api-key': brevoApiKey,
           'Content-Type': 'application/json',
@@ -302,55 +172,41 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
       if (res.ok && (data?.messageId || data?.id)) {
         return {
           success: true,
-          message: `E-posta başarıyla iletildi! (Brevo: ${data.messageId || data.id})`,
+          message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
           method: 'brevo_api',
         };
       }
+      console.warn('Brevo API rejected email', { status: res.status, code: data?.code });
     } catch (err: any) {
-      console.warn('Brevo API delivery failed:', err.message);
+      console.warn('Brevo API delivery failed', { name: err?.name });
     }
   }
 
-  // 3. Nodemailer SMTP (for local Node.js environments / Node runtime)
-  const smtpUser = (customSmtp?.user || process.env.SMTP_USER || '').trim();
-  const smtpPass = (customSmtp?.pass || process.env.SMTP_PASS || '').trim();
-  const smtpHost = (customSmtp?.host || process.env.SMTP_HOST || 'smtp.gmail.com').trim();
-  const smtpPort = customSmtp?.port || Number(process.env.SMTP_PORT) || 587;
-  const smtpFrom = (from || customSmtp?.from || process.env.SMTP_FROM || '').trim() || `StockMind <${smtpUser}>`;
-  const smtpService = customSmtp?.service || process.env.SMTP_SERVICE || 'gmail';
+  const smtpOverride = gmailOnly ? undefined : customSmtp;
+  const smtpUser = (smtpOverride?.user || process.env.SMTP_USER || '').trim();
+  const smtpPass = (smtpOverride?.pass || process.env.SMTP_PASS || '').trim();
+  const smtpHost = (smtpOverride?.host || process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+  const smtpService = smtpOverride?.service || process.env.SMTP_SERVICE;
+  const smtpFrom = (!gmailOnly && (from || smtpOverride?.from || process.env.SMTP_FROM)?.trim()) ||
+    `StockMind <${smtpUser}>`;
+  let gmailAuthFailed = false;
 
   if (smtpUser && smtpPass) {
     try {
-      const isGmail =
-        smtpService === 'gmail' ||
-        smtpHost?.includes('gmail') ||
-        (!smtpHost && smtpUser?.includes('@gmail.com'));
-
-      const cleanPass = smtpPass.replace(/\s+/g, '');
-      const portNum = Number(smtpPort) || (isGmail ? 465 : 587);
-
-      const transporter = isGmail
-        ? nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: portNum === 587 ? 587 : 465,
-            secure: portNum !== 587,
-            auth: { user: smtpUser, pass: cleanPass },
-            requireTLS: true,
-            connectionTimeout: 6_000,
-            greetingTimeout: 6_000,
-            socketTimeout: 8_000,
-            tls: { rejectUnauthorized: true },
-          })
-        : nodemailer.createTransport({
-            host: smtpHost,
-            port: portNum,
-            secure: portNum === 465,
-            auth: { user: smtpUser, pass: cleanPass },
-            connectionTimeout: 6_000,
-            greetingTimeout: 6_000,
-            socketTimeout: 8_000,
-            tls: { rejectUnauthorized: true },
-          });
+      const isGmail = gmailOnly || smtpService === 'gmail' || smtpHost.toLowerCase() === 'smtp.gmail.com';
+      const configuredPort = smtpOverride?.port || Number(process.env.SMTP_PORT) || 587;
+      const port = gmailOnly || (isGmail && configuredPort !== 587) ? 465 : configuredPort;
+      const transporter = nodemailer.createTransport({
+        host: isGmail ? 'smtp.gmail.com' : smtpHost,
+        port,
+        secure: port === 465,
+        requireTLS: isGmail,
+        auth: { user: smtpUser, pass: isGmail ? smtpPass.replace(/\s+/g, '') : smtpPass },
+        connectionTimeout: 6_000,
+        greetingTimeout: 6_000,
+        socketTimeout: 8_000,
+        tls: { rejectUnauthorized: true },
+      });
 
       const info = await transporter.sendMail({
         from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
@@ -359,13 +215,15 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
         html,
       });
 
+      if (info.accepted?.length === 0) throw new Error('SMTP recipient rejected');
       return {
         success: true,
-        message: `E-posta başarıyla ${to} adresine iletildi! (${info.messageId})`,
+        message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
         method: isGmail ? 'google_smtp' : 'custom_smtp',
       };
     } catch (err: any) {
-      console.warn('SMTP transport attempt failed:', err.message);
+      gmailAuthFailed = gmailOnly && err?.code === 'EAUTH';
+      console.warn('SMTP transport attempt failed', { code: err?.code, responseCode: err?.responseCode });
     }
   }
 
@@ -375,6 +233,7 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
     try {
       await fetch(adminWebhookUrl, {
         method: 'POST',
+        signal: AbortSignal.timeout(3_000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: `🔔 **StockMind Bildirimi**\n**Alıcı:** ${to}\n**Konu:** ${subject}`,
@@ -385,16 +244,16 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
     }
   }
 
-  const hasSmtpConfig = Boolean(smtpUser && smtpPass);
-  const hasResendConfig = Boolean(resendApiKey);
-
-  let errorDetails = '';
-  if (!hasResendConfig && !hasSmtpConfig) {
-    errorDetails = 'Sunucu ortam değişkenlerinde RESEND_API_KEY veya SMTP_USER/SMTP_PASS tanımlanmamış.';
-  } else if (!hasResendConfig && hasSmtpConfig) {
-    errorDetails = 'Cloudflare Worker ortamında doğrudan SMTP engellendi. Lütfen Resend (RESEND_API_KEY) API anahtarı ekleyin.';
-  } else {
-    errorDetails = 'E-posta servis sağlayıcısına ulaşılamadı.';
+  const hasProvider = Boolean(resendApiKey || brevoApiKey || (smtpUser && smtpPass));
+  let errorDetails = 'E-posta sağlayıcısı gönderimi tamamlayamadı. Lütfen daha sonra tekrar deneyin.';
+  if (gmailAuthFailed) {
+    errorDetails = 'Gmail gönderici hesabının uygulama parolasını kabul etmedi.';
+  } else if (gmailOnly && !hasProvider) {
+    errorDetails = 'Gmail gönderici hesabı veya uygulama parolası sunucuda eksik.';
+  } else if (senderVerificationFailed) {
+    errorDetails = 'Resend gönderici adresi doğrulanamadı. Sunucuda doğrulanmış bir alan adına ait gönderici adresi kullanılmalı.';
+  } else if (!hasProvider) {
+    errorDetails = 'Sunucuda e-posta sağlayıcısı yapılandırılmamış.';
   }
 
   return {

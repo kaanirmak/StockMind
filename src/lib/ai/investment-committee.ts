@@ -1,6 +1,6 @@
 import { OpenRouterError, readOpenRouterResponse } from './openrouter';
 import { palette } from '@/theme/palette';
-import { getModelCatalog, selectStructuredModel } from './modelCatalog';
+import { AUTO_MODEL, getModelCatalog } from './modelCatalog';
 import { getAIRuntimePolicy } from './runtimePolicy';
 // StockMind Yatırım Komitesi - Çoklu AI Ajan Simülasyonu Motoru
 
@@ -89,8 +89,11 @@ export async function runInvestmentCommittee(
 
 async function callLiveCommitteeAPI(symbol: string, stockQuote: any, apiKey: string): Promise<CommitteeReport> {
   const policy = getAIRuntimePolicy();
-  const selectedModel = selectStructuredModel(await getModelCatalog(), policy.committeeModel);
-  const priceStr = stockQuote?.price ? `₺${stockQuote.price}` : 'Piyasa Fiyatı';
+  const budget = AbortSignal.timeout(Math.min(policy.timeoutMs, 30_000));
+  const catalog = policy.committeeModel ? await getModelCatalog().catch(() => [AUTO_MODEL]) : [AUTO_MODEL];
+  const selectedModel = catalog.find(model => model.id === policy.committeeModel &&
+    (model.supportedParameters?.includes('structured_outputs') || model.supportedParameters?.includes('response_format'))) ?? AUTO_MODEL;
+  const priceStr = stockQuote?.price ? `${stockQuote.price} ${stockQuote.currency ?? ''}`.trim() : 'Piyasa fiyatı alınamadı';
   const changeStr = stockQuote?.changePercent != null ? `%${stockQuote.changePercent.toFixed(2)}` : '';
   const companyName = stockQuote?.name || `${symbol} Ortaklığı`;
   const sector = stockQuote?.sector || 'Sermaye Piyasası / Borsa';
@@ -115,6 +118,7 @@ KOMİTE ÜYELERİ & ROL DAĞILIMI:
    Şirketin borçluluğuna, döviz pozisyonuna, yüksek faiz ve enflasyon baskısına, marj erozyonu risklerine ve sektördeki kriz senaryolarına acımasızca odaklan.
 
 KRİTİK TALİMATLAR:
+- Girdi olarak verilmeyen güncel bilanço rakamlarını, oranları ve teknik göstergeleri uydurma. Veri eksikse açıkça belirt ve değerlendirmeyi senaryo düzeyinde tut.
 - ASLA her şirkete uyabilecek ezbere, jenerik laflar söyleme. ${companyName} (${symbol}) şirketinin bizzat faaliyet gösterdiği sektöre, rakiplerine ve dinamiklerine doğrudan atıf yap.
 - Her üyenin konuşması ("speech") en az 2-3 cümlelik akıcı, entelektüel ve o yatırımcının felsefesini yansıtan bir Türkçe ile yazılsın.
 - Çıktıyı SADECE aşağıdaki JSON şemasında, başka hiçbir metin olmadan saf JSON olarak döndür:
@@ -155,20 +159,17 @@ KRİTİK TALİMATLAR:
   ]
 }`;
 
-  const candidateModels: string[] = [selectedModel.id];
-  const fallbacks = ['openrouter/free', 'recursive/flint-v1.0:free'];
-  for (const fb of fallbacks) {
-    if (!candidateModels.includes(fb)) candidateModels.push(fb);
-  }
+  const candidateModels = selectedModel.id === AUTO_MODEL.id ? [AUTO_MODEL] : [selectedModel, AUTO_MODEL];
 
   let lastError: unknown = null;
 
   for (let i = 0; i < candidateModels.length; i++) {
-    const currentModelId = candidateModels[i];
+    if (budget.aborted) break;
+    const model = candidateModels[i];
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        signal: AbortSignal.timeout(policy.timeoutMs),
+        signal: budget,
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': 'https://stockmind.app',
@@ -176,11 +177,11 @@ KRİTİK TALİMATLAR:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: currentModelId,
+          model: model.id,
           messages: [{ role: 'user', content: prompt }],
-          ...(selectedModel.supportedParameters?.includes('temperature') ? { temperature: 0.5 } : {}),
-          max_tokens: Math.max(policy.committeeMaxTokens, 3500),
-          response_format: selectedModel.id === currentModelId && selectedModel.supportedParameters?.includes('structured_outputs')
+          ...(model.supportedParameters?.includes('temperature') ? { temperature: 0.5 } : {}),
+          max_tokens: policy.committeeMaxTokens,
+          response_format: model.supportedParameters?.includes('structured_outputs')
             ? { type: 'json_schema', json_schema: { name: 'committee_report', strict: true, schema: COMMITTEE_RESPONSE_SCHEMA } }
             : { type: 'json_object' },
         }),
@@ -222,7 +223,7 @@ KRİTİK TALİMATLAR:
         throw err;
       }
       if (i < candidateModels.length - 1) {
-        console.warn(`Committee model ${currentModelId} failed (${err?.message || err}), trying fallback ${candidateModels[i + 1]}...`);
+        console.warn(`Committee model ${model.id} failed (${err?.message || err}), trying fallback ${candidateModels[i + 1].id}...`);
         continue;
       }
     }

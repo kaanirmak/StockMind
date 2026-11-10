@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const sector = searchParams.get('sector') || undefined;
     const search = searchParams.get('search') || undefined;
 
-    const stocks = await getAllStocksLive({ exchange, sector, search });
+    const stocks = await getAllStocksLive({ exchange, sector, search, liveOnly: searchParams.get('liveOnly') === 'true' });
 
     return NextResponse.json(
       {

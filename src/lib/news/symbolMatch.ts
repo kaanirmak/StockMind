@@ -5,9 +5,16 @@ const companyAliases: Record<string, string[]> = {
   SISE: ['şişecam', 'şişe cam'], BIMAS: ['bim birleşik mağazalar'],
   TUPRS: ['tüpraş'], GARAN: ['garanti bbva', 'garanti bankası'],
   KCHOL: ['koç holding'], ARCLK: ['arçelik'],
-  QQQ: ['invesco qqq'],
+  QQQ: ['invesco qqq'], EREGL: ['ereğli demir çelik', 'erdemir'],
+  ISCTR: ['türkiye iş bankası', 'iş bankası'], YKBNK: ['yapı kredi bankası', 'yapı ve kredi bankası'],
+  TCELL: ['turkcell'], PGSUS: ['pegasus hava yolları'], ENKAI: ['enka inşaat'],
+  SAHOL: ['sabancı holding'], AKBNK: ['akbank'], KRDMD: ['kardemir'],
+  PETKM: ['petkim'], ASTOR: ['astor enerji'], KONTR: ['kontrolmatik'],
+  AAPL: ['apple'], NVDA: ['nvidia'], MSFT: ['microsoft'], TSLA: ['tesla'],
+  AMZN: ['amazon.com'], GOOGL: ['alphabet inc', 'google'], META: ['meta platforms'],
+
 };
-function normalizeNewsText(text: string): string {
+export function normalizeNewsText(text: string): string {
   return text.toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i');
 }
 // Month names and ordinary words must never become ticker matches by uppercasing prose.
@@ -18,7 +25,7 @@ export function mentionsNewsSymbol(text: string, symbol: string): boolean {
   const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (new RegExp(`[$#]${escaped}(?![\\p{L}\\p{N}_])`, 'u').test(text)) return true;
   if (ambiguousSymbols.has(normalized)) return false;
-  if (new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'u').test(text)) return true;
+  if (normalized.length >= 3 && new RegExp(`(^|[^\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'u').test(text)) return true;
   const normalizedText = normalizeNewsText(text);
   return (companyAliases[normalized] || []).some(alias => {
     const pattern = normalizeNewsText(alias).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

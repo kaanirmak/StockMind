@@ -1,7 +1,7 @@
 'use client';
 import QuantSymbolSelect from './QuantSymbolSelect';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Users,
   Sparkles,
@@ -60,6 +60,7 @@ export default function InvestmentCommitteeTab({
   const [showProModal, setShowProModal] = useState(false);
   const [isProRequired, setIsProRequired] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+  const activeRequest = useRef<AbortController | null>(null);
 
   const DELIBERATION_STEPS = [
     'Komite üyeleri toplanıyor...',
@@ -99,13 +100,21 @@ export default function InvestmentCommitteeTab({
   // Initial fetch for first symbol
   useEffect(() => {
     executeCommittee(initialSym);
+    return () => {
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+    };
   }, []);
 
   const executeCommittee = async (targetSymbol: string) => {
     const cleanSym = targetSymbol.trim().toUpperCase();
     if (!cleanSym) return;
 
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setIsLoading(true);
+    setReport(null);
     setAnalysisError('');
     setDeliberationStep(0);
 
@@ -117,50 +126,54 @@ export default function InvestmentCommitteeTab({
 
     // Simulate deliberation progress steps for UI feedback
     const interval = setInterval(() => {
-      setDeliberationStep((prev) => (prev < DELIBERATION_STEPS.length - 1 ? prev + 1 : prev));
-    }, 450);
+      setDeliberationStep((prev) => Math.min(prev + 1, DELIBERATION_STEPS.length - 1));
+    }, 1600);
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 50_000);
+    controller.signal.addEventListener('abort', () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    }, { once: true });
 
     try {
-      const activeHolding = portfolioStocks.find((h) => h.symbol.toUpperCase() === cleanSym);
-      const quotePayload = activeHolding
-        ? {
-            price: activeHolding.currentPrice,
-            changePercent: activeHolding.dailyChangePercent,
-            name: activeHolding.symbol,
-            sector: activeHolding.assetType === 'fund' ? 'Yatırım Fonu' : 'Hisse Senedi',
-          }
-        : undefined;
-
       const res = await fetch('/api/quant/committee', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           symbol: cleanSym,
           apiKey: activeKey,
-          quote: quotePayload,
         }),
       });
 
       const data = await res.json();
-      if (res.status === 403 || data.code === 'PRO_REQUIRED') {
+      if (activeRequest.current !== controller) return;
+      if (data.code === 'PRO_REQUIRED') {
         setIsProRequired(true);
         setReport(null);
         return;
       }
 
-      if (data.success && data.report) {
+      if (res.ok && data.success && data.report?.symbol === cleanSym) {
         setIsProRequired(false);
         setReport(data.report);
       } else {
         throw new Error(data.error || 'Komite analizi alınamadı. Lütfen tekrar deneyin.');
       }
     } catch (e) {
+      if (activeRequest.current !== controller) return;
       setReport(null);
-      setAnalysisError(e instanceof Error ? e.message : 'Komite servisine ulaşılamadı.');
+      setAnalysisError(timedOut ? 'Komite yanıtı zaman aşımına uğradı. Tekrar deneyin.' : e instanceof Error ? e.message : 'Komite servisine ulaşılamadı.');
     } finally {
+      clearTimeout(timeout);
       clearInterval(interval);
-      setIsLoading(false);
-      setDeliberationStep(0);
+      if (activeRequest.current === controller) {
+        setIsLoading(false);
+        setDeliberationStep(0);
+      }
     }
   };
 
@@ -201,6 +214,11 @@ export default function InvestmentCommitteeTab({
 
   return (
     <div className="space-y-6">
+      {report && !report.isLiveLLM && (
+        <p className="rounded-xl border border-warning/30 p-3 text-sm text-text-secondary">
+          AI yanıtı alınamadı. Bu örnek senaryodaki görüşler ve sayılar model varsayımlarına dayanır.
+        </p>
+      )}
       {analysisError && <p role="alert" className="rounded-xl border border-border p-4 text-sm text-text-primary">{analysisError}</p>}
       {/* Symbol selection and committee settings */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border">
@@ -378,7 +396,7 @@ export default function InvestmentCommitteeTab({
                     {report.companyName}
                   </span>
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-medium">
-                    {report.isLiveLLM ? 'Canlı Multi-LLM' : 'Quant Simülasyon Motoru'}
+                    {report.isLiveLLM ? 'AI komite simülasyonu' : 'Örnek senaryo'}
                   </span>
                 </div>
                 <h3 className="text-lg sm:text-xl font-black text-text-primary">

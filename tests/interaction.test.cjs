@@ -71,6 +71,29 @@ test('Notification inbox migrates old alarm fields and refuses external navigati
   assert.equal(readInbox()[0].archived, true);
   assert.deepEqual(events, ['stockmind:inbox']);
 });
+test('Android test notifications report denied permission and can be retried after granting it', async () => {
+  const data = new Map();
+  let permitted = false;
+  let sends = 0;
+  const { requestNotificationPermission, sendPushNotification } = load('src/lib/notifications/pushNotification.ts', {
+    Event,
+    localStorage: { getItem: key => data.get(key), setItem: (key, value) => data.set(key, value) },
+    window: {
+      dispatchEvent() {},
+      StockMindAndroid: {
+        requestNotificationPermission() {},
+        hasNotificationPermission: () => permitted,
+        sendNativeNotification: () => { sends++; return true; },
+      },
+    },
+  });
+  assert.equal(await requestNotificationPermission(), false);
+  assert.equal(sendPushNotification('Test', 'Cihaz bildirimi', '/settings', true), false);
+  permitted = true;
+  assert.equal(sendPushNotification('Test', 'Cihaz bildirimi', '/settings', true), true);
+  assert.equal(sends, 1);
+});
+
 test('Losses have an explicit minus sign so meaning does not depend on color', () => {
   const { getPnLSign } = load('src/lib/utils/format.ts');
   assert.equal(getPnLSign(-12.4), '-');
@@ -184,7 +207,7 @@ test('All failed news sources report service failure, rather than a successful e
 test('Fresh collected news avoids publisher calls; stale collected news survives an upstream outage', async () => {
   const makeArticle = age => ({ id: 'snapshot-1', title: 'BIST haber', summary: 'Haber', url: 'https://example.com/news', source: 'TRT Haber', feedId: 'trt-economy', category: 'BIST', sentiment: 'neutral', publishedAt: new Date().toISOString(), collectedAt: new Date(Date.now() - age).toISOString() });
   let calls = 0;
-  const freshArticles = load('src/lib/news/feeds.ts').NEWS_FEEDS.filter(feed => feed.categories.includes('BIST')).map((feed, i) => ({ ...makeArticle(0), id: `fresh-${i}`, title: `BIST haber ${i}`, feedId: feed.id, source: feed.name }));
+  const freshArticles = load('src/lib/news/feeds.ts').NEWS_FEEDS.filter(feed => feed.categories.includes('BIST')).map((feed, i) => ({ ...makeArticle(0), id: `fresh-${i}`, title: `BIST haber ${i}`, url: `https://example.com/news/${i}`, feedId: feed.id, source: feed.name }));
   const fresh = newsRoute(async () => { calls++; throw new Error('Unavailable'); }, freshArticles);
   const result = await fresh.GET(new Request('https://example.com/api/news?category=BIST'));
   assert.equal(result.status, 200);
@@ -240,11 +263,39 @@ test('News sentiment distinguishes financial context, ambiguity, negation and mi
   ]) assert.equal(analyzeNewsSentiment(title).sentiment, expected, title);
 });
 test('Snapshot sentiment is recalculated instead of trusting old cached labels', async () => {
-  const article = { id: '1', title: 'Enflasyon yükseldi', summary: '', category: 'MACRO', feedId: 'trt-economy', sentiment: 'positive', collectedAt: new Date().toISOString(), publishedAt: new Date().toISOString() };
+  const article = { id: '1', title: 'Enflasyon yükseldi', summary: '', url: 'https://example.com/inflation', category: 'MACRO', feedId: 'trt-economy', sentiment: 'positive', collectedAt: new Date().toISOString(), publishedAt: new Date().toISOString() };
   const { GET } = newsRoute(async () => { throw new Error('Must not fetch'); }, [article]);
   const result = await GET(new Request('https://example.com/api/news?category=MACRO'));
   assert.equal(result.body.data[0].sentiment, 'negative');
   assert.ok(result.body.data[0].sentimentReason);
+});
+
+test('A fresh news feed survives while only stale feeds are fetched again', async () => {
+  const called = [];
+  const now = new Date().toISOString();
+  const article = { id: 'trt', title: 'BIST bilanço', summary: '', url: 'https://example.com/trt',
+    source: 'TRT Haber', feedId: 'trt-economy', category: 'BIST', collectedAt: now, publishedAt: now };
+  const { GET } = newsRoute(async url => { called.push(url); return { ok: false, status: 503 }; }, [article]);
+  const result = await GET(new Request('https://example.com/api/news?category=BIST'));
+  assert.ok(called.length > 0);
+  assert.ok(called.every(url => !url.includes('trthaber')));
+  assert.equal(result.body.count, 1);
+  assert.equal(result.body.partial, true);
+  assert.equal(result.body.stale, false);
+});
+
+test('News relevance prioritizes fresh portfolio events and keeps chronological sorting available', () => {
+  const { rankNews } = load('src/lib/news/relevance.ts');
+  const now = Date.now();
+  const article = (title, hours) => ({ title, summary: '', publishedAt: new Date(now - hours * 3_600_000).toISOString() });
+  const general = article('Piyasalarda günün görünümü', 0);
+  const event = article('Aselsan yeni sözleşme imzaladı', 4);
+  const old = article('Aselsan finansal sonuçlar', 72);
+  const ranked = rankNews([general, old, event], ['ASELS'], true, now);
+  assert.equal(ranked[0].article, event);
+  assert.equal(ranked[0].event, 'Şirket işlemi veya sözleşme');
+  assert.equal(ranked[1].article, general);
+  assert.equal(rankNews([event, general], ['ASELS'], false, now)[0].article, general);
 });
 
 test('news symbols reject month names, substrings and ordinary prose', () => {

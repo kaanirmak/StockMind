@@ -14,6 +14,7 @@ import { ProPlanCard } from '@/components/pro/ProPlanCard';
 import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { useAuth } from '@/hooks/useAuth';
+import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import {
   loadPushPreferences,
@@ -58,7 +59,6 @@ export default function SettingsPage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [notificationEmail, setNotificationEmail] = useState('');
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
   const [currency, setCurrency] = useState('TRY');
   const [openRouterKey, setOpenRouterKey] = useState('');
@@ -77,8 +77,6 @@ export default function SettingsPage() {
   }, [user?.id]);
   const [defaultModel, setDefaultModel] = useState('openrouter/free');
   const [isAdvancedAiOpen, setIsAdvancedAiOpen] = useState(false);
-  const [emailAlerts, setEmailAlerts] = useState(true);
-  const [priceAlerts, setPriceAlerts] = useState(true);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -129,6 +127,10 @@ export default function SettingsPage() {
   useEffect(() => {
     setPushSettings(loadPushPreferences());
     setIsPermitted(hasNotificationPermission());
+    const refreshPermission = () => setIsPermitted(hasNotificationPermission());
+    window.addEventListener('focus', refreshPermission);
+    window.addEventListener('stockmind:notification-permission', refreshPermission);
+    document.addEventListener('visibilitychange', refreshPermission);
     const isAnd = isAndroidApp();
     setIsAndroid(isAnd);
     if (isAnd && typeof window !== 'undefined') {
@@ -153,6 +155,11 @@ export default function SettingsPage() {
         }
       })
       .catch(() => {});
+    return () => {
+      window.removeEventListener('focus', refreshPermission);
+      window.removeEventListener('stockmind:notification-permission', refreshPermission);
+      document.removeEventListener('visibilitychange', refreshPermission);
+    };
   }, []);
 
   const handleRequestPushPermission = async () => {
@@ -168,7 +175,7 @@ export default function SettingsPage() {
       showToast({
         type: 'info',
         title: 'Bildirim İzni',
-        message: 'Lütfen cihazınızın uygulama ayarlarından StockMind bildirimlerine izin verin.',
+        message: isAndroid ? 'Cihazdaki izin ekranını onaylayın veya Android ayarlarından bildirimleri açın.' : 'Tarayıcı ayarlarından StockMind bildirimlerine izin verin.',
       });
     }
   };
@@ -184,19 +191,20 @@ export default function SettingsPage() {
 
   const handleSendTestPush = () => {
     setIsSendingTestPush(true);
-    sendPushNotification(
-      "StockMind: Bildirim Servisi Aktif! ",
-      'Fiyat alarmları ve portföy bildirimleriniz başarıyla telefonunuza iletilecektir.',
-      '/settings'
+    const sent = sendPushNotification(
+      'StockMind test bildirimi',
+      'Bu bildirim cihazınızın bildirim ayarlarını kontrol etmek için gönderildi.',
+      '/settings',
+      true
     );
-    setTimeout(() => {
-      setIsSendingTestPush(false);
-      showToast({
-        type: 'success',
-        title: "Test Bildirimi Gönderildi ",
-        message: 'Telefonunuzun bildirim çubuğunu veya kilit ekranını kontrol edin.',
-      });
-    }, 350);
+    setIsSendingTestPush(false);
+    showToast({
+      type: sent ? 'success' : 'info',
+      title: sent ? 'Test bildirimi gönderildi' : 'Cihaz bildirimi gösterilemedi',
+      message: sent
+        ? 'Cihazınızın bildirim çubuğunu kontrol edin.'
+        : 'Bildirim tercihinizi ve cihazın StockMind bildirim iznini kontrol edin.',
+    });
   };
 
   const handleCheckAppUpdate = async () => {
@@ -221,7 +229,6 @@ export default function SettingsPage() {
     }
   };
 
-  const userKey = user?.id ? `user_${user.id}` : 'guest';
 
   // Load user settings
   useEffect(() => {
@@ -239,7 +246,9 @@ export default function SettingsPage() {
       if (profile?.avatarUrl) setAvatarUrl(profile.avatarUrl);
     }
 
-    // Load AI & notification preferences per user
+    setDailyReportEnabled(user?.user_metadata?.daily_report_enabled !== false);
+
+    // Load AI preferences per user
     try {
       const storedAiKey = getStoredOpenRouterKey(user?.id);
       setOpenRouterKey(storedAiKey);
@@ -249,23 +258,10 @@ export default function SettingsPage() {
       const storedModel = getStoredDefaultModel(user?.id);
       if (storedModel) setDefaultModel(storedModel);
 
-      const rawSettings = localStorage.getItem(`stockmind_settings_${userKey}`);
-      if (rawSettings) {
-        const parsed = JSON.parse(rawSettings);
-        if (parsed.notificationEmail) setNotificationEmail(parsed.notificationEmail);
-        else if (user?.email) setNotificationEmail(user.email);
-
-        if (parsed.emailAlerts !== undefined) setEmailAlerts(parsed.emailAlerts);
-        if (parsed.priceAlerts !== undefined) setPriceAlerts(parsed.priceAlerts);
-        if (parsed.dailyReportEnabled !== undefined) setDailyReportEnabled(parsed.dailyReportEnabled);
-
-      } else if (user?.email) {
-        setNotificationEmail(user.email);
-      }
     } catch (e) {
       console.warn('Failed to load local user settings:', e);
     }
-  }, [user, profile, userKey]);
+  }, [user, profile]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -427,32 +423,22 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveEmailSettings = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEmailSettings = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user?.email_confirmed_at) return;
     setIsSavingEmailSettings(true);
     try {
-      const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
-      const parsed = existing ? JSON.parse(existing) : {};
-      const updated = {
-        ...parsed,
-        notificationEmail: notificationEmail.trim(),
-        priceAlerts,
-        emailAlerts,
-        dailyReportEnabled,
-      };
-      localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
-
+      const { error } = await createClient().auth.updateUser({
+        data: { daily_report_enabled: dailyReportEnabled },
+      });
+      if (error) throw error;
       showToast({
         type: 'success',
-        title: "E-posta & Bildirim Ayarları Kaydedildi ",
-        message: 'Bildirim tercihleriniz ve alıcı e-posta adresiniz başarıyla güncellendi.',
+        title: 'Bülten tercihi kaydedildi',
+        message: dailyReportEnabled ? 'Günlük e-posta bülteni açık.' : 'Günlük e-posta bülteni kapalı.',
       });
-    } catch (e) {
-      showToast({
-        type: 'danger',
-        title: 'Hata',
-        message: 'E-posta ayarları kaydedilemedi.',
-      });
+    } catch {
+      showToast({ type: 'danger', title: 'E-posta ayarları kaydedilemedi', message: 'Tekrar deneyin.' });
     } finally {
       setIsSavingEmailSettings(false);
     }
@@ -477,28 +463,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveNotificationPreferences = (newPrice: boolean, newEmail: boolean, newDaily: boolean) => {
-    setPriceAlerts(newPrice);
-    setEmailAlerts(newEmail);
-    setDailyReportEnabled(newDaily);
-
-    try {
-      const existing = localStorage.getItem(`stockmind_settings_${userKey}`);
-      const parsed = existing ? JSON.parse(existing) : {};
-      const updated = {
-        ...parsed,
-        priceAlerts: newPrice,
-        emailAlerts: newEmail,
-        dailyReportEnabled: newDaily,
-      };
-      localStorage.setItem(`stockmind_settings_${userKey}`, JSON.stringify(updated));
-    } catch (e) {
-      // ignore
-    }
-  };
-
   const handleTriggerDailyReport = async () => {
-    const targetEmail = user?.email || notificationEmail || email;
+    const targetEmail = user?.email;
     if (!targetEmail || !targetEmail.includes('@')) {
       showToast({
         type: 'danger',
@@ -514,7 +480,7 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: user?.email || targetEmail,
+          to: targetEmail,
           isDailyReport: true,
         }),
       });
@@ -522,8 +488,8 @@ export default function SettingsPage() {
       if (data.success) {
         showToast({
           type: 'success',
-          title: "18:30 Bülteni Gönderildi! ",
-          message: data.message || `Günlük piyasa kapanış ve portföy bülteni ${user?.email || targetEmail} adresine gönderildi.`,
+          title: '18:30 bülteni gönderime alındı',
+          message: data.message || 'Bülten servis sağlayıcısı tarafından kabul edildi.',
         });
         if (data.previewUrl) {
           setEmailPreviewUrl(data.previewUrl);
@@ -1035,7 +1001,7 @@ export default function SettingsPage() {
               <h3 className="text-base font-bold text-text-primary">Telefon & Push Bildirimleri (Mobil Anlık Bildirim)</h3>
             </div>
             <p className="text-xs text-text-muted mt-1">
-              Telefonunuzun kilit ekranına ve üst bildirim çubuğuna sesli/titreşimli anlık fiyat alarmları ve portföy uyarıları gönderilmesini yapılandırın.
+              Fiyat alarmları, uygulama içi bildirimler ve Android kapanış hatırlatması için tercihlerinizi yönetin.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -1081,7 +1047,7 @@ export default function SettingsPage() {
                  Telefon Push Bildirimlerini Etkinleştir
               </span>
               <span className="text-xs text-text-muted">
-                Fiyat alarmları, portföy hareketleri ve kapanış bülteninin telefon bildirim çubuğuna düşmesini sağlar.
+                Cihaz izin verdiğinde StockMind bildirimlerini sistem bildirim çubuğunda gösterir.
               </span>
             </div>
             <input
@@ -1093,11 +1059,11 @@ export default function SettingsPage() {
           </label>
 
           {/* Sub Toggles */}
-          <div className={`space-y-2 pl-1 sm:pl-3 transition-opacity ${pushSettings.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+          <div className={`space-y-2 pl-1 sm:pl-3 transition-opacity ${pushSettings.enabled || pushSettings.inAppEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Anlık Hedef Fiyat Alarmları</span>
-                <span className="text-xs text-text-muted">İzleme listenizdeki veya portföyünüzdeki hisse/fon belirlediğiniz fiyata ulaştığında doğrudan kilit ekranına bildirim gelir.</span>
+                <span className="text-sm font-semibold text-text-primary block"> Hedef Fiyat Alarmları</span>
+                <span className="text-xs text-text-muted">Takip listenizdeki hisse veya fon için kaydettiğiniz fiyat eşiği, bir sonraki fiyat kontrolünde değerlendirilir.</span>
               </div>
               <input
                 type="checkbox"
@@ -1109,42 +1075,21 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Günlük 18:30 Kapanış Bildirimi</span>
-                <span className="text-xs text-text-muted">Piyasa kapandığında günün kâr/zararını ve BIST 100 durumunu telefonun bildirim çubuğunda gösterir.</span>
+                <span className="text-sm font-semibold text-text-primary block"> Android Kapanış Hatırlatması</span>
+                <span className="text-xs text-text-muted">İş günlerinde 18:30 sonrasındaki arka plan kontrolünde BIST kapanış hatırlatması gösterir.</span>
               </div>
               <input
                 type="checkbox"
+                disabled={!isAndroid || !pushSettings.enabled}
                 checked={pushSettings.dailyReport}
                 onChange={(e) => setPushSettings({ ...pushSettings, dailyReport: e.target.checked })}
                 className="w-4 h-4 accent-accent rounded cursor-pointer"
               />
             </label>
 
-            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
-              <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Kritik Portföy Değişimleri (±%3)</span>
-                <span className="text-xs text-text-muted">Portföyünüzde gün içinde %3 veya üzeri sert hareket olduğunda anında push uyarısı gönderir.</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={pushSettings.portfolioMoves}
-                onChange={(e) => setPushSettings({ ...pushSettings, portfolioMoves: e.target.checked })}
-                className="w-4 h-4 accent-accent rounded cursor-pointer"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
-              <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Önemli KAP & Piyasa Gelişmeleri</span>
-                <span className="text-xs text-text-muted">Sahip olduğunuz hisselerle ilgili kritik KAP bildirimleri ve flaş haberleri bildir.</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={pushSettings.marketNews}
-                onChange={(e) => setPushSettings({ ...pushSettings, marketNews: e.target.checked })}
-                className="w-4 h-4 accent-accent rounded cursor-pointer"
-              />
-            </label>
+            <p className="px-2 text-xs text-text-muted">
+              Otomatik portföy hareketi ve KAP bildirimleri henüz kullanıma açık değil.
+            </p>
           </div>
         </div>
 
@@ -1155,7 +1100,7 @@ export default function SettingsPage() {
             <div className="space-y-0.5">
               <span className="font-bold text-accent">Uygulama Kapalıyken Arka Plan Fiyat Denetimi</span>
               <p className="text-text-muted leading-relaxed">
-                Android WorkManager her 15 dakikada bir fiyatları denetler. Xiaomi, Samsung veya Huawei cihazlarda uygulamanın kapalıyken sistem tarafından dondurulmaması için pil tasarrufunun <strong>Kısıtlama Yok</strong> olması gerekir.
+                Android uygulaması arka planda yaklaşık 15 dakikalık aralıklarla fiyat kontrolü planlar. Cihazın pil ayarları bu kontrolleri geciktirebilir. Tarayıcıda fiyat kontrolleri sayfa açıkken yapılır.
               </p>
             </div>
           </div>
@@ -1340,7 +1285,7 @@ export default function SettingsPage() {
           <div>
             <h3 className="text-base font-bold text-text-primary">E-posta Bildirimleri</h3>
             <p className="text-xs text-text-muted">
-              18:30 günlük piyasa bültenlerinin ve portföy alarmlarının gönderileceği e-posta adresini ve gönderici sunucusunu belirleyin.
+              Pro üyeler günlük piyasa bültenini hesaplarındaki doğrulanmış adrese alabilir.
             </p>
           </div>
           <Badge variant="accent" size="sm">
@@ -1349,70 +1294,29 @@ export default function SettingsPage() {
         </div>
 
         <form onSubmit={handleSaveEmailSettings} className="space-y-5">
-          {/* Target Notification Email */}
-          <div className="p-4 rounded-xl bg-accent/5 border border-accent/20 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-base"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-              <h4 className="text-sm font-bold text-text-primary">Hedef Bildirim & Bülten E-postası</h4>
-            </div>
-            <Input
-              label="Bülten ve Alarm Alıcı E-postası"
-              type="email"
-              value={notificationEmail}
-              onChange={(e) => setNotificationEmail(e.target.value)}
-              placeholder="ornek@domain.com"
-              helperText="Günlük 18:30 kapanış bülteni ve hedef fiyat alarmları bu adrese gönderilecektir."
-              required
+          <Input
+            label="Hesabın e-posta adresi"
+            type="email"
+            value={user?.email ?? ''}
+            readOnly
+            helperText={user?.email_confirmed_at ? 'Doğrulanmış adres' : 'Gönderim için hesabınızın adresini doğrulayın.'}
+          />
+          <label className="flex items-center justify-between gap-4 rounded-xl border border-border p-3">
+            <span className="text-sm font-semibold text-text-primary">İş günlerinde 18:30 piyasa bültenini al</span>
+            <input
+              type="checkbox"
+              checked={dailyReportEnabled}
+              onChange={event => setDailyReportEnabled(event.target.checked)}
+              disabled={!user?.email_confirmed_at || isSavingEmailSettings}
+              className="h-4 w-4 accent-accent"
             />
-          </div>
-
-          {/* Notification Toggles */}
-          <div className="space-y-2">
-            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer">
-              <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Günlük 18:30 Piyasa Kapanış Raporu</span>
-                <span className="text-xs text-text-muted">Her iş günü kapanışta BIST, Altın, Döviz ve Portföy özetini e-posta al.</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={dailyReportEnabled}
-                onChange={(e) => setDailyReportEnabled(e.target.checked)}
-                className="w-4 h-4 accent-accent rounded cursor-pointer"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer">
-              <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Hedef Fiyat & Portföy Alarmları</span>
-                <span className="text-xs text-text-muted">Takip listenizdeki hisse ve fonlar hedefe ulaştığında e-posta uyarısı al.</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={priceAlerts}
-                onChange={(e) => setPriceAlerts(e.target.checked)}
-                className="w-4 h-4 accent-accent rounded cursor-pointer"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer">
-              <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Haftalık Portföy Özeti</span>
-                <span className="text-xs text-text-muted">Her Pazartesi sabahı haftalık getiri ve sektör dağılımı analizi al.</span>
-              </div>
-              <input
-                type="checkbox"
-                checked={emailAlerts}
-                onChange={(e) => setEmailAlerts(e.target.checked)}
-                className="w-4 h-4 accent-accent rounded cursor-pointer"
-              />
-            </label>
-          </div>
+          </label>
 
           <div className="pt-3 border-t border-border/60 space-y-2">
             <h4 className="text-sm font-bold text-text-primary">Test e-postası</h4>
             <p className="text-xs text-text-secondary">
               Test mesajı yalnız hesabınızın doğrulanmış e-posta adresine gönderilir.
-              Gönderim servisi StockMind tarafından yönetilir; SMTP şifresi girmeniz gerekmez.
+              Gönderim servisi StockMind tarafından yönetilir.
             </p>
           </div>
 
@@ -1463,7 +1367,7 @@ export default function SettingsPage() {
               </Button>
             </div>
 
-            <Button type="submit" variant="primary" disabled={isSavingEmailSettings}>
+            <Button type="submit" variant="primary" disabled={isSavingEmailSettings || !user?.email_confirmed_at}>
               {isSavingEmailSettings ? 'Kaydediliyor...' : 'E-posta Ayarlarını Kaydet'}
             </Button>
           </div>
