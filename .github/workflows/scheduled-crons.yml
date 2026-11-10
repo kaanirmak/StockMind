@@ -16,6 +16,9 @@ on:
           - sync-funds
           - daily-report
           - purge-bloated-sessions
+      resume_date:
+        description: 'Original Istanbul date for a TEFAS retry after midnight (YYYY-MM-DD)'
+        type: string
 
 jobs:
   run-crons:
@@ -23,6 +26,9 @@ jobs:
     name: "Execute Background Crons"
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: ${{ inputs.job == 'purge-bloated-sessions' && github.run_id || 'stockmind-tefas-sync' }}
+      cancel-in-progress: false
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -37,16 +43,20 @@ jobs:
         run: npm ci
 
       # Step 1: Run TEFAS funds sync directly via Node.js outside the Worker network.
-      # This avoids Cloudflare 50-subrequest limits and handles all funds reliably.
       - name: "Execute TEFAS Funds Sync (Direct Node Script)"
         if: ${{ github.event.inputs.job == 'all' || github.event.inputs.job == 'sync-funds' || github.event_name == 'schedule' }}
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          RESUME_DATE: ${{ inputs.resume_date }}
         run: |
           echo "Syncing TEFAS mutual funds directly into Supabase..."
-          node scripts/sync-tefas-funds.mjs
+          args=(--resume)
+          if [ -n "$RESUME_DATE" ]; then
+            args+=("--resume-date=$RESUME_DATE")
+          fi
+          node scripts/sync-tefas-funds.mjs "${args[@]}"
 
       # Step 2: Session Purge (Maintenance)
       - name: "Purge Bloated Sessions (On Demand or Maintenance)"

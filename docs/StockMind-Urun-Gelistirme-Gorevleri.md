@@ -34,8 +34,8 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
 | FON-01 | P0 | Fon kataloğunu fiyat verisinden ayır | Katalog kaydı gerçek fiyat bulunmadan gösterilebilir. Fiyat alanı boş kalır ve 1,00 yer tutucusu kullanılmaz. | ◐ |
-| FON-02 | P0 | TEFAS eşitleme başarısızlığını teşhis et | Başarısız çalıştırmada hangi kaynak, fon veya kayıt adımının durduğu görülebilir. | ☐ |
-| FON-03 | P0 | Fon eşitlemesini küçük partilerle sürdürülebilir yap | Bir parti kesilince kalan fonlara devam edilebilir. Tekrar çalıştırma aynı fiyat kaydını çoğaltmaz. | ☐ |
+| FON-02 | P0 | TEFAS eşitleme başarısızlığını teşhis et | Başarısız çalıştırmada hangi kaynak, fon veya kayıt adımının durduğu görülebilir. | ◐ |
+| FON-03 | P0 | Fon eşitlemesini küçük partilerle sürdürülebilir yap | Bir parti kesilince kalan fonlara devam edilebilir. Tekrar çalıştırma aynı fiyat kaydını çoğaltmaz. | ◐ |
 | FON-04 | P0 | Fon değerleme tarihini kaydet ve göster | Detay ve karşılaştırmada NAV tarihi görünür. Veri alma zamanı ile değerleme tarihi ayrı tutulur. | ☐ |
 | FON-05 | P0 | TEFAS kapsama göstergesi ekle | Güncel, eski, eksik ve başarısız fon sayıları her çalıştırmada raporlanır. | ☐ |
 | FON-06 | P1 | Fon detayındaki veri eksikliği durumlarını tamamla | Ücret, risk, portföy dağılımı veya geçmiş fiyat eksikse ilgili alan anlaşılır bir durum gösterir. | ☐ |
@@ -213,6 +213,14 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 ## İlk paketin doğrulaması
 
 VER-01 ve FON-01 yerelde doğrulandı. Piyasa Nabzı ve Piyasalar özet kartlarında kaynak ile veri zamanı veya alınma zamanı gösteriliyor. Ana ekranda güncelleme kesilirse oturumda son alınan fiyat etiketlenerek korunuyor. Fon kataloğu fiyatı eksik olan 1.035 kaydı boş fiyatla döndürüyor. Son okuma 1.051 fon kaydından 16'sında eşitleme kaydı ve kullanılabilir fiyat olduğunu gösterdi. TEFAS kapsamını artırma, gerçek değerleme tarihini taşıma ve eski fiyatların alarm politikasını tanımlama işleri açık.
+
+## TEFAS eşitleme teşhisi
+
+FON-02 yerelde doğrulandı. Önceki [GitHub çalıştırması](https://github.com/kaanirmak/StockMind/actions/runs/42723579091/job/129523383165) Supabase bağlantı ayarları eksik olduğu için TEFAS sorgularından önce durdu. Zamanlanmış çalıştırmada NEXT_PUBLIC_SUPABASE_URL ve SUPABASE_SECRET_KEY veya SUPABASE_SERVICE_ROLE_KEY yapılandırılmalı. Yazma modu eksik ayarları değerleri göstermeden listeler.
+
+Yerelde sağlayıcı sorgularını veritabanına erişmeden denemek için **npm run sync:funds -- --dry-run --code=TI2** kullan. Sonuç kaydı fon kodunu, uç noktayı, hata türünü, varsa HTTP durumunu ve toplamları gösterir. Seçim yapılmazsa teşhis modu üç fonla sınırlıdır.
+
+FON-03 yerelde doğrulandı. Zamanlanmış görev fonları sekizli gruplar halinde işler ve İstanbul gününün başlangıcından beri pozitif fiyatla kaydedilen fonları atlar. Yarım kalan eşitlemeyi aynı gün yeniden çalıştırmak için GitHub Actions üzerinden `sync-funds` seç. Gece yarısından sonra `resume_date` alanına ilk çalıştırmanın İstanbul tarihini `YYYY-MM-DD` biçiminde gir. Yerelde aynı seçenekler `npm run sync:funds -- --resume` ve `--resume-date=YYYY-MM-DD` ile kullanılabilir. Çalıştırma özeti atlanan, tamamlanan ve kalan fon sayılarını gösterir. Her fon kendi koduyla güncellendiği için yeniden deneme mevcut fiyat kaydını çoğaltmaz.
 
 ## İlk uygulama sırası
 

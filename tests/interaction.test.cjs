@@ -699,3 +699,143 @@ test('Fund directory has no price and a verified one-lira database price remains
   assert.equal(funds[0].price, null);
   assert.equal(funds[1].price, 1);
 });
+
+test('TEFAS sync identifies a rejected source and keeps the available fund price', async () => {
+  const { fetchLiveFundDetail } = await import('../scripts/sync-tefas-funds.mjs');
+  const issues = [];
+  const detail = await fetchLiveFundDetail('TI2', issue => issues.push(issue), async url => {
+    if (url.endsWith('fonBilgiGetir')) return Response.json({ resultList: [{ sonFiyat: 4.25 }] });
+    if (url.endsWith('fonProfilBilgiGetir')) return new Response('blocked', { status: 403 });
+    return new Response('<html>gateway</html>');
+  });
+
+  assert.equal(detail.price, 4.25);
+  assert.equal(detail.risk_value, undefined);
+  assert.equal(detail.monthly_return, undefined);
+  assert.ok(issues.some(issue => issue.code === 'TI2' && issue.endpoint === 'fonProfilBilgiGetir' && issue.httpStatus === 403));
+  assert.ok(issues.some(issue => issue.endpoint === 'fonFiyatBilgiGetir' && issue.reason === 'invalid_json'));
+});
+
+test('TEFAS sync identifies missing verified prices and never emits a placeholder record', async () => {
+  const { fetchLiveFundDetail } = await import('../scripts/sync-tefas-funds.mjs');
+  const issues = [];
+  const detail = await fetchLiveFundDetail('TI2', issue => issues.push(issue), async url => {
+    if (url.endsWith('fonBilgiGetir')) return Response.json({ resultList: [{ sonFiyat: 0 }] });
+    if (url.endsWith('fonProfilBilgiGetir')) throw new DOMException('Deadline', 'TimeoutError');
+    return Response.json({ resultList: [{ fiyat: 'invalid' }] });
+  });
+
+  assert.equal(detail, null);
+  assert.ok(issues.some(issue => issue.endpoint === 'fonProfilBilgiGetir' && issue.reason === 'timeout'));
+  assert.ok(issues.some(issue => issue.stage === 'price' && issue.reason === 'missing_positive_price'));
+});
+
+test('TEFAS sync write mode reports missing writer configuration instead of using an anonymous key', () => {
+  const { spawnSync } = require('node:child_process');
+  const cwd = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'stockmind-tefas-test-'));
+  try {
+    const script = path.resolve(__dirname, '../scripts/sync-tefas-funds.mjs');
+    const result = spawnSync(process.execPath, [script, '--code=TI2'], {
+      cwd,
+      env: { NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anonymous-fixture' },
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 1);
+    assert.deepEqual(JSON.parse(result.stderr), {
+      event: 'tefas_sync_configuration_error',
+      missing: ['SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY'],
+    });
+    assert.equal(result.stdout, '');
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('TEFAS resume uses the Istanbul date and rejects invalid or future dates', async () => {
+  const { getResumeCutoff } = await import('../scripts/sync-tefas-funds.mjs');
+  const now = new Date('2026-11-10T21:01:00Z');
+  assert.equal(getResumeCutoff(undefined, now), '2026-11-10T21:00:00.000Z');
+  assert.equal(getResumeCutoff('2026-11-10', now), '2026-11-09T21:00:00.000Z');
+  assert.equal(getResumeCutoff('2026-02-30', now), null);
+  assert.equal(getResumeCutoff('2026-11-12', now), null);
+});
+
+test('TEFAS resume skips saved funds and retries only missing or failed records', async () => {
+  const { createClient } = require('@supabase/supabase-js');
+  const { syncFunds } = await import('../scripts/sync-tefas-funds.mjs');
+  const resumeSince = '2026-11-09T21:00:00.000Z';
+  const selected = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF'].map(code => ({ code }));
+  const records = new Map(['AAA', 'BBB', 'CCC', 'DDD', 'EEE'].map(code => [code, {
+    code,
+    price: code === 'DDD' ? 0 : 4.25,
+    last_sync_at: code === 'EEE' ? '2026-11-08T21:00:00.000Z' : resumeSince,
+  }]));
+  let rejectWrite = true;
+  let rejectCheckpoint = false;
+  const checkpointCursors = [];
+  const requested = [];
+  const writeAttempts = [];
+  const report = () => {};
+  const supabase = createClient('https://example.supabase.co', 'test-key', {
+    auth: { persistSession: false },
+    global: { fetch: async (input, init) => {
+      const url = new URL(input);
+      assert.equal(url.pathname, '/rest/v1/funds');
+      if (init.method === 'POST') {
+        assert.equal(url.searchParams.get('on_conflict'), 'code');
+        const record = JSON.parse(init.body);
+        writeAttempts.push(record.code);
+        if (record.code === 'EEE' && rejectWrite) return Response.json({ code: '57014' }, { status: 500 });
+        records.set(record.code, record);
+        return new Response(null, { status: 201 });
+      }
+      if (rejectCheckpoint) return Response.json({ code: '42501' }, { status: 403 });
+      assert.equal(url.searchParams.get('last_sync_at'), `gte.${resumeSince}`);
+      assert.equal(url.searchParams.get('price'), 'gt.0');
+      assert.equal(url.searchParams.get('order'), 'code.asc');
+      const cursor = url.searchParams.get('code')?.slice(3) ?? '';
+      checkpointCursors.push(cursor);
+      const rows = [...records.values()]
+        .filter(row => row.price > 0 && row.last_sync_at >= resumeSince && row.code > cursor)
+        .sort((a, b) => a.code.localeCompare(b.code));
+      // Simulate a server page cap below the requested limit.
+      return Response.json(rows.slice(0, 2).map(({ code }) => ({ code })));
+    } },
+  });
+  const fetcher = async (url, init) => {
+    if (url.endsWith('fonBilgiGetir')) {
+      requested.push(JSON.parse(init.body).fonKodu);
+      return Response.json({ resultList: [{ sonFiyat: 4.25 }] });
+    }
+    return Response.json({ resultList: [{ fiyat: 4.25, tarih: '2026-11-10', riskDegeri: 3 }] });
+  };
+
+  const first = await syncFunds({ selected, supabase, resumeSince, fetcher, report });
+  assert.deepEqual(checkpointCursors, ['', 'BBB', 'CCC']);
+  assert.deepEqual(requested, ['DDD', 'EEE', 'FFF']);
+  assert.equal(first.skipped, 3);
+  assert.equal(first.succeeded, 2);
+  assert.equal(first.databaseFailures, 1);
+  assert.equal(first.remaining, 1);
+
+  rejectWrite = false;
+  requested.length = 0;
+  const second = await syncFunds({ selected, supabase, resumeSince, fetcher, report });
+  assert.deepEqual(requested, ['EEE']);
+  assert.equal(second.skipped, 5);
+  assert.equal(second.remaining, 0);
+  assert.equal(records.size, 6);
+
+  requested.length = 0;
+  const complete = await syncFunds({ selected, supabase, resumeSince, fetcher, report });
+  assert.equal(complete.status, 'ok');
+  assert.equal(complete.skipped, 6);
+  assert.deepEqual(requested, []);
+
+  rejectCheckpoint = true;
+  const failed = await syncFunds({ selected, supabase, resumeSince, fetcher, report });
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.issues['[checkpoint] funds.select read_failed'], 1);
+  assert.deepEqual(requested, []);
+  assert.deepEqual(writeAttempts.sort(), ['DDD', 'EEE', 'EEE', 'FFF']);
+});
