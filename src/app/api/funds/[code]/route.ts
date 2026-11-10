@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { fetchTefasLiveDetail, fetchTefasPriceHistory } from '@/lib/api/tefas';
 import { getFundByCodeFromDatabase, getFundByCode, getSupabaseFundsClient } from '@/lib/data/funds';
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export async function GET(
       getFundByCodeFromDatabase(upperCode),
     ]);
 
-    let fund = liveDetail || dbFund || getFundByCode(upperCode);
+    const fund = liveDetail || dbFund || getFundByCode(upperCode);
     let history: { date: string; price: number }[] = realHistory;
 
     // If live history empty, try fetching from DB history table
@@ -46,15 +46,16 @@ export async function GET(
 
     // If live detail fetched, persist to DB in background
     if (liveDetail && supabase) {
-      (async () => {
+      after(async () => {
         try {
-          await supabase.from('funds').upsert(
+          const { error } = await supabase.from('funds').upsert(
             {
               code: liveDetail.code,
               name: liveDetail.name,
               category: liveDetail.category,
               founder: liveDetail.founder,
               price: liveDetail.price,
+                nav_date: liveDetail.navDate ?? null,
               daily_return: liveDetail.dailyReturn,
                 monthly_return: liveDetail.monthlyReturn,
                 return_3m: liveDetail.return3m,
@@ -69,10 +70,11 @@ export async function GET(
                 management_fee: liveDetail.managementFee,
                 asset_allocation: liveDetail.assetAllocation,
                 kap_link: liveDetail.kapLink,
-                last_sync_at: new Date().toISOString(),
+                last_sync_at: liveDetail.lastSyncAt,
               },
               { onConflict: 'code' }
             );
+          if (error) console.warn('[Fund API] Background DB cache error:', error.code);
 
             if (realHistory && realHistory.length > 0) {
               const rows = realHistory.map((p) => ({
@@ -87,7 +89,7 @@ export async function GET(
           } catch (e) {
             console.warn('[Fund API] Background DB cache error:', e);
           }
-        })();
+      });
     }
 
     if (!fund) {

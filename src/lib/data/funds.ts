@@ -45,6 +45,7 @@ export interface TefasFundInfo {
     percentage: number;
   }[];
   kapLink?: string;
+  navDate?: string | null;
   lastSyncAt?: string;
 }
 
@@ -156,6 +157,7 @@ export async function getFundsFromDatabase(filter?: {
     managementFee: Number(row.management_fee || 2),
     assetAllocation: row.asset_allocation || [],
     kapLink: row.kap_link,
+    navDate: row.nav_date ?? null,
     lastSyncAt: row.last_sync_at,
   }));
 
@@ -220,6 +222,7 @@ export async function getFundByCodeFromDatabase(code: string): Promise<TefasFund
     managementFee: Number(data.management_fee || 2),
     assetAllocation: data.asset_allocation || [],
     kapLink: data.kap_link,
+    navDate: data.nav_date ?? null,
     lastSyncAt: data.last_sync_at,
   };
   } catch (err) {

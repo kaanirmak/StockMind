@@ -4,14 +4,15 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { existsSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { getTefasQuote, parseTefasHistory } from '../src/lib/data/tefas-prices.mjs';
 
 const REQUEST_TIMEOUT_MS = 8_000;
 const BATCH_SIZE = 8;
-const CHECKPOINT_PAGE_SIZE = 500;
+const SNAPSHOT_PAGE_SIZE = 500;
 const istanbulDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Istanbul' });
 const safeErrorCode = value => typeof value === 'string' && /^[a-zA-Z0-9_]{1,40}$/.test(value) ? value : undefined;
 const directoryPath = new URL('../src/lib/data/tefas_funds_directory.json', import.meta.url);
@@ -71,14 +72,11 @@ export async function fetchLiveFundDetail(code, recordIssue, fetcher = fetch) {
   ]);
   const bilgi = infoRows[0];
   const profil = profileRows[0];
-  const priceHistory = historyRows.filter(row => Number.isFinite(Number(row.fiyat)) && Number(row.fiyat) > 0);
+  const priceHistory = parseTefasHistory(historyRows);
 
   if (!bilgi) return null;
-  const currentPrice = Number(bilgi.sonFiyat);
-  const lastPrice = Number.isFinite(currentPrice) && currentPrice > 0
-    ? currentPrice
-    : Number(priceHistory.at(-1)?.fiyat);
-  if (!Number.isFinite(lastPrice) || lastPrice <= 0) {
+  const quote = getTefasQuote(bilgi.sonFiyat, priceHistory.at(-1));
+  if (!quote) {
     recordIssue({ stage: 'price', code: sym, reason: 'missing_positive_price' });
     return null;
   }
@@ -94,15 +92,15 @@ export async function fetchLiveFundDetail(code, recordIssue, fetcher = fetch) {
   let ytdReturn = 0;
 
   if (priceHistory.length > 0) {
-    const last = Number(priceHistory[priceHistory.length - 1].fiyat);
+    const last = priceHistory[priceHistory.length - 1].price;
     const getPeriodReturn = (daysAgo) => {
       const idx = Math.max(0, priceHistory.length - 1 - daysAgo);
-      const past = Number(priceHistory[idx]?.fiyat);
+      const past = priceHistory[idx].price;
       return past > 0 ? Number((((last - past) / past) * 100).toFixed(2)) : 0;
     };
 
     if (priceHistory.length > 1) {
-      const prev = Number(priceHistory[priceHistory.length - 2].fiyat);
+      const prev = priceHistory[priceHistory.length - 2].price;
       if (prev > 0) dailyReturn = Number((((last - prev) / prev) * 100).toFixed(2));
     }
 
@@ -113,9 +111,9 @@ export async function fetchLiveFundDetail(code, recordIssue, fetcher = fetch) {
     return3y = getPeriodReturn(756);
     return5y = getPeriodReturn(1260) || Number((yearlyReturn * 2.8).toFixed(0));
 
-    const lastDate = new Date(priceHistory[priceHistory.length - 1].tarih);
-    const ytdPoint = priceHistory.slice().reverse().find((p) => new Date(p.tarih).getFullYear() < lastDate.getFullYear()) || priceHistory[0];
-    const ytdPast = Number(ytdPoint?.fiyat);
+    const currentYear = priceHistory[priceHistory.length - 1].date.slice(0, 4);
+    const ytdPoint = priceHistory.findLast(point => point.date.slice(0, 4) < currentYear) ?? priceHistory[0];
+    const ytdPast = ytdPoint.price;
     if (ytdPast > 0) ytdReturn = Number((((last - ytdPast) / ytdPast) * 100).toFixed(2));
   }
 
@@ -126,7 +124,8 @@ export async function fetchLiveFundDetail(code, recordIssue, fetcher = fetch) {
     name: bilgi.fonUnvan || `${sym} Fonu`,
     category: bilgi.fonKategori || 'Değişken Fon',
     founder: `${sym} Portföy Yönetimi A.Ş.`,
-    price: Number(lastPrice.toFixed(4)),
+    price: quote.price,
+    nav_date: quote.navDate,
     ...(dailyReturn !== undefined && { daily_return: Number(dailyReturn.toFixed(2)) }),
     ...(priceHistory.length > 0 && {
       monthly_return: Number(monthlyReturn.toFixed(2)),
@@ -162,21 +161,40 @@ export function getResumeCutoff(date, now = new Date()) {
   return new Date(`${day}T00:00:00+03:00`).toISOString();
 }
 
-async function loadCompletedFundCodes(supabase, resumeSince, recordIssue) {
-  const completed = new Set();
+function summarizeCoverage(selected, snapshots, now) {
+  if (!snapshots) return null;
+
+  const today = istanbulDate.format(now);
+  const weekday = new Date(`${today}T00:00:00Z`);
+  while (weekday.getUTCDay() === 0 || weekday.getUTCDay() === 6) {
+    weekday.setUTCDate(weekday.getUTCDate() - 1);
+  }
+  const referenceDate = weekday.toISOString().slice(0, 10);
+  const counts = { referenceDate, current: 0, stale: 0, missing: 0, unverified: 0 };
+  for (const code of selected) {
+    const snapshot = snapshots.get(code);
+    if (!snapshot) counts.missing++;
+    else if (!snapshot.nav_date || snapshot.nav_date > today) counts.unverified++;
+    else if (snapshot.nav_date < referenceDate) counts.stale++;
+    else counts.current++;
+  }
+  return counts;
+}
+
+async function loadStoredFundQuotes(supabase, stage, recordIssue) {
+  const snapshots = new Map();
   let lastCode;
   while (true) {
-    let query = supabase.from('funds').select('code')
-      .gte('last_sync_at', resumeSince)
+    let query = supabase.from('funds').select('code,price,nav_date,last_sync_at')
       .gt('price', 0)
       .order('code', { ascending: true })
-      .limit(CHECKPOINT_PAGE_SIZE);
+      .limit(SNAPSHOT_PAGE_SIZE);
     if (lastCode !== undefined) query = query.gt('code', lastCode);
     const { data, error, status } = await query.abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
 
     if (error || !Array.isArray(data)) {
       recordIssue({
-        stage: 'checkpoint',
+        stage,
         endpoint: 'funds.select',
         reason: 'read_failed',
         httpStatus: status,
@@ -184,9 +202,42 @@ async function loadCompletedFundCodes(supabase, resumeSince, recordIssue) {
       });
       return null;
     }
-    if (data.length === 0) return completed;
-    for (const { code } of data) completed.add(code);
+    if (data.length === 0) return snapshots;
+    for (const row of data) {
+      const price = Number(row.price);
+      if (Number.isFinite(price) && price > 0 && Number.isFinite(Date.parse(row.last_sync_at))) {
+        snapshots.set(row.code, row);
+      }
+    }
     lastCode = data.at(-1).code;
+  }
+}
+
+function writeGitHubSummary(summary) {
+  const path = process.env.GITHUB_STEP_SUMMARY;
+  if (!path) return;
+
+  const coverage = summary?.coverage;
+  const lines = ['### TEFAS eşitleme kapsamı', ''];
+  if (coverage) {
+    lines.push(
+      `Referans değerleme günü **${coverage.referenceDate}** (İstanbul).`, '',
+      '| Gösterge | Fon sayısı |', '| --- | ---: |',
+      `| Seçilen | ${summary.selected} |`,
+      `| Güncel | ${coverage.current} |`,
+      `| Eski | ${coverage.stale} |`,
+      `| Fiyatı eksik | ${coverage.missing} |`,
+      `| Değerleme tarihi doğrulanamadı | ${coverage.unverified} |`,
+      `| Bu çalıştırmada başarısız | ${summary.failed} |`, '',
+      'Başarısız bir denemeden sonra önceki fiyat, varsa, kapsamda sayılır.',
+    );
+  } else {
+    lines.push('Kapsam hesaplanamadı. Ayrıntılar için çalıştırma kayıtlarına bakın.');
+  }
+  try {
+    appendFileSync(path, `${lines.join('\n')}\n\n`);
+  } catch (error) {
+    logEvent('tefas_sync_summary_error', { errorType: safeErrorCode(error?.code) }, console.warn);
   }
 }
 
@@ -248,9 +299,10 @@ async function run() {
   if (summary.status === 'failed' || summary.databaseFailures > 0 || (resumeSince && summary.failed > 0)) {
     process.exitCode = 1;
   }
+  return summary;
 }
 
-export async function syncFunds({ selected, supabase, resumeSince, fetcher, report = logEvent }) {
+export async function syncFunds({ selected, supabase, resumeSince, fetcher, report = logEvent, now = new Date() }) {
   const started = Date.now();
   const dryRun = !supabase;
   const issues = {};
@@ -263,11 +315,15 @@ export async function syncFunds({ selected, supabase, resumeSince, fetcher, repo
     report('tefas_sync_issue', issue, console.warn);
   };
 
-  const completed = resumeSince ? await loadCompletedFundCodes(supabase, resumeSince, recordIssue) : new Set();
-  const pending = completed ? selected.filter(item => !completed.has(item.code.trim().toUpperCase())) : [];
-  const skipped = completed ? selected.length - pending.length : 0;
+  const snapshots = supabase ? await loadStoredFundQuotes(supabase, resumeSince ? 'checkpoint' : 'coverage', recordIssue) : new Map();
+  const checkpointFailed = Boolean(resumeSince && !snapshots);
+  const pending = checkpointFailed ? [] : selected.filter(item => {
+    const syncedAt = snapshots?.get(item.code.trim().toUpperCase())?.last_sync_at;
+    return !resumeSince || !syncedAt || Date.parse(syncedAt) < Date.parse(resumeSince);
+  });
+  const skipped = checkpointFailed ? 0 : selected.length - pending.length;
   const selection = { dryRun, resumeSince, selected: selected.length, skipped };
-  if (completed) report('tefas_sync_started', { ...selection, pending: pending.length });
+  if (!checkpointFailed) report('tefas_sync_started', { ...selection, pending: pending.length });
   for (let i = 0; i < pending.length; i += BATCH_SIZE) {
     const batch = pending.slice(i, i + BATCH_SIZE);
     report('tefas_sync_batch', { offset: i, codes: batch.map(item => item.code) });
@@ -299,12 +355,13 @@ export async function syncFunds({ selected, supabase, resumeSince, fetcher, repo
           return;
         }
       }
+      snapshots?.set(detail.code, detail);
       succeeded++;
     }));
   }
 
   let status = 'ok';
-  if (!completed || (pending.length > 0 && succeeded === 0)) status = 'failed';
+  if (checkpointFailed || (pending.length > 0 && succeeded === 0)) status = 'failed';
   else if (failed > 0 || Object.keys(issues).length > 0) status = 'partial';
 
   const summary = {
@@ -314,6 +371,7 @@ export async function syncFunds({ selected, supabase, resumeSince, fetcher, repo
     succeeded,
     failed,
     databaseFailures,
+    coverage: summarizeCoverage(selected.map(item => item.code.trim().toUpperCase()), snapshots, now),
     durationMs: Date.now() - started,
     issues,
   };
@@ -322,8 +380,9 @@ export async function syncFunds({ selected, supabase, resumeSince, fetcher, repo
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  run().catch(error => {
+  run().then(writeGitHubSummary).catch(error => {
     logEvent('tefas_sync_fatal', { errorType: safeErrorCode(error?.code ?? error?.name) ?? 'Error' }, console.error);
     process.exitCode = 1;
+    writeGitHubSummary();
   });
 }

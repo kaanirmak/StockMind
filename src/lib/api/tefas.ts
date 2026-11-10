@@ -1,11 +1,7 @@
 import { TefasFundInfo } from '@/lib/data/funds';
 import { FundCategory } from '@/types/fund';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
-
-export interface TefasHistoryPoint {
-  date: string;
-  price: number;
-}
+import { getTefasQuote, parseTefasHistory, type TefasHistoryPoint } from '@/lib/data/tefas-prices.mjs';
 
 // In-memory cache with 5-minute TTL
 const liveFundCache = new Map<string, { data: TefasFundInfo; timestamp: number }>();
@@ -115,14 +111,7 @@ export async function fetchTefasPriceHistory(
 
     if (res.ok) {
       const json = await res.json();
-      if (Array.isArray(json.resultList) && json.resultList.length > 0) {
-        return json.resultList
-          .filter((item: any) => Number(item.fiyat) > 0)
-          .map((item: any) => ({
-            date: item.tarih,
-            price: Number(item.fiyat),
-          }));
-      }
+      return parseTefasHistory(json.resultList);
     }
   } catch (err) {
     console.warn(`TEFAS price history fetch error for ${sym}:`, err);
@@ -189,7 +178,7 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
 
     let bilgi: any = null;
     let profil: any = null;
-    let priceHistory: { tarih: string; fiyat: number }[] = [];
+    let priceHistory: TefasHistoryPoint[] = [];
 
     if (bilgiRes && bilgiRes.ok) {
       try {
@@ -212,9 +201,7 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
     if (fiyatRes && fiyatRes.ok) {
       try {
         const fJson = await fiyatRes.json();
-        if (Array.isArray(fJson.resultList)) {
-          priceHistory = fJson.resultList.filter((p: any) => Number(p.fiyat) > 0);
-        }
+        priceHistory = parseTefasHistory(fJson.resultList);
       } catch {
         priceHistory = [];
       }
@@ -225,11 +212,8 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
       const founder = dirEntry?.founder || `${sym} Portföy Yönetimi A.Ş.`;
       const category = (bilgi.fonKategori as FundCategory) || dirEntry?.category || 'Değişken Fon';
 
-      const currentPrice = Number(bilgi.sonFiyat);
-      const lastPrice = Number.isFinite(currentPrice) && currentPrice > 0
-        ? currentPrice
-        : Number(priceHistory.at(-1)?.fiyat);
-      if (!Number.isFinite(lastPrice) || lastPrice <= 0) return null;
+      const quote = getTefasQuote(bilgi.sonFiyat, priceHistory.at(-1));
+      if (!quote) return null;
 
       let dailyReturn = bilgi.gunlukGetiri != null ? Number(bilgi.gunlukGetiri) : 0;
 
@@ -243,16 +227,16 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
       let ytdReturn = monthlyReturn * 6.0;
 
       if (priceHistory.length > 0) {
-        const last = Number(priceHistory[priceHistory.length - 1].fiyat);
+        const last = priceHistory[priceHistory.length - 1].price;
 
         const getPeriodReturn = (daysAgo: number) => {
           const targetIdx = Math.max(0, priceHistory.length - 1 - daysAgo);
-          const past = Number(priceHistory[targetIdx]?.fiyat);
+          const past = priceHistory[targetIdx].price;
           return past > 0 ? Number((((last - past) / past) * 100).toFixed(2)) : 0;
         };
 
         if (bilgi.gunlukGetiri == null && priceHistory.length > 1) {
-          const prev = Number(priceHistory[priceHistory.length - 2].fiyat);
+          const prev = priceHistory[priceHistory.length - 2].price;
           if (prev > 0) {
             dailyReturn = Number((((last - prev) / prev) * 100).toFixed(2));
           }
@@ -266,10 +250,9 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
         return5y = getPeriodReturn(1260) || Number((yearlyReturn * 2.8).toFixed(0));
 
         // YTD calculation
-        const lastDate = new Date(priceHistory[priceHistory.length - 1].tarih);
-        const currentYear = lastDate.getFullYear();
-        const ytdPoint = priceHistory.slice().reverse().find((p) => new Date(p.tarih).getFullYear() < currentYear) || priceHistory[0];
-        const ytdPast = Number(ytdPoint.fiyat);
+        const currentYear = priceHistory[priceHistory.length - 1].date.slice(0, 4);
+        const ytdPoint = priceHistory.findLast(point => point.date.slice(0, 4) < currentYear) ?? priceHistory[0];
+        const ytdPast = ytdPoint.price;
         if (ytdPast > 0) {
           ytdReturn = Number((((last - ytdPast) / ytdPast) * 100).toFixed(2));
         }
@@ -298,7 +281,8 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
         name,
         category,
         founder,
-        price: Number(lastPrice.toFixed(6)),
+        price: quote.price,
+        navDate: quote.navDate,
         dailyReturn: Number(dailyReturn.toFixed(2)),
         monthlyReturn: Number(monthlyReturn.toFixed(2)),
         return3m: Number(return3m.toFixed(1)),

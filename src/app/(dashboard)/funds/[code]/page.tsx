@@ -6,6 +6,7 @@ import { useFundDetail } from '@/hooks/useFunds';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { formatDate } from '@/lib/utils/format';
 
 export default function FundDetailPage({
   params,
@@ -222,9 +223,10 @@ export default function FundDetailPage({
             </span>}
           </div>
 
-          {fund.price !== null && <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+          {fund.price !== null && <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-muted">
             <span>TEFAS Gün Sonu Takas Fiyatı</span>
-            {fund.lastSyncAt && <span>· Son eşitleme {new Date(fund.lastSyncAt).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' })}</span>}
+            <span>{fund.navDate ? <>Değerleme <time dateTime={fund.navDate}>{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time></> : 'Değerleme tarihi bilinmiyor'}</span>
+            {fund.lastSyncAt && <span>Alınma zamanı <time dateTime={fund.lastSyncAt}>{new Date(fund.lastSyncAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short', timeStyle: 'short' })}</time></span>}
           </div>}
         </div>
       </div>
