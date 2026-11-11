@@ -9,6 +9,13 @@ import { hasProAccess } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { setActiveNotificationUser } from '@/lib/notifications/inbox';
 import { syncAccountNotificationState } from '@/lib/notifications/pushNotification';
+import {
+  clearSignOutGuestArtifacts,
+  dispatchSessionBoundaryEvent,
+  shouldResetSessionBoundary,
+} from '@/lib/auth/sessionBoundary';
+
+let activeBoundaryUserId: string | null | undefined = undefined;
 
 export function useAuth() {
   const supabase = createClient();
@@ -218,6 +225,20 @@ export function useAuth() {
       try {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (isMounted) {
+          const nextId = currentUser?.id ?? null;
+          if (shouldResetSessionBoundary(activeBoundaryUserId, nextId)) {
+            const prevId = activeBoundaryUserId ?? null;
+            usePortfolioStore.getState().resetStore();
+            useWatchlistStore.getState().resetWatchlist();
+            useAuthStore.getState().clearUser();
+            setActiveNotificationUser(null);
+            dispatchSessionBoundaryEvent({
+              previousUserId: prevId,
+              nextUserId: nextId,
+              reason: nextId ? 'account_switch' : 'guest_entry',
+            });
+          }
+          activeBoundaryUserId = nextId;
           setUser(currentUser);
           if (currentUser) {
             cleanupBloatedMetadata(currentUser);
@@ -245,22 +266,26 @@ export function useAuth() {
 
     getUser();
 
-    let currentTrackedUserId: string | null = null;
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         const authUser = session?.user ?? null;
         if (isMounted) {
-          const prevUserId = currentTrackedUserId;
-          currentTrackedUserId = authUser?.id ?? null;
+          const prevUserId = activeBoundaryUserId ?? null;
+          const nextUserId = authUser?.id ?? null;
 
           // If signed out or account switched, reset stores immediately to prevent state bleed
-          if (event === 'SIGNED_OUT' || !authUser || (prevUserId && prevUserId !== authUser?.id)) {
+          if (shouldResetSessionBoundary(activeBoundaryUserId, nextUserId, event)) {
             usePortfolioStore.getState().resetStore();
             useWatchlistStore.getState().resetWatchlist();
             useAuthStore.getState().clearUser();
             setActiveNotificationUser(null);
+            dispatchSessionBoundaryEvent({
+              previousUserId: prevUserId,
+              nextUserId,
+              reason: event === 'SIGNED_OUT' ? 'signout' : nextUserId ? 'account_switch' : 'guest_entry',
+            });
           }
+          activeBoundaryUserId = nextUserId;
 
           setUser(authUser);
           if (authUser) {
@@ -291,18 +316,25 @@ export function useAuth() {
   }, [supabase, fetchProfile]);
 
   const signOut = async () => {
+    const previousUserId = activeBoundaryUserId ?? user?.id ?? null;
     try {
       await supabase.auth.signOut();
     } catch (e) {
       console.warn('signOut error:', e);
     }
-    document.cookie = 'stockmind_guest=; path=/; max-age=0';
+    activeBoundaryUserId = null;
+    clearSignOutGuestArtifacts();
     setUser(null);
     setProfile(null);
     useAuthStore.getState().clearUser();
     usePortfolioStore.getState().resetStore();
     useWatchlistStore.getState().resetWatchlist();
     setActiveNotificationUser(null);
+    dispatchSessionBoundaryEvent({
+      previousUserId,
+      nextUserId: null,
+      reason: 'signout',
+    });
     window.location.href = '/login';
   };
 

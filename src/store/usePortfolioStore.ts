@@ -12,6 +12,7 @@ import {
   writeSampleModeSession,
 } from '@/lib/portfolio/samplePortfolio';
 import { createClient } from '@/lib/supabase/client';
+import { getPortfolioStorageKey } from '@/lib/auth/sessionBoundary';
 
 interface PortfolioState {
   portfolios: Portfolio[];
@@ -56,10 +57,7 @@ const INITIAL_PORTFOLIOS: Portfolio[] = [
 ];
 
 function getLocalStorageKey(userId?: string | null): string {
-  if (userId && userId !== 'guest') {
-    return `stockmind_portfolio_state_user_${userId}`;
-  }
-  return 'stockmind_portfolio_state_guest';
+  return getPortfolioStorageKey(userId);
 }
 
 function isUuid(str?: string | null): boolean {
@@ -340,12 +338,11 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     resetStore: () => {
       fetchGeneration++;
       writeSampleModeSession(false);
-      const local = loadLocalState(null);
       set({
-        portfolios: local.portfolios,
-        activePortfolioId: local.activePortfolioId,
-        transactions: local.transactions,
-        cashMovements: loadGuestCash(),
+        portfolios: [],
+        activePortfolioId: '',
+        transactions: [],
+        cashMovements: [],
         cashError: null,
         currentUserId: null,
         error: null,

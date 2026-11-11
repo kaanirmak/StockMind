@@ -15,6 +15,7 @@ import { useAppPlatform } from '@/hooks/useAppPlatform';
 import { SearchPalette } from '@/components/layout/SearchPalette';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { SESSION_BOUNDARY_EVENT } from '@/lib/auth/sessionBoundary';
 import { ApkDownloadModal, LegalDisclaimerModal } from '@/components/ui';
 
 export interface NotificationItem {
@@ -95,10 +96,20 @@ export default function Header() {
 
   useEffect(() => {
     const reload = () => setNotifications(readInbox());
+    const handleSessionBoundary = () => {
+      setShowNotifications(false);
+      setShowUserMenu(false);
+      setNotifications(readInbox());
+    };
     reload();
     window.addEventListener('storage', reload);
     window.addEventListener('stockmind:inbox', reload);
-    return () => { window.removeEventListener('storage', reload); window.removeEventListener('stockmind:inbox', reload); };
+    window.addEventListener(SESSION_BOUNDARY_EVENT, handleSessionBoundary);
+    return () => {
+      window.removeEventListener('storage', reload);
+      window.removeEventListener('stockmind:inbox', reload);
+      window.removeEventListener(SESSION_BOUNDARY_EVENT, handleSessionBoundary);
+    };
   }, []);
 
   const saveNotifications = (items: NotificationItem[]) => {

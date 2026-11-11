@@ -420,6 +420,7 @@ test('portfolio publishes ready quotes while a slower asset is still loading', a
         SAMPLE_TRANSACTIONS: [],
       };
       if (name === '@/lib/supabase/client') return {};
+      if (name === '@/lib/auth/sessionBoundary') return load('src/lib/auth/sessionBoundary.ts');
       throw new Error(name);
     },
     fetch: async (url, options) => {
@@ -4739,6 +4740,81 @@ test('HSP-01: privacy mode syncs across storage/events and masks amounts across 
     const src = fs.readFileSync(path.join(process.cwd(), item.path), 'utf8');
     assert.match(src, item.pattern, `${item.path} must wire global privacy masking`);
   }
+});
+
+test('HSP-02: account switch, guest mode, and sign-out isolate portfolio, notifications, and AI chat history', () => {
+  const boundary = load('src/lib/auth/sessionBoundary.ts');
+  const inbox = load('src/lib/notifications/inbox.ts');
+
+  // 1. Storage keys never collide between user-a, user-b, and guest
+  assert.equal(boundary.resolveSessionScopeKey(null), 'guest');
+  assert.equal(boundary.resolveSessionScopeKey('guest'), 'guest');
+  assert.equal(boundary.resolveSessionScopeKey('user-a'), 'user-a');
+
+  assert.notEqual(boundary.getPortfolioStorageKey('user-a'), boundary.getPortfolioStorageKey('user-b'));
+  assert.notEqual(boundary.getPortfolioStorageKey('user-a'), boundary.getPortfolioStorageKey(null));
+  assert.notEqual(boundary.getAiChatStorageKey('user-a'), boundary.getAiChatStorageKey('user-b'));
+  assert.notEqual(boundary.getAiChatStorageKey('user-a'), boundary.getAiChatStorageKey(null));
+  assert.notEqual(inbox.getInboxStorageKey('user-a'), inbox.getInboxStorageKey('user-b'));
+  assert.notEqual(inbox.getInboxStorageKey('user-a'), inbox.getInboxStorageKey(null));
+
+  // 2. Boundary transition detection
+  assert.equal(boundary.shouldResetSessionBoundary(undefined, 'user-a', 'INITIAL_SESSION'), false);
+  assert.equal(boundary.shouldResetSessionBoundary('user-a', 'user-a', 'TOKEN_REFRESHED'), false);
+  assert.equal(boundary.shouldResetSessionBoundary('user-a', 'user-b', 'SIGNED_IN'), true);
+  assert.equal(boundary.shouldResetSessionBoundary('user-a', null, 'USER_UPDATED'), true);
+  assert.equal(boundary.shouldResetSessionBoundary(null, 'user-a', 'SIGNED_IN'), true);
+  assert.equal(boundary.shouldResetSessionBoundary('user-a', null, 'SIGNED_OUT'), true);
+
+  // 3. Notification inbox isolation across account switch and sign-out
+  const storageMap = new Map();
+  const mockStorage = {
+    getItem: (k) => (storageMap.has(k) ? storageMap.get(k) : null),
+    setItem: (k, v) => storageMap.set(k, v),
+    removeItem: (k) => storageMap.delete(k),
+  };
+
+  inbox.setActiveNotificationUser('user-a', mockStorage);
+  inbox.saveInbox(
+    [{ id: 'n1', title: 'User A Alert', description: 'Private', time: 'now', read: false, category: 'portfolio' }],
+    undefined,
+    mockStorage
+  );
+  assert.equal(inbox.readInbox(undefined, mockStorage).length, 1);
+
+  inbox.setActiveNotificationUser('user-b', mockStorage);
+  assert.deepEqual([...inbox.readInbox(undefined, mockStorage)], []);
+
+  inbox.setActiveNotificationUser(null, mockStorage);
+  assert.deepEqual([...inbox.readInbox(undefined, mockStorage)], []);
+
+  // 4. Sign-out artifact cleanup + boundary event dispatch
+  mockStorage.setItem('stockmind_guest_profile', '{"id":"guest"}');
+  mockStorage.setItem('stockmind_active_notification_user', 'user-a');
+  boundary.clearSignOutGuestArtifacts(mockStorage);
+  assert.equal(mockStorage.getItem('stockmind_guest_profile'), null);
+  assert.equal(mockStorage.getItem('stockmind_active_notification_user'), null);
+
+  const emitted = [];
+  boundary.dispatchSessionBoundaryEvent(
+    { previousUserId: 'user-a', nextUserId: null, reason: 'signout' },
+    { dispatchEvent: (ev) => emitted.push(ev) }
+  );
+  assert.equal(emitted.length, 1);
+  assert.equal(emitted[0].type, boundary.SESSION_BOUNDARY_EVENT);
+  assert.equal(emitted[0].detail.reason, 'signout');
+
+  // 5. Store & UI wiring guarantees neutral reset and boundary subscription
+  const portfolioStoreSrc = fs.readFileSync(path.join(process.cwd(), 'src/store/usePortfolioStore.ts'), 'utf8');
+  assert.match(portfolioStoreSrc, /resetStore:\s*\(\)\s*=>\s*\{[\s\S]*?portfolios:\s*\[\][\s\S]*?transactions:\s*\[\][\s\S]*?cashMovements:\s*\[\]/);
+  const useAuthSrc = fs.readFileSync(path.join(process.cwd(), 'src/hooks/useAuth.ts'), 'utf8');
+  assert.match(useAuthSrc, /shouldResetSessionBoundary/);
+  assert.match(useAuthSrc, /clearSignOutGuestArtifacts/);
+  const aiPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  assert.match(aiPageSrc, /SESSION_BOUNDARY_EVENT/);
+  assert.match(aiPageSrc, /if \(typeof window === 'undefined' \|\| authLoading\) return;/);
+  const headerSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/layout/Header.tsx'), 'utf8');
+  assert.match(headerSrc, /SESSION_BOUNDARY_EVENT/);
 });
 
 

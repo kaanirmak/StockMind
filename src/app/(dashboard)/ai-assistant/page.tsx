@@ -21,6 +21,11 @@ import { useSearchParams } from 'next/navigation';
 import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { Button, Badge, Modal } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  getAiChatStorageKey,
+  resolveSessionScopeKey,
+  SESSION_BOUNDARY_EVENT,
+} from '@/lib/auth/sessionBoundary';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import {
   useOpenRouterKey,
@@ -78,13 +83,12 @@ const PROMPT_SUGGESTIONS = [
 
 const SESSIONS_STORAGE_KEY_PREFIX = 'stockmind_ai_chat_sessions_v2';
 const getSessionsStorageKey = (userId?: string | null) =>
-  userId && userId !== 'guest'
-    ? `${SESSIONS_STORAGE_KEY_PREFIX}_${userId}`
-    : SESSIONS_STORAGE_KEY_PREFIX;
+  getAiChatStorageKey(userId);
 
 function AIAssistantContent() {
   const searchParams = useSearchParams();
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
+  const activeScopeRef = useRef<string | null>(null);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
@@ -231,9 +235,22 @@ function AIAssistantContent() {
     }
   };
 
-  // 1. Initialize Sessions from LocalStorage (scoped to user)
+  // 1. Initialize Sessions from LocalStorage (strictly scoped to user after auth resolves)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || authLoading) return;
+
+    const nextScope = resolveSessionScopeKey(user?.id);
+    if (activeScopeRef.current && activeScopeRef.current !== nextScope) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      setLoading(false);
+      setQuotaState(null);
+      setSessions([]);
+      setCurrentSessionId('');
+      setMessages(INITIAL_MESSAGES);
+    }
+    activeScopeRef.current = nextScope;
 
     const storageKey = getSessionsStorageKey(user?.id);
     try {
@@ -265,7 +282,24 @@ function AIAssistantContent() {
     try {
       localStorage.setItem(storageKey, JSON.stringify([firstSession]));
     } catch {}
-  }, [user?.id]);
+  }, [user?.id, authLoading]);
+
+  // Reset transient AI chat & in-flight state immediately on session boundary transitions
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleBoundary = () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      setLoading(false);
+      setQuotaState(null);
+      setSessions([]);
+      setCurrentSessionId('');
+      setMessages(INITIAL_MESSAGES);
+    };
+    window.addEventListener(SESSION_BOUNDARY_EVENT, handleBoundary);
+    return () => window.removeEventListener(SESSION_BOUNDARY_EVENT, handleBoundary);
+  }, []);
 
   // 3. Sync active session messages to LocalStorage
   const updateCurrentSessionMessages = (newMessages: Message[], titleOverride?: string) => {
