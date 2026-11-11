@@ -7801,6 +7801,91 @@ test('OPS-14: measures typical & heavy concurrency latency, error rate, and prov
   assert.ok(failingReport.slaViolations.length >= 1);
 });
 
+test('PIY-11: evaluates indicator & list alert rules deterministically with hysteresis and bounded background cost', () => {
+  const evalMod = load('src/lib/alerts/indicatorRuleEvaluator.ts');
+
+  // Build deterministic sample candles where RSI(14) starts > 30 then breaks <= 30 on final candle
+  const closes = [
+    100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+    110, 111, 112, 113, 114, 111, 107, 103, 99, 95, 88,
+  ];
+  const sampleCandles = closes.map((close, idx) => ({
+    time: `2026-10-${String(idx + 1).padStart(2, '0')}`,
+    close,
+  }));
+
+  const rule = {
+    id: 'rule-rsi-thyao',
+    symbol: 'THYAO',
+    kind: 'rsi_below',
+    period: 14,
+    threshold: 30,
+    hysteresisBand: 5,
+    cooldownBars: 3,
+  };
+
+  // Run twice to guarantee exact reproducibility
+  const run1 = evalMod.evaluateIndicatorAlertRule(rule, sampleCandles);
+  const run2 = evalMod.evaluateIndicatorAlertRule(rule, sampleCandles);
+  assert.equal(run1.triggered, true);
+  assert.equal(run1.status, 'triggered');
+  assert.equal(run1.signalBarTime, '2026-10-21');
+  assert.ok(run1.latestIndicatorValue <= 30);
+  assert.ok(run1.previousIndicatorValue > 30);
+  assert.deepEqual(run1, run2);
+
+  // Cooldown / hysteresis prevents noisy repeat triggers right after signaling
+  const suppressed = evalMod.evaluateIndicatorAlertRule(rule, sampleCandles, {
+    lastTriggeredBarIndex: sampleCandles.length - 2,
+  });
+  assert.equal(suppressed.triggered, false);
+  assert.equal(suppressed.status, 'cooldown_suppressed');
+
+  // Insufficient candles fails closed instead of guessing indicator value
+  const shortRun = evalMod.evaluateIndicatorAlertRule(rule, sampleCandles.slice(0, 8));
+  assert.equal(shortRun.triggered, false);
+  assert.equal(shortRun.status, 'insufficient_candles');
+
+  // Watchlist rule deduplicates repeated symbols & keeps provider calls bounded by unique symbols
+  const listResult = evalMod.evaluateListAlertRule({
+    rule: {
+      id: 'watchlist-oversold',
+      listName: 'BIST Takip',
+      symbols: ['THYAO', 'thyao', 'ASELS'],
+      kind: 'rsi_below',
+      period: 14,
+      threshold: 30,
+    },
+    candlesBySymbol: {
+      THYAO: sampleCandles,
+      ASELS: Array.from({ length: 20 }, (_, i) => ({
+        time: `2026-10-${String(i + 1).padStart(2, '0')}`,
+        close: 50 + i,
+      })),
+    },
+  });
+  assert.equal(listResult.deduplicatedFromCount, 3);
+  assert.equal(listResult.uniqueSymbolsCount, 2);
+  assert.equal(listResult.providerCallsRequired, 2);
+  assert.deepEqual(Array.from(listResult.triggeredSymbols), ['THYAO']);
+
+  // Background cost estimate verifies 15m TTL keeps 50 unique symbols within low tier
+  const cost = evalMod.estimateAlertBackgroundCost({
+    uniqueSymbols: 50,
+    pollIntervalMinutes: 5,
+    candleRefreshMinutes: 15,
+  });
+  assert.equal(cost.dailyCandleFetches, 4800);
+  assert.equal(cost.costTier, 'low');
+
+  const docSrc = fs.readFileSync(
+    path.join(process.cwd(), 'docs/gosterge-ve-liste-alarmlari-degerlendirme.md'),
+    'utf8',
+  );
+  assert.match(docSrc, /hysteresisBand/);
+  assert.match(docSrc, /O\(uniqueSymbols\)/);
+});
+
 
 
 
