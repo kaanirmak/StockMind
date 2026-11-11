@@ -355,3 +355,62 @@ test('HBR-01 translates HTML, empty, malformed JSON and timeout responses into T
   assert.doesNotMatch(syntaxMsg, /Unexpected token|SyntaxError/i);
   assert.match(syntaxMsg, /beklenen JSON yanıtını döndürmedi/);
 });
+
+test('HBR-02 persists last successful news feed per category with timestamp and rejects expired entries', () => {
+  const {
+    NEWS_CLIENT_SNAPSHOT_KEY,
+    NEWS_SNAPSHOT_MAX_AGE_MS,
+    upsertNewsCategorySnapshot,
+    getNewsCategorySnapshot,
+  } = loadTs('src/lib/news/clientSnapshot.ts');
+
+  const nowMs = Date.parse('2026-05-01T12:00:00Z');
+  const savedAt = new Date(nowMs - 30 * 60_000).toISOString();
+
+  const updated = upsertNewsCategorySnapshot(
+    null,
+    'BIST',
+    [
+      {
+        id: 'n-1',
+        title: 'THYAO yeni hat açılışı',
+        summary: 'Özet',
+        category: 'BIST',
+        sentiment: 'positive',
+        source: 'Investing.com',
+        url: 'https://tr.investing.com/news/1',
+        publishedAt: '2026-05-01T11:15:00Z',
+      },
+      {
+        // Invalid URL should be filtered out
+        id: 'n-bad',
+        title: 'Kötü link',
+        summary: 'Özet',
+        category: 'BIST',
+        sentiment: 'neutral',
+        source: 'Test',
+        url: 'javascript:alert(1)',
+        publishedAt: '2026-05-01T11:15:00Z',
+      },
+    ],
+    savedAt,
+    nowMs
+  );
+
+  const restored = getNewsCategorySnapshot(updated, 'BIST', nowMs + 60_000);
+  assert.ok(restored);
+  assert.equal(restored.savedAt, savedAt);
+  assert.equal(restored.articles.length, 1);
+  assert.equal(restored.articles[0].id, 'n-1');
+
+  // Expired snapshot (> 24h) is discarded
+  const expired = getNewsCategorySnapshot(updated, 'BIST', nowMs + NEWS_SNAPSHOT_MAX_AGE_MS + 1000);
+  assert.equal(expired, null);
+
+  assert.equal(NEWS_CLIENT_SNAPSHOT_KEY, 'stockmind.news.last_good.v1');
+
+  const newsPageSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  assert.match(newsPageSrc, /NEWS_CLIENT_SNAPSHOT_KEY/);
+  assert.match(newsPageSrc, /lastSuccessAt/);
+  assert.match(newsPageSrc, /Tekrar Dene/);
+});

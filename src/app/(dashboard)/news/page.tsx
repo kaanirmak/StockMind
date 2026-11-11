@@ -10,6 +10,11 @@ import { calculatePortfolioHoldings } from '@/lib/portfolio/calculations';
 import { mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
 import { rankNews } from '@/lib/news/relevance';
 import { mapNewsFetchErrorToTurkish, parseNewsApiResponse } from '@/lib/news/responseParser';
+import {
+  NEWS_CLIENT_SNAPSHOT_KEY,
+  getNewsCategorySnapshot,
+  upsertNewsCategorySnapshot,
+} from '@/lib/news/clientSnapshot';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function NewsPage() {
@@ -25,6 +30,8 @@ export default function NewsPage() {
   const [newsError, setNewsError] = useState('');
   const [newsWarning, setNewsWarning] = useState('');
   const [news, setNews] = useState<NewsArticle[]>([]);
+  const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
+  const [showingCachedSnapshot, setShowingCachedSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [sortOrder, setSortOrder] = useState<'important' | 'recent'>('important');
@@ -73,16 +80,46 @@ export default function NewsPage() {
       const data = parsed.payload;
       const articles = parsed.payload.data;
       if (requestRef.current !== controller) return;
-      setNews(articles.map((article: NewsArticle) => ({ ...article, relatedSymbols: article.relatedSymbols?.filter(symbol => mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)) })));
-      setNewsWarning(data.warning ? `${data.warning}${data.collectedAt ? ` Son güncelleme: ${new Date(data.collectedAt).toLocaleString('tr-TR')}` : ''}` : '');
+      const normalizedArticles = articles.map((article: NewsArticle) => ({
+        ...article,
+        relatedSymbols: article.relatedSymbols?.filter((symbol) =>
+          mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)
+        ),
+      }));
+      const savedAt = data.collectedAt || new Date().toISOString();
+      setNews(normalizedArticles);
+      setLastSuccessAt(savedAt);
+      setShowingCachedSnapshot(false);
+      setNewsWarning(data.warning ? `${data.warning}${savedAt ? ` Son güncelleme: ${new Date(savedAt).toLocaleString('tr-TR')}` : ''}` : '');
+
+      try {
+        const existingRaw = window.localStorage.getItem(NEWS_CLIENT_SNAPSHOT_KEY);
+        const existingParsed = existingRaw ? JSON.parse(existingRaw) : null;
+        const nextMap = upsertNewsCategorySnapshot(existingParsed, selectedCategory, normalizedArticles, savedAt);
+        window.localStorage.setItem(NEWS_CLIENT_SNAPSHOT_KEY, JSON.stringify(nextMap));
+      } catch {
+        // Ignore storage quota errors
+      }
     } catch (err) {
       if (requestRef.current !== controller) return;
-      setNewsError(
-        mapNewsFetchErrorToTurkish(err, {
-          isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-          aborted: controller.signal.aborted,
-        })
-      );
+      const friendlyError = mapNewsFetchErrorToTurkish(err, {
+        isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        aborted: controller.signal.aborted,
+      });
+      setNewsError(friendlyError);
+
+      try {
+        const storedRaw = window.localStorage.getItem(NEWS_CLIENT_SNAPSHOT_KEY);
+        const storedParsed = storedRaw ? JSON.parse(storedRaw) : null;
+        const fallbackSnapshot = getNewsCategorySnapshot(storedParsed, selectedCategory);
+        if (fallbackSnapshot && fallbackSnapshot.articles.length > 0) {
+          setNews(fallbackSnapshot.articles);
+          setLastSuccessAt(fallbackSnapshot.savedAt);
+          setShowingCachedSnapshot(true);
+        }
+      } catch {
+        // Keep in-memory articles if already loaded
+      }
     } finally {
       clearTimeout(timeout);
       if (requestRef.current === controller) { setLoading(false); setIsRefreshing(false); }
@@ -282,7 +319,7 @@ export default function NewsPage() {
           title="Haber akışı yüklenemedi"
           description={
             news.length > 0
-              ? `${newsError} Son yüklenen haberler aşağıda gösteriliyor.`
+              ? `${newsError}${lastSuccessAt ? ` Son başarılı haber listesi (${new Date(lastSuccessAt).toLocaleString('tr-TR')}) korunuyor.` : ' Son yüklenen haberler aşağıda gösteriliyor.'}`
               : newsError
           }
           action={
@@ -291,6 +328,12 @@ export default function NewsPage() {
             </Button>
           }
         />
+      )}
+      {!newsError && lastSuccessAt && news.length > 0 && (
+        <p data-testid="news-last-updated" className="text-[11px] text-text-muted">
+          {showingCachedSnapshot ? 'Önbellek listesi · ' : ''}Son başarılı alım:{' '}
+          <time dateTime={lastSuccessAt}>{new Date(lastSuccessAt).toLocaleString('tr-TR')}</time>
+        </p>
       )}
       {newsWarning && <p role="status" className="text-xs text-warning">{newsWarning}</p>}
 
