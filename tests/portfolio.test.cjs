@@ -1833,6 +1833,106 @@ test('POR-09: benchmark comparison aligns period and currency from same base lev
   assert.match(portSrc, /BenchmarkComparisonCard/);
 });
 
+test('POR-10: net invested timeline separates inflows/outflows and discloses missing history scope', () => {
+  const tlMod = loadModule('src/lib/portfolio/netInvestedTimeline.ts');
+
+  const res = tlMod.buildNetInvestedTimeline({
+    transactions: [
+      {
+        id: 'tx1',
+        portfolioId: 'p1',
+        userId: 'u1',
+        symbol: 'THYAO',
+        assetType: 'stock',
+        transactionType: 'buy',
+        quantity: 100,
+        price: 300,
+        currency: 'TRY',
+        commission: 0,
+        transactionDate: '2026-09-01',
+        exchange: 'BIST',
+        notes: null,
+        createdAt: '2026-09-01T10:00:00Z',
+      },
+    ],
+    cashMovements: [
+      {
+        id: 'c1',
+        portfolioId: 'p1',
+        userId: 'u1',
+        movementType: 'deposit',
+        amount: 50_000,
+        currency: 'TRY',
+        exchangeRate: 1,
+        movementDate: '2026-09-01',
+        notes: null,
+        createdAt: '2026-09-01T09:00:00Z',
+      },
+      {
+        id: 'c2',
+        portfolioId: 'p1',
+        userId: 'u1',
+        movementType: 'withdrawal',
+        amount: 10_000,
+        currency: 'TRY',
+        exchangeRate: 1,
+        movementDate: '2026-09-15',
+        notes: null,
+        createdAt: '2026-09-15T09:00:00Z',
+      },
+    ],
+    summary: {
+      totalValue: 46_000,
+      totalCost: 30_000,
+      totalPnL: 6_000,
+      totalPnLPercent: 20,
+      dailyPnL: 500,
+      dailyPnLPercent: 1.1,
+      unrealizedPnL: 6_000,
+      realizedPnL: 0,
+      totalVolume: 30_000,
+      buyVolume: 30_000,
+      sellVolume: 0,
+      holdings: [],
+      allocation: [],
+      valuationStatus: { isComplete: true, missingFx: false, missingPrices: [] },
+    },
+    historyBySymbol: {
+      THYAO: {
+        '2026-09-01': 300,
+        '2026-09-15': 330,
+      },
+    },
+    period: '1M',
+    today: '2026-09-30',
+  });
+
+  assert.equal(res.totalInflows, 50_000);
+  assert.equal(res.totalOutflows, 10_000);
+  assert.equal(res.netInvestedTotal, 40_000);
+  assert.equal(res.latestPortfolioValue, 46_000);
+  assert.equal(res.netGainAmount, 6_000);
+
+  const sep1 = res.points.find((p) => p.date === '2026-09-01');
+  const sep15 = res.points.find((p) => p.date === '2026-09-15');
+  assert.equal(sep1.dailyInflow, 50_000);
+  assert.equal(sep1.dailyOutflow, 0);
+  assert.equal(sep15.dailyInflow, 0);
+  assert.equal(sep15.dailyOutflow, 10_000);
+  assert.equal(sep15.netInvested, 40_000);
+
+  // Dates without full close history are counted and reported explicitly
+  assert.equal(res.coverage.capitalBasisSource, 'cash_ledger');
+  assert.equal(res.coverage.isComplete, false);
+  assert.ok(res.coverage.estimatedPointsCount > 0);
+  assert.ok(res.coverage.uncoveredRange);
+  assert.match(res.coverage.summaryText, /Tarihçe kapsamı/);
+  assert.ok(res.coverage.details.length >= 1);
+
+  const portSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
+  assert.match(portSrc, /NetInvestedChartCard/);
+});
+
 
 
 

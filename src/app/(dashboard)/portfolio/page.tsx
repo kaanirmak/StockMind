@@ -17,6 +17,7 @@ import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
 import { BenchmarkComparisonCard } from '@/components/portfolio/BenchmarkComparisonCard';
+import { NetInvestedChartCard } from '@/components/portfolio/NetInvestedChartCard';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 
 const ExcelImportModal = dynamic(
@@ -47,6 +48,7 @@ export default function PortfolioPage() {
     deletePortfolio,
     clearPortfolioTransactions,
     transactions,
+    cashMovements,
     deleteTransaction,
     getSummary,
     fetchPortfoliosAndTransactions,
@@ -178,6 +180,9 @@ export default function PortfolioPage() {
   let activeTransactions = sampleSnapshot
     ? sampleSnapshot.transactions
     : transactions.filter((t) => t.portfolioId === activePortfolioId);
+  const activeCashMovements = sampleSnapshot
+    ? sampleSnapshot.cashMovements
+    : cashMovements.filter((m) => m.portfolioId === activePortfolioId);
   // Fallback if transaction portfolioId is slightly mismatched or only one portfolio exists
   if (!sampleSnapshot && activeTransactions.length === 0 && transactions.length > 0) {
     if (portfolios.length <= 1 || !portfolios.some((p) => transactions.some((t) => t.portfolioId === p.id))) {
@@ -552,6 +557,16 @@ export default function PortfolioPage() {
           transactions={activeTransactions}
           summary={summary}
           livePrices={livePrices}
+        />
+      )}
+
+      {!showEmptyOnboarding && (
+        <NetInvestedChartCard
+          transactions={activeTransactions}
+          cashMovements={activeCashMovements}
+          summary={summary}
+          livePrices={livePrices}
+          isPrivacyMode={isPrivacyMode}
         />
       )}
 

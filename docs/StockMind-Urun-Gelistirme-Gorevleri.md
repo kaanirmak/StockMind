@@ -73,7 +73,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | POR-07 | P1 | Günlük getiriyi varlık katkısına ayır | En büyük artı ve eksi katkılar TL ve yüzde puanla listelenir. Toplam katkı günlük portföy sonucuyla uzlaşır. | ◐ |
 | POR-08 | P1 | Kâr, temettü, komisyon ve kur etkisini ayır | Aynı seçili dönemde gerçekleşmiş kâr, açık pozisyon sonucu, nakit olayları, ücret ve kur etkisi görülebilir. | ◐ |
 | POR-09 | P2 | Referans endeks karşılaştırması ekle | Portföy ile seçili referans aynı dönem ve para biriminde, aynı başlangıç seviyesinden karşılaştırılır. | ◐ |
-| POR-10 | P2 | Portföy değerini ve net yatırılan tutarı grafikle göster | Geçmiş değer serisi ile para giriş ve çıkışları ayrı çizilir. Eksik tarihçenin kapsamı belirtilir. | ☐ |
+| POR-10 | P2 | Portföy değerini ve net yatırılan tutarı grafikle göster | Geçmiş değer serisi ile para giriş ve çıkışları ayrı çizilir. Eksik tarihçenin kapsamı belirtilir. | ◐ |
 | POR-11 | P2 | Temettü görünümü ekle | Gerçekleşmiş ödemeler, ilan edilen gelecek ödemeler ve varsa tahminler ayrı gösterilir. | ☐ |
 | POR-12 | P2 | Nakit akışı görünümü ekle | Para girişleri, çıkışları, temettü ve ücretler dönem ve para birimine göre filtrelenebilir. | ☐ |
 | POR-13 | P2 | Yoğunlaşma ve çeşitlilik analizi ekle | En büyük pozisyonlar ile sektör, ülke ve varlık türü dağılımı tek raporda görülebilir. | ☐ |
