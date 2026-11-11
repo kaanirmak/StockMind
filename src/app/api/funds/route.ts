@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getFundsFromDatabase, getAllFunds } from '@/lib/data/funds';
 import { fetchTefasLiveDetail } from '@/lib/api/tefas';
+import {
+  filterFundsCombinatorially,
+  type FundFeeTier,
+  type FundReturnPeriod,
+  type FundReturnThreshold,
+  type FundRiskRange,
+} from '@/lib/market/fundFilters';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
@@ -10,6 +17,12 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || undefined;
     const minRisk = searchParams.get('minRisk') ? Number(searchParams.get('minRisk')) : undefined;
     const maxRisk = searchParams.get('maxRisk') ? Number(searchParams.get('maxRisk')) : undefined;
+    const riskRange = (searchParams.get('riskRange') as FundRiskRange) || undefined;
+    const feeTier = (searchParams.get('feeTier') as FundFeeTier) || undefined;
+    const maxFee = searchParams.get('maxFee') ? Number(searchParams.get('maxFee')) : undefined;
+    const returnPeriod = (searchParams.get('returnPeriod') as FundReturnPeriod) || undefined;
+    const returnThreshold = (searchParams.get('returnThreshold') as FundReturnThreshold) || undefined;
+    const minReturn = searchParams.get('minReturn') ? Number(searchParams.get('minReturn')) : undefined;
     const sortBy = searchParams.get('sortBy') || undefined;
     const order = (searchParams.get('order') as 'asc' | 'desc') || 'desc';
     const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
@@ -63,6 +76,25 @@ export async function GET(request: Request) {
       if (liveMap.size > 0) {
         funds = funds.map((f) => liveMap.get(f.code) || f);
       }
+    }
+
+    if (
+      (riskRange && riskRange !== 'ALL') ||
+      (feeTier && feeTier !== 'ALL') ||
+      maxFee !== undefined ||
+      (returnThreshold && returnThreshold !== 'ALL') ||
+      minReturn !== undefined
+    ) {
+      funds = filterFundsCombinatorially(funds, {
+        riskRange,
+        minRisk,
+        maxRisk,
+        feeTier,
+        maxFee,
+        returnPeriod,
+        returnThreshold,
+        minReturn,
+      });
     }
 
     // Apply sorting if requested

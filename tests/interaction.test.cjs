@@ -4031,6 +4031,163 @@ test('FON-06: fund detail handles missing fee, risk, allocation, and history gra
   assert.match(fundDetailPage, /data-testid="fund-risk-value"/);
 });
 
+test('FON-07: fund list filters combinatorially by category, risk, management fee, and period return', () => {
+  const loadWithAlias = createAliasedLoader();
+  const filterMod = loadWithAlias('src/lib/market/fundFilters.ts');
+
+  const sampleFunds = [
+    {
+      code: 'AFT',
+      name: 'Ak Portföy Yeni Teknolojiler',
+      category: 'Hisse Senedi Fonu',
+      founder: 'Ak Portföy',
+      price: 1.25,
+      dailyReturn: 1.2,
+      monthlyReturn: 8.5,
+      return3m: 28.0,
+      return6m: 41.0,
+      ytdReturn: 35.0,
+      yearlyReturn: 62.0,
+      return3y: 190.0,
+      return5y: 420.0,
+      riskValue: 6,
+      managementFee: 1.85,
+      totalValue: 5e9,
+      investorCount: 15000,
+      assetAllocation: [],
+    },
+    {
+      code: 'TI2',
+      name: 'İş Portföy Hisse Senedi Fonu',
+      category: 'Hisse Senedi Fonu',
+      founder: 'İş Portföy',
+      price: 2.1,
+      dailyReturn: 0.4,
+      monthlyReturn: 4.1,
+      return3m: 12.0,
+      return6m: 19.0,
+      ytdReturn: 18.0,
+      yearlyReturn: 38.0,
+      return3y: 120.0,
+      return5y: 250.0,
+      riskValue: 6,
+      managementFee: 2.9,
+      totalValue: 4e9,
+      investorCount: 12000,
+      assetAllocation: [],
+    },
+    {
+      code: 'PPF',
+      name: 'Örnek Para Piyasası Fonu',
+      category: 'Para Piyasası Fonu',
+      founder: 'Örnek Portföy',
+      price: 3.4,
+      dailyReturn: 0.14,
+      monthlyReturn: 3.8,
+      return3m: 11.5,
+      return6m: 24.0,
+      ytdReturn: 21.0,
+      yearlyReturn: 49.0,
+      return3y: 130.0,
+      return5y: 210.0,
+      riskValue: 1,
+      managementFee: 0.75,
+      totalValue: 8e9,
+      investorCount: 40000,
+      assetAllocation: [],
+    },
+    {
+      code: 'MISSING',
+      name: 'Eksik Metrikli Fon',
+      category: 'Hisse Senedi Fonu',
+      founder: 'Deneme',
+      price: null,
+      dailyReturn: 0,
+      monthlyReturn: 0,
+      return3m: 0,
+      return6m: 0,
+      ytdReturn: 0,
+      yearlyReturn: 0,
+      return3y: 0,
+      return5y: 0,
+      riskValue: null,
+      managementFee: null,
+      totalValue: null,
+      investorCount: null,
+      assetAllocation: [],
+    },
+  ];
+
+  // Combined 4-way filter: category=Hisse Senedi Fonu + riskRange=HIGH (5-7) + feeTier=MID (1-2%) + return3m >= 25%
+  const combined = filterMod.filterFundsCombinatorially(sampleFunds, {
+    category: 'Hisse Senedi Fonu',
+    riskRange: 'HIGH',
+    feeTier: 'MID',
+    returnPeriod: 'return3m',
+    returnThreshold: 'ABOVE_25',
+  });
+  assert.deepEqual(
+    combined.map((f) => f.code),
+    ['AFT'],
+  );
+
+  // Switch only returnPeriod to yearlyReturn while dropping feeTier to ALL -> picks both AFT and TI2, excludes PPF (category/risk) & MISSING (nulls)
+  const bothEquities = filterMod.filterFundsCombinatorially(sampleFunds, {
+    category: 'Hisse Senedi Fonu',
+    riskRange: 'HIGH',
+    feeTier: 'ALL',
+    returnPeriod: 'yearlyReturn',
+    returnThreshold: 'ABOVE_25',
+  });
+  assert.deepEqual(
+    bothEquities.map((f) => f.code),
+    ['AFT', 'TI2'],
+  );
+
+  // Low risk + low fee filter picks PPF cleanly
+  const lowRiskLowFee = filterMod.filterFundsCombinatorially(sampleFunds, {
+    category: 'Para Piyasası Fonu',
+    riskRange: 'LOW',
+    feeTier: 'LOW',
+    returnPeriod: 'return6m',
+    returnThreshold: 'ABOVE_10',
+  });
+  assert.deepEqual(
+    lowRiskLowFee.map((f) => f.code),
+    ['PPF'],
+  );
+
+  // Missing price/metrics never slip through active filters and sort to the bottom
+  const sortedAsc = filterMod.sortFundsByField(sampleFunds, 'riskValue', 'asc');
+  assert.equal(sortedAsc[0].code, 'PPF');
+  assert.equal(sortedAsc[sortedAsc.length - 1].code, 'MISSING');
+
+  assert.equal(
+    filterMod.countActiveFundFilters({
+      category: 'Hisse Senedi Fonu',
+      riskRange: 'HIGH',
+      feeTier: 'MID',
+      returnThreshold: 'ABOVE_25',
+    }),
+    4,
+  );
+
+  const piyasalarPage = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/(dashboard)/piyasalar/page.tsx'),
+    'utf8',
+  );
+  assert.match(piyasalarPage, /filterFundsCombinatorially/);
+  assert.match(piyasalarPage, /data-testid="fund-extended-filters"/);
+  assert.match(piyasalarPage, /FUND_FEE_TIER_OPTIONS/);
+  assert.match(piyasalarPage, /FUND_RETURN_PERIOD_OPTIONS/);
+
+  const fundsRoute = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/api/funds/route.ts'),
+    'utf8',
+  );
+  assert.match(fundsRoute, /filterFundsCombinatorially/);
+});
+
 
 
 

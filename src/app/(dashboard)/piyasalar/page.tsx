@@ -26,6 +26,20 @@ import {
   type SortDirection,
   type StockSortKey,
 } from '@/lib/market/marketFilterPersistence';
+import {
+  FUND_FEE_TIER_OPTIONS,
+  FUND_RETURN_PERIOD_OPTIONS,
+  FUND_RETURN_THRESHOLD_OPTIONS,
+  FUND_RISK_RANGE_OPTIONS,
+  countActiveFundFilters,
+  filterFundsCombinatorially,
+  getFundPeriodReturn,
+  sortFundsByField,
+  type FundFeeTier,
+  type FundReturnPeriod,
+  type FundReturnThreshold,
+  type FundRiskRange,
+} from '@/lib/market/fundFilters';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatDate, formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -71,6 +85,10 @@ function PiyasalarContent() {
   // Funds state
   const [selectedCategory, setSelectedCategory] = useState<string>(initialResolved.category);
   const [fundSearch, setFundSearch] = useState<string>(initialResolved.search);
+  const [fundRiskRange, setFundRiskRange] = useState<FundRiskRange>('ALL');
+  const [fundFeeTier, setFundFeeTier] = useState<FundFeeTier>('ALL');
+  const [fundReturnPeriod, setFundReturnPeriod] = useState<FundReturnPeriod>('yearlyReturn');
+  const [fundReturnThreshold, setFundReturnThreshold] = useState<FundReturnThreshold>('ALL');
   const [fundLimit, setFundLimit] = useState<number>(30);
   const loadMoreFundsRef = useRef<HTMLDivElement>(null);
   const [fundSortBy, setFundSortBy] = useState<FundSortKey>(initialResolved.fundSortBy);
@@ -309,12 +327,41 @@ function PiyasalarContent() {
     { enabled: activeMarket === 'TEFAS' }
   );
 
-  const sortedFunds = [...funds].sort((a, b) => {
-    const valA = a[fundSortBy] || 0;
-    const valB = b[fundSortBy] || 0;
-    return stockSortOrder === 'desc' ? Number(valB) - Number(valA) : Number(valA) - Number(valB);
+  const filteredFunds = filterFundsCombinatorially(funds, {
+    category: selectedCategory,
+    search: fundSearch,
+    riskRange: fundRiskRange,
+    feeTier: fundFeeTier,
+    returnPeriod: fundReturnPeriod,
+    returnThreshold: fundReturnThreshold,
+    watchlistOnly,
+    isWatchlisted: checkWatchlisted,
   });
+
+  const sortedFunds = sortFundsByField(filteredFunds, fundSortBy, fundSortOrder);
   const visibleFunds = sortedFunds.slice(0, fundLimit);
+  const activeFundFilterCount = countActiveFundFilters({
+    category: selectedCategory,
+    search: fundSearch,
+    riskRange: fundRiskRange,
+    feeTier: fundFeeTier,
+    returnPeriod: fundReturnPeriod,
+    returnThreshold: fundReturnThreshold,
+    watchlistOnly,
+  });
+  const selectedReturnPeriodMeta =
+    FUND_RETURN_PERIOD_OPTIONS.find((opt) => opt.id === fundReturnPeriod) ??
+    FUND_RETURN_PERIOD_OPTIONS[5];
+  const resetFundFilters = () => {
+    setFundSearch('');
+    setSelectedCategory('ALL');
+    setFundRiskRange('ALL');
+    setFundFeeTier('ALL');
+    setFundReturnPeriod('yearlyReturn');
+    setFundReturnThreshold('ALL');
+    setWatchlistOnly(false);
+    setFundLimit(30);
+  };
 
   // IntersectionObserver for smooth infinite scroll on TEFAS funds
   useEffect(() => {
@@ -1151,7 +1198,11 @@ function PiyasalarContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 <span>Filtre</span>
-                {selectedCategory !== 'ALL' && <span className="w-2 h-2 rounded-full bg-accent" />}
+                {activeFundFilterCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-accent text-white text-[10px] leading-none font-bold">
+                    {activeFundFilterCount}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -1167,6 +1218,92 @@ function PiyasalarContent() {
                 </button>
               ))}
             </div>
+
+            {/* Desktop Extended Filters: Risk, Management Fee, and Period Return */}
+            <div
+              data-testid="fund-extended-filters"
+              className="hidden sm:flex flex-wrap items-center gap-2 pt-2 border-t border-border/40"
+            >
+              <label className="flex items-center gap-1.5 text-xs text-text-secondary">
+                <span className="font-medium text-text-muted">Risk:</span>
+                <select
+                  aria-label="Fon risk seviyesi filtresi"
+                  value={fundRiskRange}
+                  onChange={(e) => { setFundRiskRange(e.target.value as FundRiskRange); setFundLimit(30); }}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
+                >
+                  {FUND_RISK_RANGE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex items-center gap-1.5 text-xs text-text-secondary">
+                <span className="font-medium text-text-muted">Ücret:</span>
+                <select
+                  aria-label="Fon yönetim ücreti filtresi"
+                  value={fundFeeTier}
+                  onChange={(e) => { setFundFeeTier(e.target.value as FundFeeTier); setFundLimit(30); }}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
+                >
+                  {FUND_FEE_TIER_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex items-center gap-1.5 text-xs text-text-secondary">
+                <span className="font-medium text-text-muted">Dönem:</span>
+                <select
+                  aria-label="Fon getiri dönemi seçimi"
+                  value={fundReturnPeriod}
+                  onChange={(e) => {
+                    const nextPeriod = e.target.value as FundReturnPeriod;
+                    setFundReturnPeriod(nextPeriod);
+                    if (
+                      nextPeriod === 'dailyReturn' ||
+                      nextPeriod === 'monthlyReturn' ||
+                      nextPeriod === 'return3m' ||
+                      nextPeriod === 'yearlyReturn' ||
+                      nextPeriod === 'return3y' ||
+                      nextPeriod === 'return5y'
+                    ) {
+                      setFundSortBy(nextPeriod);
+                    }
+                    setFundLimit(30);
+                  }}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
+                >
+                  {FUND_RETURN_PERIOD_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex items-center gap-1.5 text-xs text-text-secondary">
+                <span className="font-medium text-text-muted">Getiri:</span>
+                <select
+                  aria-label="Fon getiri eşiği filtresi"
+                  value={fundReturnThreshold}
+                  onChange={(e) => { setFundReturnThreshold(e.target.value as FundReturnThreshold); setFundLimit(30); }}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
+                >
+                  {FUND_RETURN_THRESHOLD_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>{opt.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              {activeFundFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetFundFilters}
+                  className="ml-auto text-xs font-semibold text-accent hover:underline cursor-pointer"
+                >
+                  Filtreleri Temizle ({activeFundFilterCount})
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Funds Content */}
@@ -1178,16 +1315,12 @@ function PiyasalarContent() {
             <StateView
               kind="empty"
               title="Kriterlere uygun TEFAS fonu bulunamadı"
-              description="Seçili fon kategorisi veya arama terimiyle eşleşen fon yok."
+              description="Seçili fon kategorisi, risk seviyesi, yönetim ücreti veya getiri kriterleriyle eşleşen fon yok."
               action={
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => {
-                    setFundSearch('');
-                    setSelectedCategory('ALL');
-                    setWatchlistOnly(false);
-                  }}
+                  onClick={resetFundFilters}
                 >
                   Filtreleri Temizle
                 </Button>
@@ -1210,11 +1343,25 @@ function PiyasalarContent() {
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden sm:table-cell" onClick={() => toggleFundSort('monthlyReturn')}>
                         1 Ay {fundSortBy === 'monthlyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('yearlyReturn')}>
-                        1 Yıl {fundSortBy === 'yearlyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
+                      <th
+                        className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary"
+                        onClick={() => {
+                          const sortKey =
+                            fundReturnPeriod === 'dailyReturn' ||
+                            fundReturnPeriod === 'monthlyReturn' ||
+                            fundReturnPeriod === 'return3m' ||
+                            fundReturnPeriod === 'yearlyReturn' ||
+                            fundReturnPeriod === 'return3y' ||
+                            fundReturnPeriod === 'return5y'
+                              ? fundReturnPeriod
+                              : 'yearlyReturn';
+                          toggleFundSort(sortKey);
+                        }}
+                      >
+                        {selectedReturnPeriodMeta.shortLabel} {fundSortBy === fundReturnPeriod && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-center hidden md:table-cell cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('riskValue')}>
-                        Risk {fundSortBy === 'riskValue' && (fundSortOrder === 'desc' ? '↓' : '↑')}
+                        Risk / Ücret {fundSortBy === 'riskValue' && (fundSortOrder === 'desc' ? '↓' : '↑')}
                       </th>
                       <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-center">İşlem</th>
                     </tr>
@@ -1222,7 +1369,8 @@ function PiyasalarContent() {
                   <tbody className="divide-y divide-border/40">
                     <WindowedRows columns={8}>{visibleFunds.map((fund) => {
                       const dailyPos = (fund.dailyReturn || 0) >= 0;
-                      const yearlyPos = (fund.yearlyReturn || 0) >= 0;
+                      const periodRet = getFundPeriodReturn(fund, fundReturnPeriod);
+                      const periodPos = (periodRet ?? 0) >= 0;
                       const fundDesc = describeSearchResult({ code: fund.code, name: fund.name, exchange: 'TEFAS', assetType: 'fund', currency: 'TRY' });
                       return (
                         <tr key={fund.code} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
@@ -1257,15 +1405,22 @@ function PiyasalarContent() {
                           <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs hidden sm:table-cell font-semibold ${(fund.monthlyReturn || 0) >= 0 ? 'text-success' : 'text-danger'}`}>
                             {fund.price == null ? '—' : `${fund.monthlyReturn >= 0 ? '+' : ''}${fund.monthlyReturn.toFixed(2)}%`}
                           </td>
-                          <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs font-bold ${yearlyPos ? 'text-success' : 'text-danger'}`}>
-                            {fund.price == null ? '—' : `${yearlyPos ? '+' : ''}${fund.yearlyReturn.toFixed(2)}%`}
+                          <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs font-bold ${periodPos ? 'text-success' : 'text-danger'}`}>
+                            {periodRet == null ? '—' : `${periodPos ? '+' : ''}${periodRet.toFixed(2)}%`}
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-center hidden md:table-cell">
-                            {fund.riskValue ? (
-                              <Badge variant={fund.riskValue <= 2 ? 'success' : fund.riskValue <= 4 ? 'warning' : 'danger'} size="sm">
-                                Risk {fund.riskValue}/7
-                              </Badge>
-                            ) : '-'}
+                            <div className="flex flex-col items-center gap-0.5">
+                              {fund.riskValue ? (
+                                <Badge variant={fund.riskValue <= 2 ? 'success' : fund.riskValue <= 4 ? 'warning' : 'danger'} size="sm">
+                                  Risk {fund.riskValue}/7
+                                </Badge>
+                              ) : (
+                                <span className="text-[11px] text-text-muted">Risk yok</span>
+                              )}
+                              <span className="text-[10px] font-mono text-text-muted">
+                                {fund.managementFee != null ? `%${fund.managementFee.toFixed(2)} ücret` : 'Ücret yok'}
+                              </span>
+                            </div>
                           </td>
                           <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
@@ -1535,6 +1690,83 @@ function PiyasalarContent() {
               </div>
             </div>
 
+            {activeMarket === 'TEFAS' && (
+              <div className="space-y-3 pt-1 border-t border-border/60">
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                    Risk Seviyesi
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {FUND_RISK_RANGE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => { setFundRiskRange(opt.id); setFundLimit(30); }}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                          fundRiskRange === opt.id
+                            ? 'border-accent bg-accent/15 text-accent'
+                            : 'border-border bg-bg-secondary text-text-secondary'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-text-primary uppercase tracking-wider block">
+                    Yönetim Ücreti
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {FUND_FEE_TIER_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => { setFundFeeTier(opt.id); setFundLimit(30); }}
+                        className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                          fundFeeTier === opt.id
+                            ? 'border-accent bg-accent/15 text-accent'
+                            : 'border-border bg-bg-secondary text-text-secondary'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="space-y-1 text-xs">
+                    <span className="font-bold text-text-primary uppercase tracking-wider block">Dönem</span>
+                    <select
+                      aria-label="Mobil fon getiri dönemi"
+                      value={fundReturnPeriod}
+                      onChange={(e) => { setFundReturnPeriod(e.target.value as FundReturnPeriod); setFundLimit(30); }}
+                      className="w-full bg-bg-secondary border border-border rounded-xl px-2.5 py-2 text-xs text-text-primary"
+                    >
+                      {FUND_RETURN_PERIOD_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-xs">
+                    <span className="font-bold text-text-primary uppercase tracking-wider block">Getiri Eşiği</span>
+                    <select
+                      aria-label="Mobil fon getiri eşiği"
+                      value={fundReturnThreshold}
+                      onChange={(e) => { setFundReturnThreshold(e.target.value as FundReturnThreshold); setFundLimit(30); }}
+                      className="w-full bg-bg-secondary border border-border rounded-xl px-2.5 py-2 text-xs text-text-primary"
+                    >
+                      {FUND_RETURN_THRESHOLD_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </div>
+            )}
+
             {/* 3. Watchlist Toggle */}
             <div className="flex items-center justify-between p-3 rounded-2xl bg-bg-secondary border border-border">
               <div>
@@ -1563,10 +1795,9 @@ function PiyasalarContent() {
                 size="sm"
                 onClick={() => {
                   setSelectedSector('ALL');
-                  setSelectedCategory('ALL');
                   setStockSortBy('marketCap');
                   setStockSortOrder('desc');
-                  setWatchlistOnly(false);
+                  resetFundFilters();
                 }}
                 className="flex-1"
               >
