@@ -16,6 +16,7 @@ import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAlloca
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
+import { BenchmarkComparisonCard } from '@/components/portfolio/BenchmarkComparisonCard';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 
 const ExcelImportModal = dynamic(
@@ -543,6 +544,14 @@ export default function PortfolioPage() {
         <PeriodBreakdownCard
           breakdown={performance.breakdown}
           loading={performance.loading}
+        />
+      )}
+
+      {!showEmptyOnboarding && (
+        <BenchmarkComparisonCard
+          transactions={activeTransactions}
+          summary={summary}
+          livePrices={livePrices}
         />
       )}
 

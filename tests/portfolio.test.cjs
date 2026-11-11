@@ -1749,6 +1749,90 @@ test('POR-08: period breakdown separates realized trade PnL, unrealized PnL, cas
   assert.match(reportsSrc, /PeriodBreakdownCard/);
 });
 
+test('POR-09: benchmark comparison aligns period and currency from same base level 100', () => {
+  const benchMod = loadModule('src/lib/portfolio/benchmarkComparison.ts');
+
+  // 1. S&P 500 (USD) vs TRY portfolio compared in TRY with daily FX series
+  const tryResult = benchMod.buildBenchmarkComparison({
+    portfolioTrySeries: [
+      { date: '2026-09-01', value: 100_000 },
+      { date: '2026-09-15', value: 108_000 },
+      { date: '2026-09-30', value: 115_000 },
+    ],
+    benchmarkId: 'SP500',
+    benchmarkNativeSeries: [
+      { date: '2026-09-01', value: 5000 },
+      { date: '2026-09-15', value: 5100 },
+      { date: '2026-09-30', value: 5000 },
+    ],
+    usdTrySeries: [
+      { date: '2026-09-01', value: 40 }, // 5000*40 = 200,000 TRY
+      { date: '2026-09-15', value: 41 },
+      { date: '2026-09-30', value: 42 }, // 5000*42 = 210,000 TRY (+5% TRY return!)
+    ],
+    period: '1M',
+    currency: 'TRY',
+    referenceDate: '2026-09-30',
+  });
+
+  assert.equal(tryResult.comparable, true);
+  assert.equal(tryResult.currency, 'TRY');
+  assert.equal(tryResult.portfolioStartIndex, 100);
+  assert.equal(tryResult.benchmarkStartIndex, 100);
+  assert.equal(tryResult.portfolioReturnPct, 15);
+  assert.equal(tryResult.benchmarkReturnPct, 5); // flat in USD, +5% in TRY
+  assert.equal(tryResult.alphaPct, 10);
+
+  // 2. BIST 100 (TRY) vs TRY portfolio compared in USD
+  const usdResult = benchMod.buildBenchmarkComparison({
+    portfolioTrySeries: [
+      { date: '2026-09-01', value: 400_000 }, // 10,000 USD
+      { date: '2026-09-30', value: 440_000 }, // 11,000 USD (+10% USD)
+    ],
+    benchmarkId: 'XU100',
+    benchmarkNativeSeries: [
+      { date: '2026-09-01', value: 10_000 }, // 250 USD
+      { date: '2026-09-30', value: 10_000 }, // 250 USD (0% USD)
+    ],
+    usdTrySeries: [
+      { date: '2026-09-01', value: 40 },
+      { date: '2026-09-30', value: 40 },
+    ],
+    period: '1M',
+    currency: 'USD',
+    referenceDate: '2026-09-30',
+  });
+
+  assert.equal(usdResult.comparable, true);
+  assert.equal(usdResult.currency, 'USD');
+  assert.equal(usdResult.portfolioStartIndex, 100);
+  assert.equal(usdResult.benchmarkStartIndex, 100);
+  assert.equal(usdResult.portfolioReturnPct, 10);
+  assert.equal(usdResult.benchmarkReturnPct, 0);
+  assert.equal(usdResult.alphaPct, 10);
+
+  // 3. Explicit failure when USD alignment lacks FX rate
+  const noFx = benchMod.buildBenchmarkComparison({
+    portfolioTrySeries: [
+      { date: '2026-09-01', value: 100_000 },
+      { date: '2026-09-30', value: 110_000 },
+    ],
+    benchmarkId: 'XU100',
+    benchmarkNativeSeries: [
+      { date: '2026-09-01', value: 10_000 },
+      { date: '2026-09-30', value: 10_500 },
+    ],
+    period: '1M',
+    currency: 'USD',
+    referenceDate: '2026-09-30',
+  });
+  assert.equal(noFx.comparable, false);
+  assert.ok(noFx.missingReason);
+
+  const portSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
+  assert.match(portSrc, /BenchmarkComparisonCard/);
+});
+
 
 
 

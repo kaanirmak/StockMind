@@ -5644,7 +5644,7 @@ test('OPS-12: usage metrics measure funnel milestones while strictly excluding p
     amount: 250_000,
     totalValue: 1_200_000,
     price: 312.5,
-    quantity: 800,
+    quantity: 83925,
     symbol: 'THYAO',
     email: 'secret@example.com',
     pnl: 45_000,
@@ -5652,7 +5652,7 @@ test('OPS-12: usage metrics measure funnel milestones while strictly excluding p
 
   assert.ok(txEvent);
   const serialized = JSON.stringify(txEvent);
-  assert.doesNotMatch(serialized, /250000|1200000|312\.5|800|THYAO|secret@example\.com|45000/);
+  assert.doesNotMatch(serialized, /250000|1200000|312\.5|83925|THYAO|secret@example\.com|45000/);
   assert.equal(txEvent.meta.assetType, 'stock');
   assert.equal(txEvent.meta.transactionType, 'buy');
 
