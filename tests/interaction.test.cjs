@@ -7316,6 +7316,115 @@ test('QNT-07: DCF connects periodic FCF, net debt and shares with explicit perio
   assert.match(dcfSrc, /extractPeriodicDcfInputs/);
 });
 
+test('QNT-08: Piotroski, Altman, and DuPont scores compute from verified financials with used items, periods, and missing inputs', () => {
+  const healthMod = load('src/lib/quant/verifiedHealth.ts');
+
+  const verifiedReport = {
+    symbol: 'ASELS',
+    yahooTicker: 'ASELS.IS',
+    status: 'ok',
+    currency: 'TRY',
+    sourceName: 'Yahoo Finance',
+    sourceUrl: 'https://finance.yahoo.com/quote/ASELS.IS/financials',
+    secondarySourceUrl: null,
+    secondarySourceLabel: null,
+    fetchedAt: '2026-11-12T00:00:00Z',
+    notice: null,
+    annual: {
+      income: {
+        kind: 'income',
+        title: 'Gelir Tablosu',
+        periodType: 'annual',
+        currency: 'TRY',
+        periods: [
+          { id: '2025-12-31', endDate: '2025-12-31', label: 'FY 2025', currency: 'TRY' },
+          { id: '2024-12-31', endDate: '2024-12-31', label: 'FY 2024', currency: 'TRY' },
+        ],
+        rows: [
+          { key: 'totalRevenue', label: 'Hasılat', values: { '2025-12-31': 120_000_000_000, '2024-12-31': 90_000_000_000 } },
+          { key: 'grossProfit', label: 'Brüt Kâr', values: { '2025-12-31': 36_000_000_000, '2024-12-31': 24_000_000_000 } },
+          { key: 'operatingIncome', label: 'Esas Faaliyet Kârı', values: { '2025-12-31': 24_000_000_000, '2024-12-31': 18_000_000_000 } },
+          { key: 'netIncome', label: 'Net Kâr', values: { '2025-12-31': 18_000_000_000, '2024-12-31': 12_000_000_000 } },
+        ],
+      },
+      balance: {
+        kind: 'balance',
+        title: 'Bilanço',
+        periodType: 'annual',
+        currency: 'TRY',
+        periods: [
+          { id: '2025-12-31', endDate: '2025-12-31', label: 'FY 2025', currency: 'TRY' },
+          { id: '2024-12-31', endDate: '2024-12-31', label: 'FY 2024', currency: 'TRY' },
+        ],
+        rows: [
+          { key: 'totalAssets', label: 'Toplam Varlıklar', values: { '2025-12-31': 150_000_000_000, '2024-12-31': 130_000_000_000 } },
+          { key: 'totalCurrentAssets', label: 'Dönen Varlıklar', values: { '2025-12-31': 80_000_000_000, '2024-12-31': 65_000_000_000 } },
+          { key: 'totalCurrentLiabilities', label: 'Kısa Vadeli Yükümlülükler', values: { '2025-12-31': 40_000_000_000, '2024-12-31': 38_000_000_000 } },
+          { key: 'totalDebt', label: 'Toplam Borç', values: { '2025-12-31': 15_000_000_000, '2024-12-31': 20_000_000_000 } },
+          { key: 'totalLiab', label: 'Toplam Yükümlülükler', values: { '2025-12-31': 55_000_000_000, '2024-12-31': 52_000_000_000 } },
+          { key: 'totalStockholderEquity', label: 'Özkaynaklar', values: { '2025-12-31': 95_000_000_000, '2024-12-31': 78_000_000_000 } },
+        ],
+      },
+      cashflow: {
+        kind: 'cashflow',
+        title: 'Nakit Akış',
+        periodType: 'annual',
+        currency: 'TRY',
+        periods: [
+          { id: '2025-12-31', endDate: '2025-12-31', label: 'FY 2025', currency: 'TRY' },
+          { id: '2024-12-31', endDate: '2024-12-31', label: 'FY 2024', currency: 'TRY' },
+        ],
+        rows: [
+          { key: 'operatingCashFlow', label: 'İşletme Nakit Akışı', values: { '2025-12-31': 22_000_000_000, '2024-12-31': 15_000_000_000 } },
+        ],
+      },
+    },
+    quarterly: {
+      income: { kind: 'income', title: 'Gelir', periodType: 'quarterly', currency: 'TRY', periods: [], rows: [] },
+      balance: { kind: 'balance', title: 'Bilanço', periodType: 'quarterly', currency: 'TRY', periods: [], rows: [] },
+      cashflow: { kind: 'cashflow', title: 'Nakit Akış', periodType: 'quarterly', currency: 'TRY', periods: [], rows: [] },
+    },
+  };
+
+  const out = healthMod.evaluateHealthFromVerifiedFinancials({
+    symbol: 'ASELS',
+    report: verifiedReport,
+    periodType: 'annual',
+    marketCap: 275_000_000_000,
+  });
+
+  assert.equal(out.isSourced, true);
+  assert.deepEqual(Array.from(out.periodsUsed), ['FY 2025 (2025-12-31)', 'FY 2024 (2024-12-31)']);
+
+  // Piotroski: 8 criteria evaluated (F7 dilution missing in summary statements)
+  assert.equal(out.piotroski.evaluatedCount, 8);
+  assert.equal(out.piotroski.score, 8);
+  assert.ok(out.piotroski.usedItems.length >= 6);
+  assert.ok(Array.from(out.piotroski.missingInputs).some((m) => /Pay Adedi/i.test(m)));
+
+  // Altman: Retained earnings not present in report -> explicitly flagged as missing instead of fabricated
+  assert.equal(out.altman.isComplete, false);
+  assert.ok(out.altman.zScore !== null && out.altman.zScore > 2.99);
+  assert.ok(Array.from(out.altman.missingInputs).some((m) => /Geçmiş Yıl Kârları/i.test(m)));
+
+  // DuPont: Complete from Net Income, Revenue, Total Assets, Equity
+  assert.equal(out.dupont.isComplete, true);
+  assert.equal(out.dupont.netMargin, 15.0);
+  assert.equal(out.dupont.assetTurnover, 0.8);
+  assert.equal(out.dupont.financialLeverage, 1.58);
+  assert.equal(out.dupont.roe, 19.0);
+  assert.equal(out.dupont.missingInputs.length, 0);
+
+  const healthTabSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/quant/FinancialHealthTab.tsx'),
+    'utf8'
+  );
+  assert.match(healthTabSrc, /evaluateHealthFromVerifiedFinancials/);
+  assert.match(healthTabSrc, /piotroski-provenance/);
+  assert.match(healthTabSrc, /altman-provenance/);
+  assert.match(healthTabSrc, /dupont-provenance/);
+});
+
 
 
 

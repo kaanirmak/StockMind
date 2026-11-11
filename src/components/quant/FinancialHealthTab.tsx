@@ -18,13 +18,86 @@ import {
   Info,
 } from '@/components/quant/QuantIcons';
 import {
-  evaluatePiotroski,
-  evaluateAltmanZ,
-  evaluateDuPont,
   getFinancialProfile,
   PRESET_FINANCIAL_PROFILES,
 } from '@/lib/quant/models';
+import {
+  evaluateHealthFromVerifiedFinancials,
+  type HealthUsedItem,
+} from '@/lib/quant/verifiedHealth';
+import type {
+  FinancialStatementsReport,
+  StatementPeriodType,
+} from '@/lib/market/financialStatements';
 import { Holding } from '@/types/portfolio';
+
+function HealthProvenanceBox({
+  testId,
+  sourceName,
+  isSourced,
+  periodsUsed,
+  usedItems,
+  missingInputs,
+}: {
+  testId: string;
+  sourceName: string;
+  isSourced: boolean;
+  periodsUsed: string[];
+  usedItems: HealthUsedItem[];
+  missingInputs: string[];
+}) {
+  return (
+    <div
+      data-testid={testId}
+      className="p-3 rounded-xl bg-bg-secondary/45 border border-border/80 space-y-2 text-[11px]"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-semibold text-text-secondary">
+          Kaynak:{' '}
+          <span className={isSourced ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+            {sourceName}
+          </span>
+        </span>
+        <span className="text-text-muted">
+          Dönemler: {periodsUsed.length > 0 ? periodsUsed.join(' • ') : 'Dönem Yok'}
+        </span>
+      </div>
+
+      {usedItems.length > 0 && (
+        <div className="space-y-1">
+          <span className="text-[10px] uppercase tracking-wider font-bold text-text-muted block">
+            Kullanılan Finansal Kalemler ({usedItems.length})
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {usedItems.map((item, idx) => (
+              <span
+                key={`${item.key}-${idx}`}
+                className="px-2 py-0.5 rounded-md bg-bg-card border border-border/70 text-text-secondary"
+              >
+                <span className="font-semibold text-text-primary">{item.label}</span>:{' '}
+                <span className="font-mono text-accent">{item.formattedValue}</span>{' '}
+                <span className="text-[10px] text-text-muted">({item.periodLabel})</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {missingInputs.length > 0 && (
+        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200/90 space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider block">
+            Eksik Girdiler ({missingInputs.length})
+          </span>
+          <ul className="list-disc pl-4 space-y-0.5">
+            {missingInputs.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface FinancialHealthTabProps {
   selectedSymbol?: string;
@@ -39,6 +112,9 @@ export default function FinancialHealthTab({
 }: FinancialHealthTabProps) {
   const initialSym = selectedSymbol || portfolioStocks[0]?.symbol || 'THYAO';
   const [currentSymbol, setCurrentSymbol] = useState<string>(initialSym);
+  const [periodType, setPeriodType] = useState<StatementPeriodType>('annual');
+  const [financialReport, setFinancialReport] = useState<FinancialStatementsReport | null>(null);
+  const [isLoadingFinancials, setIsLoadingFinancials] = useState<boolean>(false);
 
   // Active holding in portfolio if user owns this stock
   const activeHolding = useMemo(() => {
@@ -53,6 +129,35 @@ export default function FinancialHealthTab({
     }
   }, [selectedSymbol]);
 
+  useEffect(() => {
+    const cleanSym = currentSymbol.trim().toUpperCase();
+    if (!cleanSym) return;
+    const controller = new AbortController();
+    setIsLoadingFinancials(true);
+    fetch(`/api/stocks/${encodeURIComponent(cleanSym)}/financials`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: FinancialStatementsReport | null) => {
+        if (!controller.signal.aborted) {
+          setFinancialReport(data);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setFinancialReport(null);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoadingFinancials(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [currentSymbol]);
+
   const handleSelect = (sym: string) => {
     const cleanSym = sym.trim().toUpperCase();
     setCurrentSymbol(cleanSym);
@@ -64,18 +169,20 @@ export default function FinancialHealthTab({
     () => getFinancialProfile(currentSymbol, holdingPrice),
     [currentSymbol, holdingPrice]
   );
-  const piotroski = useMemo(
-    () => evaluatePiotroski(currentSymbol, holdingPrice),
-    [currentSymbol, holdingPrice]
+  const health = useMemo(
+    () =>
+      evaluateHealthFromVerifiedFinancials({
+        symbol: currentSymbol,
+        report: financialReport,
+        periodType,
+        marketCap: null,
+        livePrice: holdingPrice,
+      }),
+    [currentSymbol, financialReport, periodType, holdingPrice]
   );
-  const altman = useMemo(
-    () => evaluateAltmanZ(currentSymbol, holdingPrice),
-    [currentSymbol, holdingPrice]
-  );
-  const dupont = useMemo(
-    () => evaluateDuPont(currentSymbol, holdingPrice),
-    [currentSymbol, holdingPrice]
-  );
+  const piotroski = health.piotroski;
+  const altman = health.altman;
+  const dupont = health.dupont;
 
   // Group Piotroski items by category
   const categories = useMemo(() => {
@@ -89,13 +196,19 @@ export default function FinancialHealthTab({
 
   // Calculate Altman pointer percentage for spectrum bar (clamped 0 to 5)
   const altmanPointerPercent = useMemo(() => {
-    const clamped = Math.max(0, Math.min(5, altman.zScore));
+    const clamped = Math.max(0, Math.min(5, altman.zScore ?? 0));
     return (clamped / 5) * 100;
   }, [altman.zScore]);
 
   return (
     <div className="space-y-6">
-      <QuantProfileBanner symbol={currentSymbol} meta={profile.profileMeta} />
+      <QuantProfileBanner
+        symbol={currentSymbol}
+        meta={{
+          ...profile.profileMeta,
+          kind: health.isSourced ? 'sourced' : profile.profileMeta.kind,
+        }}
+      />
       {/* Analysis header and symbol selection */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -105,21 +218,54 @@ export default function FinancialHealthTab({
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <h2 className="text-base sm:text-lg font-bold text-text-primary">
-                Finansal Sağlık & Bilanço Güvenlik Skorları
+                Finansal Sağlık &amp; Bilanço Güvenlik Skorları
               </h2>
             </div>
             <p className="text-xs text-text-muted mt-1">
-              Stanford Üniversitesi (Piotroski F-Score), NYU Stern (Altman Z-Score) ve DuPont kârlılık ayrışımı ile şirketin iflas ve manipülasyon riskini test edin.
+              Piotroski F-Score, Altman Z-Score ve DuPont ayrışımı — doğrulanmış finansal kalemler, dönemler ve eksik girdilerle
             </p>
           </div>
 
-          <QuantSymbolSelect
-            value={currentSymbol}
-            onChange={handleSelect}
-            portfolioStocks={portfolioStocks}
-            fallbackSymbols={Object.keys(PRESET_FINANCIAL_PROFILES)}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center rounded-xl bg-bg-secondary border border-border p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setPeriodType('annual')}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                  periodType === 'annual'
+                    ? 'bg-accent text-white'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Yıllık
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodType('quarterly')}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                  periodType === 'quarterly'
+                    ? 'bg-accent text-white'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                Çeyreklik
+              </button>
+            </div>
+
+            <QuantSymbolSelect
+              value={currentSymbol}
+              onChange={handleSelect}
+              portfolioStocks={portfolioStocks}
+              fallbackSymbols={Object.keys(PRESET_FINANCIAL_PROFILES)}
+            />
+          </div>
         </div>
+
+        {isLoadingFinancials && (
+          <p className="text-[11px] text-text-muted">
+            Doğrulanmış finansal tablolar yükleniyor…
+          </p>
+        )}
 
         {/* If Active Holding is in user's portfolio, show portfolio context bar */}
         {activeHolding && (
@@ -208,8 +354,10 @@ export default function FinancialHealthTab({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-1.5">
-                          {item.passed ? (
+                          {item.status === 'passed' ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                          ) : item.status === 'missing' ? (
+                            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                           ) : (
                             <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                           )}
@@ -219,8 +367,10 @@ export default function FinancialHealthTab({
                         </div>
                         <span
                           className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                            item.passed
+                            item.status === 'passed'
                               ? 'text-emerald-400 bg-emerald-500/10'
+                              : item.status === 'missing'
+                              ? 'text-amber-400 bg-amber-500/10'
                               : 'text-rose-400 bg-rose-500/10'
                           }`}
                         >
@@ -230,6 +380,10 @@ export default function FinancialHealthTab({
                       <p className="text-[11px] text-text-muted pl-5 leading-tight">
                         {item.description}
                       </p>
+                      <p className="text-[10px] text-text-muted/80 pl-5">
+                        Dönem: {item.periodLabel}
+                        {item.missingInputs.length > 0 && ` • Eksik: ${item.missingInputs.join(', ')}`}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -237,6 +391,15 @@ export default function FinancialHealthTab({
             );
           })}
         </div>
+
+        <HealthProvenanceBox
+          testId="piotroski-provenance"
+          sourceName={piotroski.sourceName}
+          isSourced={piotroski.isSourced}
+          periodsUsed={piotroski.periodsUsed}
+          usedItems={piotroski.usedItems}
+          missingInputs={piotroski.missingInputs}
+        />
       </div>
 
       {/* Grid: 2. Altman Z-Score & 3. DuPont Tree */}
@@ -253,7 +416,7 @@ export default function FinancialHealthTab({
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="text-xl font-black text-text-primary">
-                  {altman.zScore.toFixed(2)}
+                  {altman.zScore !== null ? altman.zScore.toFixed(2) : '—'}
                 </span>
                 <span
                   className="text-xs font-bold px-2 py-0.5 rounded-lg"
@@ -308,13 +471,22 @@ export default function FinancialHealthTab({
                       </span>
                     </div>
                     <span className="font-mono font-bold text-accent">
-                      +{c.weighted}
+                      {c.weighted !== null ? `+${c.weighted}` : 'Eksik'}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+
+          <HealthProvenanceBox
+            testId="altman-provenance"
+            sourceName={altman.sourceName}
+            isSourced={altman.isSourced}
+            periodsUsed={altman.periodsUsed}
+            usedItems={altman.usedItems}
+            missingInputs={altman.missingInputs}
+          />
         </div>
 
         {/* DuPont 3-Bileşenli ROE Ağacı */}
@@ -330,7 +502,7 @@ export default function FinancialHealthTab({
               <div className="flex items-baseline gap-1">
                 <span className="text-xs text-text-muted font-semibold">Toplam ROE:</span>
                 <span className="text-xl font-black text-accent">
-                  %{dupont.roe.toFixed(1)}
+                  {dupont.roe !== null ? `%${dupont.roe.toFixed(1)}` : 'Eksik'}
                 </span>
               </div>
             </div>
@@ -347,7 +519,7 @@ export default function FinancialHealthTab({
                   1. Net Kâr Marjı
                 </span>
                 <span className="text-base sm:text-lg font-black text-text-primary block">
-                  %{dupont.netMargin.toFixed(1)}
+                  {dupont.netMargin !== null ? `%${dupont.netMargin.toFixed(1)}` : '—'}
                 </span>
                 <span className="text-[9px] text-text-muted block">
                   Kâr / Ciro
@@ -360,7 +532,7 @@ export default function FinancialHealthTab({
                   2. Aktif Devir Hızı
                 </span>
                 <span className="text-base sm:text-lg font-black text-text-primary block">
-                  {dupont.assetTurnover.toFixed(2)}x
+                  {dupont.assetTurnover !== null ? `${dupont.assetTurnover.toFixed(2)}x` : '—'}
                 </span>
                 <span className="text-[9px] text-text-muted block">
                   Ciro / Aktifler
@@ -373,7 +545,9 @@ export default function FinancialHealthTab({
                   3. Borç Kaldıracı
                 </span>
                 <span className="text-base sm:text-lg font-black text-text-primary block">
-                  {dupont.financialLeverage.toFixed(2)}x
+                  {dupont.financialLeverage !== null
+                    ? `${dupont.financialLeverage.toFixed(2)}x`
+                    : '—'}
                 </span>
                 <span className="text-[9px] text-text-muted block">
                   Aktifler / Özkaynak
@@ -383,10 +557,21 @@ export default function FinancialHealthTab({
 
             {/* Formula Line */}
             <div className="mt-4 p-3 rounded-xl bg-bg-secondary/30 border border-border text-center text-xs font-mono text-text-secondary">
-              <span className="font-bold text-text-primary">ROE (%{dupont.roe})</span> ={' '}
-              <span className="text-emerald-400 font-bold">%{dupont.netMargin}</span> ×{' '}
-              <span className="text-blue-400 font-bold">{dupont.assetTurnover}x</span> ×{' '}
-              <span className="text-amber-400 font-bold">{dupont.financialLeverage}x</span>
+              <span className="font-bold text-text-primary">
+                ROE ({dupont.roe !== null ? `%${dupont.roe}` : '—'})
+              </span>{' '}
+              ={' '}
+              <span className="text-emerald-400 font-bold">
+                {dupont.netMargin !== null ? `%${dupont.netMargin}` : '—'}
+              </span>{' '}
+              ×{' '}
+              <span className="text-blue-400 font-bold">
+                {dupont.assetTurnover !== null ? `${dupont.assetTurnover}x` : '—'}
+              </span>{' '}
+              ×{' '}
+              <span className="text-amber-400 font-bold">
+                {dupont.financialLeverage !== null ? `${dupont.financialLeverage}x` : '—'}
+              </span>
             </div>
 
             {/* Quality of Earnings Insight */}
@@ -400,6 +585,15 @@ export default function FinancialHealthTab({
               </p>
             </div>
           </div>
+
+          <HealthProvenanceBox
+            testId="dupont-provenance"
+            sourceName={dupont.sourceName}
+            isSourced={dupont.isSourced}
+            periodsUsed={dupont.periodsUsed}
+            usedItems={dupont.usedItems}
+            missingInputs={dupont.missingInputs}
+          />
         </div>
       </div>
     </div>
