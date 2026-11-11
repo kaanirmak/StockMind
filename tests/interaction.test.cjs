@@ -246,7 +246,7 @@ test('RSS escaped descriptions become readable text without HTML markup', () => 
 function newsRoute(fetch, snapshot = []) {
   const text = load('src/lib/news/rssText.ts');
   return load('src/app/api/news/route.ts', {
-    require: name => name === 'next/server' ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } } : name === 'crypto' ? { default: require('node:crypto') } : name === '@/lib/news/symbolMatch' ? load('src/lib/news/symbolMatch.ts') : name === '@/lib/news/sentiment' ? load('src/lib/news/sentiment.ts') : name === '@/lib/news/feeds' ? load('src/lib/news/feeds.ts') : name === '@/lib/news/sourceCoverage' ? load('src/lib/news/sourceCoverage.ts') : name === '@/lib/news/snapshot' ? { fetchNewsSnapshot: async () => snapshot } : text,
+    require: name => name === 'next/server' ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } } : name === 'crypto' ? { default: require('node:crypto') } : name === '@/lib/news/symbolMatch' ? load('src/lib/news/symbolMatch.ts') : name === '@/lib/news/sentiment' ? load('src/lib/news/sentiment.ts') : name === '@/lib/news/feeds' ? load('src/lib/news/feeds.ts') : name === '@/lib/news/sourceCoverage' ? load('src/lib/news/sourceCoverage.ts') : name === '@/lib/ops/providerHealth' ? load('src/lib/ops/providerHealth.ts') : name === '@/lib/news/snapshot' ? { fetchNewsSnapshot: async () => snapshot } : text,
     fetch, AbortSignal, URL,
     console: { error() {} },
   });
@@ -5525,6 +5525,88 @@ test('OPS-09: mobile and desktop performance monitoring reports LCP, INP, CLS, i
 
   const adminStatsSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/admin/stats/route.ts'), 'utf8');
   assert.match(adminStatsSrc, /platformPerformance/);
+});
+
+test('OPS-11: provider and background task health board tracks stocks/funds/news, bulletin delay, and alert errors without sensitive data', () => {
+  const health = load(path.join(process.cwd(), 'src/lib/ops/providerHealth.ts'));
+  health.resetProviderHealthTelemetry();
+
+  // 1. Sensitive credentials, emails, and query tokens are always stripped from diagnostics
+  const cleaned = health.sanitizeOperationalNote(
+    'Failed notify for kaan@example.com with Authorization: Bearer abcdef123456 and https://api.provider.com/v1?apikey=secret999 sk-live12345678'
+  );
+  assert.doesNotMatch(cleaned, /kaan@example\.com/);
+  assert.doesNotMatch(cleaned, /abcdef123456/);
+  assert.doesNotMatch(cleaned, /secret999/);
+  assert.doesNotMatch(cleaned, /sk-live12345678/);
+  assert.match(cleaned, /\[REDACTED_EMAIL\]/);
+  assert.match(cleaned, /\[REDACTED\]/);
+  assert.match(cleaned, /\[REDACTED_KEY\]/);
+
+  // 2. Record successful stocks, funds, and news retrievals
+  health.recordProviderSuccess('stocks', 'yahoo-bist', new Date('2026-11-11T10:00:00Z'));
+  health.recordProviderSuccess('funds', 'tefas-live', new Date('2026-11-11T10:05:00Z'));
+  health.recordProviderSuccess('news', 'rss-live', new Date('2026-11-11T10:10:00Z'));
+
+  // 3. Record alert failure carrying a leaky message => sanitized and isolated to operational board
+  health.recordProviderFailure(
+    'alerts',
+    new Error('Push dispatch error for user@test.com token=xyz987'),
+    'ALERT_PUSH_FAIL',
+    new Date('2026-11-11T10:12:00Z')
+  );
+
+  // 4. Summary merges provider status + bulletin schedule delay & missed runs
+  const summary = health.buildOperationalHealthSummary({
+    bulletinScheduleSummary: {
+      available: true,
+      latestRun: {
+        bulletinDate: '2026-11-11',
+        scheduledFor: '2026-11-11T15:30:00.000Z',
+        startedAt: '2026-11-11T15:52:00.000Z',
+        finishedAt: '2026-11-11T15:52:30.000Z',
+        durationMs: 30_000,
+        scheduleDelayMs: 22 * 60 * 1000,
+        status: 'completed',
+        recipientsCount: 100,
+        successfulCount: 100,
+      },
+      missedDates: [],
+      missedCount: 0,
+      recentRuns: [],
+    },
+  });
+
+  assert.equal(summary.channels.stocks.status, 'healthy');
+  assert.equal(summary.channels.stocks.lastSuccessAt, '2026-11-11T10:00:00.000Z');
+  assert.equal(summary.channels.funds.status, 'healthy');
+  assert.equal(summary.channels.news.status, 'healthy');
+  assert.equal(summary.channels.alerts.status, 'degraded');
+  assert.equal(summary.channels.alerts.errorCount, 1);
+  assert.equal(summary.recentAlertErrors.length, 1);
+  assert.doesNotMatch(summary.recentAlertErrors[0].summary, /user@test\.com/);
+  assert.equal(summary.bulletin.status, 'delayed');
+  assert.equal(summary.overallStatus, 'degraded');
+
+  // 5. Wire-up verification in APIs and admin dashboard
+  for (const rel of [
+    'src/app/api/stocks/route.ts',
+    'src/app/api/funds/route.ts',
+    'src/app/api/news/route.ts',
+    'src/app/api/cron/evaluate-alerts/route.ts',
+  ]) {
+    const src = fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
+    assert.match(src, /recordProviderSuccess/, `${rel} must report provider success`);
+    assert.match(src, /recordProviderFailure/, `${rel} must report provider failure`);
+  }
+
+  const healthRouteSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/ops/provider-health/route.ts'), 'utf8');
+  assert.match(healthRouteSrc, /requireDesktopAdmin/);
+  assert.match(healthRouteSrc, /buildOperationalHealthSummary/);
+
+  const adminPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/admin/page.tsx'), 'utf8');
+  assert.match(adminPageSrc, /data-testid="provider-health-board"/);
+  assert.match(adminPageSrc, /Sağlayıcı &amp; Görev Durum Panosu/);
 });
 
 

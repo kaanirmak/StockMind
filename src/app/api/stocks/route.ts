@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllStocksLive } from '@/lib/data/stocks';
 import { parseSymbolListParam } from '@/lib/market/symbolQuery';
+import { recordProviderFailure, recordProviderSuccess } from '@/lib/ops/providerHealth';
 import {
   paginateRecords,
   parsePaginationParams,
@@ -34,6 +35,12 @@ export async function GET(request: Request) {
     const sortedStocks = sortBy ? sortStockRecords(rawStocks, sortBy, order) : rawStocks;
     const paginated = paginateRecords(sortedStocks, page, limit);
 
+    if (paginated.total > 0) {
+      recordProviderSuccess('stocks', searchParams.get('liveOnly') === 'true' ? 'stocks-live' : 'stocks-catalog');
+    } else {
+      recordProviderFailure('stocks', 'Hisse listesi boş döndü', 'STOCKS_EMPTY');
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -52,6 +59,7 @@ export async function GET(request: Request) {
       }
     );
   } catch (error) {
+    recordProviderFailure('stocks', error, 'STOCKS_API_ERROR');
     console.error('Stocks API Error:', error);
     return NextResponse.json(
       { success: false, error: 'Hisse verileri alınamadı' },

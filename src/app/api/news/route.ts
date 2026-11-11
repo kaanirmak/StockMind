@@ -9,6 +9,7 @@ import {
   buildNewsSourceCoverageReport,
   classifyNewsFeedError,
 } from '@/lib/news/sourceCoverage';
+import { recordProviderFailure, recordProviderSuccess } from '@/lib/ops/providerHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -195,6 +196,7 @@ export async function GET(request: Request) {
       (freshIds.has(feed.id) || failedIds.has(feed.id))));
     const failedFeeds = failedIds.size;
     if (feeds.length > 0 && failedFeeds === feeds.length && fallback.length === 0) {
+      recordProviderFailure('news', 'Tüm haber kaynaklarına erişilemedi', 'NEWS_UPSTREAM_OUTAGE');
       return NextResponse.json(
         {
           success: false,
@@ -232,6 +234,11 @@ export async function GET(request: Request) {
     });
 
     const trackedSymbols = Array.from(new Set([...DEFAULT_SYMBOLS_TO_TRACK, ...portfolioSymbols, ...(symbol ? [symbol] : [])]));
+    if (uniqueNews.length > 0 && !stale) {
+      recordProviderSuccess('news', failedFeeds > 0 ? 'rss-partial' : 'rss-live');
+    } else if (uniqueNews.length === 0) {
+      recordProviderFailure('news', 'Haber akışında uygun kayıt bulunamadı', 'NEWS_EMPTY');
+    }
     return NextResponse.json({
       success: true,
       count: uniqueNews.length,
@@ -260,6 +267,7 @@ export async function GET(request: Request) {
       }),
     });
   } catch (error) {
+    recordProviderFailure('news', error, 'NEWS_API_ERROR');
     console.error('Live News API Error:', error);
     return NextResponse.json(
       { success: false, error: 'Canlı haberler alınamadı' },

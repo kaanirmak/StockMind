@@ -11,6 +11,7 @@ import {
 } from '@/lib/market/fundFilters';
 import { paginateRecords, parsePaginationParams } from '@/lib/market/pagination';
 import { parseSymbolListParam } from '@/lib/market/symbolQuery';
+import { recordProviderFailure, recordProviderSuccess } from '@/lib/ops/providerHealth';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
@@ -114,6 +115,12 @@ export async function GET(request: Request) {
     const { page, limit: parsedLimit } = parsePaginationParams(searchParams);
     const paginated = paginateRecords(funds, page, parsedLimit);
 
+    if (paginated.total > 0) {
+      recordProviderSuccess('funds', searchParams.get('live') === 'true' ? 'tefas-live' : 'funds-db');
+    } else {
+      recordProviderFailure('funds', 'TEFAS fon listesi boş döndü', 'FUNDS_EMPTY');
+    }
+
     return NextResponse.json({
       success: true,
       count: paginated.items.length,
@@ -125,6 +132,7 @@ export async function GET(request: Request) {
       data: paginated.items,
     });
   } catch (error) {
+    recordProviderFailure('funds', error, 'FUNDS_API_ERROR');
     console.error('Funds API Error:', error);
     return NextResponse.json(
       { success: false, error: 'Fon verileri alınamadı' },

@@ -53,6 +53,38 @@ interface AdminStats {
     missedDates: string[];
     missedCount: number;
   };
+  providerHealthSummary?: {
+    generatedAt: string;
+    overallStatus: 'healthy' | 'degraded' | 'unknown';
+    channels: Record<
+      'stocks' | 'funds' | 'news' | 'alerts',
+      {
+        channel: string;
+        label: string;
+        status: 'healthy' | 'degraded' | 'unknown';
+        lastSuccessAt: string | null;
+        lastProvider: string | null;
+        lastErrorAt: string | null;
+        lastErrorCode: string | null;
+        lastErrorSummary: string | null;
+        successCount: number;
+        errorCount: number;
+      }
+    >;
+    bulletin: {
+      status: 'on_time' | 'delayed' | 'missed' | 'no_runs';
+      latestBulletinDate: string | null;
+      scheduleDelayMs: number | null;
+      durationMs: number | null;
+      missedCount: number;
+      missedDates: string[];
+    };
+    recentAlertErrors: Array<{
+      at: string;
+      code: string;
+      summary: string;
+    }>;
+  };
   systemTime: string;
   adminEmail: string;
 }
@@ -1214,6 +1246,90 @@ export default function AdminConsolePage() {
                 <p className="text-xs text-rose-300 font-mono">
                   Kaçan günler: {stats?.bulletinScheduleSummary?.missedDates.join(', ')}
                 </p>
+              )}
+            </div>
+
+            {/* Provider & Background Task Health Board (OPS-11) */}
+            <div
+              data-testid="provider-health-board"
+              className="rounded-2xl border border-white/10 bg-slate-950/70 p-4 space-y-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-white">Sağlayıcı &amp; Görev Durum Panosu</h4>
+                  <p className="text-[11px] text-slate-400">
+                    Son başarılı hisse, fon ve haber alımı ile bülten gecikmesi ve alarm hatalarının hassas veri içermeyen izlemesi
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
+                    stats?.providerHealthSummary?.overallStatus === 'degraded'
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      : stats?.providerHealthSummary?.overallStatus === 'healthy'
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : 'bg-slate-500/15 text-slate-300 border-slate-500/30'
+                  }`}
+                >
+                  {stats?.providerHealthSummary?.overallStatus === 'degraded'
+                    ? 'Kesinti / Gecikme Var'
+                    : stats?.providerHealthSummary?.overallStatus === 'healthy'
+                      ? 'Tüm Kanallar Sağlıklı'
+                      : 'Veri Bekleniyor'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                {(['stocks', 'funds', 'news', 'alerts'] as const).map((channelKey) => {
+                  const ch = stats?.providerHealthSummary?.channels?.[channelKey];
+                  const badgeStyle =
+                    ch?.status === 'degraded'
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      : ch?.status === 'healthy'
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : 'bg-slate-500/15 text-slate-300 border-slate-500/30';
+                  return (
+                    <div key={channelKey} className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-white">{ch?.label || channelKey.toUpperCase()}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${badgeStyle}`}>
+                          {ch?.status === 'degraded' ? 'Sorunlu' : ch?.status === 'healthy' ? 'Sağlıklı' : 'Beklemede'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">
+                        Son Başarılı:{' '}
+                        <span className="text-slate-200 font-mono">
+                          {ch?.lastSuccessAt
+                            ? new Date(ch.lastSuccessAt).toLocaleString('tr-TR', {
+                                timeZone: 'Europe/Istanbul',
+                                dateStyle: 'short',
+                                timeStyle: 'short',
+                              })
+                            : 'Henüz yok'}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Başarı / Hata: <span className="text-emerald-300 font-mono">{ch?.successCount ?? 0}</span> /{' '}
+                        <span className="text-rose-300 font-mono">{ch?.errorCount ?? 0}</span>
+                      </p>
+                      {ch?.lastErrorSummary && (
+                        <p className="text-[11px] text-rose-300 truncate" title={ch.lastErrorSummary}>
+                          Son Hata ({ch.lastErrorCode}): {ch.lastErrorSummary}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(stats?.providerHealthSummary?.recentAlertErrors?.length ?? 0) > 0 && (
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 space-y-1 text-[11px]">
+                  <p className="font-semibold text-rose-300">Son Alarm Değerlendirme Hataları (Maskelenmiş)</p>
+                  {stats?.providerHealthSummary?.recentAlertErrors.slice(0, 4).map((err, idx) => (
+                    <p key={idx} className="text-slate-300 font-mono">
+                      [{new Date(err.at).toLocaleTimeString('tr-TR', { timeZone: 'Europe/Istanbul' })}] {err.code}: {err.summary}
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
 

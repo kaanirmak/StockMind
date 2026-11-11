@@ -11,6 +11,7 @@ import {
   type ServerAlertRule,
 } from '@/lib/market/serverAlertEvaluator';
 import type { AlertCurrencyCode } from '@/lib/market/alertForm';
+import { recordProviderFailure, recordProviderSuccess } from '@/lib/ops/providerHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,12 +219,24 @@ async function handleEvaluateAlerts(request: Request) {
       now: new Date(),
     });
 
+    const missingQuoteDeferrals = summary.deferred.filter((d) => d.reason === 'missing-quote');
+    if (missingQuoteDeferrals.length > 0 && summary.triggeredCount === 0) {
+      recordProviderFailure(
+        'alerts',
+        `${missingQuoteDeferrals.length} alarm kuralı güncel fiyat alınamadığı için ertelendi`,
+        'ALERT_MISSING_QUOTES'
+      );
+    } else {
+      recordProviderSuccess('alerts', 'server-alert-cron');
+    }
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),
       ...summary,
     });
   } catch (error: any) {
+    recordProviderFailure('alerts', error, 'ALERT_CRON_ERROR');
     console.error('Server Alert Evaluation Cron Error:', error);
     return NextResponse.json(
       { success: false, error: error?.message || 'Sunucu alarm değerlendirmesi başarısız oldu.' },
