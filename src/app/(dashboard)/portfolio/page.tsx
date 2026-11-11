@@ -35,6 +35,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { maskDisplayValue } from '@/lib/privacy';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
+import { evaluateRefreshPolicy } from '@/lib/market/refreshPolicy';
 
 export default function PortfolioPage() {
   const {
@@ -111,41 +112,61 @@ export default function PortfolioPage() {
     fetchPortfoliosAndTransactions();
   }, [fetchPortfoliosAndTransactions]);
 
-  // Visibility-aware live price background refresh (OPS-01)
+  // Visibility, session, and market-session aware live price refresh (OPS-08)
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    if (typeof document === 'undefined') return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let lastFetchAtMs: number | null = null;
 
-    const startPolling = () => {
-      if (interval) clearInterval(interval);
-      interval = setInterval(() => {
-        if (typeof document !== 'undefined' && !document.hidden) {
-          fetchLivePrices();
-        }
-      }, 60000);
+    const getTrackedExchanges = () =>
+      transactions
+        .filter((t) => !activePortfolioId || t.portfolioId === activePortfolioId)
+        .map((t) => t.exchange || (t.assetType === 'fund' ? 'TEFAS' : 'BIST'));
+
+    const evaluateAndSchedule = (trigger: 'initial' | 'interval' | 'visibility') => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+
+      const sessionValid = !authLoading ? Boolean(user || isSampleMode || transactions.length > 0) : true;
+      const decision = evaluateRefreshPolicy({
+        surface: 'portfolio',
+        trigger,
+        isDocumentHidden: document.hidden,
+        sessionValid,
+        exchanges: getTrackedExchanges(),
+        baseIntervalMs: 60_000,
+        closedIntervalMs: 300_000,
+        lastFetchAtMs,
+      });
+
+      if (decision.shouldFetch && (trigger === 'visibility' || trigger === 'interval')) {
+        lastFetchAtMs = Date.now();
+        void fetchLivePrices();
+      } else if (trigger === 'initial' && decision.shouldFetch) {
+        lastFetchAtMs = Date.now();
+      }
+
+      if (decision.nextDelayMs != null) {
+        timer = setTimeout(() => {
+          evaluateAndSchedule('interval');
+        }, decision.nextDelayMs);
+      }
     };
 
     const handleVisibilityChange = () => {
-      if (typeof document !== 'undefined' && !document.hidden) {
-        fetchLivePrices();
-        startPolling();
-      } else if (interval) {
-        clearInterval(interval);
-        interval = null;
-      }
+      evaluateAndSchedule('visibility');
     };
 
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      startPolling();
-    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    evaluateAndSchedule('initial');
 
     return () => {
-      if (interval) clearInterval(interval);
-      if (typeof document !== 'undefined') {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      }
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchLivePrices]);
+  }, [fetchLivePrices, transactions, activePortfolioId, user, authLoading, isSampleMode]);
 
   const liveSummary = getSummary();
   const sampleSnapshot = isSamplePreview ? getSamplePortfolioSnapshot(livePrices) : null;

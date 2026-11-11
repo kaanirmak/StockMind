@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { MarketQuoteValue } from './MarketQuoteValue';
+import { evaluateRefreshPolicy } from '@/lib/market/refreshPolicy';
 import type { MarketOverviewItem } from '@/types/stock';
 
 const marketTargets: Record<string, string> = {
@@ -73,10 +74,37 @@ export default function MarketOverview() {
     const controller = new AbortController();
     let pending = false;
     let flashTimer: ReturnType<typeof setTimeout>;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastFetchAtMs: number | null = null;
 
-    async function loadData() {
-      if (document.hidden || pending) return;
+    const scheduleNext = (delayMs: number | null) => {
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+      if (delayMs != null && !controller.signal.aborted) {
+        pollTimer = setTimeout(() => {
+          void loadData('interval');
+        }, delayMs);
+      }
+    };
+
+    async function loadData(trigger: 'initial' | 'interval' | 'visibility' = 'interval') {
+      if (pending) return;
+      const decision = evaluateRefreshPolicy({
+        surface: 'market_overview',
+        trigger,
+        isDocumentHidden: typeof document !== 'undefined' ? document.hidden : false,
+        exchanges: ['BIST', 'NASDAQ'],
+        baseIntervalMs: 15_000,
+        closedIntervalMs: 120_000,
+        lastFetchAtMs,
+      });
+      scheduleNext(decision.nextDelayMs);
+      if (!decision.shouldFetch) return;
+
       pending = true;
+      lastFetchAtMs = Date.now();
       try {
         const response = await fetch('/api/markets/overview', { signal: controller.signal });
         if (!response.ok) throw new Error('Piyasa verisi alınamadı');
@@ -128,14 +156,16 @@ export default function MarketOverview() {
       }
     }
 
-    void loadData();
-    const interval = setInterval(loadData, 15_000);
-    document.addEventListener('visibilitychange', loadData);
+    void loadData('initial');
+    const onVisibilityChange = () => {
+      void loadData('visibility');
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       controller.abort();
-      clearInterval(interval);
+      if (pollTimer) clearTimeout(pollTimer);
       clearTimeout(flashTimer);
-      document.removeEventListener('visibilitychange', loadData);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [retry]);
 

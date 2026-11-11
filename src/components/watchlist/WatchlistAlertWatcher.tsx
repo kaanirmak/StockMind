@@ -5,6 +5,7 @@ import { useWatchlistStore, isPriceAlertTriggered } from '@/store/useWatchlistSt
 import { sendPushNotification, loadPushPreferences } from '@/lib/notifications/pushNotification';
 import { marketJson } from '@/lib/api/clientCache';
 import { buildScopedQuoteRequests } from '@/lib/market/symbolQuery';
+import { evaluateRefreshPolicy } from '@/lib/market/refreshPolicy';
 import {
   buildAlertAssetRoute,
   evaluateAlertPriceFreshness,
@@ -58,15 +59,43 @@ export function WatchlistAlertWatcher() {
     if (typeof window === 'undefined') return;
 
     let active = true;
-    const checkAlerts = async () => {
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastCheckAtMs: number | null = null;
+
+    const scheduleNext = (delayMs: number | null) => {
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+      if (delayMs != null && active) {
+        pollTimer = setTimeout(() => {
+          void checkAlerts('interval');
+        }, delayMs);
+      }
+    };
+
+    const checkAlerts = async (trigger: 'initial' | 'interval' | 'visibility' = 'interval') => {
       const prefs = loadPushPreferences();
-      if (isCheckingRef.current || document.hidden || !prefs.priceAlerts || (!prefs.enabled && !prefs.inAppEnabled)) return;
       const { items, currentUserId } = useWatchlistStore.getState();
       const activeAlertItems = items.filter(
         (i) => !i.alertPaused && ((i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0))
       );
+      const exchanges = activeAlertItems.map((i) => i.exchange || (i.assetType === 'fund' ? 'TEFAS' : 'BIST'));
+      const policyEligible = prefs.priceAlerts && (prefs.enabled || prefs.inAppEnabled) && activeAlertItems.length > 0;
+      const decision = evaluateRefreshPolicy({
+        surface: 'watchlist_alerts',
+        trigger,
+        isDocumentHidden: typeof document !== 'undefined' ? document.hidden : false,
+        sessionValid: policyEligible && Boolean(currentUserId),
+        exchanges,
+        baseIntervalMs: 60_000,
+        closedIntervalMs: 300_000,
+        lastFetchAtMs: lastCheckAtMs,
+      });
+      scheduleNext(decision.nextDelayMs);
 
-      if (activeAlertItems.length === 0) return;
+      if (isCheckingRef.current || !policyEligible || !decision.shouldFetch) return;
+      lastCheckAtMs = Date.now();
 
       isCheckingRef.current = true;
       try {
@@ -208,19 +237,18 @@ export function WatchlistAlertWatcher() {
       }
     };
 
-    // Run check on mount and every 60s
-    checkAlerts();
-    const interval = setInterval(checkAlerts, 60_000);
+    // Run adaptive visibility/market-aware check
+    void checkAlerts('initial');
 
     const handleFocus = () => {
-      checkAlerts();
+      void checkAlerts('visibility');
     };
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleFocus);
 
     return () => {
       active = false;
-      clearInterval(interval);
+      if (pollTimer) clearTimeout(pollTimer);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleFocus);
     };

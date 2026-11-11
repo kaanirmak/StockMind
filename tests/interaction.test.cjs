@@ -5325,6 +5325,123 @@ test('OPS-07: xlsx library is dynamically loaded on import/export rather than in
   assert.match(portfolioSrc, /isExcelModalOpen &&[\s\S]*<ExcelImportModal/);
 });
 
+test('OPS-08: adaptive refresh policy measures and throttles/pauses hidden tabs, closed markets, and invalid sessions', () => {
+  const policy = load(path.join(process.cwd(), 'src/lib/market/refreshPolicy.ts'));
+  policy.resetRefreshTelemetry();
+
+  // Wednesday 2026-04-08 09:00 UTC => 12:00 Istanbul (BIST open)
+  const bistOpenNow = new Date('2026-04-08T09:00:00Z');
+  // Sunday 2026-04-12 03:00 UTC => BIST & NASDAQ closed
+  const closedNow = new Date('2026-04-12T03:00:00Z');
+
+  // 1. Open market & visible tab & valid session => active polling
+  const active = policy.evaluateRefreshPolicy({
+    surface: 'portfolio',
+    trigger: 'interval',
+    isDocumentHidden: false,
+    sessionValid: true,
+    exchanges: ['BIST'],
+    baseIntervalMs: 60_000,
+    now: bistOpenNow,
+  });
+  assert.equal(active.shouldFetch, true);
+  assert.equal(active.reason, 'active');
+  assert.equal(active.nextDelayMs, 60_000);
+  assert.equal(active.isMarketOpen, true);
+
+  // 2. Hidden tab => stops polling completely
+  const hidden = policy.evaluateRefreshPolicy({
+    surface: 'market_overview',
+    trigger: 'interval',
+    isDocumentHidden: true,
+    sessionValid: true,
+    exchanges: ['BIST'],
+    baseIntervalMs: 15_000,
+    now: bistOpenNow,
+  });
+  assert.equal(hidden.shouldFetch, false);
+  assert.equal(hidden.reason, 'hidden_tab');
+  assert.equal(hidden.nextDelayMs, null);
+
+  // 3. Invalid session => stops polling and avoids failed requests
+  const invalidSess = policy.evaluateRefreshPolicy({
+    surface: 'watchlist_alerts',
+    trigger: 'interval',
+    isDocumentHidden: false,
+    sessionValid: false,
+    exchanges: ['BIST'],
+    baseIntervalMs: 60_000,
+    now: bistOpenNow,
+  });
+  assert.equal(invalidSess.shouldFetch, false);
+  assert.equal(invalidSess.reason, 'invalid_session');
+  assert.equal(invalidSess.nextDelayMs, null);
+
+  // Also works when global session invalid flag is set
+  policy.markSessionInvalid(true);
+  const flaggedInvalid = policy.evaluateRefreshPolicy({
+    surface: 'watchlist_sync',
+    trigger: 'interval',
+    isDocumentHidden: false,
+    baseIntervalMs: 30_000,
+    now: bistOpenNow,
+  });
+  assert.equal(flaggedInvalid.shouldFetch, false);
+  assert.equal(flaggedInvalid.reason, 'invalid_session');
+  policy.markSessionInvalid(false);
+
+  // 4. Closed market slows interval down significantly and suppresses short visibility re-fetches
+  const closedInitial = policy.evaluateRefreshPolicy({
+    surface: 'watchlist_quotes',
+    trigger: 'initial',
+    isDocumentHidden: false,
+    sessionValid: true,
+    exchanges: ['BIST', 'NASDAQ'],
+    baseIntervalMs: 60_000,
+    closedIntervalMs: 300_000,
+    now: closedNow,
+  });
+  assert.equal(closedInitial.shouldFetch, true);
+  assert.equal(closedInitial.reason, 'market_closed');
+  assert.equal(closedInitial.nextDelayMs, 300_000);
+  assert.equal(closedInitial.throttled, true);
+
+  const closedRepeatSoon = policy.evaluateRefreshPolicy({
+    surface: 'watchlist_quotes',
+    trigger: 'visibility',
+    isDocumentHidden: false,
+    sessionValid: true,
+    exchanges: ['BIST', 'NASDAQ'],
+    baseIntervalMs: 60_000,
+    closedIntervalMs: 300_000,
+    lastFetchAtMs: closedNow.getTime() - 20_000,
+    now: closedNow,
+  });
+  assert.equal(closedRepeatSoon.shouldFetch, false);
+  assert.equal(closedRepeatSoon.reason, 'market_closed');
+  assert.equal(closedRepeatSoon.nextDelayMs, 300_000);
+
+  // 5. Telemetry captures measurements accurately
+  const metrics = policy.getRefreshTelemetry();
+  assert.equal(metrics.totals.skippedHiddenTab, 1);
+  assert.equal(metrics.totals.skippedInvalidSession, 2);
+  assert.equal(metrics.totals.throttledClosedMarket, 2);
+  assert.equal(metrics.totals.skippedClosedCooldown, 1);
+  assert.equal(metrics.totals.avoidedRequestsEstimate, 4);
+
+  // 6. All background pollers wire evaluateRefreshPolicy
+  for (const rel of [
+    'src/app/(dashboard)/portfolio/page.tsx',
+    'src/components/dashboard/MarketOverview.tsx',
+    'src/components/watchlist/WatchlistQuotes.tsx',
+    'src/components/watchlist/WatchlistAlertWatcher.tsx',
+    'src/components/watchlist/WatchlistSync.tsx',
+  ]) {
+    const src = fs.readFileSync(path.join(process.cwd(), rel), 'utf8');
+    assert.match(src, /evaluateRefreshPolicy/, `${rel} must use evaluateRefreshPolicy`);
+  }
+});
+
 
 
 
