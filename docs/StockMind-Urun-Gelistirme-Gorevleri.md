@@ -143,7 +143,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | HBR-09 | P2 | Uygulama içi KAP akışını ekle | Resmî açıklamalar kaynak kimliği, yayın saati, şirket ve orijinal belge bağlantısıyla görünür. | ◐ |
 | HBR-10 | P2 | Bilanço ve temettü takvimi ekle | Kullanıcı yaklaşan olayları portföy veya takip listesine göre filtreleyebilir. | ◐ |
 | HBR-11 | P2 | Makroekonomi takvimi ekle | Önemli Türkiye ve küresel olaylarda saat, kaynak ve mevcutsa önceki, beklenen ve gerçekleşen değer gösterilir. | ◐ |
-| HBR-12 | P2 | Fiyat hareketi açıklamasını ekle | İlgili olaylar ve varlığın gün içi hareketi kaynaklarla gösterilir. Nedensellik belirsizse açıklamada belirtilir. | ☐ |
+| HBR-12 | P2 | Fiyat hareketi açıklamasını ekle | İlgili olaylar ve varlığın gün içi hareketi kaynaklarla gösterilir. Nedensellik belirsizse açıklamada belirtilir. | ◐ |
 
 ## 9. AI Asistan ve Pro deneyimi
 

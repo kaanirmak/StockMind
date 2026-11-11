@@ -7070,6 +7070,85 @@ test('HBR-11: macroeconomic calendar displays TR and global events with time, so
   assert.match(newsPageSrc, /Gerçekleşen/);
 });
 
+test('HBR-12: price movement explanation reports correlated events with sources and explicitly discloses uncertain causality', () => {
+  const explainMod = load('src/lib/market/priceMoveExplanation.ts', {
+    require: (name) =>
+      name === '@/lib/news/symbolMatch'
+        ? load('src/lib/news/symbolMatch.ts')
+        : name === '@/lib/news/cardClassification'
+        ? load('src/lib/news/cardClassification.ts', { require: () => load('src/lib/news/symbolMatch.ts') })
+        : undefined,
+  });
+
+  const nowMs = Date.parse('2026-11-12T12:00:00.000Z');
+  const correlated = explainMod.buildPriceMoveExplanation({
+    symbol: 'THYAO',
+    nowMs,
+    quote: {
+      price: 312.5,
+      previousClose: 300,
+      change: 12.5,
+      changePercent: 4.17,
+      source: 'TradingView',
+      asOf: '2026-11-12T11:55:00.000Z',
+      exchange: 'BIST',
+    },
+    articles: [
+      {
+        id: 'kap-1',
+        title: 'THYAO Ekim ayı yolcu trafiği verilerini açıkladı',
+        summary: 'Türk Hava Yolları yolcu doluluk oranı yükseldi.',
+        source: 'Kamuyu Aydınlatma Platformu (KAP)',
+        url: 'https://www.kap.org.tr/tr/Bildirim/1402195',
+        publishedAt: '2026-11-12T08:00:00.000Z',
+        category: 'KAP',
+      },
+      {
+        id: 'old-1',
+        title: 'THYAO geçen hafta haberi',
+        source: 'TRT Haber',
+        publishedAt: '2026-11-01T08:00:00.000Z',
+      },
+    ],
+  });
+
+  assert.equal(correlated.causalityStatus, 'correlated_events');
+  assert.equal(correlated.intradayMove.changePercent, 4.17);
+  assert.equal(correlated.intradayMove.priceSource, 'TradingView');
+  assert.equal(correlated.drivers.length, 1);
+  assert.equal(correlated.drivers[0].source, 'Kamuyu Aydınlatma Platformu (KAP)');
+  assert.match(correlated.causalityNotice, /nedensellik/i);
+
+  // When no recent verified events match, causality uncertainty is stated explicitly
+  const uncertain = explainMod.buildPriceMoveExplanation({
+    symbol: 'ASELS',
+    nowMs,
+    quote: {
+      price: 72.1,
+      changePercent: -2.85,
+      source: 'TradingView',
+      exchange: 'BIST',
+    },
+    articles: [],
+    events: [],
+  });
+  assert.equal(uncertain.causalityStatus, 'uncertain_no_recent_events');
+  assert.equal(uncertain.drivers.length, 0);
+  assert.match(uncertain.causalityNotice, /Nedensellik belirsiz/i);
+
+  // When intraday quote is unavailable, returns unavailable_price instead of guessing
+  const missingQuote = explainMod.buildPriceMoveExplanation({
+    symbol: 'EREGL',
+    nowMs,
+    quote: { price: null, changePercent: null },
+  });
+  assert.equal(missingQuote.causalityStatus, 'unavailable_price');
+
+  const stockDetailSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/stocks/[symbol]/page.tsx'), 'utf8');
+  assert.match(stockDetailSrc, /PriceMoveExplanationCard/);
+});
+
+
 
 
 

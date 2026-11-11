@@ -10,6 +10,7 @@ import { CandlestickChart } from '@/components/stocks/CandlestickChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
 import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
 import { UpcomingEventsCard } from '@/components/stocks/UpcomingEventsCard';
+import { PriceMoveExplanationCard } from '@/components/stocks/PriceMoveExplanationCard';
 import { FinancialStatementsCard } from '@/components/stocks/FinancialStatementsCard';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
 import { classifyStockPriceStatus } from '@/lib/market/priceStatus';
@@ -584,6 +585,18 @@ export default function StockDetailPage({
           </span>
         </div>
       </div>
+
+      {/* Intraday Price Movement Explanation with Sources & Causality Notice */}
+      <PriceMoveExplanationCard
+        symbol={symbol}
+        currentPrice={observedLivePrice}
+        change={stock?.change}
+        changePercent={stock?.changePercent}
+        currency={stock?.currency}
+        priceSource={priceStatus.source}
+        asOf={priceStatus.asOf}
+        exchange={stock?.exchange}
+      />
 
       {/* Verified Upcoming Corporate Events (Earnings, Dividends, Official Disclosures) */}
       <UpcomingEventsCard
