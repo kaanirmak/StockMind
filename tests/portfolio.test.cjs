@@ -351,6 +351,52 @@ test('QNT-03: makro stres testleri sabit sonuç döndürmez, şok ve varsayımla
   assert.ok(sourcedWithSensitivities[1].impactPercent > 0, 'Rate cut shock must produce positive valuation impact');
 });
 
+test('AIP-01: genel soruda portföy alanları gönderilmez, açık seçimle gönderilecek alanlar görünür olur', () => {
+  const { buildPortfolioContextPayload, PORTFOLIO_CONTEXT_FIELDS } = loadModule('src/lib/ai/portfolioContext.ts');
+
+  const sampleSummary = {
+    totalValue: 150000,
+    totalCost: 120000,
+    totalPnL: 30000,
+    totalPnLPercent: 25,
+    dailyPnL: 1500,
+    dailyPnLPercent: 1,
+    holdings: [
+      {
+        symbol: 'THYAO',
+        name: 'Türk Hava Yolları',
+        assetType: 'HISSE',
+        totalQuantity: 100,
+        averageCost: 250,
+        currentPrice: 300,
+        currentValue: 30000,
+        pnl: 5000,
+        pnlPercent: 20,
+        weight: 20,
+      },
+    ],
+  };
+
+  assert.equal(
+    buildPortfolioContextPayload(sampleSummary, false),
+    undefined,
+    'General query (includePortfolio = false) must never attach portfolio payload'
+  );
+
+  const optedInPayload = buildPortfolioContextPayload(sampleSummary, true);
+  assert.ok(optedInPayload, 'Opted-in query must produce portfolio payload');
+  assert.equal(optedInPayload.totalValue, 150000);
+  assert.equal(optedInPayload.holdings.length, 1);
+  assert.equal(optedInPayload.holdings[0].symbol, 'THYAO');
+
+  assert.ok(PORTFOLIO_CONTEXT_FIELDS.length >= 3, 'Must document fields shared with AI');
+
+  const pageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  assert.ok(pageSrc.includes('useState(false)'), 'includePortfolioContext must default to false');
+  assert.ok(pageSrc.includes('buildPortfolioContextPayload'), 'AI assistant page must gate portfolio payload via helper');
+  assert.ok(pageSrc.includes('PORTFOLIO_CONTEXT_FIELDS'), 'AI assistant page must show shared portfolio fields');
+});
+
 test('AI-04: calculateDCF bankalar için model uygunluk uyarısı üretir', () => {
   const { calculateDCF } = loadModule('src/lib/quant/models.ts');
   const resGaran = calculateDCF({

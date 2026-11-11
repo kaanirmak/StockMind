@@ -1,6 +1,7 @@
 'use client';
 import { prepareChatHistory } from '@/lib/ai/chatHistory';
 import { chatErrorMessage } from '@/lib/ai/chatErrors';
+import { PORTFOLIO_CONTEXT_FIELDS, buildPortfolioContextPayload } from '@/lib/ai/portfolioContext';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
@@ -46,9 +47,9 @@ const INITIAL_MESSAGES: Message[] = [
 ];
 
 const PROMPT_SUGGESTIONS = [
-  { label: 'Portföyümü Analiz Et', prompt: 'Portföyümdeki varlıkların kâr/zarar durumunu ve ağırlık dağılımını analiz et. Özet kartı ve karşılaştırma tablosu ekle.' },
-  { label: 'Risk Raporu Çıkar', prompt: 'Portföyümün yoğunlaşma ve varlık dağılımı risklerini tablo halinde incele. Eksik verileri açıkça belirt.' },
-  { label: 'Günün Piyasa Özeti', prompt: 'BIST, döviz, altın ve kripto piyasalarının güncel durumunu kısa özet ve tablo halinde göster.' },
+  { label: 'Portföyümü Analiz Et', prompt: 'Portföyümdeki varlıkların kâr/zarar durumunu ve ağırlık dağılımını analiz et. Özet kartı ve karşılaştırma tablosu ekle.', requiresPortfolio: true },
+  { label: 'Risk Raporu Çıkar', prompt: 'Portföyümün yoğunlaşma ve varlık dağılımı risklerini tablo halinde incele. Eksik verileri açıkça belirt.', requiresPortfolio: true },
+  { label: 'Günün Piyasa Özeti', prompt: 'BIST, döviz, altın ve kripto piyasalarının güncel durumunu kısa özet ve tablo halinde göster.', requiresPortfolio: false },
 ];
 
 const SESSIONS_STORAGE_KEY_PREFIX = 'stockmind_ai_chat_sessions_v2';
@@ -79,6 +80,18 @@ function AIAssistantContent() {
   const [showModelModal, setShowModelModal] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   const [recentModels, setRecentModels] = useState<string[]>([]);
+  const [includePortfolioContext, setIncludePortfolioContext] = useState(false);
+  const [showPortfolioFieldsInfo, setShowPortfolioFieldsInfo] = useState(false);
+
+  const portfolioTransactions = usePortfolioStore((s) => s.transactions);
+  const activePortfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const portfolioHoldingsCount = React.useMemo(() => {
+    try {
+      return usePortfolioStore.getState().getSummary()?.holdings?.length ?? 0;
+    } catch {
+      return 0;
+    }
+  }, [portfolioTransactions, activePortfolioId]);
 
   useEffect(() => {
     try {
@@ -312,14 +325,21 @@ function AIAssistantContent() {
     const urlPrompt = searchParams.get('prompt');
     if (urlPrompt && urlPrompt !== promptProcessedRef.current) {
       promptProcessedRef.current = urlPrompt;
-      handleSendMessage(urlPrompt);
+      const includeFromParam = searchParams.get('includePortfolio');
+      const shouldAttach = includeFromParam === '1' || includeFromParam === 'true';
+      handleSendMessage(urlPrompt, shouldAttach);
     }
   }, [searchParams]);
 
   // 8. Send Message
-  const handleSendMessage = async (userText: string) => {
+  const handleSendMessage = async (userText: string, includePortfolioOverride?: boolean) => {
     const cleanText = userText.trim();
     if (!cleanText || loading || abortControllerRef.current) return;
+
+    const shouldIncludePortfolio = includePortfolioOverride ?? includePortfolioContext;
+    if (includePortfolioOverride === true && !includePortfolioContext) {
+      setIncludePortfolioContext(true);
+    }
 
     const hasCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
 
@@ -343,32 +363,12 @@ function AIAssistantContent() {
     setLoading(true);
     followLatest();
 
-    // Extract current portfolio state with safe finite numbers
-    let portfolioPayload: any = undefined;
+    // Extract current portfolio state ONLY when the user explicitly opted in
+    let portfolioPayload: ReturnType<typeof buildPortfolioContextPayload> = undefined;
     try {
-      const summary = usePortfolioStore.getState().getSummary();
-      if (summary && (summary.totalValue > 0 || (summary.holdings && summary.holdings.length > 0))) {
-        const safeNum = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
-        portfolioPayload = {
-          totalValue: safeNum(summary.totalValue),
-          totalCost: safeNum(summary.totalCost),
-          totalProfitLoss: safeNum(summary.totalPnL),
-          totalProfitLossPercent: safeNum(summary.totalPnLPercent),
-          dailyProfitLoss: safeNum(summary.dailyPnL),
-          dailyProfitLossPercent: safeNum(summary.dailyPnLPercent),
-          holdings: summary.holdings.slice(0, 100).map((h) => ({
-            symbol: h.symbol,
-            name: (h as any).name || h.symbol,
-            assetType: h.assetType || 'HISSE',
-            shares: Math.max(0, safeNum(h.totalQuantity)),
-            averageCost: Math.max(0, safeNum(h.averageCost)),
-            currentPrice: Math.max(0, safeNum(h.currentPrice)),
-            totalValue: Math.max(0, safeNum(h.currentValue)),
-            profitLoss: safeNum(h.pnl),
-            profitLossPercent: safeNum(h.pnlPercent),
-            weight: safeNum(h.weight),
-          })),
-        };
+      if (shouldIncludePortfolio) {
+        const summary = usePortfolioStore.getState().getSummary();
+        portfolioPayload = buildPortfolioContextPayload(summary, true);
       }
     } catch (_) {}
 
@@ -713,7 +713,7 @@ function AIAssistantContent() {
           {PROMPT_SUGGESTIONS.map((sug) => (
             <button
               key={sug.label}
-              onClick={() => handleSendMessage(sug.prompt)}
+              onClick={() => handleSendMessage(sug.prompt, sug.requiresPortfolio)}
               className="px-3 sm:px-3.5 py-2 sm:py-1.5 rounded-full text-[11px] sm:text-xs bg-bg-secondary/90 hover:bg-bg-tertiary border border-border/80 text-text-secondary hover:text-accent hover:border-accent transition-all cursor-pointer shrink-0 whitespace-nowrap shadow-sm active:scale-[0.98]"
             >
               {sug.label}
@@ -721,6 +721,63 @@ function AIAssistantContent() {
           ))}
         </div>
       )}
+
+      {/* Portfolio Context Opt-in Controls */}
+      <div className="shrink-0 mb-1.5 px-1 space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              data-testid="toggle-portfolio-context"
+              aria-pressed={includePortfolioContext}
+              onClick={() => setIncludePortfolioContext((prev) => !prev)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                includePortfolioContext
+                  ? 'bg-accent/15 border-accent/50 text-accent'
+                  : 'bg-bg-secondary/90 border-border text-text-secondary hover:text-text-primary hover:border-border-hover'
+              }`}
+            >
+              <span>{includePortfolioContext ? '✓ Portföy Analizde' : '+ Portföyü Analize Ekle'}</span>
+              <span className="text-[10px] opacity-80">
+                ({portfolioHoldingsCount > 0 ? `${portfolioHoldingsCount} varlık` : 'Boş'})
+              </span>
+            </button>
+
+            <span className="text-[11px] text-text-muted">
+              {includePortfolioContext
+                ? 'Seçili portföy alanları AI isteğine eklenecek.'
+                : 'Genel soru modu: Portföy verileri gönderilmiyor.'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            aria-expanded={showPortfolioFieldsInfo}
+            onClick={() => setShowPortfolioFieldsInfo((prev) => !prev)}
+            className="text-[11px] font-medium text-accent hover:underline cursor-pointer"
+          >
+            {showPortfolioFieldsInfo ? 'Alanları gizle' : 'Kullanılacak alanları gör'}
+          </button>
+        </div>
+
+        {(showPortfolioFieldsInfo || includePortfolioContext) && (
+          <div
+            data-testid="portfolio-context-fields"
+            className="rounded-xl border border-border/80 bg-bg-secondary/70 px-3 py-2 text-[11px] text-text-secondary space-y-1"
+          >
+            <p className="font-semibold text-text-primary">
+              {includePortfolioContext
+                ? 'AI analizine gönderilen portföy alanları:'
+                : 'Portföy analize eklendiğinde gönderilecek alanlar:'}
+            </p>
+            <ul className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-text-muted">
+              {PORTFOLIO_CONTEXT_FIELDS.map((field) => (
+                <li key={field.key}>• {field.label}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       {/* Input Box - Mobile Ergonomic */}
       <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm mb-1 sm:mb-0 pb-[calc(0.375rem+env(safe-area-inset-bottom))] sm:pb-2 focus-within:border-accent/80 focus-within:ring-1 focus-within:ring-accent/30 transition-all">
