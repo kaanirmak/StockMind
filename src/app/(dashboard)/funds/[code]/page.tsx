@@ -9,6 +9,7 @@ import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatDate } from '@/lib/utils/format';
 import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
+import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 
 export default function FundDetailPage({
   params,
@@ -18,11 +19,12 @@ export default function FundDetailPage({
   const resolvedParams = use(params);
   const code = resolvedParams.code.toUpperCase();
   const { showToast } = useToast();
-  const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
+  const { toggleWatchlist, isWatchlisted: checkWatchlisted, getAlert } = useWatchlistStore();
   const { activePortfolioId, addTransaction, fetchLivePrices } = usePortfolioStore();
 
   const [days, setDays] = useState<number>(90);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
   const [lotCount, setLotCount] = useState<number>(100);
   const [manualPrice, setManualPrice] = useState('');
@@ -31,6 +33,20 @@ export default function FundDetailPage({
 
   const { fund, loading, error } = useFundDetail(code, days);
   const isWatchlisted = checkWatchlisted(code);
+  const alertItem = getAlert(code);
+  const hasAlert = Boolean(alertItem?.targetPrice || alertItem?.alertPercent);
+
+  const handleOpenQuickAlert = () => {
+    if (!fund?.price || fund.price <= 0) {
+      showToast({
+        type: 'warning',
+        title: 'Fon Fiyatı Bekleniyor',
+        message: `${code} için doğrulanmış güncel TEFAS fiyatı olmadan hızlı alarm kurulamaz.`,
+      });
+      return;
+    }
+    setIsAlertModalOpen(true);
+  };
 
   const handleWatchlistToggle = () => {
     const added = toggleWatchlist({
@@ -192,6 +208,24 @@ export default function FundDetailPage({
               <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
               </svg>
+            </button>
+
+            <button
+              type="button"
+              data-testid="asset-quick-alert-btn"
+              onClick={handleOpenQuickAlert}
+              aria-label={hasAlert ? `${code} fiyat alarmını düzenle` : `${code} için hızlı fiyat alarmı kur`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs font-semibold transition-colors cursor-pointer relative ${
+                hasAlert
+                  ? 'bg-warning/20 border-warning text-warning'
+                  : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
+              }`}
+              title={hasAlert ? 'Fiyat Alarmı Düzenle / Kaldır' : 'Hızlı Fiyat Alarmı Kur'}
+            >
+              <svg className="w-4 h-4" fill={hasAlert ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="hidden sm:inline">{hasAlert ? 'Alarm Aktif' : 'Alarm Kur'}</span>
             </button>
 
             <Link href={`/ai-assistant?prompt=${encodeURIComponent(`${code} TEFAS fonu hakkında detaylı analiz yap, getirilerini ve risk profilini değerlendir.`)}`}>
@@ -491,6 +525,24 @@ export default function FundDetailPage({
           </div>
         </form>
       </Modal>
+
+      <PriceAlertModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
+        stock={
+          fund && fund.price && fund.price > 0
+            ? {
+                symbol: code,
+                name: fund.name,
+                price: fund.price,
+                changePercent: fund.dailyReturn,
+                exchange: 'TEFAS',
+                currency: 'TRY',
+                assetType: 'fund',
+              }
+            : null
+        }
+      />
     </div>
   );
 }

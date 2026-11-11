@@ -6,6 +6,12 @@ import {
   type AlertDeferralReason,
   type AlertPriceQuote,
 } from '@/lib/market/alertFreshness';
+import {
+  formatAlertPrice,
+  inferAssetAlertCurrency,
+  type AlertCurrencyCode,
+  type AlertDirection,
+} from '@/lib/market/alertForm';
 
 export type PriceAlertType = 'price' | 'percent_up' | 'percent_down' | 'percent_both';
 
@@ -14,6 +20,8 @@ export interface WatchlistAlertConfig {
   alertType?: PriceAlertType;
   alertPercent?: number; // e.g. 1, 2, 3, 5, 10
   alertBasePrice?: number; // Price when alert was configured
+  alertCurrency?: AlertCurrencyCode;
+  alertDirection?: AlertDirection;
 }
 
 export interface WatchlistItem extends WatchlistAlertConfig {
@@ -86,6 +94,13 @@ export function isPriceAlertTriggered(
   const alertPercent = item.alertPercent;
   const sym = item.symbol.toUpperCase();
   const name = item.name || sym;
+  const currency = item.alertCurrency || inferAssetAlertCurrency({
+    exchange: item.exchange,
+    assetType: item.assetType,
+    symbol: sym,
+  });
+  const liveFormatted = formatAlertPrice(currentLivePrice, currency, item.assetType);
+  const baseFormatted = formatAlertPrice(basePrice, currency, item.assetType);
 
   if (alertType === 'percent_up' && alertPercent && alertPercent > 0 && basePrice > 0) {
     const threshold = basePrice * (1 + alertPercent / 100);
@@ -93,7 +108,7 @@ export function isPriceAlertTriggered(
       return {
         triggered: true,
         title: `📈 %${alertPercent} Yükseliş Alarmı: ${sym}`,
-        message: `${name} (%${alertPercent} artış hedefine ulaştı (₺${currentLivePrice.toFixed(2)} / Baz: ₺${basePrice.toFixed(2)})`,
+        message: `${name} %${alertPercent} artış hedefine ulaştı (${liveFormatted} / Baz: ${baseFormatted})`,
       };
     }
   } else if (alertType === 'percent_down' && alertPercent && alertPercent > 0 && basePrice > 0) {
@@ -102,7 +117,7 @@ export function isPriceAlertTriggered(
       return {
         triggered: true,
         title: `📉 %${alertPercent} Düşüş Alarmı: ${sym}`,
-        message: `${name} %${alertPercent} düşüş eşiğine geriledi (₺${currentLivePrice.toFixed(2)} / Baz: ₺${basePrice.toFixed(2)})`,
+        message: `${name} %${alertPercent} düşüş eşiğine geriledi (${liveFormatted} / Baz: ${baseFormatted})`,
       };
     }
   } else if (alertType === 'percent_both' && alertPercent && alertPercent > 0 && basePrice > 0) {
@@ -112,23 +127,25 @@ export function isPriceAlertTriggered(
       return {
         triggered: true,
         title: `📈 %${alertPercent} Yükseliş Sapması: ${sym}`,
-        message: `${name} baz fiyattan %${alertPercent} yükselerek ₺${currentLivePrice.toFixed(2)} oldu!`,
+        message: `${name} baz fiyattan %${alertPercent} yükselerek ${liveFormatted} oldu!`,
       };
     }
     if (currentLivePrice <= lower) {
       return {
         triggered: true,
         title: `📉 %${alertPercent} Düşüş Sapması: ${sym}`,
-        message: `${name} baz fiyattan %${alertPercent} gerileyerek ₺${currentLivePrice.toFixed(2)} oldu!`,
+        message: `${name} baz fiyattan %${alertPercent} gerileyerek ${liveFormatted} oldu!`,
       };
     }
   } else if (targetPrice && targetPrice > 0) {
-    if (targetPrice >= basePrice) {
+    const targetFormatted = formatAlertPrice(targetPrice, currency, item.assetType);
+    const fixedUp = item.alertDirection ? item.alertDirection === 'up' : targetPrice >= basePrice;
+    if (fixedUp) {
       if (currentLivePrice >= targetPrice) {
         return {
           triggered: true,
           title: `🎯 Hedef Fiyat Ulaştı: ${sym}`,
-          message: `${name} belirlediğiniz ₺${targetPrice.toFixed(2)} hedefine ulaştı! (Güncel: ₺${currentLivePrice.toFixed(2)})`,
+          message: `${name} belirlediğiniz ${targetFormatted} hedefine ulaştı! (Güncel: ${liveFormatted})`,
         };
       }
     } else {
@@ -136,7 +153,7 @@ export function isPriceAlertTriggered(
         return {
           triggered: true,
           title: `🎯 Alt Fiyat Eşiği: ${sym}`,
-          message: `${name} belirlediğiniz ₺${targetPrice.toFixed(2)} alt seviyesine geriledi! (Güncel: ₺${currentLivePrice.toFixed(2)})`,
+          message: `${name} belirlediğiniz ${targetFormatted} alt seviyesine geriledi! (Güncel: ${liveFormatted})`,
         };
       }
     }
@@ -261,6 +278,8 @@ function fromServerRow(row: any, localBySymbol: Map<string, WatchlistItem>): Wat
     alertType: row.alert_type ?? undefined,
     alertPercent: row.alert_percent ?? undefined,
     alertBasePrice: row.alert_base_price ?? undefined,
+    alertCurrency: previous?.alertCurrency,
+    alertDirection: previous?.alertDirection,
   };
 }
 
@@ -507,6 +526,8 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
           delete copy.alertType;
           delete copy.alertPercent;
           delete copy.alertBasePrice;
+          delete copy.alertCurrency;
+          delete copy.alertDirection;
           return copy;
         }
         return i;

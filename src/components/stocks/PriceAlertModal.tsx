@@ -7,9 +7,17 @@ import { Modal, Button, Input } from '@/components/ui';
 import { useToast } from '@/components/ui';
 import {
   useWatchlistStore,
-  PriceAlertType,
   calculateTargetPriceFromPercent,
 } from '@/store/useWatchlistStore';
+import {
+  buildQuickAlertConfig,
+  formatAlertPrice,
+  getAlertCurrencySymbol,
+  inferAssetAlertCurrency,
+  type AlertCurrencyCode,
+  type AlertDirection,
+  type AlertThresholdMode,
+} from '@/lib/market/alertForm';
 import { sendPushNotification } from '@/lib/notifications/pushNotification';
 import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
@@ -23,11 +31,17 @@ export interface PriceAlertModalProps {
     price: number;
     changePercent?: number;
     exchange?: string;
+    currency?: string;
     assetType?: 'stock' | 'fund';
   } | null;
 }
 
 const PERCENT_PRESETS = [1, 2, 3, 5, 10];
+const CURRENCY_OPTIONS: { code: AlertCurrencyCode; label: string }[] = [
+  { code: 'TRY', label: 'TRY (₺)' },
+  { code: 'USD', label: 'USD ($)' },
+  { code: 'EUR', label: 'EUR (€)' },
+];
 
 export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps) {
   const { showToast } = useToast();
@@ -50,8 +64,17 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
   const hasExistingAlert = Boolean(existingItem?.targetPrice || existingItem?.alertPercent);
   const isLimitReached = !isPro && activeAlertsCount >= 3 && !hasExistingAlert;
 
-  const [mode, setMode] = useState<'percent' | 'price'>('percent');
-  const [direction, setDirection] = useState<'up' | 'down' | 'both'>('up');
+  const nativeCurrency = inferAssetAlertCurrency({
+    currency: stock?.currency,
+    exchange: stock?.exchange,
+    assetType: stock?.assetType,
+    symbol: stock?.symbol,
+  });
+  const priceDecimals = stock?.assetType === 'fund' || (stock?.price ?? 0) < 1 ? 4 : 2;
+
+  const [mode, setMode] = useState<AlertThresholdMode>('percent');
+  const [direction, setDirection] = useState<AlertDirection>('up');
+  const [selectedCurrency, setSelectedCurrency] = useState<AlertCurrencyCode>(nativeCurrency);
   const [selectedPercent, setSelectedPercent] = useState<number>(2);
   const [customPercent, setCustomPercent] = useState<string>('');
   const [targetPriceInput, setTargetPriceInput] = useState<string>('');
@@ -61,6 +84,14 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
   // Initialize form state when modal opens or stock changes
   useEffect(() => {
     if (!stock || !isOpen) return;
+
+    const inferredCurr = inferAssetAlertCurrency({
+      currency: stock.currency,
+      exchange: stock.exchange,
+      assetType: stock.assetType,
+      symbol: stock.symbol,
+    });
+    setSelectedCurrency(existingItem?.alertCurrency || inferredCurr);
 
     if (existingItem?.alertType && existingItem.alertType !== 'price' && existingItem.alertPercent) {
       setMode('percent');
@@ -74,14 +105,21 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
       setMode('price');
       setTargetPriceInput(existingItem.targetPrice.toString());
       setSelectedPercent(2);
-      setDirection(existingItem.targetPrice >= currentPrice ? 'up' : 'down');
+      setDirection(
+        existingItem.alertDirection === 'down' || existingItem.alertDirection === 'up'
+          ? existingItem.alertDirection
+          : existingItem.targetPrice >= currentPrice
+            ? 'up'
+            : 'down',
+      );
     } else {
       setMode('percent');
       setDirection('up');
       setSelectedPercent(2);
       setCustomPercent('');
+      const decimals = stock.assetType === 'fund' || currentPrice < 1 ? 4 : 2;
       setTargetPriceInput(
-        currentPrice > 0 ? (currentPrice * 1.02).toFixed(2) : ''
+        currentPrice > 0 ? (currentPrice * 1.02).toFixed(decimals) : ''
       );
     }
   }, [stock, isOpen, existingItem]);
@@ -120,54 +158,46 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
       return;
     }
 
-    let finalAlertType: PriceAlertType = 'price';
-    let finalTargetPrice = 0;
-    let finalPercent: number | undefined = undefined;
-    let descriptionText = '';
+    const built = buildQuickAlertConfig({
+      symbol: stock.symbol,
+      name: stock.name,
+      currentPrice,
+      assetType: stock.assetType || 'stock',
+      nativeCurrency,
+      selectedCurrency,
+      mode,
+      direction,
+      percentValue: activePercent,
+      targetPriceInput,
+    });
 
-    if (mode === 'percent') {
-      if (direction === 'up') finalAlertType = 'percent_up';
-      else if (direction === 'down') finalAlertType = 'percent_down';
-      else finalAlertType = 'percent_both';
-
-      finalPercent = activePercent;
-      finalTargetPrice = computedPercentTargetPrice;
-
-      if (direction === 'up') {
-        descriptionText = `₺${currentPrice.toFixed(2)} seviyesinden %${activePercent} yükseldiğinde (₺${finalTargetPrice.toFixed(2)})`;
-      } else if (direction === 'down') {
-        descriptionText = `₺${currentPrice.toFixed(2)} seviyesinden %${activePercent} düştüğünde (₺${finalTargetPrice.toFixed(2)})`;
-      } else {
-        descriptionText = `₺${currentPrice.toFixed(2)} seviyesinden %${activePercent} yukarı veya aşağı saptığında`;
-      }
-    } else {
-      finalAlertType = 'price';
-      finalTargetPrice = Number(targetPriceInput);
-      if (finalTargetPrice <= 0) {
-        showToast({
-          type: 'danger',
-          title: 'Geçersiz Fiyat',
-          message: 'Lütfen 0 dan büyük geçerli bir hedef fiyat girin.',
-        });
-        return;
-      }
-      descriptionText = `fiyatı ₺${finalTargetPrice.toFixed(2)} seviyesine ulaştığında`;
+    if (!built.ok) {
+      showToast({
+        type: 'danger',
+        title: built.errorTitle,
+        message: built.errorMessage,
+      });
+      return;
     }
+
+    const descriptionText = built.descriptionText;
 
     setAlert(
       stock.symbol,
       {
-        targetPrice: finalTargetPrice,
-        alertType: finalAlertType,
-        alertPercent: finalPercent,
-        alertBasePrice: currentPrice,
+        targetPrice: built.targetPrice,
+        alertType: built.alertType,
+        alertPercent: built.alertPercent,
+        alertBasePrice: built.alertBasePrice,
+        alertCurrency: built.alertCurrency,
+        alertDirection: built.alertDirection,
       },
       {
         symbol: stock.symbol,
         name: stock.name,
         price: stock.price,
         changePercent: stock.changePercent || 0,
-        exchange: stock.exchange || 'BIST',
+        exchange: stock.exchange || (stock.assetType === 'fund' ? 'TEFAS' : 'BIST'),
         assetType: stock.assetType || 'stock',
       }
     );
@@ -257,7 +287,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
             <span className="text-xs text-text-muted truncate block">{stock.name}</span>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="font-bold text-base text-text-primary font-mono">
-                ₺{currentPrice.toFixed(2)}
+                {formatAlertPrice(currentPrice, nativeCurrency, stock.assetType)}
               </span>
               {stock.changePercent !== undefined && (
                 <span
@@ -271,15 +301,21 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
               )}
             </div>
           </div>
-          <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-accent/15 text-accent border border-accent/20">
-            Canlı Fiyat
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-accent/15 text-accent border border-accent/20">
+              {stock.assetType === 'fund' ? 'TEFAS Değerleme' : 'Canlı Fiyat'}
+            </span>
+            <span className="text-[10px] font-mono text-text-muted">
+              Para Birimi: {nativeCurrency} ({getAlertCurrencySymbol(nativeCurrency)})
+            </span>
+          </div>
         </div>
 
         {/* Mode Selector Tabs */}
         <div className="grid grid-cols-2 p-1 rounded-xl bg-bg-secondary border border-border text-xs font-semibold">
           <button
             type="button"
+            data-testid="alert-mode-percent"
             onClick={() => setMode('percent')}
             className={`py-2 px-3 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               mode === 'percent'
@@ -292,7 +328,13 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
           </button>
           <button
             type="button"
-            onClick={() => setMode('price')}
+            data-testid="alert-mode-price"
+            onClick={() => {
+              setMode('price');
+              if (direction === 'both') {
+                setDirection(fixedPriceNum > 0 && fixedPriceNum < currentPrice ? 'down' : 'up');
+              }
+            }}
             className={`py-2 px-3 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               mode === 'price'
                 ? 'bg-accent text-white shadow-md shadow-accent/20'
@@ -300,7 +342,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
             }`}
           >
             <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-            <span>Hedef Fiyat (₺)</span>
+            <span>Hedef Fiyat ({getAlertCurrencySymbol(selectedCurrency)})</span>
           </button>
         </div>
 
@@ -405,23 +447,23 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
             {/* Calculation Preview Card */}
             <div className="p-3 rounded-2xl bg-gradient-to-br from-bg-secondary to-bg-card border border-accent/25 space-y-1.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-text-muted">Tetiklenme Eşik Fiyatı:</span>
+                <span className="text-text-muted">Tetiklenme Eşik Fiyatı ({nativeCurrency}):</span>
                 <span className="font-mono font-extrabold text-sm text-accent">
                   {direction === 'both' ? (
                     <>
-                      ₺{(currentPrice * (1 - activePercent / 100)).toFixed(2)} — ₺{(currentPrice * (1 + activePercent / 100)).toFixed(2)}
+                      {formatAlertPrice(currentPrice * (1 - activePercent / 100), nativeCurrency, stock.assetType)} — {formatAlertPrice(currentPrice * (1 + activePercent / 100), nativeCurrency, stock.assetType)}
                     </>
                   ) : (
-                    `₺${computedPercentTargetPrice.toFixed(2)}`
+                    formatAlertPrice(computedPercentTargetPrice, nativeCurrency, stock.assetType)
                   )}
                 </span>
               </div>
               <p className="text-[11px] text-text-muted leading-relaxed">
                 {direction === 'up' && (
-                  <> {stock.symbol} fiyatı ₺{currentPrice.toFixed(2)} seviyesinden <strong>%+{activePercent}</strong> yükselerek <strong>₺{computedPercentTargetPrice.toFixed(2)}</strong> seviyesine ulaştığında alarm çalar.</>
+                  <> {stock.symbol} fiyatı {formatAlertPrice(currentPrice, nativeCurrency, stock.assetType)} seviyesinden <strong>%+{activePercent}</strong> yükselerek <strong>{formatAlertPrice(computedPercentTargetPrice, nativeCurrency, stock.assetType)}</strong> seviyesine ulaştığında alarm çalar.</>
                 )}
                 {direction === 'down' && (
-                  <> {stock.symbol} fiyatı ₺{currentPrice.toFixed(2)} seviyesinden <strong>%-{activePercent}</strong> gerileyerek <strong>₺{computedPercentTargetPrice.toFixed(2)}</strong> seviyesine düştüğünde alarm çalar.</>
+                  <> {stock.symbol} fiyatı {formatAlertPrice(currentPrice, nativeCurrency, stock.assetType)} seviyesinden <strong>%-{activePercent}</strong> gerileyerek <strong>{formatAlertPrice(computedPercentTargetPrice, nativeCurrency, stock.assetType)}</strong> seviyesine düştüğünde alarm çalar.</>
                 )}
                 {direction === 'both' && (
                   <> {stock.symbol} fiyatı her iki yönde <strong>%±{activePercent}</strong> kırıldığında anlık bildirim tetiklenir.</>
@@ -432,18 +474,90 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
         ) : (
           /* MODE 2: FIXED PRICE */
           <div className="space-y-3 animate-fade-in">
+            {/* Explicit Currency Selector */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-text-secondary">
+                  Eşik Para Birimi
+                </label>
+                <span className="text-[10px] text-text-muted">
+                  Varlık birimi: <strong className="text-text-primary">{nativeCurrency}</strong>
+                </span>
+              </div>
+              <div data-testid="alert-currency-selector" className="grid grid-cols-3 gap-2">
+                {CURRENCY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.code}
+                    type="button"
+                    aria-pressed={selectedCurrency === opt.code}
+                    onClick={() => setSelectedCurrency(opt.code)}
+                    className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      selectedCurrency === opt.code
+                        ? 'border-accent bg-accent/15 text-accent shadow-sm'
+                        : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {selectedCurrency !== nativeCurrency && (
+                <p className="mt-1.5 text-[11px] text-warning bg-warning/10 border border-warning/25 rounded-lg px-2.5 py-1.5">
+                  Bu varlık <strong>{nativeCurrency}</strong> cinsinden fiyatlanır. Sabit fiyat eşiği için {nativeCurrency} seçin veya yüzdesel eşiği kullanın.
+                </p>
+              )}
+            </div>
+
+            {/* Explicit Direction Selector for Fixed Price */}
+            <div>
+              <label className="block text-xs font-semibold text-text-secondary mb-1.5">
+                Tetiklenme Yönü
+              </label>
+              <div data-testid="alert-fixed-direction" className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDirection('up')}
+                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    direction !== 'down'
+                      ? 'border-success bg-success/15 text-success shadow-sm'
+                      : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
+                  }`}
+                >
+                  Yukarı Kırılım (&ge;)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDirection('down')}
+                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    direction === 'down'
+                      ? 'border-danger bg-danger/15 text-danger shadow-sm'
+                      : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
+                  }`}
+                >
+                  Aşağı Düşüş (&le;)
+                </button>
+              </div>
+            </div>
+
             <Input
-              label="Hedef Fiyat (₺)"
+              label={`Hedef Fiyat (${getAlertCurrencySymbol(selectedCurrency)})`}
               type="number"
-              step="0.01"
+              step={stock.assetType === 'fund' ? '0.0001' : '0.01'}
               value={targetPriceInput}
-              onChange={(e) => setTargetPriceInput(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setTargetPriceInput(next);
+                const parsed = Number(next);
+                if (Number.isFinite(parsed) && parsed > 0 && currentPrice > 0) {
+                  setDirection(parsed >= currentPrice ? 'up' : 'down');
+                }
+              }}
               required
-              helperText={`Anlık Fiyat: ₺${currentPrice.toFixed(2)}`}
-              placeholder="Örn: 350.50"
+              helperText={`Anlık Fiyat: ${formatAlertPrice(currentPrice, nativeCurrency, stock.assetType)}`}
+              placeholder={`Örn: ${(currentPrice > 0 ? currentPrice * 1.05 : 100).toFixed(priceDecimals)}`}
             />
 
-            {fixedPriceNum > 0 && currentPrice > 0 && (
+            {fixedPriceNum > 0 && currentPrice > 0 && selectedCurrency === nativeCurrency && (
               <div className="p-3 rounded-2xl bg-bg-secondary border border-border text-xs flex items-center justify-between">
                 <span className="text-text-muted">Fiyat Farkı:</span>
                 <span
@@ -452,7 +566,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                   }`}
                 >
                   {fixedPriceDiffPercent >= 0 ? '+' : ''}
-                  {fixedPriceDiffPercent.toFixed(2)}% ({fixedPriceDiffPercent >= 0 ? 'Yukarıda' : 'Aşağıda'})
+                  {fixedPriceDiffPercent.toFixed(2)}% ({direction === 'down' ? 'Aşağı yönlü' : 'Yukarı yönlü'})
                 </span>
               </div>
             )}

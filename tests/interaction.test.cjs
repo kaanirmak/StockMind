@@ -3053,6 +3053,86 @@ test('HBR-07: separates news, official disclosures, and calendar events and spli
   assert.match(newsPageSource, /Olası Portföy Etkisi:/);
 });
 
+test('ALR-04: asset detail quick alert creation supports price/percent thresholds, explicit direction, and asset currency', () => {
+  const {
+    inferAssetAlertCurrency,
+    formatAlertPrice,
+    buildQuickAlertConfig,
+  } = load('src/lib/market/alertForm.ts');
+  const modalSource = fs.readFileSync(path.join(process.cwd(), 'src/components/stocks/PriceAlertModal.tsx'), 'utf8');
+  const stockPageSource = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/stocks/[symbol]/page.tsx'), 'utf8');
+  const fundPageSource = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/funds/[code]/page.tsx'), 'utf8');
+
+  assert.equal(inferAssetAlertCurrency({ symbol: 'AAPL', exchange: 'NASDAQ' }), 'USD');
+  assert.equal(inferAssetAlertCurrency({ symbol: 'THYAO', exchange: 'BIST' }), 'TRY');
+  assert.equal(inferAssetAlertCurrency({ symbol: 'TI2', exchange: 'TEFAS', assetType: 'fund' }), 'TRY');
+  assert.equal(inferAssetAlertCurrency({ symbol: 'SAP', currency: 'EUR' }), 'EUR');
+
+  assert.equal(formatAlertPrice(210.5, 'USD', 'stock'), '$210.50');
+  assert.equal(formatAlertPrice(1.23456, 'TRY', 'fund'), '₺1.2346');
+
+  const usdPriceAlert = {
+    ...buildQuickAlertConfig({
+      symbol: 'AAPL',
+      currentPrice: 200,
+      assetType: 'stock',
+      nativeCurrency: 'USD',
+      selectedCurrency: 'USD',
+      mode: 'price',
+      direction: 'down',
+      percentValue: 2,
+      targetPriceInput: '190.50',
+    }),
+  };
+  assert.equal(usdPriceAlert.ok, true);
+  assert.equal(usdPriceAlert.alertType, 'price');
+  assert.equal(usdPriceAlert.targetPrice, 190.5);
+  assert.equal(usdPriceAlert.alertCurrency, 'USD');
+  assert.equal(usdPriceAlert.alertDirection, 'down');
+  assert.match(usdPriceAlert.descriptionText, /\$190\.50/);
+
+  const fundPercentAlert = {
+    ...buildQuickAlertConfig({
+      symbol: 'TI2',
+      currentPrice: 2.0,
+      assetType: 'fund',
+      nativeCurrency: 'TRY',
+      selectedCurrency: 'TRY',
+      mode: 'percent',
+      direction: 'both',
+      percentValue: 3.5,
+      targetPriceInput: '',
+    }),
+  };
+  assert.equal(fundPercentAlert.ok, true);
+  assert.equal(fundPercentAlert.alertType, 'percent_both');
+  assert.equal(fundPercentAlert.alertPercent, 3.5);
+  assert.equal(fundPercentAlert.alertCurrency, 'TRY');
+
+  const mismatchedCurrency = {
+    ...buildQuickAlertConfig({
+      symbol: 'AAPL',
+      currentPrice: 200,
+      assetType: 'stock',
+      nativeCurrency: 'USD',
+      selectedCurrency: 'TRY',
+      mode: 'price',
+      direction: 'up',
+      percentValue: 2,
+      targetPriceInput: '7000',
+    }),
+  };
+  assert.equal(mismatchedCurrency.ok, false);
+  assert.match(mismatchedCurrency.errorTitle, /Para Birimi/);
+
+  assert.match(modalSource, /data-testid="alert-currency-selector"/);
+  assert.match(modalSource, /data-testid="alert-fixed-direction"/);
+  assert.match(stockPageSource, /data-testid="asset-quick-alert-btn"/);
+  assert.match(stockPageSource, /currency: stock\.currency/);
+  assert.match(fundPageSource, /data-testid="asset-quick-alert-btn"/);
+  assert.match(fundPageSource, /<PriceAlertModal/);
+});
+
 
 
 

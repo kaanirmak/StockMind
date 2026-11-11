@@ -210,17 +210,23 @@ export default function StockDetailPage({
 
           {/* Price Alert */}
           <button
+            type="button"
+            data-testid="asset-quick-alert-btn"
             onClick={() => setIsAlertModalOpen(true)}
-            className={`inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-xl transition-colors cursor-pointer relative ${
+            aria-label={hasAlert ? `${symbol} fiyat alarmını düzenle` : `${symbol} için hızlı fiyat alarmı kur`}
+            className={`inline-flex items-center justify-center gap-1.5 h-11 min-w-11 px-2.5 shrink-0 rounded-xl transition-colors cursor-pointer relative ${
               hasAlert
                 ? 'text-warning bg-warning/15 hover:bg-warning/25'
                 : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
             }`}
-            title={hasAlert ? 'Fiyat Alarmı Düzenle / Kaldır' : 'Fiyat Alarmı Kur'}
+            title={hasAlert ? 'Fiyat Alarmı Düzenle / Kaldır' : 'Hızlı Fiyat Alarmı Kur'}
           >
             <svg className="w-5 h-5" fill={hasAlert ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
+            <span className="hidden sm:inline text-xs font-semibold">
+              {hasAlert ? 'Alarm Aktif' : 'Alarm Kur'}
+            </span>
             {hasAlert && (
               <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-warning animate-pulse" />
             )}
@@ -754,6 +760,7 @@ export default function StockDetailPage({
                 price: stock.price,
                 changePercent: stock.changePercent,
                 exchange: stock.exchange,
+                currency: stock.currency,
                 assetType: 'stock',
               }
             : null
