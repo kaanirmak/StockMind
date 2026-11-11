@@ -8,13 +8,26 @@ import { Candle } from '@/lib/indicators';
 export type StockWithQuote = StockMarketInfo & StockQuote;
 
 export function useStocks(
-  filter?: { exchange?: string; sector?: string; search?: string },
+  filter?: {
+    exchange?: string;
+    sector?: string;
+    search?: string;
+    sortBy?: string;
+    order?: 'asc' | 'desc';
+    page?: number;
+    limit?: number;
+    symbols?: readonly string[];
+  },
   options?: { enabled?: boolean }
 ) {
   const isEnabled = options?.enabled !== false;
   const [stocks, setStocks] = useState<StockWithQuote[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(false);
   const [loading, setLoading] = useState(isEnabled);
   const [error, setError] = useState<string | null>(null);
+  const symbolsKey = filter?.symbols ? filter.symbols.join(',') : '';
 
   const generation = useRef(0);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -30,12 +43,28 @@ export function useStocks(
       if (filter?.exchange && filter.exchange !== 'ALL') params.append('exchange', filter.exchange);
       if (filter?.sector && filter.sector !== 'ALL') params.append('sector', filter.sector);
       if (filter?.search) params.append('search', filter.search);
+      if (filter?.sortBy) params.append('sortBy', filter.sortBy);
+      if (filter?.order) params.append('order', filter.order);
+      if (filter?.page && filter.page >= 1) params.append('page', String(filter.page));
+      if (filter?.limit && filter.limit > 0) params.append('limit', String(filter.limit));
+      if (symbolsKey) params.append('symbols', symbolsKey);
 
-      const json = await marketJson<{ success: boolean; data: StockWithQuote[]; error?: string }>(`/api/stocks?${params.toString()}`, 30_000, force);
+      const json = await marketJson<{
+        success: boolean;
+        data: StockWithQuote[];
+        total?: number;
+        totalPages?: number;
+        hasMore?: boolean;
+        error?: string;
+      }>(`/api/stocks?${params.toString()}`, 30_000, force);
       if (current !== generation.current) return;
       setError(null);
       if (json.success) {
-        setStocks(json.data);
+        const list = json.data || [];
+        setStocks(list);
+        setTotal(typeof json.total === 'number' ? json.total : list.length);
+        setTotalPages(typeof json.totalPages === 'number' ? json.totalPages : 1);
+        setHasMore(Boolean(json.hasMore));
         setUpdatedAt(new Date());
       } else {
         setError(json.error || 'Hisseler yüklenemedi');
@@ -45,14 +74,24 @@ export function useStocks(
     } finally {
       if (current === generation.current) setLoading(false);
     }
-  }, [isEnabled, filter?.exchange, filter?.sector, filter?.search]);
+  }, [
+    isEnabled,
+    filter?.exchange,
+    filter?.sector,
+    filter?.search,
+    filter?.sortBy,
+    filter?.order,
+    filter?.page,
+    filter?.limit,
+    symbolsKey,
+  ]);
 
   useEffect(() => {
     void fetchStocks();
     return () => { generation.current++; };
   }, [fetchStocks]);
 
-  return { stocks, loading, error, updatedAt, refetch: () => fetchStocks(true) };
+  return { stocks, total, totalPages, hasMore, loading, error, updatedAt, refetch: () => fetchStocks(true) };
 }
 
 export function useStockDetail(symbol: string) {

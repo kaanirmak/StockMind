@@ -12,6 +12,7 @@ import { useFunds } from '@/hooks/useFunds';
 import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal, PriceStatusBadge } from '@/components/ui';
 import { classifyFundPriceStatus, classifyStockPriceStatus } from '@/lib/market/priceStatus';
 import { MARKET_CATALOG, MOBILE_PRIMARY_MARKETS, type MarketId } from '@/lib/market/marketSelector';
+import { MARKET_PAGE_SIZE, paginateRecords, sortStockRecords } from '@/lib/market/pagination';
 import { describeSearchResult } from '@/lib/market/searchResultDescriptor';
 import {
   formatAssetUnitPrice,
@@ -78,9 +79,8 @@ function PiyasalarContent() {
   const [stockSortBy, setStockSortBy] = useState<StockSortKey>(initialResolved.stockSortBy);
   const [stockSortOrder, setStockSortOrder] = useState<SortDirection>(initialResolved.stockSortOrder);
 
-  // Infinite scroll / lazy loading for stocks (loads in chunks of 30)
-  const [stockLimit, setStockLimit] = useState<number>(30);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  // Pagination state (server-backed limited page size for stocks & TEFAS funds)
+  const [stockPage, setStockPage] = useState<number>(1);
 
   // Funds state
   const [selectedCategory, setSelectedCategory] = useState<string>(initialResolved.category);
@@ -89,8 +89,7 @@ function PiyasalarContent() {
   const [fundFeeTier, setFundFeeTier] = useState<FundFeeTier>('ALL');
   const [fundReturnPeriod, setFundReturnPeriod] = useState<FundReturnPeriod>('yearlyReturn');
   const [fundReturnThreshold, setFundReturnThreshold] = useState<FundReturnThreshold>('ALL');
-  const [fundLimit, setFundLimit] = useState<number>(30);
-  const loadMoreFundsRef = useRef<HTMLDivElement>(null);
+  const [fundPage, setFundPage] = useState<number>(1);
   const [fundSortBy, setFundSortBy] = useState<FundSortKey>(initialResolved.fundSortBy);
   const [fundSortOrder, setFundSortOrder] = useState<SortDirection>(initialResolved.fundSortOrder);
 
@@ -181,7 +180,7 @@ function PiyasalarContent() {
   ]);
 
   const { showToast } = useToast();
-  const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
+  const { items: watchlistItems, toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
 
   const handleMarketChange = (market: MarketId) => {
     setActiveMarket(market);
@@ -189,18 +188,29 @@ function PiyasalarContent() {
     setSelectedCategory('ALL');
     setStockSearch('');
     setFundSearch('');
-    setStockLimit(30);
-    setFundLimit(30);
+    setStockPage(1);
+    setFundPage(1);
   };
 
-  // Reset lazy load limit when filter changes
+  // Reset pagination to page 1 when filters, search, or sorting change
   useEffect(() => {
-    setStockLimit(30);
-  }, [activeMarket, selectedSector, stockSearch, stockSortBy, stockSortOrder]);
+    setStockPage(1);
+  }, [activeMarket, selectedSector, stockSearch, stockSortBy, stockSortOrder, watchlistOnly]);
 
   useEffect(() => {
-    setFundLimit(30);
-  }, [activeMarket, selectedCategory, fundSearch, fundSortBy, fundSortOrder]);
+    setFundPage(1);
+  }, [
+    activeMarket,
+    selectedCategory,
+    fundSearch,
+    fundRiskRange,
+    fundFeeTier,
+    fundReturnPeriod,
+    fundReturnThreshold,
+    fundSortBy,
+    fundSortOrder,
+    watchlistOnly,
+  ]);
 
   // Fetch overview data when activeMarket is 'ALL'
   useEffect(() => {
@@ -230,101 +240,91 @@ function PiyasalarContent() {
 
   // Stocks data (active when activeMarket is BIST, COMMODITY, CRYPTO, FOREX, INDEX, NASDAQ, or NYSE)
   const isStocksMarket = activeMarket !== 'TEFAS' && activeMarket !== 'ALL';
-  const { stocks, loading: stocksLoading, error: stocksError, updatedAt: stocksUpdatedAt, refetch: refetchStocks } = useStocks(
+  const watchlistStockSymbols = React.useMemo(
+    () => (watchlistOnly ? watchlistItems.filter((w) => w.assetType !== 'fund').map((w) => w.symbol) : undefined),
+    [watchlistOnly, watchlistItems]
+  );
+  const {
+    stocks,
+    total: serverStocksTotal,
+    totalPages: serverStocksTotalPages,
+    loading: stocksLoading,
+    error: stocksError,
+    updatedAt: stocksUpdatedAt,
+    refetch: refetchStocks,
+  } = useStocks(
     isStocksMarket
       ? {
           exchange: activeMarket,
           sector: selectedSector,
           search: stockSearch,
+          sortBy: stockSortBy,
+          order: stockSortOrder,
+          page: stockPage,
+          limit: MARKET_PAGE_SIZE,
+          symbols: watchlistStockSymbols && watchlistStockSymbols.length > 0 ? watchlistStockSymbols : undefined,
         }
       : undefined,
-    { enabled: isStocksMarket }
+    { enabled: isStocksMarket && (!watchlistOnly || (watchlistStockSymbols?.length ?? 0) > 0) }
   );
 
-  // If in 'ALL' tab, also fetch BIST top stocks
+  // If in 'ALL' tab, fetch only limited top BIST movers rather than the entire market list
   const { stocks: bistStocks } = useStocks(
-    activeMarket === 'ALL' ? { exchange: 'BIST' } : undefined,
+    activeMarket === 'ALL'
+      ? { exchange: 'BIST', sortBy: 'volume', order: 'desc', page: 1, limit: MARKET_PAGE_SIZE }
+      : undefined,
     { enabled: activeMarket === 'ALL' }
   );
 
-  const getNormalizedValue = (item: StockWithQuote, key: 'changePercent' | 'price' | 'volume' | 'marketCap') => {
-    if (key === 'marketCap') {
-      const cap = Number(item.marketCap) || 0;
-      if (cap <= 0) return 0;
-      const curr = String(item.currency || 'USD').toUpperCase();
-      if (curr === 'TRY') return cap / 49.25;
-      if (curr === 'EUR') return cap * 1.09;
-      if (curr === 'GBP') return cap * 1.30;
-      if (curr === 'JPY') return cap / 152;
-      if (curr === 'HKD') return cap / 7.78;
-      if (curr === 'AUD') return cap * 0.65;
-      if (curr === 'BRL') return cap * 0.17;
-      if (curr === 'KRW') return cap / 1400;
-      if (curr === 'CHF') return cap * 1.12;
-      if (curr === 'CAD') return cap * 0.72;
-      return cap;
-    }
-    if (key === 'price') {
-      const p = Number(item.price) || 0;
-      if (p <= 0) return 0;
-      const curr = String(item.currency || 'USD').toUpperCase();
-      if (curr === 'TRY') return p / 49.25;
-      if (curr === 'EUR') return p * 1.09;
-      if (curr === 'GBP') return p * 1.30;
-      if (curr === 'JPY') return p / 152;
-      return p;
-    }
-    return Number(item[key]) || 0;
-  };
+  const sortedStocks = sortStockRecords(
+    stocks.filter((s) => !watchlistOnly || checkWatchlisted(s.symbol)),
+    stockSortBy,
+    stockSortOrder
+  );
 
-  const sortedStocks = stocks.filter((s) => !watchlistOnly || checkWatchlisted(s.symbol)).sort((a, b) => {
-    const valA = getNormalizedValue(a, stockSortBy);
-    const valB = getNormalizedValue(b, stockSortBy);
-
-    // When sorting by marketCap or volume, items with 0/null values always go to the bottom
-    if (stockSortBy === 'marketCap' || stockSortBy === 'volume') {
-      if (valA <= 0 && valB > 0) return 1;
-      if (valB <= 0 && valA > 0) return -1;
-    }
-
-    if (valB !== valA) {
-      return stockSortOrder === 'desc' ? valB - valA : valA - valB;
-    }
-    // Secondary fallback sorting: prioritize highest volume or price
-    const secA = getNormalizedValue(a, 'volume') || Number(a.price) || 0;
-    const secB = getNormalizedValue(b, 'volume') || Number(b.price) || 0;
-    return secB - secA;
-  });
-
-  const visibleStocks = sortedStocks.slice(0, stockLimit);
-
-  // IntersectionObserver for smooth infinite scroll on stocks
-  useEffect(() => {
-    if (!loadMoreRef.current || !isStocksMarket) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && stockLimit < sortedStocks.length) {
-          setStockLimit((prev) => Math.min(prev + 30, sortedStocks.length));
-        }
-      },
-      { rootMargin: '300px' }
-    );
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [stockLimit, sortedStocks.length, isStocksMarket]);
+  const stockTotalCount = watchlistOnly
+    ? (watchlistStockSymbols?.length === 0 ? 0 : sortedStocks.length)
+    : serverStocksTotal;
+  const stockTotalPages = watchlistOnly
+    ? paginateRecords(sortedStocks, stockPage, MARKET_PAGE_SIZE).totalPages
+    : Math.max(1, serverStocksTotalPages);
+  const visibleStocks = watchlistOnly
+    ? paginateRecords(sortedStocks, stockPage, MARKET_PAGE_SIZE).items
+    : sortedStocks;
 
   const toggleStockSort = (column: 'changePercent' | 'price' | 'volume' | 'marketCap') => {
     if (stockSortBy === column) setStockSortOrder(stockSortOrder === 'desc' ? 'asc' : 'desc');
     else { setStockSortBy(column); setStockSortOrder('desc'); }
+    setStockPage(1);
   };
 
   // Funds data
-  const { funds, loading: fundsLoading, error: fundsError, refetch: refetchFunds } = useFunds(
+  const watchlistFundSymbols = React.useMemo(
+    () => (watchlistOnly ? watchlistItems.filter((w) => w.assetType === 'fund').map((w) => w.symbol) : undefined),
+    [watchlistOnly, watchlistItems]
+  );
+  const {
+    funds,
+    total: serverFundsTotal,
+    totalPages: serverFundsTotalPages,
+    loading: fundsLoading,
+    error: fundsError,
+    refetch: refetchFunds,
+  } = useFunds(
     {
       category: selectedCategory,
       search: fundSearch,
+      riskRange: fundRiskRange,
+      feeTier: fundFeeTier,
+      returnPeriod: fundReturnPeriod,
+      returnThreshold: fundReturnThreshold,
+      sortBy: fundSortBy,
+      order: fundSortOrder,
+      page: fundPage,
+      limit: MARKET_PAGE_SIZE,
+      symbols: watchlistFundSymbols && watchlistFundSymbols.length > 0 ? watchlistFundSymbols : undefined,
     },
-    { enabled: activeMarket === 'TEFAS' }
+    { enabled: activeMarket === 'TEFAS' && (!watchlistOnly || (watchlistFundSymbols?.length ?? 0) > 0) }
   );
 
   const filteredFunds = filterFundsCombinatorially(funds, {
@@ -339,7 +339,15 @@ function PiyasalarContent() {
   });
 
   const sortedFunds = sortFundsByField(filteredFunds, fundSortBy, fundSortOrder);
-  const visibleFunds = sortedFunds.slice(0, fundLimit);
+  const fundTotalCount = watchlistOnly
+    ? (watchlistFundSymbols?.length === 0 ? 0 : sortedFunds.length)
+    : serverFundsTotal;
+  const fundTotalPages = watchlistOnly
+    ? paginateRecords(sortedFunds, fundPage, MARKET_PAGE_SIZE).totalPages
+    : Math.max(1, serverFundsTotalPages);
+  const visibleFunds = watchlistOnly
+    ? paginateRecords(sortedFunds, fundPage, MARKET_PAGE_SIZE).items
+    : sortedFunds;
   const activeFundFilterCount = countActiveFundFilters({
     category: selectedCategory,
     search: fundSearch,
@@ -360,28 +368,13 @@ function PiyasalarContent() {
     setFundReturnPeriod('yearlyReturn');
     setFundReturnThreshold('ALL');
     setWatchlistOnly(false);
-    setFundLimit(30);
+    setFundPage(1);
   };
-
-  // IntersectionObserver for smooth infinite scroll on TEFAS funds
-  useEffect(() => {
-    if (!loadMoreFundsRef.current || activeMarket !== 'TEFAS') return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && fundLimit < sortedFunds.length) {
-          setFundLimit((prev) => Math.min(prev + 30, sortedFunds.length));
-        }
-      },
-      { rootMargin: '300px' }
-    );
-    observer.observe(loadMoreFundsRef.current);
-    return () => observer.disconnect();
-  }, [fundLimit, sortedFunds.length, activeMarket]);
 
   const toggleFundSort = (column: typeof fundSortBy) => {
     if (fundSortBy === column) setFundSortOrder(fundSortOrder === 'desc' ? 'asc' : 'desc');
     else { setFundSortBy(column); setFundSortOrder('desc'); }
-    setFundLimit(30);
+    setFundPage(1);
   };
 
   const indexCategories = [
@@ -1152,19 +1145,41 @@ function PiyasalarContent() {
             </div>
           )}
 
-          {/* Infinite Scroll Indicator & Load More Button */}
-          {visibleStocks.length < sortedStocks.length && (
-            <div ref={loadMoreRef} className="py-6 flex flex-col items-center justify-center gap-2 text-center">
+          {/* Server-backed Stocks Pagination Bar */}
+          {stockTotalCount > 0 && (
+            <div
+              data-testid="stocks-pagination"
+              className="py-4 px-4 glass-card rounded-2xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3"
+            >
               <span className="text-xs text-text-muted font-medium">
-                {visibleStocks.length} / {sortedStocks.length} varlık gösteriliyor
+                Sayfa {stockPage} / {stockTotalPages} • Toplam {stockTotalCount} varlık ({visibleStocks.length} gösteriliyor)
               </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setStockLimit((prev) => Math.min(prev + 40, sortedStocks.length))}
-              >
-                Daha Fazla Yükle (+40)
-              </Button>
+              {stockTotalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={stockPage <= 1}
+                    onClick={() => {
+                      setStockPage((p) => Math.max(1, p - 1));
+                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    ← Önceki
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={stockPage >= stockTotalPages}
+                    onClick={() => {
+                      setStockPage((p) => Math.min(stockTotalPages, p + 1));
+                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    Sonraki →
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1182,7 +1197,7 @@ function PiyasalarContent() {
                   aria-label="TEFAS fon kodu veya kurucu ara"
                   placeholder="Fon kodu veya kurucu ara (örn: TI2, MAC)..."
                   value={fundSearch}
-                  onChange={(e) => { setFundSearch(e.target.value); setFundLimit(30); }}
+                  onChange={(e) => { setFundSearch(e.target.value); setFundPage(1); }}
                   leftIcon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}
                 />
               </div>
@@ -1211,7 +1226,7 @@ function PiyasalarContent() {
               {fundCategories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => { setSelectedCategory(cat.id); setFundLimit(30); }}
+                  onClick={() => { setSelectedCategory(cat.id); setFundPage(1); }}
                   className={`px-3 py-1.5 rounded-full border transition-all cursor-pointer shrink-0 text-xs ${selectedCategory === cat.id ? 'bg-accent/20 border-accent text-accent font-semibold' : 'bg-bg-tertiary/50 border-border/60 text-text-secondary hover:text-text-primary hover:border-border'}`}
                 >
                   {cat.label}
@@ -1229,7 +1244,7 @@ function PiyasalarContent() {
                 <select
                   aria-label="Fon risk seviyesi filtresi"
                   value={fundRiskRange}
-                  onChange={(e) => { setFundRiskRange(e.target.value as FundRiskRange); setFundLimit(30); }}
+                  onChange={(e) => { setFundRiskRange(e.target.value as FundRiskRange); setFundPage(1); }}
                   className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
                 >
                   {FUND_RISK_RANGE_OPTIONS.map((opt) => (
@@ -1243,7 +1258,7 @@ function PiyasalarContent() {
                 <select
                   aria-label="Fon yönetim ücreti filtresi"
                   value={fundFeeTier}
-                  onChange={(e) => { setFundFeeTier(e.target.value as FundFeeTier); setFundLimit(30); }}
+                  onChange={(e) => { setFundFeeTier(e.target.value as FundFeeTier); setFundPage(1); }}
                   className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
                 >
                   {FUND_FEE_TIER_OPTIONS.map((opt) => (
@@ -1270,7 +1285,7 @@ function PiyasalarContent() {
                     ) {
                       setFundSortBy(nextPeriod);
                     }
-                    setFundLimit(30);
+                    setFundPage(1);
                   }}
                   className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
                 >
@@ -1285,7 +1300,7 @@ function PiyasalarContent() {
                 <select
                   aria-label="Fon getiri eşiği filtresi"
                   value={fundReturnThreshold}
-                  onChange={(e) => { setFundReturnThreshold(e.target.value as FundReturnThreshold); setFundLimit(30); }}
+                  onChange={(e) => { setFundReturnThreshold(e.target.value as FundReturnThreshold); setFundPage(1); }}
                   className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
                 >
                   {FUND_RETURN_THRESHOLD_OPTIONS.map((opt) => (
@@ -1501,19 +1516,41 @@ function PiyasalarContent() {
             </div>
           )}
 
-          {/* TEFAS Infinite Scroll Indicator & Load More Button */}
-          {visibleFunds.length < sortedFunds.length && (
-            <div ref={loadMoreFundsRef} className="py-6 flex flex-col items-center justify-center gap-2 text-center">
+          {/* Server-backed TEFAS Pagination Bar */}
+          {fundTotalCount > 0 && (
+            <div
+              data-testid="funds-pagination"
+              className="py-4 px-4 glass-card rounded-2xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3"
+            >
               <span className="text-xs text-text-muted font-medium">
-                {visibleFunds.length} / {sortedFunds.length} TEFAS fonu gösteriliyor
+                Sayfa {fundPage} / {fundTotalPages} • Toplam {fundTotalCount} TEFAS fonu ({visibleFunds.length} gösteriliyor)
               </span>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setFundLimit((prev) => Math.min(prev + 30, sortedFunds.length))}
-              >
-                Daha Fazla Fon Yükle (+30)
-              </Button>
+              {fundTotalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={fundPage <= 1}
+                    onClick={() => {
+                      setFundPage((p) => Math.max(1, p - 1));
+                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    ← Önceki
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={fundPage >= fundTotalPages}
+                    onClick={() => {
+                      setFundPage((p) => Math.min(fundTotalPages, p + 1));
+                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    Sonraki →
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1597,7 +1634,7 @@ function PiyasalarContent() {
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => { setSelectedCategory(c.id); setFundLimit(30); }}
+                      onClick={() => { setSelectedCategory(c.id); setFundPage(1); }}
                       className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
                         selectedCategory === c.id
                           ? 'border-accent bg-accent/15 text-accent'
@@ -1701,7 +1738,7 @@ function PiyasalarContent() {
                       <button
                         key={opt.id}
                         type="button"
-                        onClick={() => { setFundRiskRange(opt.id); setFundLimit(30); }}
+                        onClick={() => { setFundRiskRange(opt.id); setFundPage(1); }}
                         className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
                           fundRiskRange === opt.id
                             ? 'border-accent bg-accent/15 text-accent'
@@ -1723,7 +1760,7 @@ function PiyasalarContent() {
                       <button
                         key={opt.id}
                         type="button"
-                        onClick={() => { setFundFeeTier(opt.id); setFundLimit(30); }}
+                        onClick={() => { setFundFeeTier(opt.id); setFundPage(1); }}
                         className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
                           fundFeeTier === opt.id
                             ? 'border-accent bg-accent/15 text-accent'
@@ -1742,7 +1779,7 @@ function PiyasalarContent() {
                     <select
                       aria-label="Mobil fon getiri dönemi"
                       value={fundReturnPeriod}
-                      onChange={(e) => { setFundReturnPeriod(e.target.value as FundReturnPeriod); setFundLimit(30); }}
+                      onChange={(e) => { setFundReturnPeriod(e.target.value as FundReturnPeriod); setFundPage(1); }}
                       className="w-full bg-bg-secondary border border-border rounded-xl px-2.5 py-2 text-xs text-text-primary"
                     >
                       {FUND_RETURN_PERIOD_OPTIONS.map((opt) => (
@@ -1755,7 +1792,7 @@ function PiyasalarContent() {
                     <select
                       aria-label="Mobil fon getiri eşiği"
                       value={fundReturnThreshold}
-                      onChange={(e) => { setFundReturnThreshold(e.target.value as FundReturnThreshold); setFundLimit(30); }}
+                      onChange={(e) => { setFundReturnThreshold(e.target.value as FundReturnThreshold); setFundPage(1); }}
                       className="w-full bg-bg-secondary border border-border rounded-xl px-2.5 py-2 text-xs text-text-primary"
                     >
                       {FUND_RETURN_THRESHOLD_OPTIONS.map((opt) => (

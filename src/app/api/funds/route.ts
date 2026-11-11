@@ -3,11 +3,13 @@ import { getFundsFromDatabase, getAllFunds } from '@/lib/data/funds';
 import { fetchTefasLiveDetail } from '@/lib/api/tefas';
 import {
   filterFundsCombinatorially,
+  sortFundsByField,
   type FundFeeTier,
   type FundReturnPeriod,
   type FundReturnThreshold,
   type FundRiskRange,
 } from '@/lib/market/fundFilters';
+import { paginateRecords, parsePaginationParams } from '@/lib/market/pagination';
 import { parseSymbolListParam } from '@/lib/market/symbolQuery';
 export const dynamic = 'force-dynamic';
 
@@ -104,29 +106,23 @@ export async function GET(request: Request) {
       });
     }
 
-    // Apply sorting if requested
+    // Apply sorting consistently across pages when requested
     if (sortBy) {
-      const mult = order === 'asc' ? 1 : -1;
-      funds.sort((a: any, b: any) => {
-        const valA = a[sortBy] != null ? Number(a[sortBy]) : -Infinity * mult;
-        const valB = b[sortBy] != null ? Number(b[sortBy]) : -Infinity * mult;
-        if (valA === valB) return 0;
-        return (valA - valB) * mult;
-      });
+      funds = sortFundsByField(funds, sortBy as any, order);
     }
 
-    const totalCount = funds.length;
-    const page = searchParams.get('page') ? Math.max(1, Number(searchParams.get('page')) || 1) : 1;
-    const parsedLimit = limit && limit > 0 ? limit : undefined;
-    const pagedFunds = parsedLimit ? funds.slice((page - 1) * parsedLimit, page * parsedLimit) : funds;
+    const { page, limit: parsedLimit } = parsePaginationParams(searchParams);
+    const paginated = paginateRecords(funds, page, parsedLimit);
 
     return NextResponse.json({
       success: true,
-      count: pagedFunds.length,
-      total: totalCount,
-      page,
-      limit: parsedLimit || totalCount,
-      data: pagedFunds,
+      count: paginated.items.length,
+      total: paginated.total,
+      page: paginated.page,
+      limit: paginated.limit,
+      totalPages: paginated.totalPages,
+      hasMore: paginated.hasMore,
+      data: paginated.items,
     });
   } catch (error) {
     console.error('Funds API Error:', error);

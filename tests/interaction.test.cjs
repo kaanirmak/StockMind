@@ -5231,6 +5231,78 @@ test('OPS-05: alert and watchlist checks use symbol-scoped quote queries instead
   assert.match(fundsRouteSrc, /parseSymbolListParam/);
 });
 
+test('OPS-06: market tables paginate with bounded initial page and consistent sort/filter across pages', () => {
+  const pagination = load(path.join(process.cwd(), 'src/lib/market/pagination.ts'));
+
+  // 1. Default page size is bounded (30)
+  assert.equal(pagination.MARKET_PAGE_SIZE, 30);
+
+  // 2. parsePaginationParams enforces positive bounds and preserves omitted limit when no page/limit given
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('')).page, 1);
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('')).limit, undefined);
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('page=2')).page, 2);
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('page=2')).limit, 30);
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('page=0&limit=999')).page, 1);
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('page=0&limit=999')).limit, 200);
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('page=3&limit=15')).page, 3);
+  assert.equal(pagination.parsePaginationParams(new URLSearchParams('page=3&limit=15')).limit, 15);
+
+  // 3. paginateRecords clamps out-of-range pages and exposes total/totalPages/hasMore
+  const items = Array.from({ length: 65 }, (_, i) => ({ id: i + 1 }));
+  const page1 = pagination.paginateRecords(items, 1, 30);
+  assert.equal(page1.items.length, 30);
+  assert.equal(page1.items[0].id, 1);
+  assert.equal(page1.page, 1);
+  assert.equal(page1.total, 65);
+  assert.equal(page1.totalPages, 3);
+  assert.equal(page1.hasMore, true);
+
+  const page3 = pagination.paginateRecords(items, 99, 30);
+  assert.equal(page3.page, 3);
+  assert.equal(page3.items.length, 5);
+  assert.equal(page3.items[0].id, 61);
+  assert.equal(page3.hasMore, false);
+
+  // 4. sortStockRecords orders full dataset across currency conversions and keeps missing values last
+  const sortedStocks = pagination.sortStockRecords(
+    [
+      { symbol: 'MISS', market: 'BIST', currency: 'TRY', price: 10, marketCap: 0, changePercent: 5 },
+      { symbol: 'BIST1', market: 'BIST', currency: 'TRY', price: 100, marketCap: 4_000_000_000, changePercent: 1 },
+      { symbol: 'US1', market: 'NASDAQ', currency: 'USD', price: 200, marketCap: 200_000_000, changePercent: 3 },
+    ],
+    'marketCap',
+    'desc'
+  );
+  assert.deepEqual(
+    Array.from(sortedStocks, (s) => s.symbol),
+    ['US1', 'BIST1', 'MISS']
+  );
+
+  // 5. Routes, hooks, and piyasalar page wire server-side pagination & page controls
+  const stocksRouteSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/stocks/route.ts'), 'utf8');
+  assert.match(stocksRouteSrc, /paginateRecords/);
+  assert.match(stocksRouteSrc, /sortStockRecords/);
+  assert.match(stocksRouteSrc, /totalPages/);
+
+  const fundsRouteSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/funds/route.ts'), 'utf8');
+  assert.match(fundsRouteSrc, /paginateRecords/);
+  assert.match(fundsRouteSrc, /sortFundsByField/);
+  assert.match(fundsRouteSrc, /totalPages/);
+
+  const stockHookSrc = fs.readFileSync(path.join(process.cwd(), 'src/hooks/useStockData.ts'), 'utf8');
+  assert.match(stockHookSrc, /totalPages/);
+  assert.match(stockHookSrc, /hasMore/);
+
+  const fundHookSrc = fs.readFileSync(path.join(process.cwd(), 'src/hooks/useFunds.ts'), 'utf8');
+  assert.match(fundHookSrc, /returnPeriod/);
+  assert.match(fundHookSrc, /totalPages/);
+
+  const piyasalarSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/piyasalar/page.tsx'), 'utf8');
+  assert.match(piyasalarSrc, /data-testid="stocks-pagination"/);
+  assert.match(piyasalarSrc, /data-testid="funds-pagination"/);
+});
+
+
 
 
 

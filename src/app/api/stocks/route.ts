@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAllStocksLive } from '@/lib/data/stocks';
 import { parseSymbolListParam } from '@/lib/market/symbolQuery';
+import {
+  paginateRecords,
+  parsePaginationParams,
+  sortStockRecords,
+  type MarketSortDirection,
+  type StockSortField,
+} from '@/lib/market/pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +19,11 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || undefined;
     const symbolsParam = searchParams.get('symbols');
     const symbols = symbolsParam ? parseSymbolListParam(symbolsParam) : undefined;
+    const sortBy = (searchParams.get('sortBy') as StockSortField | null) || undefined;
+    const order: MarketSortDirection = searchParams.get('order') === 'asc' ? 'asc' : 'desc';
+    const { page, limit } = parsePaginationParams(searchParams);
 
-    const stocks = await getAllStocksLive({
+    const rawStocks = await getAllStocksLive({
       exchange,
       sector,
       search,
@@ -21,11 +31,19 @@ export async function GET(request: Request) {
       symbols: symbols && symbols.length > 0 ? symbols : undefined,
     });
 
+    const sortedStocks = sortBy ? sortStockRecords(rawStocks, sortBy, order) : rawStocks;
+    const paginated = paginateRecords(sortedStocks, page, limit);
+
     return NextResponse.json(
       {
         success: true,
-        count: stocks.length,
-        data: stocks,
+        count: paginated.items.length,
+        total: paginated.total,
+        page: paginated.page,
+        limit: paginated.limit,
+        totalPages: paginated.totalPages,
+        hasMore: paginated.hasMore,
+        data: paginated.items,
       },
       {
         headers: {
