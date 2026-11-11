@@ -13,6 +13,7 @@ import {
   type AlertDirection,
 } from '@/lib/market/alertForm';
 import { clearAlertTelemetry } from '@/lib/market/alertTelemetry';
+import { trackUsageEvent } from '@/lib/analytics/usageMetrics';
 
 export type PriceAlertType = 'price' | 'percent_up' | 'percent_down' | 'percent_both';
 
@@ -527,6 +528,12 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
 
       set({ items: updated });
       persist(currentUserId, items, updated);
+      const targetItem = updated.find((i) => i.id === symbolOrId || i.symbol.toUpperCase() === searchKey);
+      trackUsageEvent('alert_configured', {
+        assetType: targetItem?.assetType === 'fund' ? 'fund' : 'stock',
+        alertKind: alert.alertType || 'price',
+        isGuest: currentUserId === 'guest',
+      });
     },
 
     toggleAlertPaused: (symbolOrId, paused) => {

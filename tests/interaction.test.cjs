@@ -421,6 +421,7 @@ test('portfolio publishes ready quotes while a slower asset is still loading', a
       };
       if (name === '@/lib/supabase/client') return {};
       if (name === '@/lib/auth/sessionBoundary') return load('src/lib/auth/sessionBoundary.ts');
+      if (name === '@/lib/analytics/usageMetrics') return { trackUsageEvent: () => {} };
       throw new Error(name);
     },
     fetch: async (url, options) => {
@@ -5607,6 +5608,100 @@ test('OPS-11: provider and background task health board tracks stocks/funds/news
   const adminPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/admin/page.tsx'), 'utf8');
   assert.match(adminPageSrc, /data-testid="provider-health-board"/);
   assert.match(adminPageSrc, /Sağlayıcı &amp; Görev Durum Panosu/);
+});
+
+test('OPS-12: usage metrics measure funnel milestones while strictly excluding private portfolio amounts and PII', () => {
+  const storeMap = new Map();
+  const beacons = [];
+  const usage = load(path.join(process.cwd(), 'src/lib/analytics/usageMetrics.ts'), {
+    window: {
+      localStorage: {
+        getItem: (k) => (storeMap.has(k) ? storeMap.get(k) : null),
+        setItem: (k, v) => storeMap.set(k, String(v)),
+      },
+    },
+    navigator: {
+      sendBeacon: (url, blob) => beacons.push({ url, blob }),
+    },
+    Blob: class MockBlob {
+      constructor(parts) {
+        this.text = parts.join('');
+      }
+    },
+  });
+
+  usage.clearUsageMetrics();
+
+  // 1. Unknown events are rejected fail-closed
+  assert.equal(usage.recordServerUsageEvent({ event: 'arbitrary_dump', meta: {} }), null);
+
+  // 2. Private portfolio amounts, quantities, prices, symbols, and PII are stripped aggressively
+  const txEvent = usage.trackUsageEvent('first_transaction_completed', {
+    assetType: 'stock',
+    transactionType: 'buy',
+    mode: 'manual',
+    isGuest: false,
+    amount: 250_000,
+    totalValue: 1_200_000,
+    price: 312.5,
+    quantity: 800,
+    symbol: 'THYAO',
+    email: 'secret@example.com',
+    pnl: 45_000,
+  });
+
+  assert.ok(txEvent);
+  const serialized = JSON.stringify(txEvent);
+  assert.doesNotMatch(serialized, /250000|1200000|312\.5|800|THYAO|secret@example\.com|45000/);
+  assert.equal(txEvent.meta.assetType, 'stock');
+  assert.equal(txEvent.meta.transactionType, 'buy');
+
+  // 3. First transaction completion deduplicates per profile
+  assert.equal(usage.trackUsageEvent('first_transaction_completed', { assetType: 'fund' }), null);
+
+  // 4. Import and alert configuration track safely without leaking targetPrice or portfolio totals
+  const importEvent = usage.trackUsageEvent('import_completed', {
+    fileFormat: 'xlsx',
+    mode: 'append',
+    rowCountBucket: usage.bucketImportedRowCount(14),
+    totalCost: 99_999,
+  });
+  assert.equal(importEvent.meta.rowCountBucket, '11-50');
+  assert.equal(importEvent.meta.totalCost, undefined);
+
+  const alertEvent = usage.trackUsageEvent('alert_configured', {
+    assetType: 'fund',
+    alertKind: 'percent_up',
+    targetPrice: 55.2,
+    alertBasePrice: 50.0,
+    symbol: 'TI2',
+  });
+  assert.equal(alertEvent.meta.alertKind, 'percent_up');
+  assert.equal(alertEvent.meta.targetPrice, undefined);
+  assert.equal(alertEvent.meta.symbol, undefined);
+
+  // 5. Repeat usage triggers on day 2+ and deduplicates within the same day
+  assert.equal(usage.trackRepeatActiveDay(new Date('2026-11-10T10:00:00Z')), null);
+  const day2Repeat = usage.trackRepeatActiveDay(new Date('2026-11-11T10:00:00Z'));
+  assert.ok(day2Repeat);
+  assert.equal(day2Repeat.event, 'repeat_usage_day');
+  assert.equal(day2Repeat.meta.activeDayCount, 2);
+  assert.equal(usage.trackRepeatActiveDay(new Date('2026-11-11T18:00:00Z')), null);
+
+  const summary = usage.getUsageMetricsSummary();
+  assert.equal(summary.counts.first_transaction_completed, 1);
+  assert.equal(summary.counts.import_completed, 1);
+  assert.equal(summary.counts.alert_configured, 1);
+  assert.equal(summary.counts.repeat_usage_day, 1);
+  assert.equal(beacons.length, 4);
+
+  // 6. Wire-up verification across stores, import modal, reporter, and APIs
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/store/usePortfolioStore.ts'), 'utf8'), /first_transaction_completed/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/components/portfolio/ExcelImportModal.tsx'), 'utf8'), /import_completed/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/store/useWatchlistStore.ts'), 'utf8'), /alert_configured/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/components/telemetry/WebVitalsReporter.tsx'), 'utf8'), /trackRepeatActiveDay/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/api/ops/usage-metrics/route.ts'), 'utf8'), /requireDesktopAdmin/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/api/admin/stats/route.ts'), 'utf8'), /usageMetrics/);
 });
 
 

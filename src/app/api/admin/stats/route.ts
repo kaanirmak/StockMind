@@ -7,6 +7,7 @@ import { summarizeDeliveryQueue } from '@/lib/email/deliveryQueue';
 import { summarizeBulletinScheduleTelemetry } from '@/lib/email/scheduleMonitor';
 import { getPlatformPerformanceReport } from '@/lib/ops/performanceMonitor';
 import { buildOperationalHealthSummary } from '@/lib/ops/providerHealth';
+import { getUsageMetricsSummary } from '@/lib/analytics/usageMetrics';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 
 export const dynamic = 'force-dynamic';
@@ -64,6 +65,7 @@ export async function GET(request: Request) {
           bulletinScheduleSummary,
           providerHealthSummary: buildOperationalHealthSummary({ bulletinScheduleSummary }),
           platformPerformance: getPlatformPerformanceReport(),
+          usageMetrics: getUsageMetricsSummary(),
           environment: process.env.NODE_ENV || 'production',
           systemTime: new Date().toISOString(),
           adminEmail: process.env.ADMIN_EMAIL || 'kaanrmak7@gmail.com',

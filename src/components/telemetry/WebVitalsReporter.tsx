@@ -8,6 +8,7 @@ import {
   normalizeTelemetryRoute,
   type CriticalApiTimingInput,
 } from '@/lib/ops/performanceMonitor';
+import { trackRepeatActiveDay } from '@/lib/analytics/usageMetrics';
 
 /**
  * Passively collects LCP, INP, CLS, initial JS/CSS/document transfer weight, and critical API latencies
@@ -16,6 +17,10 @@ import {
 export function WebVitalsReporter() {
   const pathname = usePathname();
   const flushedRef = useRef(false);
+
+  useEffect(() => {
+    trackRepeatActiveDay();
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof PerformanceObserver === 'undefined') return;

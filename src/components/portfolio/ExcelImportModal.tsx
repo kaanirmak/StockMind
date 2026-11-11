@@ -17,6 +17,7 @@ import {
   StatementTemplateMatch,
 } from '@/lib/portfolio/brokerStatementTemplates';
 import { summarizeImportPreview } from '@/lib/portfolio/importPreview';
+import { bucketImportedRowCount, trackUsageEvent } from '@/lib/analytics/usageMetrics';
 
 export interface ExcelImportModalProps {
   isOpen: boolean;
@@ -199,6 +200,16 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
       }
 
       if (inserted && inserted.length > 0) {
+        const ext = file?.name?.toLowerCase().endsWith('.csv')
+          ? 'csv'
+          : file?.name?.toLowerCase().endsWith('.xls')
+            ? 'xls'
+            : 'xlsx';
+        trackUsageEvent('import_completed', {
+          fileFormat: ext,
+          mode: overwriteExisting ? 'replace' : 'append',
+          rowCountBucket: bucketImportedRowCount(inserted.length),
+        });
         showToast({
           type: 'success',
           title: 'İçe Aktarma Başarılı',

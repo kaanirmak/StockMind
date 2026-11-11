@@ -13,6 +13,7 @@ import {
 } from '@/lib/portfolio/samplePortfolio';
 import { createClient } from '@/lib/supabase/client';
 import { getPortfolioStorageKey } from '@/lib/auth/sessionBoundary';
+import { trackUsageEvent } from '@/lib/analytics/usageMetrics';
 
 interface PortfolioState {
   portfolios: Portfolio[];
@@ -874,6 +875,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           });
 
           if (insertedDbTx) {
+            const wasFirstTransaction = get().transactions.length === 0;
             writeSampleModeSession(false);
             set((state) => {
               const updated = [insertedDbTx, ...state.transactions];
@@ -884,6 +886,14 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
               });
               return { transactions: updated, error: null, isSampleMode: false };
             });
+            if (wasFirstTransaction) {
+              trackUsageEvent('first_transaction_completed', {
+                assetType: insertedDbTx.assetType,
+                transactionType: insertedDbTx.transactionType,
+                mode: 'authenticated',
+                isGuest: false,
+              });
+            }
             get().fetchLivePrices();
             return insertedDbTx;
           } else {
@@ -904,6 +914,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           createdAt: new Date().toISOString(),
         };
 
+        const wasFirstGuestTx = get().transactions.length === 0;
         writeSampleModeSession(false);
         set((state) => {
           const updated = [fallbackTx, ...state.transactions];
@@ -915,6 +926,14 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           return { transactions: updated, isSampleMode: false };
         });
 
+        if (wasFirstGuestTx) {
+          trackUsageEvent('first_transaction_completed', {
+            assetType: fallbackTx.assetType,
+            transactionType: fallbackTx.transactionType,
+            mode: 'guest',
+            isGuest: true,
+          });
+        }
         get().fetchLivePrices();
         return fallbackTx;
       } catch (e: any) {
