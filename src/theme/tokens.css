@@ -82,13 +82,15 @@ html.light {
   /* Accent */
   --accent: #7c3aed;
   --accent-hover: #6d28d9;
-  --accent-secondary: #9333ea;
+  --accent-text: #6d28d9;
+  --accent-secondary: #7e22ce;
   --accent-glow: rgba(124, 58, 237, 0.15);
+  --focus-ring: #6d28d9;
 
   /* Text */
   --text-primary: #0f172a;
   --text-secondary: #334155;
-  --text-muted: #64748b;
+  --text-muted: #475569;
   --text-inverse: #ffffff;
 
   /* Border */
@@ -115,7 +117,7 @@ html.dark {
   --semantic-success: #34d399;
   --semantic-danger: #f87171;
   --semantic-warning: #fbbf24;
-  --semantic-info: #60a5fa;
+  --semantic-info: #93c5fd;
 
   /* Backgrounds — True OLED Pitch Black Base with Clear Card Contrast */
   --bg-primary: #000000;
@@ -126,21 +128,23 @@ html.dark {
   --bg-input: #08090f;
 
   /* Accent */
-  --accent: #8b5cf6;
-  --accent-hover: #a78bfa;
-  --accent-secondary: #c084fc;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-text: #a78bfa;
+  --accent-secondary: #d8b4fe;
   --accent-glow: rgba(139, 92, 246, 0.15);
+  --focus-ring: #a78bfa;
 
   /* Text */
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
   --text-inverse: #000000;
 
   /* Border */
-  --border: rgba(255, 255, 255, 0.11);
-  --border-hover: rgba(255, 255, 255, 0.20);
-  --border-accent: rgba(139, 92, 246, 0.30);
+  --border: rgba(255, 255, 255, 0.14);
+  --border-hover: rgba(255, 255, 255, 0.24);
+  --border-accent: rgba(167, 139, 250, 0.35);
 
   /* Shadows — Subdued, focused shadows replacing heavy purple neon spills */
   --shadow-glow: 0 0 16px rgba(139, 92, 246, 0.10);

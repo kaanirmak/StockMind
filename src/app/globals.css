@@ -725,8 +725,13 @@ html.dark .glass-purple {
 
 /* Focus ring */
 .focus-ring:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+
+/* High-contrast accent text in dark surfaces */
+:where(html.dark) .text-accent {
+  color: var(--accent-text);
 }
 
 /* ═══════════════════════════════════════════
@@ -844,7 +849,7 @@ button, a {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -888,7 +893,7 @@ button, a {
 }
 :where(button:has(> svg:only-child), button[aria-label]) { min-width: 2.75rem; }
 :where(a, button, input, select, textarea, summary):focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
 }
 @media (prefers-reduced-motion: reduce) {

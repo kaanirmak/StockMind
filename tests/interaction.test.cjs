@@ -2248,6 +2248,53 @@ test('UX-08 mobile navigation keeps core one-tap flows and surfaces news and ala
   assert.match(mobileNavSrc, /aria-label="Diğer sayfalar"/);
 });
 
+test('UX-09 light and dark themes pass WCAG 2.1 AA contrast across text, badges, charts, and focus rings', () => {
+  const {
+    LIGHT_THEME_TOKENS,
+    DARK_THEME_TOKENS,
+    auditThemeContrast,
+    contrastRatio,
+  } = load('src/lib/theme/contrast.ts');
+
+  const lightResults = Array.from(auditThemeContrast(LIGHT_THEME_TOKENS));
+  const darkResults = Array.from(auditThemeContrast(DARK_THEME_TOKENS));
+
+  for (const check of [...lightResults, ...darkResults]) {
+    assert.ok(
+      check.passed,
+      `Contrast check ${check.id} failed (${check.ratio}:1 < ${check.minRequired}:1)`
+    );
+  }
+
+  assert.ok(contrastRatio(LIGHT_THEME_TOKENS.textMuted, LIGHT_THEME_TOKENS.bgTertiary) >= 6.5);
+  assert.ok(contrastRatio('#ffffff', LIGHT_THEME_TOKENS.accentSolid) >= 5.5);
+  assert.ok(contrastRatio(DARK_THEME_TOKENS.accentText, DARK_THEME_TOKENS.bgCard) >= 6.5);
+
+  const tokensCss = fs.readFileSync(path.join(__dirname, '..', 'src/theme/tokens.css'), 'utf8');
+  assert.match(tokensCss, /--text-muted:\s*#475569/);
+  assert.match(tokensCss, /--text-secondary:\s*#cbd5e1/);
+  assert.match(tokensCss, /--accent-text:\s*#a78bfa/);
+  assert.match(tokensCss, /--focus-ring:\s*#6d28d9/);
+  assert.match(tokensCss, /--focus-ring:\s*#a78bfa/);
+
+  const globalsCss = fs.readFileSync(path.join(__dirname, '..', 'src/app/globals.css'), 'utf8');
+  assert.match(globalsCss, /:where\(html\.dark\)\s+\.text-accent/);
+  assert.match(globalsCss, /outline:\s*2px solid var\(--focus-ring\)/);
+
+  const dailyPulseSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/dashboard/DailyPulseRow.tsx'),
+    'utf8'
+  );
+  assert.match(dailyPulseSrc, /text-amber-800 dark:text-amber-400/);
+
+  const heatmapSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/dashboard/PortfolioHeatmap.tsx'),
+    'utf8'
+  );
+  assert.match(heatmapSrc, /text-emerald-800 dark:text-emerald-400/);
+  assert.match(heatmapSrc, /text-rose-800 dark:text-rose-400/);
+});
+
 
 
 

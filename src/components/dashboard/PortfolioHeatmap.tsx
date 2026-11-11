@@ -479,10 +479,10 @@ export default function PortfolioHeatmap() {
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-semibold">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border border-emerald-600/30 dark:border-emerald-500/25 font-semibold">
                   {compactSummary.positiveCount} Artıda
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25 font-semibold">
+                <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-800 dark:text-rose-400 border border-rose-600/30 dark:border-rose-500/25 font-semibold">
                   {compactSummary.negativeCount} Ekside
                 </span>
                 {compactSummary.topHolding && (
@@ -494,7 +494,7 @@ export default function PortfolioHeatmap() {
                   </span>
                 )}
                 {compactSummary.strongestGainer && (
-                  <span className="text-emerald-400 font-semibold">
+                  <span className="text-success font-semibold">
                     Lider: {compactSummary.strongestGainer.symbol} +{compactSummary.strongestGainer.metricValue.toFixed(2)}%
                   </span>
                 )}
@@ -573,9 +573,9 @@ export default function PortfolioHeatmap() {
                       <td
                         className={`py-2.5 px-3 text-right tabular-nums font-bold ${
                           row.metricValue > 0
-                            ? 'text-emerald-400'
+                            ? 'text-success'
                             : row.metricValue < 0
-                            ? 'text-rose-400'
+                            ? 'text-danger'
                             : 'text-text-muted'
                         }`}
                       >

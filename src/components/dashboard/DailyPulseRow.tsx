@@ -157,7 +157,7 @@ export default function DailyPulseRow() {
         <div>
           <div className="flex items-center justify-between gap-2 mb-2.5">
             <div className="flex items-center gap-1.5">
-              <span className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/25 flex items-center justify-center">
+              <span className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center">
                 <Icon name="sparkles" className="w-3.5 h-3.5" />
               </span>
               <h2 className="text-sm sm:text-base font-semibold text-text-primary">
@@ -192,7 +192,7 @@ export default function DailyPulseRow() {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-1.5">
                 {topEvent.event && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/25">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30">
                     {topEvent.event}
                   </span>
                 )}
