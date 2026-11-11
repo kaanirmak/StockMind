@@ -7169,6 +7169,81 @@ test('AIP-07: Pro scope, data coverage and sample output preview are clearly acc
   assert.match(committeeSrc, /ProScopeAndSamplePreview/);
 });
 
+test('AIP-08: saved analysis reports store symbol, data date, model and assumptions and reopen cleanly per session', () => {
+  const store = new Map();
+  const mockStorage = {
+    getItem: (k) => store.get(k) ?? null,
+    setItem: (k, v) => store.set(k, v),
+  };
+  const savedMod = load('src/lib/ai/savedReports.ts', {
+    require: (name) =>
+      name === '@/lib/auth/sessionBoundary'
+        ? load('src/lib/auth/sessionBoundary.ts')
+        : undefined,
+  });
+
+  const draft = savedMod.buildSavedReportFromChatMessage({
+    message: {
+      id: 'msg-10',
+      content: '**THYAO** net kâr marjı ve nakit akışı değerlendirmesi.',
+      createdAt: '2026-11-12T08:00:00.000Z',
+      asOf: '2026-11-12T07:55:00.000Z',
+      sourceScope: 'live_market_data',
+      provenance: {
+        collectedAt: '2026-11-12T07:55:00.000Z',
+        liveSymbols: ['THYAO.IS'],
+        missingSymbols: [],
+      },
+    },
+    model: 'google/gemini-2.0-flash',
+    assumptions: ['BIST kapanış verisi baz alındı.', 'Portföy ağırlıkları dahil edildi.'],
+    question: 'THYAO değerlendirmesi',
+  });
+
+  const saved = savedMod.saveAnalysisReport(draft, mockStorage, 'user-abc');
+  assert.equal(saved.symbol, 'THYAO.IS');
+  assert.equal(saved.dataDate, '2026-11-12T07:55:00.000Z');
+  assert.equal(saved.model, 'google/gemini-2.0-flash');
+  assert.ok(saved.assumptions.includes('BIST kapanış verisi baz alındı.'));
+
+  const reopened = savedMod.getSavedAnalysisReportById(saved.id, mockStorage, 'user-abc');
+  assert.ok(reopened);
+  assert.equal(reopened.symbol, 'THYAO.IS');
+  assert.equal(reopened.dataDate, '2026-11-12T07:55:00.000Z');
+  assert.equal(reopened.model, 'google/gemini-2.0-flash');
+  assert.match(reopened.contentMarkdown, /THYAO/);
+
+  // Session isolation: another user does not see user-abc reports
+  assert.equal(savedMod.listSavedAnalysisReports(mockStorage, 'other-user').length, 0);
+
+  // Committee report save/reopen
+  const commDraft = savedMod.buildSavedReportFromCommittee({
+    report: {
+      symbol: 'ASELS',
+      companyName: 'Aselsan A.Ş.',
+      consensusVerdict: 'AL',
+      consensusScore: 7.4,
+      consensusSummary: 'Büyüme ve savunma siparişleri destekliyor.',
+      generatedAt: '2026-11-12T09:00:00.000Z',
+      isLiveLLM: true,
+    },
+  });
+  const savedComm = savedMod.saveAnalysisReport(commDraft, mockStorage, 'user-abc');
+  assert.equal(savedMod.listSavedAnalysisReports(mockStorage, 'user-abc').length, 2);
+  assert.equal(savedComm.kind, 'investment_committee');
+
+  const remaining = savedMod.deleteSavedAnalysisReport(saved.id, mockStorage, 'user-abc');
+  assert.equal(remaining.length, 1);
+
+  const aiPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  const commTabSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/quant/InvestmentCommitteeTab.tsx'), 'utf8');
+  assert.match(aiPageSrc, /ai-save-analysis-btn/);
+  assert.match(aiPageSrc, /saved-reports-modal/);
+  assert.match(commTabSrc, /committee-save-report-btn/);
+  assert.match(commTabSrc, /committee-saved-reports/);
+});
+
+
 
 
 

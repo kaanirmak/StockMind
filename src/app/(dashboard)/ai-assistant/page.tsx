@@ -45,6 +45,13 @@ import {
   parseNewsAnalysisSearchParams,
   type NewsAnalysisContext,
 } from '@/lib/ai/newsAnalysisContext';
+import {
+  buildSavedReportFromChatMessage,
+  deleteSavedAnalysisReport,
+  listSavedAnalysisReports,
+  saveAnalysisReport,
+  type SavedAnalysisReport,
+} from '@/lib/ai/savedReports';
 
 export interface Message {
   id: string;
@@ -108,6 +115,10 @@ function AIAssistantContent() {
   const [portfolioContextScope, setPortfolioContextScope] = useState<PortfolioFieldScopePreference>('auto');
   const [showPortfolioFieldsInfo, setShowPortfolioFieldsInfo] = useState(false);
   const [pendingNewsContext, setPendingNewsContext] = useState<NewsAnalysisContext | null>(null);
+  const [savedReports, setSavedReports] = useState<SavedAnalysisReport[]>([]);
+  const [showSavedReportsModal, setShowSavedReportsModal] = useState(false);
+  const [activeSavedReport, setActiveSavedReport] = useState<SavedAnalysisReport | null>(null);
+  const [savedToastId, setSavedToastId] = useState<string | null>(null);
   const effectivePortfolioScope = React.useMemo(
     () => classifyPortfolioQuestionScope(input || 'dağılım', portfolioContextScope),
     [input, portfolioContextScope]
@@ -126,6 +137,10 @@ function AIAssistantContent() {
       return 0;
     }
   }, [portfolioTransactions, activePortfolioId]);
+
+  useEffect(() => {
+    setSavedReports(listSavedAnalysisReports(undefined, user?.id));
+  }, [user?.id]);
 
   useEffect(() => {
     try {
@@ -662,6 +677,21 @@ function AIAssistantContent() {
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
+              data-testid="ai-saved-reports-btn"
+              onClick={() => setShowSavedReportsModal(true)}
+              aria-label="Kayıtlı Analizler"
+              title="Kayıtlı Analizler"
+              className={`inline-flex items-center gap-1 px-2 ${isKeyboardOpen ? 'h-7' : 'h-8.5 sm:h-9'} rounded-xl border border-border text-[11px] font-semibold text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors cursor-pointer`}
+            >
+              <span>Kayıtlı</span>
+              {savedReports.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-accent/15 text-accent text-[10px]">
+                  {savedReports.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
               onClick={() => setShowHistoryModal(true)}
               aria-label="Sohbet Geçmişi"
               title="Sohbet Geçmişi"
@@ -897,9 +927,42 @@ function AIAssistantContent() {
 
                   <div className={`text-[10px] mt-1 flex items-center justify-between gap-2 ${isUser ? 'text-white/70 justify-end' : 'text-text-muted'}`}>
                     {!isUser && (
-                      <span className="text-[9px] text-text-muted/70 italic truncate">
-                        StockMind AI yatırım tavsiyesi vermez.
-                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[9px] text-text-muted/70 italic truncate">
+                          StockMind AI yatırım tavsiyesi vermez.
+                        </span>
+                        {msg.id !== 'msg-welcome' && !msg.errorInfo && (
+                          <button
+                            type="button"
+                            data-testid="ai-save-analysis-btn"
+                            onClick={() => {
+                              const modelLabel =
+                                models.find((m) => m.id === selectedModel)?.name || selectedModel;
+                              const assumptions = [
+                                includePortfolioContext
+                                  ? `Portföy kapsamı: ${PORTFOLIO_SCOPE_LABELS[effectivePortfolioScope]}`
+                                  : 'Portföy verisi dahil edilmedi.',
+                                activeCustomKey ? 'Kişisel OpenRouter API anahtarı kullanıldı.' : 'Uygulama kotası üzerinden üretildi.',
+                              ];
+                              const saved = saveAnalysisReport(
+                                buildSavedReportFromChatMessage({
+                                  message: msg,
+                                  model: modelLabel,
+                                  assumptions,
+                                }),
+                                undefined,
+                                user?.id
+                              );
+                              setSavedReports(listSavedAnalysisReports(undefined, user?.id));
+                              setSavedToastId(saved.id);
+                              setTimeout(() => setSavedToastId(null), 2000);
+                            }}
+                            className="text-[10px] font-semibold text-accent hover:underline shrink-0 cursor-pointer"
+                          >
+                            {savedToastId && msg.id ? 'Analiz Kaydedildi' : 'Analizi Kaydet'}
+                          </button>
+                        )}
+                      </div>
                     )}
                     <span>{new Date(msg.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
@@ -1546,6 +1609,101 @@ function AIAssistantContent() {
                 </div>
               )}
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Saved Analysis Reports Modal (AIP-08) */}
+      {showSavedReportsModal && (
+        <Modal
+          isOpen={showSavedReportsModal}
+          onClose={() => {
+            setShowSavedReportsModal(false);
+            setActiveSavedReport(null);
+          }}
+          title="Kayıtlı Analiz Raporları"
+          description="Kaydedilmiş raporlar sembol, veri tarihi, model ve varsayımlarıyla saklanır."
+          size="lg"
+        >
+          <div data-testid="saved-reports-modal" className="space-y-4 text-xs">
+            {activeSavedReport ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-text-primary">{activeSavedReport.title}</h3>
+                    <p className="text-[11px] text-text-muted">
+                      Sembol: <strong className="font-mono text-text-primary">{activeSavedReport.symbol}</strong> • Veri Tarihi:{' '}
+                      {new Date(activeSavedReport.dataDate).toLocaleString('tr-TR')} • Model: {activeSavedReport.model}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setActiveSavedReport(null)}
+                  >
+                    Listeye Dön
+                  </Button>
+                </div>
+                <div className="rounded-xl bg-bg-secondary/50 border border-border/60 p-2.5 space-y-1">
+                  <div className="font-semibold text-text-primary">Varsayımlar ve Veri Kapsamı</div>
+                  {activeSavedReport.assumptions.map((a) => (
+                    <p key={a} className="text-[11px] text-text-secondary">• {a}</p>
+                  ))}
+                  {activeSavedReport.missingDataNotes.map((m) => (
+                    <p key={m} className="text-[11px] text-warning">• {m}</p>
+                  ))}
+                </div>
+                <div className="rounded-xl border border-border/70 bg-bg-card p-3 max-h-80 overflow-y-auto whitespace-pre-wrap text-xs text-text-primary">
+                  {activeSavedReport.contentMarkdown}
+                </div>
+              </div>
+            ) : savedReports.length === 0 ? (
+              <p className="text-text-muted py-6 text-center">
+                Henüz kaydedilmiş analiz raporu yok. AI yanıtlarının altındaki &ldquo;Analizi Kaydet&rdquo; veya Yatırım Komitesi&apos;ndeki &ldquo;Raporu Kaydet&rdquo; düğmesini kullanabilirsiniz.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {savedReports.map((item) => (
+                  <div
+                    key={item.id}
+                    data-testid="saved-report-item"
+                    className="rounded-xl border border-border/70 bg-bg-secondary/40 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="accent" size="sm">{item.symbol}</Badge>
+                        <span className="font-bold text-text-primary truncate">{item.title}</span>
+                      </div>
+                      <p className="text-[11px] text-text-muted">
+                        Veri: {new Date(item.dataDate).toLocaleString('tr-TR')} • Model: {item.model}
+                      </p>
+                      <p className="text-[11px] text-text-secondary truncate">
+                        Varsayım: {item.assumptions.join(' | ')}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setActiveSavedReport(item)}
+                      >
+                        Yeniden Aç
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSavedReports(deleteSavedAnalysisReport(item.id, undefined, user?.id))}
+                      >
+                        Sil
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Modal>
       )}

@@ -26,6 +26,13 @@ import { Button } from '@/components/ui/Button';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
 import { ProScopeAndSamplePreview } from '@/components/pro/ProScopeAndSamplePreview';
 import { hasProAccess } from '@/lib/ai/modelCatalog';
+import {
+  buildSavedReportFromCommittee,
+  deleteSavedAnalysisReport,
+  listSavedAnalysisReports,
+  saveAnalysisReport,
+  type SavedAnalysisReport,
+} from '@/lib/ai/savedReports';
 
 const POPULAR_SYMBOLS = [
   { symbol: 'THYAO', name: 'Türk Hava Yolları' },
@@ -64,6 +71,8 @@ export default function InvestmentCommitteeTab({
   const [isProRequired, setIsProRequired] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
   const [wasCancelled, setWasCancelled] = useState(false);
+  const [savedReports, setSavedReports] = useState<SavedAnalysisReport<CommitteeReport>[]>([]);
+  const [saveFeedback, setSaveFeedback] = useState('');
   const activeRequest = useRef<AbortController | null>(null);
   const cancelReasonRef = useRef<'none' | 'timeout' | 'user' | 'superseded'>('none');
 
@@ -75,6 +84,16 @@ export default function InvestmentCommitteeTab({
     'Michael Burry: Makro kırılganlık ve ayı tezlerini oluşturuyor...',
     'Yatırım Komitesi Konsensüs Raporu sentezleniyor...',
   ];
+
+  useEffect(() => {
+    const refreshSaved = () => {
+      const all = listSavedAnalysisReports<CommitteeReport>(undefined, user?.id).filter(
+        (r) => r.kind === 'investment_committee' && Boolean(r.committeeSnapshot)
+      );
+      setSavedReports(all);
+    };
+    refreshSaved();
+  }, [user?.id]);
 
   // Load API key from settings and listen to updates
   useEffect(() => {
@@ -538,6 +557,32 @@ export default function InvestmentCommitteeTab({
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-medium">
                     {report.isLiveLLM ? 'AI komite simülasyonu' : 'Örnek senaryo'}
                   </span>
+                  <button
+                    type="button"
+                    data-testid="committee-save-report-btn"
+                    onClick={() => {
+                      saveAnalysisReport(
+                        buildSavedReportFromCommittee({
+                          report,
+                          assumptions: [
+                            'Seçili sembol için sunucudan alınan son kotasyon kullanıldı.',
+                          ],
+                        }),
+                        undefined,
+                        user?.id
+                      );
+                      setSavedReports(
+                        listSavedAnalysisReports<CommitteeReport>(undefined, user?.id).filter(
+                          (r) => r.kind === 'investment_committee' && Boolean(r.committeeSnapshot)
+                        )
+                      );
+                      setSaveFeedback('Rapor kaydedildi');
+                      setTimeout(() => setSaveFeedback(''), 2500);
+                    }}
+                    className="text-[11px] px-2.5 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 font-semibold hover:bg-emerald-500/20 cursor-pointer"
+                  >
+                    {saveFeedback || 'Raporu Kaydet'}
+                  </button>
                 </div>
                 <h3 className="text-lg sm:text-xl font-black text-text-primary">
                   Yatırım Komitesi Konsensüs Kararı
@@ -730,6 +775,67 @@ export default function InvestmentCommitteeTab({
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {savedReports.length > 0 && (
+        <div
+          data-testid="committee-saved-reports"
+          className="glass-card p-4 rounded-2xl border border-border/70 space-y-2.5"
+        >
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-text-primary">
+              Kayıtlı Komite Raporları ({savedReports.length})
+            </span>
+            <span className="text-[11px] text-text-muted">
+              Sembol, veri tarihi, model ve varsayımlarla saklanır
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {savedReports.slice(0, 6).map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-border/60 bg-bg-secondary/50 p-2.5 text-xs space-y-1.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-text-primary truncate">{item.title}</span>
+                  <span className="text-[10px] text-text-muted font-mono shrink-0">
+                    {new Date(item.dataDate).toLocaleDateString('tr-TR')}
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-muted truncate">
+                  Model: {item.model} • Varsayım: {item.assumptions[0] || 'Standart'}
+                </p>
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (item.committeeSnapshot) {
+                        setSymbol(item.symbol);
+                        setReport(item.committeeSnapshot);
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-accent hover:underline cursor-pointer"
+                  >
+                    Raporu Yeniden Aç
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = deleteSavedAnalysisReport(item.id, undefined, user?.id).filter(
+                        (r): r is SavedAnalysisReport<CommitteeReport> =>
+                          r.kind === 'investment_committee' && Boolean(r.committeeSnapshot)
+                      );
+                      setSavedReports(next);
+                    }}
+                    className="text-[11px] text-danger hover:underline cursor-pointer"
+                  >
+                    Sil
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
