@@ -90,8 +90,12 @@ export function AppUpdateNotifier() {
               }
             }
           } else {
-            // Up to date!
+            // Up to date — clear only stale update dismissal markers, preserving session & portfolio data
             setUpdateAvailable(false);
+            if (isAndroid && localVersionCode >= data.versionCode) {
+              localStorage.removeItem('stockmind_update_dismissed_version_code');
+              localStorage.removeItem('stockmind_update_dismissed_until');
+            }
           }
 
           // Check for global broadcast message (e.g. test notification sent to all devices)

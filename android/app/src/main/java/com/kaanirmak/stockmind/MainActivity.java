@@ -115,8 +115,28 @@ public class MainActivity extends AppCompatActivity {
         setupWebView();
         setupBackNavigation();
         schedulePeriodicPriceCheck();
+        preserveStateAcrossUpgrade();
 
         loadAppUrl();
+    }
+
+    private void preserveStateAcrossUpgrade() {
+        try {
+            if (prefs == null) return;
+            android.content.pm.PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+            int currentCode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                    ? (int) pInfo.getLongVersionCode()
+                    : pInfo.versionCode;
+            int previousCode = prefs.getInt("last_version_code", 0);
+            if (previousCode > 0 && currentCode > previousCode) {
+                prefs.edit().putInt("previous_version_code", previousCode).apply();
+                // Ensure session cookies remain flushed on disk across in-place APK upgrades
+                CookieManager.getInstance().flush();
+            }
+            if (previousCode != currentCode) {
+                prefs.edit().putInt("last_version_code", currentCode).apply();
+            }
+        } catch (Throwable ignored) {}
     }
 
     private void schedulePeriodicPriceCheck() {
@@ -535,8 +555,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             CookieManager cm = CookieManager.getInstance();
             String cookies = cm.getCookie(currentServerUrl);
-            // Normal Supabase JWT + refresh tokens are 3-6 KB. Only clear if dangerously bloated (> 8 KB).
-            if (cookies != null && cookies.length() > 8192) {
+            // Normal Supabase JWT + refresh tokens are 3-6 KB. Only clear if dangerously bloated (> 16 KB).
+            if (cookies != null && cookies.length() > 16384) {
                 // Cookies bloated! Clear BEFORE loading URL
                 final String finalUrl = targetUrl;
                 cm.removeAllCookies(success -> {
@@ -684,7 +704,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(fullUrl));
-                request.setTitle("StockMind v1.4.0 Güncellemesi");
+                request.setTitle("StockMind Güncellemesi");
                 request.setDescription("Yeni StockMind sürümü indiriliyor...");
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 

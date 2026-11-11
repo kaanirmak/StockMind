@@ -195,7 +195,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
 | OPS-01 | P0 | Yeni imzalı Android APK’yı üret | Sürüm kodu artar. Paket ve uygulama sürüm uç noktası aynı sürümü gösterir. | ◐ |
-| OPS-02 | P0 | Eski APK’dan güncellemeyi gerçek cihazda doğrula | Mevcut kurulum üzerine güncelleme tamamlanır. Oturum ve portföy kayıtları korunur. | ☐ |
+| OPS-02 | P0 | Eski APK’dan güncellemeyi gerçek cihazda doğrula | Mevcut kurulum üzerine güncelleme tamamlanır. Oturum ve portföy kayıtları korunur. | ◐ |
 | OPS-03 | P0 | APK dağıtımını ve geri alma yolunu doğrula | İndirme bağlantısı yeni imzalı dosyayı sunar. Sağlama toplamı, sürüm notu ve geri alma adımı kaydedilir. | ☐ |
 | OPS-04 | P0 | Kritik veri kesintisi testlerini otomatikleştir | Fiyat, fon, haber veya kur sağlayıcısı kesilince beklenen arayüz durumu doğrulanır. | ☐ |
 | OPS-05 | P1 | Alarm ve izleme için sembol bazlı sorgu ekle | Kontrol isteği yalnız aktif alarm veya takip sembollerini içerir. Tam piyasa listesinin yükü ortadan kalkar. | ☐ |

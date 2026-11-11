@@ -933,5 +933,36 @@ test('OPS-01: Android Gradle versionCode advances and matches package.json and /
   assert.equal(payload.packageId, 'com.kaanirmak.stockmind');
 });
 
+test('OPS-02: Android APK upgrade path preserves cookies, WebView storage, and background alert state', () => {
+  const manifest = fs.readFileSync(path.join(root, 'android/app/src/main/AndroidManifest.xml'), 'utf8');
+  const mainActivity = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/MainActivity.java'),
+    'utf8'
+  );
+  const bootReceiver = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/BootReceiver.java'),
+    'utf8'
+  );
+  const notifier = fs.readFileSync(path.join(root, 'src/components/ui/AppUpdateNotifier.tsx'), 'utf8');
+
+  // Manifest must permit in-place APK upgrades, backups, and reschedule background worker on MY_PACKAGE_REPLACED
+  assert.match(manifest, /android\.permission\.REQUEST_INSTALL_PACKAGES/);
+  assert.match(manifest, /android\.intent\.action\.MY_PACKAGE_REPLACED/);
+  assert.match(manifest, /android:authorities="\$\{applicationId\}\.fileprovider"/);
+  assert.match(bootReceiver, /Intent\.ACTION_MY_PACKAGE_REPLACED/);
+  assert.match(bootReceiver, /ExistingPeriodicWorkPolicy\.UPDATE/);
+
+  // MainActivity must keep WebView DOM storage, database, and flushed session cookies across upgrades
+  assert.match(mainActivity, /settings\.setDomStorageEnabled\(true\)/);
+  assert.match(mainActivity, /settings\.setDatabaseEnabled\(true\)/);
+  assert.match(mainActivity, /cookieManager\.setAcceptCookie\(true\)/);
+  assert.match(mainActivity, /preserveStateAcrossUpgrade\(/);
+  assert.doesNotMatch(mainActivity, /StockMind v1\.4\.0 Güncellemesi/);
+
+  // Web update notifier only clears dismissal cache after upgrade, never portfolio or auth storage
+  assert.match(notifier, /localVersionCode >= data\.versionCode/);
+  assert.doesNotMatch(notifier, /localStorage\.clear\(/);
+});
+
 
 
