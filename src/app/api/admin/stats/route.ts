@@ -5,6 +5,7 @@ import { apiErrorResponse } from '@/lib/api/security';
 import { getEmailTransportDiagnostics } from '@/lib/email/service';
 import { summarizeDeliveryQueue } from '@/lib/email/deliveryQueue';
 import { summarizeBulletinScheduleTelemetry } from '@/lib/email/scheduleMonitor';
+import { getPlatformPerformanceReport } from '@/lib/ops/performanceMonitor';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,7 @@ export async function GET(request: Request) {
           emailDiagnostics,
           emailQueueSummary,
           bulletinScheduleSummary,
+          platformPerformance: getPlatformPerformanceReport(),
           environment: process.env.NODE_ENV || 'production',
           systemTime: new Date().toISOString(),
           adminEmail: process.env.ADMIN_EMAIL || 'kaanrmak7@gmail.com',

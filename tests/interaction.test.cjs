@@ -5442,6 +5442,91 @@ test('OPS-08: adaptive refresh policy measures and throttles/pauses hidden tabs,
   }
 });
 
+test('OPS-09: mobile and desktop performance monitoring reports LCP, INP, CLS, initial payload, and critical API timings', () => {
+  const perf = load(path.join(process.cwd(), 'src/lib/ops/performanceMonitor.ts'));
+  perf.clearPerformanceSamples();
+
+  // 1. Platform detection differentiates mobile/Android vs desktop
+  assert.equal(perf.detectClientPlatform({ userAgent: 'Mozilla/5.0 (Linux; Android 14) StockMindAndroid/2.0', viewportWidth: 390 }), 'mobile');
+  assert.equal(perf.detectClientPlatform({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', viewportWidth: 1440 }), 'desktop');
+  assert.equal(perf.detectClientPlatform({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', viewportWidth: 480 }), 'mobile');
+
+  // 2. Endpoint & route normalization strips query params and asset identifiers
+  assert.equal(perf.normalizeTelemetryRoute('/stocks/THYAO?tab=finance&token=secret'), '/stocks/[symbol]');
+  assert.equal(perf.normalizeCriticalApiEndpoint('https://app.stockmind.tr/api/stocks/THYAO?liveOnly=true'), '/api/stocks/[symbol]');
+  assert.equal(perf.normalizeCriticalApiEndpoint('/api/funds?page=2'), '/api/funds');
+  assert.equal(perf.normalizeCriticalApiEndpoint('/api/user/private-key'), null);
+
+  // 3. Reject empty or out-of-range metrics safely
+  assert.equal(perf.recordPerformanceSample({ platform: 'mobile', lcpMs: -10, inpMs: 999_999 }), null);
+
+  // 4. Record samples for mobile and desktop separately
+  perf.recordPerformanceSample({
+    platform: 'mobile',
+    route: '/portfolio',
+    lcpMs: 2100,
+    inpMs: 140,
+    clsScore: 0.04,
+    initialPayloadKb: 380.5,
+    criticalApiTimings: [
+      { endpoint: '/api/stocks?liveOnly=true', durationMs: 280, status: 200 },
+      { endpoint: '/api/funds/TI2', durationMs: 420, status: 200 },
+    ],
+  });
+  perf.recordPerformanceSample({
+    platform: 'mobile',
+    route: '/piyasalar',
+    lcpMs: 2900,
+    inpMs: 260,
+    clsScore: 0.14,
+    initialPayloadKb: 410.0,
+    criticalApiTimings: [{ endpoint: '/api/stocks?page=1', durationMs: 520, status: 200 }],
+  });
+  perf.recordPerformanceSample({
+    platform: 'desktop',
+    route: '/dashboard',
+    lcpMs: 1200,
+    inpMs: 65,
+    clsScore: 0.01,
+    initialPayloadKb: 360.2,
+    criticalApiTimings: [{ endpoint: '/api/markets/overview', durationMs: 150, status: 200 }],
+  });
+
+  const report = perf.getPlatformPerformanceReport();
+  assert.equal(report.overallSampleCount, 3);
+  assert.equal(report.mobile.sampleCount, 2);
+  assert.equal(report.desktop.sampleCount, 1);
+
+  assert.equal(report.mobile.lcpMs.avg, 2500);
+  assert.equal(report.mobile.lcpMs.p75, 2900);
+  assert.equal(report.mobile.lcpMs.goodRatio, 0.5);
+  assert.equal(report.mobile.inpMs.p75, 260);
+  assert.equal(report.mobile.clsScore.p75, 0.14);
+  assert.equal(report.mobile.initialPayloadKb.avg, 395.3);
+  assert.equal(report.mobile.criticalApis.length, 2);
+
+  assert.equal(report.desktop.lcpMs.avg, 1200);
+  assert.equal(report.desktop.lcpMs.goodRatio, 1);
+  assert.equal(report.desktop.criticalApis[0].endpoint, '/api/markets/overview');
+  assert.equal(report.desktop.criticalApis[0].avgMs, 150);
+
+  // 5. Wire-up checks in reporter, layout, performance endpoint, and admin stats
+  const reporterSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/telemetry/WebVitalsReporter.tsx'), 'utf8');
+  assert.match(reporterSrc, /largest-contentful-paint/);
+  assert.match(reporterSrc, /layout-shift/);
+  assert.match(reporterSrc, /\/api\/ops\/performance/);
+
+  const layoutSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/layout.tsx'), 'utf8');
+  assert.match(layoutSrc, /<WebVitalsReporter\s*\/>/);
+
+  const routeSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/ops/performance/route.ts'), 'utf8');
+  assert.match(routeSrc, /requireDesktopAdmin/);
+  assert.match(routeSrc, /recordPerformanceSample/);
+
+  const adminStatsSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/admin/stats/route.ts'), 'utf8');
+  assert.match(adminStatsSrc, /platformPerformance/);
+});
+
 
 
 

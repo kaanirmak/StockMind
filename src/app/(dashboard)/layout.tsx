@@ -7,6 +7,7 @@ import Header from '@/components/layout/Header';
 import MobileNav from '@/components/layout/MobileNav';
 import { AppUpdateNotifier } from '@/components/ui';
 import { WatchlistAlertWatcher } from '@/components/watchlist/WatchlistAlertWatcher';
+import { WebVitalsReporter } from '@/components/telemetry/WebVitalsReporter';
 
 export const metadata: Metadata = {
   title: {
@@ -36,6 +37,7 @@ export default function DashboardLayout({
         <WatchlistAlertWatcher />
         <WatchlistSync />
         <WatchlistQuotes />
+        <WebVitalsReporter />
         <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 max-w-full overflow-x-clip p-3 sm:p-4 lg:p-6 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] md:pb-6 has-[.ai-chat-container]:p-0 focus:outline-none">
           {children}
         </main>
