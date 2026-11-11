@@ -108,6 +108,13 @@ public class StockMindBridge {
     }
 
     @JavascriptInterface
+    public String getDeferredAlerts() {
+        if (context == null) return "[]";
+        SharedPreferences prefs = context.getSharedPreferences("StockMindAlertsPrefs", Context.MODE_PRIVATE);
+        return prefs.getString("deferred_alerts", "[]");
+    }
+
+    @JavascriptInterface
     public String getAppVersion() {
         if (context == null) return "1.0.2";
         try {

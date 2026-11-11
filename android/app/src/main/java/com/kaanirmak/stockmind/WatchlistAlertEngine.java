@@ -2,15 +2,75 @@ package com.kaanirmak.stockmind;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
+import java.util.TimeZone;
 
 /**
- * Pure-Java threshold evaluation and notification route builder shared by
- * StockPriceWorker and JVM unit verification tests.
+ * Pure-Java threshold evaluation, quote freshness gating, and notification route builder
+ * shared by StockPriceWorker and verification checks.
  */
 public final class WatchlistAlertEngine {
 
+    private static final long TWENTY_FOUR_HOURS_MS = 24L * 60L * 60L * 1000L;
+    private static final long NINETY_SIX_HOURS_MS = 96L * 60L * 60L * 1000L;
+    private static final Set<String> DISALLOWED_SOURCES = new HashSet<>(
+            Arrays.asList("fallback", "placeholder", "mock", "seed", "unknown")
+    );
+
     private WatchlistAlertEngine() {}
+
+    public static final class QuoteSnapshot {
+        public final String symbol;
+        public final String assetType;
+        public final double price;
+        public final boolean isLastKnown;
+        public final String source;
+        public final String navDate;
+        public final String lastSyncAt;
+
+        public QuoteSnapshot(
+                String symbol,
+                String assetType,
+                double price,
+                boolean isLastKnown,
+                String source,
+                String navDate,
+                String lastSyncAt
+        ) {
+            this.symbol = symbol;
+            this.assetType = assetType;
+            this.price = price;
+            this.isLastKnown = isLastKnown;
+            this.source = source;
+            this.navDate = navDate;
+            this.lastSyncAt = lastSyncAt;
+        }
+    }
+
+    public static final class QuoteFreshnessResult {
+        public final boolean eligible;
+        public final String reason;
+        public final String description;
+        public final String observedAt;
+
+        public QuoteFreshnessResult(
+                boolean eligible,
+                String reason,
+                String description,
+                String observedAt
+        ) {
+            this.eligible = eligible;
+            this.reason = reason;
+            this.description = description;
+            this.observedAt = observedAt;
+        }
+    }
 
     public static final class AlertCheckResult {
         public final boolean reached;
@@ -52,6 +112,110 @@ public final class WatchlistAlertEngine {
             return "/funds/" + encoded;
         }
         return "/stocks/" + encoded;
+    }
+
+    /**
+     * Validates whether a quote has a verified source, positive price, and fresh timestamp
+     * before triggering a stock or TEFAS fund background alert.
+     */
+    public static QuoteFreshnessResult evaluateQuoteFreshness(
+            QuoteSnapshot quote,
+            String assetType,
+            long nowMillis
+    ) {
+        if (quote == null) {
+            return new QuoteFreshnessResult(
+                    false,
+                    "missing-quote",
+                    "Sağlayıcıdan aktif fiyat verisi alınamadı; alarm ertelendi.",
+                    null
+            );
+        }
+
+        String navDate = trimToNull(quote.navDate);
+        String lastSyncAt = trimToNull(quote.lastSyncAt);
+        String observedAt = navDate != null ? navDate : lastSyncAt;
+        boolean isFund = "fund".equalsIgnoreCase(assetType) || "fund".equalsIgnoreCase(quote.assetType);
+
+        if (!Double.isFinite(quote.price) || quote.price <= 0) {
+            return new QuoteFreshnessResult(
+                    false,
+                    "invalid-price",
+                    "Geçerli pozitif fiyat bulunamadı; alarm ertelendi.",
+                    observedAt
+            );
+        }
+
+        if (quote.isLastKnown) {
+            return new QuoteFreshnessResult(
+                    false,
+                    "last-known-fallback",
+                    "Yalnızca son doğrulanan önbellek fiyatı bulunduğu için alarm ertelendi.",
+                    observedAt
+            );
+        }
+
+        String source = trimToNull(quote.source);
+        if (source == null && isFund && (navDate != null || lastSyncAt != null)) {
+            source = "TEFAS";
+        }
+        if (source == null || DISALLOWED_SOURCES.contains(source.toLowerCase(Locale.ROOT))) {
+            return new QuoteFreshnessResult(
+                    false,
+                    "missing-source",
+                    "Fiyat kaynağı doğrulanamadığı için alarm ertelendi.",
+                    observedAt
+            );
+        }
+
+        if (navDate == null && lastSyncAt == null) {
+            return new QuoteFreshnessResult(
+                    false,
+                    "missing-timestamp",
+                    "Fiyat gözlem zamanı eksik olduğu için alarm ertelendi.",
+                    null
+            );
+        }
+
+        if (isFund || "TEFAS".equalsIgnoreCase(source)) {
+            if (navDate != null && navDate.matches("^\\d{4}-\\d{2}-\\d{2}.*")) {
+                String navDay = navDate.substring(0, 10);
+                String todayTr = formatIstanbulDate(nowMillis);
+                long diffDays = diffUtcDays(todayTr, navDay);
+                if (diffDays > 4) {
+                    return new QuoteFreshnessResult(
+                            false,
+                            "stale-price",
+                            "TEFAS değerleme tarihi eski (" + navDay + "); alarm taze veri gelene kadar ertelendi.",
+                            observedAt
+                    );
+                }
+                return new QuoteFreshnessResult(true, "ok", "Geçerli TEFAS değerlemesi.", observedAt);
+            }
+
+            long fetchedMs = parseIsoMillis(lastSyncAt);
+            if (fetchedMs < 0 || Math.max(0L, nowMillis - fetchedMs) > TWENTY_FOUR_HOURS_MS) {
+                return new QuoteFreshnessResult(
+                        false,
+                        "stale-price",
+                        "TEFAS senkronizasyon verisi güncel değil; alarm ertelendi.",
+                        observedAt
+                );
+            }
+            return new QuoteFreshnessResult(true, "ok", "Geçerli TEFAS değerlemesi.", observedAt);
+        }
+
+        long fetchedMs = parseIsoMillis(lastSyncAt != null ? lastSyncAt : navDate);
+        if (fetchedMs >= 0 && Math.max(0L, nowMillis - fetchedMs) > NINETY_SIX_HOURS_MS) {
+            return new QuoteFreshnessResult(
+                    false,
+                    "stale-price",
+                    "Hisse fiyat gözlemi eski; alarm taze veri gelene kadar ertelendi.",
+                    observedAt
+            );
+        }
+
+        return new QuoteFreshnessResult(true, "ok", "Geçerli piyasa gözlemi.", observedAt);
     }
 
     /**
@@ -118,5 +282,53 @@ public final class WatchlistAlertEngine {
         }
 
         return new AlertCheckResult(reached, notifTitle, notifBody, alertConfig, assetRoute);
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() || "null".equalsIgnoreCase(trimmed) ? null : trimmed;
+    }
+
+    private static String formatIstanbulDate(long nowMillis) {
+        SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+        fmt.setTimeZone(TimeZone.getTimeZone("Europe/Istanbul"));
+        return fmt.format(new Date(nowMillis));
+    }
+
+    private static long diffUtcDays(String todayYmd, String targetYmd) {
+        try {
+            SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+            fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
+            Date a = fmt.parse(todayYmd);
+            Date b = fmt.parse(targetYmd);
+            if (a == null || b == null) return 0L;
+            return Math.round((double) (a.getTime() - b.getTime()) / (double) TWENTY_FOUR_HOURS_MS);
+        } catch (ParseException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static long parseIsoMillis(String iso) {
+        if (iso == null) return -1L;
+        String normalized = iso.trim()
+                .replaceFirst("([+-]\\d{2}):(\\d{2})$", "$1$2")
+                .replaceAll("Z$", "+0000");
+        String[] patterns = new String[]{
+                "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+                "yyyy-MM-dd'T'HH:mm:ssZ",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS",
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd"
+        };
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat fmt = new SimpleDateFormat(pattern, Locale.US);
+                fmt.setTimeZone(TimeZone.getTimeZone("UTC"));
+                Date parsed = fmt.parse(normalized);
+                if (parsed != null) return parsed.getTime();
+            } catch (ParseException ignored) {}
+        }
+        return -1L;
     }
 }

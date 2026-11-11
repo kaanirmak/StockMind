@@ -249,3 +249,13 @@ export function clearDeferredAlert(
   }
   return next;
 }
+
+/**
+ * Resolves the canonical in-app deep-link route for a stock or TEFAS fund alert notification.
+ */
+export function buildAlertAssetRoute(assetType: 'stock' | 'fund', symbol: string): string {
+  const normalized = symbol.trim().toUpperCase();
+  if (!normalized) return '/watchlist';
+  const encoded = encodeURIComponent(normalized);
+  return assetType === 'fund' ? `/funds/${encoded}` : `/stocks/${encoded}`;
+}

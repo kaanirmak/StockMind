@@ -1119,4 +1119,131 @@ test('ALR-01: Android background stock alert evaluates threshold and opens exact
   assert.equal(triggered.triggered, true);
 });
 
+test('ALR-02: TEFAS fund alert triggers on valid valuation and defers cleanly on missing or stale data', () => {
+  const { isPriceAlertTriggered } = loadModule('src/store/useWatchlistStore.ts');
+  const {
+    buildAlertAssetRoute,
+    evaluateAlertPriceFreshness,
+    recordDeferredAlert,
+    clearDeferredAlert,
+    loadDeferredAlerts,
+  } = loadModule('src/lib/market/alertFreshness.ts');
+
+  const now = new Date();
+  const todayIso = now.toISOString();
+  const todayYmd = todayIso.slice(0, 10);
+  const staleDate = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+  const staleYmd = staleDate.toISOString().slice(0, 10);
+  const store = new Map();
+  const storage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+  };
+
+  const tefasAlert = {
+    id: 'alr-fund-1',
+    symbol: 'TCD',
+    name: 'Tacirler Portföy Değişken Fon',
+    assetType: 'fund',
+    price: 2.4,
+    targetPrice: 2.55,
+    alertBasePrice: 2.4,
+    alertType: 'price',
+  };
+
+  // Case 1: Missing/incomplete TEFAS valuation defers alert without firing
+  const missingQuote = evaluateAlertPriceFreshness(null, now);
+  assert.equal(missingQuote.eligible, false);
+  assert.equal(missingQuote.reason, 'missing-quote');
+
+  const unsyncedFundQuote = evaluateAlertPriceFreshness(
+    { price: 2.6, assetType: 'fund', exchange: 'TEFAS', source: 'TEFAS', navDate: null, lastSyncAt: null },
+    now
+  );
+  assert.equal(unsyncedFundQuote.eligible, false);
+  assert.equal(unsyncedFundQuote.reason, 'missing-source');
+
+  const missingTimestamp = evaluateAlertPriceFreshness(
+    { price: 2.6, assetType: 'fund', exchange: 'TEFAS', observation: { source: 'TEFAS', asOf: null, fetchedAt: '', changePercent: null } },
+    now
+  );
+  assert.equal(missingTimestamp.eligible, false);
+  assert.equal(missingTimestamp.reason, 'missing-timestamp');
+
+  const staleFundQuote = evaluateAlertPriceFreshness(
+    { price: 2.6, assetType: 'fund', exchange: 'TEFAS', source: 'TEFAS', navDate: staleYmd, lastSyncAt: staleDate.toISOString() },
+    now
+  );
+  assert.equal(staleFundQuote.eligible, false);
+  assert.equal(staleFundQuote.reason, 'stale-price');
+
+  const fallbackFundQuote = evaluateAlertPriceFreshness(
+    { price: 2.6, assetType: 'fund', exchange: 'TEFAS', source: 'TEFAS', isLastKnown: true, navDate: todayYmd, lastSyncAt: todayIso },
+    now
+  );
+  assert.equal(fallbackFundQuote.eligible, false);
+  assert.equal(fallbackFundQuote.reason, 'last-known-fallback');
+
+  recordDeferredAlert(
+    {
+      symbol: 'TCD',
+      assetType: 'fund',
+      alertType: 'price',
+      targetPrice: 2.55,
+      reason: staleFundQuote.reason,
+      description: staleFundQuote.description,
+      status: staleFundQuote.status,
+      source: 'TEFAS',
+      observedAt: staleFundQuote.observedAt,
+      deferredAt: todayIso,
+    },
+    storage
+  );
+  assert.equal(loadDeferredAlerts(storage).length, 1);
+  assert.equal(loadDeferredAlerts(storage)[0].reason, 'stale-price');
+
+  // Case 2: Valid TEFAS valuation clears deferral, evaluates threshold, and resolves /funds/<CODE>
+  const validFundQuote = {
+    price: 2.58,
+    assetType: 'fund',
+    exchange: 'TEFAS',
+    source: 'TEFAS',
+    navDate: todayYmd,
+    lastSyncAt: todayIso,
+  };
+  const validFreshness = evaluateAlertPriceFreshness(validFundQuote, now);
+  assert.equal(validFreshness.eligible, true);
+  assert.equal(validFreshness.reason, 'ok');
+
+  clearDeferredAlert('TCD', 'fund', storage);
+  assert.equal(loadDeferredAlerts(storage).length, 0);
+
+  const triggered = isPriceAlertTriggered(tefasAlert, validFundQuote.price, validFundQuote);
+  assert.equal(triggered.triggered, true);
+  assert.equal(buildAlertAssetRoute('fund', 'TCD'), '/funds/TCD');
+
+  // Verify Android background worker & bridge enforce TEFAS freshness + deferral persistence
+  const engineSource = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/WatchlistAlertEngine.java'),
+    'utf8'
+  );
+  const workerSource = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/StockPriceWorker.java'),
+    'utf8'
+  );
+  const bridgeSource = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/StockMindBridge.java'),
+    'utf8'
+  );
+  assert.match(engineSource, /evaluateQuoteFreshness\(/);
+  assert.match(engineSource, /"stale-price"/);
+  assert.match(engineSource, /"missing-quote"/);
+  assert.match(workerSource, /WatchlistAlertEngine\.evaluateQuoteFreshness/);
+  assert.match(workerSource, /upsertDeferredAlert\(/);
+  assert.match(workerSource, /clearDeferredAlert\(/);
+  assert.match(workerSource, /quote\.optString\("navDate",\s*null\)/);
+  assert.match(workerSource, /quote\.optString\("lastSyncAt",\s*null\)/);
+  assert.match(bridgeSource, /public String getDeferredAlerts\(\)/);
+});
+
 

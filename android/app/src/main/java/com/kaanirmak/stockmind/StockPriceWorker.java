@@ -128,8 +128,8 @@ public class StockPriceWorker extends Worker {
                 if ("fund".equals(item.optString("assetType"))) checkFunds = true;
                 else checkStocks = true;
             }
-            Map<String, Double> stockPrices = checkStocks ? fetchPrices(serverUrl, false) : new HashMap<>();
-            Map<String, Double> fundPrices = checkFunds ? fetchPrices(serverUrl, true) : new HashMap<>();
+            Map<String, WatchlistAlertEngine.QuoteSnapshot> stockQuotes = checkStocks ? fetchQuotes(serverUrl, false) : new HashMap<>();
+            Map<String, WatchlistAlertEngine.QuoteSnapshot> fundQuotes = checkFunds ? fetchQuotes(serverUrl, true) : new HashMap<>();
 
             // Check alerts against watchlist items
             for (int i = 0; i < items.length(); i++) {
@@ -143,14 +143,30 @@ public class StockPriceWorker extends Worker {
                 double alertBase = item.optDouble("alertBasePrice", basePrice);
                 if (alertBase <= 0) alertBase = basePrice;
 
+                if (sym.isEmpty() || (targetPrice <= 0 && alertPercent <= 0)) {
+                    continue;
+                }
+
                 boolean isFund = "fund".equals(item.optString("assetType"));
-                Double quote = (isFund ? fundPrices : stockPrices).get(sym);
-                if (quote == null) continue;
-                double livePrice = quote;
+                String assetType = isFund ? "fund" : "stock";
+                WatchlistAlertEngine.QuoteSnapshot quote = (isFund ? fundQuotes : stockQuotes).get(sym);
+                WatchlistAlertEngine.QuoteFreshnessResult freshness = WatchlistAlertEngine.evaluateQuoteFreshness(
+                        quote,
+                        assetType,
+                        System.currentTimeMillis()
+                );
+                if (!freshness.eligible || quote == null) {
+                    upsertDeferredAlert(alertPrefs, sym, assetType, alertType, targetPrice, alertPercent, freshness);
+                    Log.d(TAG, sym + " alarmı ertelendi (" + freshness.reason + "): " + freshness.description);
+                    continue;
+                }
+
+                clearDeferredAlert(alertPrefs, sym, assetType);
+                double livePrice = quote.price;
                 WatchlistAlertEngine.AlertCheckResult evaluation = WatchlistAlertEngine.evaluateThreshold(
                         sym,
                         name,
-                        isFund ? "fund" : "stock",
+                        assetType,
                         alertType,
                         targetPrice,
                         alertPercent,
@@ -174,24 +190,110 @@ public class StockPriceWorker extends Worker {
         }
     }
 
-    private Map<String, Double> fetchPrices(String serverUrl, boolean funds) {
-        Map<String, Double> prices = new HashMap<>();
+    private void upsertDeferredAlert(
+            SharedPreferences alertPrefs,
+            String symbol,
+            String assetType,
+            String alertType,
+            double targetPrice,
+            double alertPercent,
+            WatchlistAlertEngine.QuoteFreshnessResult freshness
+    ) {
+        try {
+            JSONArray current = new JSONArray(alertPrefs.getString("deferred_alerts", "[]"));
+            JSONArray next = new JSONArray();
+
+            JSONObject entry = new JSONObject();
+            entry.put("symbol", symbol);
+            entry.put("assetType", assetType);
+            entry.put("alertType", alertType);
+            entry.put("targetPrice", targetPrice);
+            entry.put("alertPercent", alertPercent);
+            entry.put("reason", freshness.reason);
+            entry.put("description", freshness.description);
+            entry.put("observedAt", freshness.observedAt != null ? freshness.observedAt : JSONObject.NULL);
+            entry.put("deferredAt", System.currentTimeMillis());
+            next.put(entry);
+
+            for (int i = 0; i < current.length() && next.length() < 50; i++) {
+                JSONObject existing = current.optJSONObject(i);
+                if (existing == null) continue;
+                boolean sameAsset = symbol.equalsIgnoreCase(existing.optString("symbol"))
+                        && assetType.equalsIgnoreCase(existing.optString("assetType"));
+                if (!sameAsset) {
+                    next.put(existing);
+                }
+            }
+            alertPrefs.edit().putString("deferred_alerts", next.toString()).apply();
+        } catch (org.json.JSONException e) {
+            Log.w(TAG, "Failed saving deferred alert metadata", e);
+        }
+    }
+
+    private void clearDeferredAlert(SharedPreferences alertPrefs, String symbol, String assetType) {
+        try {
+            String raw = alertPrefs.getString("deferred_alerts", "[]");
+            if (raw == null || raw.equals("[]")) return;
+            JSONArray current = new JSONArray(raw);
+            JSONArray next = new JSONArray();
+            boolean changed = false;
+            for (int i = 0; i < current.length(); i++) {
+                JSONObject existing = current.optJSONObject(i);
+                if (existing == null) continue;
+                boolean sameAsset = symbol.equalsIgnoreCase(existing.optString("symbol"))
+                        && assetType.equalsIgnoreCase(existing.optString("assetType"));
+                if (sameAsset) {
+                    changed = true;
+                } else {
+                    next.put(existing);
+                }
+            }
+            if (changed) {
+                alertPrefs.edit().putString("deferred_alerts", next.toString()).apply();
+            }
+        } catch (org.json.JSONException ignored) {}
+    }
+
+    private Map<String, WatchlistAlertEngine.QuoteSnapshot> fetchQuotes(String serverUrl, boolean funds) {
+        Map<String, WatchlistAlertEngine.QuoteSnapshot> quotesMap = new HashMap<>();
         String response = fetchJson(serverUrl + (funds ? "/api/funds" : "/api/stocks?liveOnly=true"));
-        if (response == null) return prices;
+        if (response == null) return quotesMap;
         try {
             JSONArray quotes = new JSONObject(response).optJSONArray("data");
-            if (quotes == null) return prices;
+            if (quotes == null) return quotesMap;
             for (int i = 0; i < quotes.length(); i++) {
                 JSONObject quote = quotes.optJSONObject(i);
-                if (quote == null || (funds && quote.isNull("lastSyncAt"))) continue;
+                if (quote == null) continue;
                 String symbol = quote.optString(funds ? "code" : "symbol").toUpperCase(Locale.ROOT);
+                if (symbol.isEmpty()) continue;
+
                 double price = quote.optDouble("price", 0);
-                if (!symbol.isEmpty() && Double.isFinite(price) && price > 0) prices.put(symbol, price);
+                boolean isLastKnown = quote.optBoolean("isLastKnown", false);
+                JSONObject obs = quote.optJSONObject("observation");
+                String source = obs != null && !obs.isNull("source")
+                        ? obs.optString("source", null)
+                        : (quote.isNull("source") ? (funds ? "TEFAS" : null) : quote.optString("source", null));
+                String navDate = obs != null && !obs.isNull("asOf")
+                        ? obs.optString("asOf", null)
+                        : (quote.isNull("navDate") ? null : quote.optString("navDate", null));
+                String lastSyncAt = obs != null && !obs.isNull("fetchedAt")
+                        ? obs.optString("fetchedAt", null)
+                        : (quote.isNull("lastSyncAt") ? null : quote.optString("lastSyncAt", null));
+
+                quotesMap.put(symbol, new WatchlistAlertEngine.QuoteSnapshot(
+                        symbol,
+                        funds ? "fund" : "stock",
+                        price,
+                        isLastKnown,
+                        source,
+                        navDate,
+                        lastSyncAt
+                ));
             }
         } catch (org.json.JSONException error) {
             Log.w(TAG, "Invalid price response", error);
         }
-        return prices;
+        return quotesMap;
     }
 
     private String fetchJson(String urlString) {

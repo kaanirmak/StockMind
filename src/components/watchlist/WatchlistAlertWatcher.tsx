@@ -5,6 +5,7 @@ import { useWatchlistStore, isPriceAlertTriggered } from '@/store/useWatchlistSt
 import { sendPushNotification, loadPushPreferences } from '@/lib/notifications/pushNotification';
 import { marketJson } from '@/lib/api/clientCache';
 import {
+  buildAlertAssetRoute,
   evaluateAlertPriceFreshness,
   recordDeferredAlert,
   clearDeferredAlert,
@@ -143,7 +144,7 @@ export function WatchlistAlertWatcher() {
             const delivered = sendPushNotification(
               check.title,
               check.message,
-              item.assetType === 'fund' ? `/funds/${encodeURIComponent(sym)}` : `/stocks/${encodeURIComponent(sym)}`
+              buildAlertAssetRoute(item.assetType, sym)
             );
             if (!delivered) continue;
 
