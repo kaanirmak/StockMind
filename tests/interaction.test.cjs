@@ -7651,6 +7651,35 @@ test('QNT-12: AI investment committee output separates market data, financials, 
   assert.match(committeeTabSrc, /buildCommitteeEvidencePacket/);
 });
 
+test('HSP-08: enforces clear single-language (Turkish) scope decision and lists supported languages on Help screen', () => {
+  const langMod = load('src/lib/help/languageScope.ts');
+
+  const codes = Array.from(langMod.getSupportedLanguageCodes());
+  assert.deepEqual(codes, ['tr']);
+  assert.equal(langMod.LANGUAGE_SCOPE_DECISION.primaryLocale, 'tr-TR');
+  assert.equal(langMod.LANGUAGE_SCOPE_DECISION.englishUiSupported, false);
+  assert.equal(langMod.SUPPORTED_LANGUAGES.length, 1);
+  assert.equal(langMod.SUPPORTED_LANGUAGES[0].status, 'supported');
+
+  const helpSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/(dashboard)/help/page.tsx'),
+    'utf8'
+  );
+  assert.match(helpSrc, /data-testid="help-language-scope"/);
+  assert.match(helpSrc, /SUPPORTED_LANGUAGES/);
+  assert.match(helpSrc, /LANGUAGE_SCOPE_DECISION/);
+
+  const settingsSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/(dashboard)/settings/page.tsx'),
+    'utf8'
+  );
+  assert.doesNotMatch(settingsSrc, /English \(Çok Yakında\)/);
+  assert.match(settingsSrc, /href="\/help"/);
+
+  const sidebarSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/layout/Sidebar.tsx'), 'utf8');
+  assert.match(sidebarSrc, /href="\/help"/);
+});
+
 
 
 

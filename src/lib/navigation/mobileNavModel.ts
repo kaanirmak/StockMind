@@ -51,6 +51,7 @@ export const MOBILE_DRAWER_NAV_ITEMS: readonly MobileDrawerNavMeta[] = [
   { href: '/quant-lab', label: 'Quant Lab', badge: 'Pro', iconKey: 'cpu' },
   { href: '/widgets', label: "Widget'lar", badge: 'Yeni', iconKey: 'grid' },
   { href: '/download', label: 'Mobil Uygulama', badge: 'iOS / APK', iconKey: 'phone' },
+  { href: '/help', label: 'Yardım & Gizlilik', description: 'Diller, veri kaynakları ve gizlilik', iconKey: 'settings' },
   { href: '/settings', label: 'Ayarlar', iconKey: 'settings' },
 ];
 

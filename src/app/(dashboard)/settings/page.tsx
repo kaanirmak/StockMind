@@ -1120,13 +1120,17 @@ export default function SettingsPage() {
               <label className="block text-xs font-medium text-text-secondary mb-1.5">Tercih Edilen Dil</label>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as any)}
+                onChange={(e) => setLanguage(e.target.value as 'tr')}
                 className="w-full bg-bg-input text-text-primary text-sm rounded-xl border border-border px-3.5 py-2.5 focus:border-accent focus:outline-none"
               >
-                <option value="tr"> Türkçe (Aktif / Varsayılan)</option>
-                <option value="en" disabled> English (Çok Yakında)</option>
+                <option value="tr">Türkçe (Aktif / Desteklenen Dil)</option>
               </select>
-              <p className="text-[11px] text-text-muted mt-1">Şu anda tüm borsa, TEFAS ve AI analizleri Türkçe olarak sunulmaktadır.</p>
+              <p className="text-[11px] text-text-muted mt-1">
+                StockMind tüm BIST, TEFAS, ABD hisseleri ve AI analizlerini Türkçe olarak sunar.{' '}
+                <Link href="/help" className="text-accent hover:underline font-medium">
+                  Desteklenen diller ve kapsam →
+                </Link>
+              </p>
             </div>
 
             <div>
