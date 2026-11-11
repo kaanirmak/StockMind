@@ -7886,6 +7886,51 @@ test('PIY-11: evaluates indicator & list alert rules deterministically with hyst
   assert.match(docSrc, /O\(uniqueSymbols\)/);
 });
 
+test('OPS-15: compares official Google Play Store vs direct APK distribution and checks store readiness blockers', () => {
+  const distMod = load('src/lib/ops/androidDistributionEvaluation.ts');
+  const channels = Array.from(distMod.ANDROID_DISTRIBUTION_CHANNELS);
+  assert.deepEqual(
+    channels.map((c) => c.id),
+    ['direct_apk', 'google_play_store'],
+  );
+
+  const play = channels.find((c) => c.id === 'google_play_store');
+  const apk = channels.find((c) => c.id === 'direct_apk');
+  assert.equal(play.artifactFormat, 'AAB');
+  assert.equal(apk.artifactFormat, 'APK');
+  assert.match(play.signingKeyManagement, /Play App Signing/i);
+  assert.match(play.updateDelivery, /Kademeli/i);
+  assert.ok(play.storeRequirements.some((r) => /12/.test(r)));
+
+  const buildGradleSrc = fs.readFileSync(
+    path.join(process.cwd(), 'android/app/build.gradle'),
+    'utf8',
+  );
+  assert.match(buildGradleSrc, new RegExp(distMod.STOCKMIND_ANDROID_BASELINE.applicationId));
+  assert.match(buildGradleSrc, /targetSdk 34/);
+
+  const notReady = distMod.evaluateAndroidStoreReadiness({
+    ...distMod.STOCKMIND_ANDROID_BASELINE,
+    hasReleaseKeystore: false,
+    hasPrivacyPolicyUrl: true,
+    hasFinancialDisclaimer: true,
+    closedTestTestersCount: 3,
+  });
+  assert.equal(notReady.readyForProductionSubmission, false);
+  assert.equal(notReady.blockers.length, 2);
+  assert.equal(notReady.artifactCommand, 'cd android && ./gradlew bundleRelease');
+
+  const ready = distMod.evaluateAndroidStoreReadiness({
+    ...distMod.STOCKMIND_ANDROID_BASELINE,
+    hasReleaseKeystore: true,
+    hasPrivacyPolicyUrl: true,
+    hasFinancialDisclaimer: true,
+    closedTestTestersCount: 12,
+  });
+  assert.equal(ready.readyForProductionSubmission, true);
+  assert.deepEqual(Array.from(ready.blockers), []);
+});
+
 
 
 
