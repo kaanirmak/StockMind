@@ -9,6 +9,7 @@ export async function GET(
   try {
     const { symbol } = await params;
     const { searchParams } = new URL(request.url);
+    const exchange = searchParams.get('exchange');
     const timeframe = (searchParams.get('timeframe') || '1M') as
       | '1D'
       | '1W'
@@ -19,8 +20,8 @@ export async function GET(
       | '5Y'
       | 'ALL';
 
-    const stock = await getStockBySymbolLive(symbol);
-    const candles = await fetchRealHistoricalCandles(symbol, timeframe, stock?.price);
+    const stock = await getStockBySymbolLive(symbol, exchange);
+    const candles = await fetchRealHistoricalCandles(symbol, timeframe, stock?.price, exchange);
 
     if (candles.length === 0) {
       return NextResponse.json(

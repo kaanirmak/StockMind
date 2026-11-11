@@ -3,6 +3,7 @@ import { POPULAR_ALIASES, normalizeText } from '@/lib/utils/search';
 import {
   US_ETFS,
   BIST_ETFS,
+  INDEX_SYMBOLS,
   isEtfSymbol,
   classifyAssetType,
 } from '@/lib/market/assetClassification';
@@ -55,13 +56,15 @@ export function getAssetTypeLabel(item: {
   originalCurrency?: string;
 }): AssetDisplayInfo {
   const s = String(item.symbol || '')
-    .replace(/^(BIST|NASDAQ|NYSE|US|TEFAS|FON|IST):/, '')
+    .replace(/^(BIST|NASDAQ|NYSE|US|TEFAS|FON|IST|INDEX|IDX|CRYPTO|FOREX|COMMODITY):/, '')
     .replace(/\.(IS|E|TI|BIST)$/i, '')
     .toUpperCase()
     .trim();
-  const isEtf = isEtfSymbol(s);
+  const hasExplicitNonUsExchange =
+    item.exchange === 'BIST' || item.exchange === 'TEFAS' || item.exchange === 'INDEX';
+  const isEtf = isEtfSymbol(s) && (!hasExplicitNonUsExchange || BIST_ETFS.has(s));
   const isUs =
-    isUsSymbol(s) ||
+    (!hasExplicitNonUsExchange && isUsSymbol(s)) ||
     (item.originalCurrency || '').toUpperCase() === 'USD' ||
     (item.currency || '').toUpperCase() === 'USD' ||
     item.exchange === 'NASDAQ' ||
@@ -97,6 +100,32 @@ export function getAssetTypeLabel(item: {
     assetType: item.assetType,
     exchange: item.exchange,
   });
+
+  if (kind === 'etf') {
+    const explicitlyBistEtf = BIST_ETFS.has(s) || item.exchange === 'BIST';
+    const isUsEtf = !explicitlyBistEtf;
+    return {
+      typeLabel: 'ETF',
+      badgeLabel: isUsEtf ? 'ABD ETF' : 'BIST ETF',
+      badgeColor: isUsEtf ? 'bg-sky-500/15 border-sky-500/30 text-sky-300' : 'bg-amber-500/15 border-amber-500/30 text-amber-300',
+      badgeIcon: '⚡',
+      exchangeLabel: isUsEtf ? (item.exchange && item.exchange !== 'BIST' ? item.exchange : 'NASDAQ') : 'Borsa İstanbul (BYF)',
+      isEtf: true,
+      isUs: isUsEtf,
+    };
+  }
+
+  if (kind === 'fund') {
+    return {
+      typeLabel: 'Fon',
+      badgeLabel: 'TEFAS Fon',
+      badgeColor: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300',
+      badgeIcon: '📈',
+      exchangeLabel: 'TEFAS',
+      isEtf: false,
+      isUs: false,
+    };
+  }
 
   if (kind === 'index') {
     return {
@@ -174,91 +203,163 @@ export function getAssetTypeLabel(item: {
  * and detects asset type & exchange. Also maps company names to tickers.
  */
 export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' | 'fund'; exchange: string } {
+  const parsed = parseQualifiedSymbol(sym);
+  return {
+    symbol: parsed.symbol,
+    assetType: parsed.assetType,
+    exchange: parsed.exchange,
+  };
+}
+
+export function parseQualifiedSymbol(
+  sym: string,
+  explicitExchangeHint?: string | null,
+): {
+  symbol: string;
+  assetType: 'stock' | 'fund';
+  exchange: string;
+  instrumentId: string;
+  hasExplicitExchange: boolean;
+} {
   let raw = String(sym || '').replace(/['"“”]/g, '').trim().toUpperCase();
   let assetType: 'stock' | 'fund' = 'stock';
   let exchange = 'BIST';
+  let hasExplicitExchange = false;
 
   if (!raw) {
-    return { symbol: '', assetType: 'stock', exchange: 'BIST' };
+    return { symbol: '', assetType: 'stock', exchange: 'BIST', instrumentId: '', hasExplicitExchange: false };
   }
 
   // 1. Detect and unpack Turkish ISIN codes (e.g. TRATHYAO91M5 -> THYAO, TRAASELS91H2 -> ASELS)
   const isinMatch = raw.match(/^TR[AE]([A-Z0-9]{4,5})[0-9A-Z]{3,4}$/i);
   if (isinMatch && isinMatch[1]) {
     raw = isinMatch[1].toUpperCase();
+    exchange = 'BIST';
+    hasExplicitExchange = true;
   }
 
-  // 2. Strip prefixes (FON:, IST:, BIST:, NASDAQ:, etc.)
+  // 2. Strip explicit prefixes (FON:, IST:, BIST:, NYSE:, NASDAQ:, INDEX:, etc.) and lock exchange
   if (raw.startsWith('FON:') || raw.startsWith('MUTF:') || raw.startsWith('TEFAS:')) {
     raw = raw.replace(/^(FON|MUTF|TEFAS):/, '').trim();
     assetType = 'fund';
     exchange = 'TEFAS';
+    hasExplicitExchange = true;
   } else if (raw.startsWith('IST:') || raw.startsWith('BIST:') || raw.startsWith('TRA:')) {
     raw = raw.replace(/^(IST|BIST|TRA):/, '').trim();
     assetType = 'stock';
     exchange = 'BIST';
-  } else if (raw.startsWith('NASDAQ:') || raw.startsWith('NYSE:') || raw.startsWith('US:')) {
-    raw = raw.replace(/^(NASDAQ|NYSE|US):/, '').trim();
+    hasExplicitExchange = true;
+  } else if (raw.startsWith('NYSE:')) {
+    raw = raw.replace(/^NYSE:/, '').trim();
+    assetType = 'stock';
+    exchange = 'NYSE';
+    hasExplicitExchange = true;
+  } else if (raw.startsWith('NASDAQ:')) {
+    raw = raw.replace(/^NASDAQ:/, '').trim();
     assetType = 'stock';
     exchange = 'NASDAQ';
+    hasExplicitExchange = true;
+  } else if (raw.startsWith('US:')) {
+    raw = raw.replace(/^US:/, '').trim();
+    assetType = 'stock';
+    exchange = 'NASDAQ';
+    hasExplicitExchange = true;
+  } else if (raw.startsWith('INDEX:') || raw.startsWith('IDX:')) {
+    raw = raw.replace(/^(INDEX|IDX):/, '').trim();
+    assetType = 'stock';
+    exchange = 'INDEX';
+    hasExplicitExchange = true;
+  } else if (raw.startsWith('CRYPTO:')) {
+    raw = raw.replace(/^CRYPTO:/, '').trim();
+    assetType = 'stock';
+    exchange = 'CRYPTO';
+    hasExplicitExchange = true;
+  } else if (raw.startsWith('FOREX:')) {
+    raw = raw.replace(/^FOREX:/, '').trim();
+    assetType = 'stock';
+    exchange = 'FOREX';
+    hasExplicitExchange = true;
+  } else if (raw.startsWith('COMMODITY:')) {
+    raw = raw.replace(/^COMMODITY:/, '').trim();
+    assetType = 'stock';
+    exchange = 'COMMODITY';
+    hasExplicitExchange = true;
   }
 
-  // 3. Strip trailing suffixes (.IS, .E, .TI, .BIST)
-  // Note: .E is the official Borsa Istanbul equity suffix (e.g. THYAO.E, GARAN.E)
-  raw = raw.replace(/\.(IS|E|TI|BIST)$/i, '').trim();
+  // 3. Strip trailing suffixes (.IS, .E, .TI, .BIST) and treat BIST suffixes as explicit BIST exchange
+  if (/\.(IS|E|BIST)$/i.test(raw)) {
+    raw = raw.replace(/\.(IS|E|BIST)$/i, '').trim();
+    if (!hasExplicitExchange) {
+      assetType = 'stock';
+      exchange = 'BIST';
+      hasExplicitExchange = true;
+    }
+  } else {
+    raw = raw.replace(/\.TI$/i, '').trim();
+  }
 
-  // 4. Alias checks for commodities and certificates
-  if (raw === 'ALTIN' || raw === 'ALTIN.S1' || raw === 'ALTINS1' || raw === 'ALTIN_S1') {
-    return { symbol: 'ALTIN', assetType: 'stock', exchange: 'BIST' };
+  // Apply explicit caller exchange hint only when symbol itself did not carry a prefix/suffix
+  const normalizedHint = explicitExchangeHint ? explicitExchangeHint.trim().toUpperCase() : '';
+  if (!hasExplicitExchange && normalizedHint) {
+    exchange = normalizedHint;
+    assetType = normalizedHint === 'TEFAS' ? 'fund' : 'stock';
+    hasExplicitExchange = true;
   }
-  if (
-    raw === 'GRAM_ALTIN' ||
-    raw === 'GRAM ALTIN' ||
-    raw === 'GRAM-ALTIN' ||
-    raw === 'GA' ||
-    raw === 'XAUTRYG' ||
-    raw === 'XAUTRY'
-  ) {
-    return { symbol: 'XAUTRYG', assetType: 'stock', exchange: 'COMMODITY' };
+
+  // 4. Alias checks for commodities and crypto (unless caller locked a stock/fund exchange explicitly)
+  if (!hasExplicitExchange || exchange === 'COMMODITY') {
+    if (raw === 'ALTIN' || raw === 'ALTIN.S1' || raw === 'ALTINS1' || raw === 'ALTIN_S1') {
+      return { symbol: 'ALTIN', assetType: 'stock', exchange: 'BIST', instrumentId: 'BIST:ALTIN', hasExplicitExchange };
+    }
+    if (
+      raw === 'GRAM_ALTIN' ||
+      raw === 'GRAM ALTIN' ||
+      raw === 'GRAM-ALTIN' ||
+      raw === 'GA' ||
+      raw === 'XAUTRYG' ||
+      raw === 'XAUTRY'
+    ) {
+      return { symbol: 'XAUTRYG', assetType: 'stock', exchange: 'COMMODITY', instrumentId: 'COMMODITY:XAUTRYG', hasExplicitExchange };
+    }
+    if (raw === 'CEYREK' || raw === 'CEYREK ALTIN' || raw === 'CEYREK_ALTIN') {
+      return { symbol: 'CEYREK_ALTIN', assetType: 'stock', exchange: 'COMMODITY', instrumentId: 'COMMODITY:CEYREK_ALTIN', hasExplicitExchange };
+    }
+    if (raw === 'YARIM' || raw === 'YARIM ALTIN' || raw === 'YARIM_ALTIN') {
+      return { symbol: 'YARIM_ALTIN', assetType: 'stock', exchange: 'COMMODITY', instrumentId: 'COMMODITY:YARIM_ALTIN', hasExplicitExchange };
+    }
+    if (raw === 'CUMHURIYET' || raw === 'CUMHURIYET ALTINI' || raw === 'CUMHURIYET_ALTINI') {
+      return { symbol: 'CUMHURIYET_ALTINI', assetType: 'stock', exchange: 'COMMODITY', instrumentId: 'COMMODITY:CUMHURIYET_ALTINI', hasExplicitExchange };
+    }
+    if (raw === 'ATA' || raw === 'ATA ALTIN' || raw === 'ATA_ALTIN') {
+      return { symbol: 'ATA_ALTIN', assetType: 'stock', exchange: 'COMMODITY', instrumentId: 'COMMODITY:ATA_ALTIN', hasExplicitExchange };
+    }
+    if (raw === 'BILEZIK22' || raw === '22 AYAR BILEZIK') {
+      return { symbol: 'BILEZIK22', assetType: 'stock', exchange: 'COMMODITY', instrumentId: 'COMMODITY:BILEZIK22', hasExplicitExchange };
+    }
+    if (raw === 'GUMUS' || raw === 'GUMUS.S1' || raw === 'GUMUSS1' || raw === 'GUMUS_S1') {
+      return { symbol: 'GUMUS', assetType: 'stock', exchange: 'BIST', instrumentId: 'BIST:GUMUS', hasExplicitExchange };
+    }
+    if (
+      raw === 'GRAM_GUMUS' ||
+      raw === 'GRAM GUMUS' ||
+      raw === 'GRAM-GUMUS' ||
+      raw === 'XAGTRYG' ||
+      raw === 'XAGTRY'
+    ) {
+      return { symbol: 'XAGTRYG', assetType: 'stock', exchange: 'COMMODITY', instrumentId: 'COMMODITY:XAGTRYG', hasExplicitExchange };
+    }
   }
-  if (raw === 'CEYREK' || raw === 'CEYREK ALTIN' || raw === 'CEYREK_ALTIN') {
-    return { symbol: 'CEYREK_ALTIN', assetType: 'stock', exchange: 'COMMODITY' };
-  }
-  if (raw === 'YARIM' || raw === 'YARIM ALTIN' || raw === 'YARIM_ALTIN') {
-    return { symbol: 'YARIM_ALTIN', assetType: 'stock', exchange: 'COMMODITY' };
-  }
-  if (raw === 'CUMHURIYET' || raw === 'CUMHURIYET ALTINI' || raw === 'CUMHURIYET_ALTINI') {
-    return { symbol: 'CUMHURIYET_ALTINI', assetType: 'stock', exchange: 'COMMODITY' };
-  }
-  if (raw === 'ATA' || raw === 'ATA ALTIN' || raw === 'ATA_ALTIN') {
-    return { symbol: 'ATA_ALTIN', assetType: 'stock', exchange: 'COMMODITY' };
-  }
-  if (raw === 'BILEZIK22' || raw === '22 AYAR BILEZIK') {
-    return { symbol: 'BILEZIK22', assetType: 'stock', exchange: 'COMMODITY' };
-  }
-  if (raw === 'GUMUS' || raw === 'GUMUS.S1' || raw === 'GUMUSS1' || raw === 'GUMUS_S1') {
-    return { symbol: 'GUMUS', assetType: 'stock', exchange: 'BIST' };
-  }
-  if (
-    raw === 'GRAM_GUMUS' ||
-    raw === 'GRAM GUMUS' ||
-    raw === 'GRAM-GUMUS' ||
-    raw === 'XAGTRYG' ||
-    raw === 'XAGTRY'
-  ) {
-    return { symbol: 'XAGTRYG', assetType: 'stock', exchange: 'COMMODITY' };
-  }
-  if (raw === 'BTC' || raw === 'BITCOIN') {
-    return { symbol: 'BTCUSDT', assetType: 'stock', exchange: 'CRYPTO' };
-  }
-  if (raw === 'ETH' || raw === 'ETHEREUM') {
-    return { symbol: 'ETHUSDT', assetType: 'stock', exchange: 'CRYPTO' };
+  if (!hasExplicitExchange || exchange === 'CRYPTO') {
+    if (raw === 'BTC' || raw === 'BITCOIN') {
+      return { symbol: 'BTCUSDT', assetType: 'stock', exchange: 'CRYPTO', instrumentId: 'CRYPTO:BTCUSDT', hasExplicitExchange };
+    }
+    if (raw === 'ETH' || raw === 'ETHEREUM') {
+      return { symbol: 'ETHUSDT', assetType: 'stock', exchange: 'CRYPTO', instrumentId: 'CRYPTO:ETHUSDT', hasExplicitExchange };
+    }
   }
 
   // 5. If raw is already an exact ticker key, don't alias-match it
-  if (!Object.prototype.hasOwnProperty.call(POPULAR_ALIASES, raw)) {
-    // If raw looks like a full company name rather than a ticker (contains space or > 5 chars)
-    // Attempt to resolve via POPULAR_ALIASES
+  if (!hasExplicitExchange && !Object.prototype.hasOwnProperty.call(POPULAR_ALIASES, raw)) {
     if (raw.includes(' ') || raw.length > 5) {
       const norm = normalizeText(raw);
       for (const [ticker, aliases] of Object.entries(POPULAR_ALIASES)) {
@@ -273,22 +374,33 @@ export function cleanSymbol(sym: string): { symbol: string; assetType: 'stock' |
     }
   }
 
-  // 6. Check if symbol is in TEFAS directory, US ETFs, BIST ETFs, or US Stocks
-  if (TEFAS_SET.has(raw)) {
-    assetType = 'fund';
-    exchange = 'TEFAS';
-  } else if (US_ETFS.has(raw)) {
-    assetType = 'stock';
-    exchange = 'NASDAQ';
-  } else if (BIST_ETFS.has(raw)) {
-    assetType = 'stock';
-    exchange = 'BIST';
-  } else if (US_STOCKS.has(raw)) {
-    assetType = 'stock';
-    exchange = (raw === 'BRK.B' || raw === 'JPM' || raw === 'V' || raw === 'WMT' || raw === 'KO' || raw === 'DIS') ? 'NYSE' : 'NASDAQ';
+  // 6. Infer exchange only when not explicitly specified by caller prefix/suffix/hint
+  if (!hasExplicitExchange) {
+    if (INDEX_SYMBOLS.has(raw)) {
+      assetType = 'stock';
+      exchange = 'INDEX';
+    } else if (TEFAS_SET.has(raw)) {
+      assetType = 'fund';
+      exchange = 'TEFAS';
+    } else if (US_ETFS.has(raw)) {
+      assetType = 'stock';
+      exchange = 'NASDAQ';
+    } else if (BIST_ETFS.has(raw)) {
+      assetType = 'stock';
+      exchange = 'BIST';
+    } else if (US_STOCKS.has(raw)) {
+      assetType = 'stock';
+      exchange = (raw === 'BRK.B' || raw === 'JPM' || raw === 'V' || raw === 'WMT' || raw === 'KO' || raw === 'DIS') ? 'NYSE' : 'NASDAQ';
+    }
   }
 
-  return { symbol: raw, assetType, exchange };
+  return {
+    symbol: raw,
+    assetType,
+    exchange,
+    instrumentId: `${exchange}:${raw}`,
+    hasExplicitExchange,
+  };
 }
 
 /**

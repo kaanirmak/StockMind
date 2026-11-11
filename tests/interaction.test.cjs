@@ -3732,6 +3732,89 @@ test('VER-08: asset types (Hisse, ETF, Fon, Endeks, Döviz, Emtia) and units (pu
   assert.match(detailSrc, /formatAssetUnitPrice/);
 });
 
+test('VER-09: exchange and symbol resolution prevents cross-exchange collisions and verifies index/ETF mappings', async () => {
+  const loadWithAlias = createAliasedLoader();
+  const symbolMod = loadWithAlias('src/lib/utils/symbol.ts', {
+    '@/lib/data/tefas_funds_directory.json': [{ code: 'MAC', name: 'Marmara Capital Hisse Senedi Fonu' }],
+    '@/lib/utils/search': { POPULAR_ALIASES: {}, normalizeText: (s) => String(s).toLowerCase() },
+  });
+
+  // 1. Same ticker across different exchanges never collapses to the wrong exchange
+  const tefasMac = symbolMod.parseQualifiedSymbol('TEFAS:MAC');
+  const bistMac = symbolMod.parseQualifiedSymbol('BIST:MAC');
+  const nasdaqMac = symbolMod.parseQualifiedSymbol('NASDAQ:MAC');
+  assert.equal(tefasMac.instrumentId, 'TEFAS:MAC');
+  assert.equal(tefasMac.assetType, 'fund');
+  assert.equal(bistMac.instrumentId, 'BIST:MAC');
+  assert.equal(bistMac.assetType, 'stock');
+  assert.equal(nasdaqMac.instrumentId, 'NASDAQ:MAC');
+  assert.equal(nasdaqMac.assetType, 'stock');
+
+  // NYSE vs NASDAQ explicit prefix stays preserved
+  assert.equal(symbolMod.parseQualifiedSymbol('NYSE:SPY').instrumentId, 'NYSE:SPY');
+  assert.equal(symbolMod.parseQualifiedSymbol('NASDAQ:QQQ').instrumentId, 'NASDAQ:QQQ');
+  assert.equal(symbolMod.parseQualifiedSymbol('BIST:GLDTR').instrumentId, 'BIST:GLDTR');
+  assert.equal(symbolMod.parseQualifiedSymbol('XU100').instrumentId, 'INDEX:XU100');
+  assert.equal(symbolMod.parseQualifiedSymbol('SPX').instrumentId, 'INDEX:SPX');
+
+  // 2. Last verified store keeps identical tickers separated per exchange
+  const storeMod = load('src/lib/market/lastVerifiedStore.ts');
+  storeMod.__clearLastVerifiedQuotesForTests();
+  const nowIso = '2026-11-11T10:30:00.000Z';
+  await storeMod.recordVerifiedQuotes(
+    [
+      {
+        symbol: 'ARM',
+        name: 'Armada BIST',
+        exchange: 'BIST',
+        currency: 'TRY',
+        price: 42.5,
+        observation: { source: 'TradingView', asOf: nowIso, fetchedAt: nowIso, changePercent: 1.2 },
+      },
+      {
+        symbol: 'ARM',
+        name: 'Arm Holdings',
+        exchange: 'NASDAQ',
+        currency: 'USD',
+        price: 148.0,
+        observation: { source: 'TradingView', asOf: nowIso, fetchedAt: nowIso, changePercent: -0.5 },
+      },
+    ],
+    { supabase: null },
+  );
+
+  const armBist = await storeMod.getLastVerifiedQuote('ARM', { exchange: 'BIST', supabase: null });
+  const armNasdaq = await storeMod.getLastVerifiedQuote('ARM', { exchange: 'NASDAQ', supabase: null });
+  const armNyseMissing = await storeMod.getLastVerifiedQuote('ARM', { exchange: 'NYSE', supabase: null });
+  assert.equal(armBist.price, 42.5);
+  assert.equal(armBist.exchange, 'BIST');
+  assert.equal(armNasdaq.price, 148.0);
+  assert.equal(armNasdaq.exchange, 'NASDAQ');
+  assert.equal(armNyseMissing, null);
+
+  // 3. Historical index & ETF resolution
+  const stocksMod = loadWithAlias('src/lib/data/stocks.ts', {
+    '@/lib/indicators': load('src/lib/indicators/index.ts'),
+    '@/lib/data/tefas_funds_directory.json': [],
+    '@/lib/api/tefas': { fetchTefasLiveDetail: async () => null },
+    '@/lib/utils/search': { calculateFuzzyScore: () => 0, normalizeText: (s) => s, POPULAR_ALIASES: {} },
+    '@/lib/utils/symbol': symbolMod,
+    '@/lib/constants/stocks': { POPULAR_STOCKS: [] },
+    '@/lib/market/lastVerifiedStore': storeMod,
+  });
+
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('XU100').querySymbol, 'XU100.IS');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('SPX').querySymbol, '^GSPC');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('NDX').querySymbol, '^IXIC');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('QQQ').querySymbol, 'QQQ');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('TQQQ').querySymbol, 'TQQQ');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('SPY').querySymbol, 'SPY');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('GLDTR').querySymbol, 'GLDTR.IS');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('ZGOLD').querySymbol, 'ZGOLD.IS');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('ARM', undefined, 'NASDAQ').querySymbol, 'ARM');
+  assert.equal(stocksMod.resolveHistoricalQuerySymbol('ARM', undefined, 'BIST').querySymbol, 'ARM.IS');
+});
+
 
 
 

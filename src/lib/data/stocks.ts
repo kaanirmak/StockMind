@@ -6,6 +6,7 @@ import { cleanSymbol } from '@/lib/utils/symbol';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { getLastVerifiedQuote, isVerifiedMarketQuote, recordVerifiedQuotes } from '@/lib/market/lastVerifiedStore';
 import { matchesMarketExchangeFilter } from '@/lib/market/marketSelector';
+import { BIST_ETFS, US_ETFS, isIndexSymbol } from '@/lib/market/assetClassification';
 import {
   Candle,
   calculateBollingerBands,
@@ -1140,11 +1141,74 @@ export async function fetchAllAlternativeMarkets(): Promise<AlternativeMarketsDa
   return result;
 }
 
+const KNOWN_US_NON_BIST_TICKERS = new Set([
+  'AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOG', 'GOOGL', 'META', 'NFLX', 'PLTR',
+  'UBER', 'COIN', 'SOFI', 'MSTR', 'SMCI', 'RKLB', 'HOOD', 'AMD', 'INTC', 'CRM',
+  'BABA', 'ORCL', 'AVGO', 'COST', 'PEP', 'CSCO', 'ADBE', 'TXN', 'QCOM', 'TMUS',
+  'ARM', 'ASML', 'PANW', 'CRWD', 'SNOW', 'SHOP', 'MARA', 'RIOT', 'CLSK', 'RIVN',
+  'LCID', 'ABNB', 'PYPL', 'INTU', 'NOW', 'SNPS', 'CDNS', 'MRVL', 'KLAC', 'AMAT',
+  'LRCX', 'BRK.B', 'BRK.A',
+]);
+
+function extractExplicitExchangeAndSymbol(
+  rawInput: string,
+  explicitExchangeHint?: string | null,
+): { symbol: string; lockedExchange: string | null; assetType: 'stock' | 'fund' } {
+  const upper = String(rawInput || '').trim().toUpperCase();
+  const hint = explicitExchangeHint ? explicitExchangeHint.trim().toUpperCase() : '';
+  const cleaned = cleanSymbol(rawInput);
+  const symbol = cleaned.symbol.toUpperCase().trim();
+
+  if (upper.startsWith('FON:') || upper.startsWith('MUTF:') || upper.startsWith('TEFAS:')) {
+    return { symbol, lockedExchange: 'TEFAS', assetType: 'fund' };
+  }
+  if (upper.startsWith('BIST:') || upper.startsWith('IST:') || upper.startsWith('TRA:') || /\.(IS|E|BIST)$/i.test(upper)) {
+    return { symbol, lockedExchange: 'BIST', assetType: 'stock' };
+  }
+  if (upper.startsWith('NYSE:')) {
+    return { symbol, lockedExchange: 'NYSE', assetType: 'stock' };
+  }
+  if (upper.startsWith('NASDAQ:') || upper.startsWith('US:')) {
+    return { symbol, lockedExchange: 'NASDAQ', assetType: 'stock' };
+  }
+  if (upper.startsWith('INDEX:') || upper.startsWith('IDX:')) {
+    return { symbol, lockedExchange: 'INDEX', assetType: 'stock' };
+  }
+  if (upper.startsWith('FOREX:')) {
+    return { symbol, lockedExchange: 'FOREX', assetType: 'stock' };
+  }
+  if (upper.startsWith('CRYPTO:')) {
+    return { symbol, lockedExchange: 'CRYPTO', assetType: 'stock' };
+  }
+  if (upper.startsWith('COMMODITY:')) {
+    return { symbol, lockedExchange: 'COMMODITY', assetType: 'stock' };
+  }
+  if (hint) {
+    return {
+      symbol,
+      lockedExchange: hint,
+      assetType: hint === 'TEFAS' ? 'fund' : cleaned.assetType,
+    };
+  }
+  return {
+    symbol,
+    lockedExchange: null,
+    assetType: cleaned.assetType,
+  };
+}
+
 /**
  * Fetch a specific symbol directly from TradingView Multi-Asset Scanner APIs (CFD, Forex, Crypto, BIST, US)
  */
-export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: boolean = false): Promise<StockMarketInfo | null> {
-  const { symbol: cleanSym, assetType: cleanType } = cleanSymbol(symbol);
+export async function fetchSpecificSymbolLive(
+  symbol: string,
+  allowSynthetic: boolean = false,
+  preferredExchange?: string | null,
+): Promise<StockMarketInfo | null> {
+  const scoped = extractExplicitExchangeAndSymbol(symbol, preferredExchange);
+  const cleanSym = scoped.symbol;
+  const cleanType = scoped.assetType;
+  const lockedExchange = scoped.lockedExchange;
   const originalSym = cleanSym.toUpperCase().trim();
   if (!originalSym) return null;
 
@@ -1458,13 +1522,19 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
   const cached = [...bist, ...us].find((s) => s.symbol.toUpperCase() === sym || s.symbol.toUpperCase() === originalSym);
   if (cached) return { ...cached, symbol: originalSym };
 
-  // 3.5 Check if symbol is a TEFAS fund
+  // 3.5 Check if symbol is a TEFAS fund (only when exchange is not locked to another exchange)
+  const allowsTefas = !lockedExchange || lockedExchange === 'TEFAS';
   const isFundCode =
-    cleanType === 'fund' ||
-    (TEFAS_DIRECTORY as { code: string }[]).some(
-      (f) => f.code.toUpperCase() === sym || f.code.toUpperCase() === originalSym
-    ) ||
-    sym.length === 3;
+    allowsTefas &&
+    (cleanType === 'fund' ||
+      (TEFAS_DIRECTORY as { code: string }[]).some(
+        (f) => f.code.toUpperCase() === sym || f.code.toUpperCase() === originalSym
+      ) ||
+      (sym.length === 3 &&
+        !US_ETFS.has(sym) &&
+        !BIST_ETFS.has(sym) &&
+        !isIndexSymbol(sym) &&
+        !lockedExchange));
 
   if (isFundCode) {
     try {
@@ -1504,7 +1574,10 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
   try {
 
     // 5. Query Forex Scanner (USDTRY, EURTRY, GBPTRY, EURUSD, USDJPY, etc.)
-    if (sym.endsWith('TRY') || sym.startsWith('USD') || sym.startsWith('EUR') || sym.startsWith('GBP') || sym.startsWith('JPY')) {
+    if (
+      (!lockedExchange || lockedExchange === 'FOREX') &&
+      (sym.endsWith('TRY') || sym.startsWith('USD') || sym.startsWith('EUR') || sym.startsWith('GBP') || sym.startsWith('JPY'))
+    ) {
       const fxRes = await fetch('https://scanner.tradingview.com/forex/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1564,7 +1637,10 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
     }
 
     // 6. Query Crypto Scanner (BTCUSD, ETHUSD, SOLUSD, XRPUSD, etc.)
-    if (sym.startsWith('BTC') || sym.startsWith('ETH') || sym.startsWith('SOL') || sym.startsWith('XRP') || sym.startsWith('AVAX') || sym.startsWith('BNB')) {
+    if (
+      (!lockedExchange || lockedExchange === 'CRYPTO') &&
+      (sym.startsWith('BTC') || sym.startsWith('ETH') || sym.startsWith('SOL') || sym.startsWith('XRP') || sym.startsWith('AVAX') || sym.startsWith('BNB'))
+    ) {
       const cryptoRes = await fetch('https://scanner.tradingview.com/crypto/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1621,7 +1697,8 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       }
     }
 
-    // 7. Query Turkey Scanner specifically
+    // 7. Query Turkey Scanner specifically (skip if exchange is locked to a non-BIST exchange)
+    if (!lockedExchange || lockedExchange === 'BIST') {
     const turkeyRes = await fetch('https://scanner.tradingview.com/turkey/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1685,8 +1762,10 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         }
       }
     }
+    }
 
-    // 8. Query America Scanner specifically
+    // 8. Query America Scanner specifically (skip if locked to BIST/TEFAS/INDEX)
+    if (!lockedExchange || lockedExchange === 'NASDAQ' || lockedExchange === 'NYSE' || lockedExchange === 'AMEX') {
     const usRes = await fetch('https://scanner.tradingview.com/america/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1705,6 +1784,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           'Low.All',
           'price_earnings_ttm',
           'dividend_yield_recent',
+          'exchange',
         ],
       }),
     });
@@ -1712,18 +1792,35 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
     if (usRes.ok) {
       const data = await usRes.json();
       if (data.data && data.data.length > 0) {
-        const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield] = data.data[0].d;
+        const matchedRow =
+          (lockedExchange &&
+            data.data.find((entry: { d?: unknown[] }) => {
+              const rawEx = String(entry?.d?.[11] || '').toUpperCase();
+              if (lockedExchange === 'NYSE') return rawEx.includes('NYSE') || rawEx.includes('AMEX') || rawEx.includes('ARCA');
+              return rawEx.includes(lockedExchange);
+            })) ||
+          data.data[0];
+        const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield, tvExchange] = matchedRow.d;
         const validClose = finiteMarketNumber(close);
         if (name && validClose !== null && validClose > 0) {
           const currentPrice = Number(validClose.toFixed(2));
           const changePercent = Number(((finiteMarketNumber(change) ?? 0)).toFixed(2));
           const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
           const fetchedAt = new Date().toISOString();
+          const normalizedTvEx = String(tvExchange || '').toUpperCase();
+          const resolvedExchange: 'NASDAQ' | 'NYSE' =
+            lockedExchange === 'NYSE'
+              ? 'NYSE'
+              : lockedExchange === 'NASDAQ'
+                ? 'NASDAQ'
+                : normalizedTvEx.includes('NYSE') || normalizedTvEx.includes('AMEX') || normalizedTvEx.includes('ARCA')
+                  ? 'NYSE'
+                  : 'NASDAQ';
 
           const stockInfo: StockMarketInfo = {
             symbol: name,
             name: desc || name,
-            exchange: 'NASDAQ',
+            exchange: resolvedExchange,
             currency: 'USD',
             sector: SECTOR_TR_MAP[rawSector] || rawSector || 'ABD Borsaları',
             basePrice: currentPrice,
@@ -1749,6 +1846,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           return stockInfo;
         }
       }
+    }
     }
   } catch (err) {
     console.error(`Error querying specific symbol ${sym}:`, err);
@@ -1949,15 +2047,21 @@ export function getAllStocks(filter?: {
   return getAllStocksLive(filter) as any;
 }
 
-export async function getStockBySymbolLive(symbol: string): Promise<(StockMarketInfo & StockQuote) | null> {
-  const stock = await fetchSpecificSymbolLive(symbol, false);
+export async function getStockBySymbolLive(
+  symbol: string,
+  preferredExchange?: string | null,
+): Promise<(StockMarketInfo & StockQuote) | null> {
+  const scoped = extractExplicitExchangeAndSymbol(symbol, preferredExchange);
+  const stock = await fetchSpecificSymbolLive(symbol, false, scoped.lockedExchange);
   if (stock && isVerifiedMarketQuote(stock)) {
     await recordVerifiedQuotes([stock]);
     return stock as any;
   }
 
-  const normalized = cleanSymbol(symbol).symbol.toUpperCase().trim();
-  const fallback = normalized ? await getLastVerifiedQuote(normalized) : null;
+  const normalized = scoped.symbol;
+  const fallback = normalized
+    ? await getLastVerifiedQuote(normalized, { exchange: scoped.lockedExchange })
+    : null;
   return (fallback as any) ?? null;
 }
 
@@ -1967,6 +2071,82 @@ export function getStockBySymbol(symbol: string): (StockMarketInfo & StockQuote)
   return (stock as any) || null;
 }
 
+export function resolveHistoricalQuerySymbol(
+  symbol: string,
+  targetPrice?: number,
+  preferredExchange?: string | null,
+): {
+  querySymbol: string;
+  isGoldOrSilverScale: boolean;
+  scaleTarget?: number;
+} {
+  const scoped = extractExplicitExchangeAndSymbol(symbol, preferredExchange);
+  const sym = scoped.symbol || symbol.toUpperCase().trim();
+  const lockedExchange = scoped.lockedExchange;
+  let querySymbol = sym;
+  let isGoldOrSilverScale = false;
+  let scaleTarget: number | undefined = undefined;
+
+  // 1. Check if index
+  const indexDef =
+    (!lockedExchange || lockedExchange === 'INDEX') &&
+    MAJOR_INDEX_DEFINITIONS.find(
+      (i) => i.symbol.toUpperCase() === sym || i.ticker.toUpperCase() === sym || (sym === 'BIST100' && i.symbol === 'XU100')
+    );
+  if (indexDef) {
+    return { querySymbol: indexDef.ticker, isGoldOrSilverScale: false };
+  }
+
+  // 2. Check if commodity
+  const commDef =
+    (!lockedExchange || lockedExchange === 'COMMODITY') &&
+    CURATED_COMMODITY_DEFINITIONS.find(
+      (c) => c.symbol.toUpperCase() === sym || c.ticker.toUpperCase() === sym
+    );
+  if (commDef) {
+    querySymbol = commDef.ticker;
+    if (commDef.subCategory === 'GOLD_TR') {
+      isGoldOrSilverScale = true;
+      scaleTarget = targetPrice || commDef.basePrice;
+    }
+    return { querySymbol, isGoldOrSilverScale, scaleTarget };
+  }
+
+  // 3. Explicit equity exchange routing prevents cross-exchange collisions (BIST vs NASDAQ/NYSE)
+  if (lockedExchange === 'BIST') {
+    return { querySymbol: `${sym}.IS`, isGoldOrSilverScale: false };
+  }
+  if (lockedExchange === 'NASDAQ' || lockedExchange === 'NYSE' || lockedExchange === 'AMEX') {
+    return { querySymbol: sym, isGoldOrSilverScale: false };
+  }
+
+  // 4. Known Forex / Crypto / Commodities / Index aliases / ETFs / Stocks
+  if (sym === 'XAUUSD' || sym === 'GOLD') querySymbol = 'GC=F';
+  else if (sym === 'XAGUSD' || sym === 'SILVER') querySymbol = 'SI=F';
+  else if (sym === 'USDTRY') querySymbol = 'USDTRY=X';
+  else if (sym === 'EURTRY') querySymbol = 'EURTRY=X';
+  else if (sym === 'GBPTRY') querySymbol = 'GBPTRY=X';
+  else if (sym === 'EURUSD') querySymbol = 'EURUSD=X';
+  else if (sym === 'USDJPY') querySymbol = 'JPY=X';
+  else if (sym.endsWith('TRY') && sym.length === 6) querySymbol = `${sym}=X`;
+  else if (sym === 'BTCUSD' || sym === 'BTCUSDT' || sym === 'BTC') querySymbol = 'BTC-USD';
+  else if (sym === 'ETHUSD' || sym === 'ETHUSDT' || sym === 'ETH') querySymbol = 'ETH-USD';
+  else if (sym === 'SOLUSD' || sym === 'SOLUSDT' || sym === 'SOL') querySymbol = 'SOL-USD';
+  else if (sym === 'XRPUSD' || sym === 'XRPUSDT' || sym === 'XRP') querySymbol = 'XRP-USD';
+  else if (sym === 'AVAXUSD' || sym === 'AVAXUSDT' || sym === 'AVAX') querySymbol = 'AVAX-USD';
+  else if (sym === 'BNBUSD' || sym === 'BNBUSDT' || sym === 'BNB') querySymbol = 'BNB-USD';
+  else if (sym === 'DOGEUSD' || sym === 'DOGEUSDT' || sym === 'DOGE') querySymbol = 'DOGE-USD';
+  else if (sym.endsWith('USDT')) querySymbol = `${sym.replace('USDT', '')}-USD`;
+  else if (sym.endsWith('USD') && sym.length >= 6) querySymbol = `${sym.slice(0, -3)}-USD`;
+  else if (sym === 'UKOIL') querySymbol = 'BZ=F';
+  else if (sym === 'USOIL') querySymbol = 'CL=F';
+  else if (sym === 'XU100' || sym === 'BIST100') querySymbol = 'XU100.IS';
+  else if (BIST_ETFS.has(sym)) querySymbol = `${sym}.IS`;
+  else if (US_ETFS.has(sym) || KNOWN_US_NON_BIST_TICKERS.has(sym)) querySymbol = sym;
+  else if (sym.length >= 4) querySymbol = `${sym}.IS`;
+
+  return { querySymbol, isGoldOrSilverScale, scaleTarget };
+}
 
 /**
  * Fetch 100% REAL historical candlestick OHLCV data dynamically from live market data feeds
@@ -1974,62 +2154,14 @@ export function getStockBySymbol(symbol: string): (StockMarketInfo & StockQuote)
 export async function fetchRealHistoricalCandles(
   symbol: string,
   timeframe: '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | 'ALL' = '1M',
-  targetPrice?: number
+  targetPrice?: number,
+  preferredExchange?: string | null,
 ): Promise<Candle[]> {
-  const sym = symbol.toUpperCase().trim();
-  let querySymbol = sym;
-  let isGoldOrSilverScale = false;
-  let scaleTarget: number | undefined = undefined;
-
-  // 1. Check if index
-  const indexDef = MAJOR_INDEX_DEFINITIONS.find(
-    (i) => i.symbol.toUpperCase() === sym || i.ticker.toUpperCase() === sym || (sym === 'BIST100' && i.symbol === 'XU100')
+  const { querySymbol, isGoldOrSilverScale, scaleTarget } = resolveHistoricalQuerySymbol(
+    symbol,
+    targetPrice,
+    preferredExchange,
   );
-  if (indexDef) {
-    querySymbol = indexDef.ticker;
-  }
-
-  // 2. Check if commodity
-  const commDef = CURATED_COMMODITY_DEFINITIONS.find(
-    (c) => c.symbol.toUpperCase() === sym || c.ticker.toUpperCase() === sym
-  );
-  if (commDef) {
-    querySymbol = commDef.ticker;
-    if (commDef.subCategory === 'GOLD_TR') {
-      isGoldOrSilverScale = true;
-      scaleTarget = targetPrice || commDef.basePrice;
-    }
-  }
-
-  // 3. Known Forex / Crypto / Commodities / Stocks
-  if (!indexDef && !commDef) {
-    if (sym === 'XAUUSD' || sym === 'GOLD') querySymbol = 'GC=F';
-    else if (sym === 'XAGUSD' || sym === 'SILVER') querySymbol = 'SI=F';
-    else if (sym === 'USDTRY') querySymbol = 'USDTRY=X';
-    else if (sym === 'EURTRY') querySymbol = 'EURTRY=X';
-    else if (sym === 'GBPTRY') querySymbol = 'GBPTRY=X';
-    else if (sym === 'EURUSD') querySymbol = 'EURUSD=X';
-    else if (sym === 'USDJPY') querySymbol = 'JPY=X';
-    else if (sym.endsWith('TRY') && sym.length === 6) querySymbol = `${sym}=X`;
-    else if (sym === 'BTCUSD' || sym === 'BTCUSDT' || sym === 'BTC') querySymbol = 'BTC-USD';
-    else if (sym === 'ETHUSD' || sym === 'ETHUSDT' || sym === 'ETH') querySymbol = 'ETH-USD';
-    else if (sym === 'SOLUSD' || sym === 'SOLUSDT' || sym === 'SOL') querySymbol = 'SOL-USD';
-    else if (sym === 'XRPUSD' || sym === 'XRPUSDT' || sym === 'XRP') querySymbol = 'XRP-USD';
-    else if (sym === 'AVAXUSD' || sym === 'AVAXUSDT' || sym === 'AVAX') querySymbol = 'AVAX-USD';
-    else if (sym === 'BNBUSD' || sym === 'BNBUSDT' || sym === 'BNB') querySymbol = 'BNB-USD';
-    else if (sym === 'DOGEUSD' || sym === 'DOGEUSDT' || sym === 'DOGE') querySymbol = 'DOGE-USD';
-    else if (sym.endsWith('USDT')) querySymbol = `${sym.replace('USDT', '')}-USD`;
-    else if (sym.endsWith('USD') && sym.length >= 6) querySymbol = `${sym.slice(0, -3)}-USD`;
-    else if (sym === 'UKOIL') querySymbol = 'BZ=F';
-    else if (sym === 'USOIL') querySymbol = 'CL=F';
-    else if (sym === 'XU100' || sym === 'BIST100') querySymbol = 'XU100.IS';
-    else if (
-      sym.length >= 4 &&
-      !['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'GOOG', 'GOOGL', 'META', 'NFLX', 'PLTR', 'UBER', 'COIN', 'SOFI', 'MSTR', 'SMCI', 'RKLB', 'HOOD', 'AMD', 'INTC', 'CRM', 'BABA', 'ORCL', 'AVGO', 'COST', 'PEP', 'CSCO', 'ADBE', 'TXN', 'QCOM', 'TMUS'].includes(sym)
-    ) {
-      querySymbol = `${sym}.IS`;
-    }
-  }
 
   let range = '1mo';
   let interval = '1d';
@@ -2125,7 +2257,7 @@ export async function fetchRealHistoricalCandles(
       }
     }
   } catch (err) {
-    console.warn(`Error fetching real candles for ${sym}:`, err);
+    console.warn(`Error fetching real candles for ${symbol}:`, err);
   }
 
   // If real historical candles cannot be fetched, return empty array — do not return synthetic sine waves as real history

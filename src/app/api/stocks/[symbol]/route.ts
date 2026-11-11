@@ -9,7 +9,8 @@ export async function GET(
 ) {
   try {
     const { symbol } = await params;
-    const stock = await getStockBySymbolLive(symbol);
+    const exchange = new URL(request.url).searchParams.get('exchange');
+    const stock = await getStockBySymbolLive(symbol, exchange);
 
     if (!stock) {
       return NextResponse.json(

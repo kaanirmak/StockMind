@@ -39,6 +39,14 @@ function normalizeSymbolKey(symbol: string): string {
   return symbol.trim().toUpperCase();
 }
 
+export function buildVerifiedQuoteStorageKey(symbol: string, exchange?: string | null): string {
+  const cleanSym = symbol.trim().toUpperCase();
+  if (!cleanSym) return '';
+  if (cleanSym.includes(':')) return cleanSym;
+  const cleanExchange = exchange ? exchange.trim().toUpperCase() : '';
+  return cleanExchange ? `${cleanExchange}:${cleanSym}` : cleanSym;
+}
+
 export async function recordVerifiedQuotes(
   quotes: Array<StockMarketInfo | null | undefined>,
   options?: { supabase?: SupabaseClient | null }
@@ -47,15 +55,31 @@ export async function recordVerifiedQuotes(
   if (verified.length === 0) return 0;
 
   const deduped = new Map<string, StockMarketInfo>();
+  const seenBareExchanges = new Map<string, string>();
   for (const quote of verified) {
-    const key = normalizeSymbolKey(quote.symbol);
+    const bareSym = normalizeSymbolKey(quote.symbol);
+    const qualifiedKey = buildVerifiedQuoteStorageKey(bareSym, quote.exchange);
+    const exUpper = String(quote.exchange || '').toUpperCase();
     const cleanQuote: StockMarketInfo = {
       ...quote,
-      symbol: key,
+      symbol: bareSym,
       isLastKnown: false,
     };
-    memoryVerifiedStore.set(key, cleanQuote);
-    deduped.set(key, cleanQuote);
+    memoryVerifiedStore.set(qualifiedKey, cleanQuote);
+    deduped.set(qualifiedKey, cleanQuote);
+
+    // Keep bare symbol key in sync for overview/single-exchange callers unless conflicting exchange observed
+    if (qualifiedKey !== bareSym) {
+      const priorExchange = seenBareExchanges.get(bareSym);
+      const existingBare = memoryVerifiedStore.get(bareSym);
+      if (priorExchange && priorExchange !== exUpper) {
+        deduped.delete(bareSym);
+      } else if (!existingBare || String(existingBare.exchange || '').toUpperCase() === exUpper) {
+        seenBareExchanges.set(bareSym, exUpper);
+        memoryVerifiedStore.set(bareSym, cleanQuote);
+        deduped.set(bareSym, cleanQuote);
+      }
+    }
   }
 
   const supabase = options?.supabase !== undefined ? options.supabase : getQuoteStoreClient(true);
@@ -83,18 +107,31 @@ export async function recordVerifiedQuotes(
 
 export async function getLastVerifiedQuotes(
   symbols: string[],
-  options?: { supabase?: SupabaseClient | null }
+  options?: { supabase?: SupabaseClient | null; exchange?: string | null }
 ): Promise<Map<string, StockMarketInfo>> {
-  const normalized = Array.from(new Set(symbols.map(normalizeSymbolKey).filter(Boolean)));
+  const requestedExchange = options?.exchange ? options.exchange.trim().toUpperCase() : '';
+  const normalized = Array.from(
+    new Set(
+      symbols
+        .map((s) => (requestedExchange ? buildVerifiedQuoteStorageKey(s, requestedExchange) : normalizeSymbolKey(s)))
+        .filter(Boolean),
+    ),
+  );
   const result = new Map<string, StockMarketInfo>();
   const missing: string[] = [];
 
-  for (const sym of normalized) {
-    const cached = memoryVerifiedStore.get(sym);
-    if (cached && isVerifiedMarketQuote(cached)) {
-      result.set(sym, { ...cached, isLastKnown: true });
+  for (const lookupKey of normalized) {
+    const bareSym = lookupKey.includes(':') ? lookupKey.split(':')[1] : lookupKey;
+    const cached = memoryVerifiedStore.get(lookupKey) ?? (lookupKey.includes(':') ? undefined : memoryVerifiedStore.get(bareSym));
+    if (
+      cached &&
+      isVerifiedMarketQuote(cached) &&
+      (!requestedExchange || String(cached.exchange || '').toUpperCase() === requestedExchange)
+    ) {
+      result.set(bareSym, { ...cached, isLastKnown: true });
+      result.set(lookupKey, { ...cached, isLastKnown: true });
     } else {
-      missing.push(sym);
+      missing.push(lookupKey);
     }
   }
 
@@ -102,18 +139,27 @@ export async function getLastVerifiedQuotes(
     const supabase = options?.supabase !== undefined ? options.supabase : getQuoteStoreClient(false);
     if (supabase) {
       try {
+        const bareCandidates = Array.from(
+          new Set(missing.flatMap((k) => (k.includes(':') ? [k, k.split(':')[1]] : [k]))),
+        );
         const { data, error } = await supabase
           .from('market_quote_cache')
           .select('symbol, quote')
-          .in('symbol', missing);
+          .in('symbol', bareCandidates);
         if (!error && Array.isArray(data)) {
           for (const row of data) {
             const candidate = (row as { symbol?: string; quote?: StockMarketInfo })?.quote;
-            if (isVerifiedMarketQuote(candidate)) {
-              const key = normalizeSymbolKey(row.symbol || candidate.symbol);
-              memoryVerifiedStore.set(key, { ...candidate, symbol: key, isLastKnown: false });
-              result.set(key, { ...candidate, symbol: key, isLastKnown: true });
+            if (!isVerifiedMarketQuote(candidate)) continue;
+            if (requestedExchange && String(candidate.exchange || '').toUpperCase() !== requestedExchange) {
+              continue;
             }
+            const rawKey = normalizeSymbolKey(row.symbol || candidate.symbol);
+            const bareKey = rawKey.includes(':') ? rawKey.split(':')[1] : rawKey;
+            const qualifiedKey = buildVerifiedQuoteStorageKey(bareKey, candidate.exchange);
+            const cleanCandidate = { ...candidate, symbol: bareKey, isLastKnown: false };
+            memoryVerifiedStore.set(qualifiedKey, cleanCandidate);
+            result.set(qualifiedKey, { ...cleanCandidate, isLastKnown: true });
+            result.set(bareKey, { ...cleanCandidate, isLastKnown: true });
           }
         }
       } catch (err) {
@@ -127,12 +173,15 @@ export async function getLastVerifiedQuotes(
 
 export async function getLastVerifiedQuote(
   symbol: string,
-  options?: { supabase?: SupabaseClient | null }
+  options?: { supabase?: SupabaseClient | null; exchange?: string | null }
 ): Promise<StockMarketInfo | null> {
-  const key = normalizeSymbolKey(symbol);
-  if (!key) return null;
-  const map = await getLastVerifiedQuotes([key], options);
-  return map.get(key) ?? null;
+  const lookupKey = options?.exchange
+    ? buildVerifiedQuoteStorageKey(symbol, options.exchange)
+    : normalizeSymbolKey(symbol);
+  if (!lookupKey) return null;
+  const map = await getLastVerifiedQuotes([lookupKey], options);
+  const bareKey = lookupKey.includes(':') ? lookupKey.split(':')[1] : lookupKey;
+  return map.get(lookupKey) ?? (options?.exchange ? null : map.get(bareKey) ?? null);
 }
 
 export function __clearLastVerifiedQuotesForTests() {
