@@ -35,6 +35,11 @@ import {
   buildAiUsageVisibilitySummary,
   type AiQuotaSnapshot,
 } from '@/lib/ai/quotaVisibility';
+import {
+  buildDefaultNewsQuestion,
+  parseNewsAnalysisSearchParams,
+  type NewsAnalysisContext,
+} from '@/lib/ai/newsAnalysisContext';
 
 export interface Message {
   id: string;
@@ -98,6 +103,7 @@ function AIAssistantContent() {
   const [includePortfolioContext, setIncludePortfolioContext] = useState(false);
   const [portfolioContextScope, setPortfolioContextScope] = useState<PortfolioFieldScopePreference>('auto');
   const [showPortfolioFieldsInfo, setShowPortfolioFieldsInfo] = useState(false);
+  const [pendingNewsContext, setPendingNewsContext] = useState<NewsAnalysisContext | null>(null);
   const effectivePortfolioScope = React.useMemo(
     () => classifyPortfolioQuestionScope(input || 'dağılım', portfolioContextScope),
     [input, portfolioContextScope]
@@ -356,9 +362,21 @@ function AIAssistantContent() {
     }
   };
 
-  // Handle URL prompt query param
+  // Handle URL prompt or sourced news analysis query params
   const promptProcessedRef = useRef<string | null>(null);
   useEffect(() => {
+    const parsedNews = parseNewsAnalysisSearchParams(searchParams);
+    if (parsedNews) {
+      const newsKey = `${parsedNews.news.source}:${parsedNews.news.title}:${parsedNews.includePortfolio}`;
+      if (promptProcessedRef.current !== newsKey) {
+        promptProcessedRef.current = newsKey;
+        setPendingNewsContext(parsedNews.news);
+        setIncludePortfolioContext(parsedNews.includePortfolio);
+        setInput(buildDefaultNewsQuestion(parsedNews.news, parsedNews.includePortfolio));
+      }
+      return;
+    }
+
     const urlPrompt = searchParams.get('prompt');
     if (urlPrompt && urlPrompt !== promptProcessedRef.current) {
       promptProcessedRef.current = urlPrompt;
@@ -372,9 +390,11 @@ function AIAssistantContent() {
   const sendChatMessages = async (
     baseHistory: Message[],
     cleanText: string,
-    shouldIncludePortfolio: boolean
+    shouldIncludePortfolio: boolean,
+    attachedNews?: NewsAnalysisContext | null
   ) => {
     const hasCustomKey = Boolean(activeCustomKey);
+    const activeNewsContext = attachedNews !== undefined ? attachedNews : pendingNewsContext;
     setLoading(true);
     followLatest();
 
@@ -419,6 +439,7 @@ function AIAssistantContent() {
           model: effectiveModel,
           apiKey: activeCustomKey,
           portfolioContext: portfolioPayload,
+          newsContext: activeNewsContext || undefined,
         }),
       });
 
@@ -515,10 +536,14 @@ function AIAssistantContent() {
       createdAt: new Date().toISOString(),
     };
 
+    const newsToAttach = pendingNewsContext;
     const newMessages = [...messages, userMessage];
     updateCurrentSessionMessages(newMessages);
     setInput('');
-    await sendChatMessages(newMessages, cleanText, shouldIncludePortfolio);
+    if (newsToAttach) {
+      setPendingNewsContext(null);
+    }
+    await sendChatMessages(newMessages, cleanText, shouldIncludePortfolio, newsToAttach);
   };
 
   const handleRetryFailedPrompt = async (errorMessageId: string, promptText: string) => {
@@ -888,6 +913,55 @@ function AIAssistantContent() {
               {sug.label}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Attached Sourced News Context Preview Card (AIP-06) */}
+      {pendingNewsContext && (
+        <div
+          data-testid="ai-news-context-card"
+          className="shrink-0 mb-2 rounded-2xl border border-accent/40 bg-accent/10 px-3 py-2.5 text-xs space-y-1.5"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-1.5 py-0.5 rounded bg-accent/20 text-accent text-[10px] font-bold">
+                  Haber Kaynağı: {pendingNewsContext.source}
+                </span>
+                {pendingNewsContext.relatedSymbols?.length ? (
+                  <span className="text-[10px] text-text-muted font-medium">
+                    Semboller: {pendingNewsContext.relatedSymbols.join(', ')}
+                  </span>
+                ) : null}
+              </div>
+              <p className="font-semibold text-text-primary leading-snug">{pendingNewsContext.title}</p>
+              {pendingNewsContext.summary && (
+                <p className="text-[11px] text-text-secondary line-clamp-2">{pendingNewsContext.summary}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingNewsContext(null)}
+              aria-label="Haber bağlamını kaldır"
+              className="text-text-muted hover:text-text-primary px-1 cursor-pointer shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+          <label className="inline-flex items-center gap-2 text-[11px] text-text-primary cursor-pointer select-none">
+            <input
+              type="checkbox"
+              data-testid="ai-news-portfolio-toggle"
+              checked={includePortfolioContext}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setIncludePortfolioContext(next);
+                setInput(buildDefaultNewsQuestion(pendingNewsContext, next));
+              }}
+              className="rounded border-border text-accent focus:ring-accent"
+            />
+            <span>Portföy bağlamımı bu haber analizine dahil et (isteğe bağlı)</span>
+          </label>
         </div>
       )}
 

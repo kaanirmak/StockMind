@@ -4434,6 +4434,85 @@ test('AIP-05: model seçimi, kalan kota, yenilenme zamanı, maliyet ve kişisel 
   assert.match(pageSrc, /buildAiUsageVisibilitySummary/);
 });
 
+test('AIP-06: haber analizi başlık, özet ve kaynağı kullanır; kullanıcı portföy bağlamını ayrı seçer', async () => {
+  const {
+    buildNewsAnalysisHref,
+    parseNewsAnalysisSearchParams,
+    sanitizeNewsContextPayload,
+  } = load('src/lib/ai/newsAnalysisContext.ts');
+
+  const hrefDefault = buildNewsAnalysisHref(
+    {
+      title: 'THYAO yeni uçak siparişi açıkladı',
+      summary: 'Şirket filosunu genişletmek üzere uzun menzilli sipariş verdi.',
+      source: 'KAP Resmî Açıklama',
+      publishedAt: '2026-11-11T09:00:00.000Z',
+      relatedSymbols: ['THYAO'],
+    },
+    false
+  );
+  assert.match(hrefDefault, /mode=news/);
+  assert.match(hrefDefault, /includePortfolio=0/);
+  assert.match(hrefDefault, /newsSource=KAP/);
+
+  const hrefWithPortfolio = buildNewsAnalysisHref(
+    {
+      title: 'THYAO yeni uçak siparişi açıkladı',
+      summary: 'Şirket filosunu genişletmek üzere uzun menzilli sipariş verdi.',
+      source: 'KAP Resmî Açıklama',
+      relatedSymbols: ['THYAO'],
+    },
+    true
+  );
+  assert.match(hrefWithPortfolio, /includePortfolio=1/);
+
+  const parsedDefault = parseNewsAnalysisSearchParams(new URL(`https://stockmind.test${hrefDefault}`).searchParams);
+  assert.equal(parsedDefault.includePortfolio, false);
+  assert.equal(parsedDefault.news.source, 'KAP Resmî Açıklama');
+  assert.match(parsedDefault.news.summary, /uzun menzilli/);
+
+  const sanitized = sanitizeNewsContextPayload({
+    title: '<b>BIST 100</b> gün sonu değerlendirmesi',
+    summary: 'Endeks banka hisseleri öncülüğünde yükseldi.',
+    source: 'TRT Haber',
+    relatedSymbols: ['XU100', 'invalid symbol!'],
+  });
+  assert.ok(sanitized);
+  assert.deepEqual([...sanitized.relatedSymbols], ['XU100']);
+
+  const { buildLiveAIContextWithMetadata } = load('src/lib/ai/market-context.ts', {
+    require: (id) =>
+      id.includes('newsAnalysisContext')
+        ? load('src/lib/ai/newsAnalysisContext.ts')
+        : {
+            getAllStocksLive: () => [{ symbol: 'THYAO', name: 'Türk Hava Yolları', sector: 'Ulaştırma', price: 310, changePercent: 2.1, currency: 'TRY' }],
+            getStockBySymbolLive: async (sym) =>
+              sym === 'THYAO'
+                ? { symbol: 'THYAO', name: 'Türk Hava Yolları', price: 310, changePercent: 2.1, currency: 'TRY', sector: 'Ulaştırma' }
+                : null,
+          },
+  });
+
+  const withoutPortfolio = await buildLiveAIContextWithMetadata('Haberi analiz et', undefined, sanitized);
+  assert.match(withoutPortfolio.promptContext, /SEÇİLİ HABER BAĞLAMI/);
+  assert.match(withoutPortfolio.promptContext, /Kaynak: TRT Haber/);
+  assert.match(withoutPortfolio.promptContext, /Endeks banka hisseleri öncülüğünde yükseldi/);
+  assert.ok(withoutPortfolio.provenance.dataSources.some((s) => s.includes('Haber Kaynağı: TRT Haber')));
+  assert.equal(withoutPortfolio.provenance.portfolioScope, 'none');
+
+  const newsPage = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  assert.match(newsPage, /news-ai-analyze-link/);
+  assert.match(newsPage, /news-ai-portfolio-link/);
+  assert.match(newsPage, /buildNewsAnalysisHref/);
+
+  const aiPage = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  assert.match(aiPage, /ai-news-context-card/);
+  assert.match(aiPage, /ai-news-portfolio-toggle/);
+
+  const routeSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/ai/chat/route.ts'), 'utf8');
+  assert.match(routeSrc, /sanitizeNewsContextPayload/);
+});
+
 
 
 

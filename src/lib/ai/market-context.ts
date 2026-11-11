@@ -1,5 +1,6 @@
 // StockMind Live Market & Portfolio Context Engine for AI Assistant
 import { getAllStocksLive, getStockBySymbolLive, StockMarketInfo } from '@/lib/data/stocks';
+import { formatNewsContextForAI, type NewsAnalysisContext } from './newsAnalysisContext';
 
 export interface MacroRates {
   usdTry?: { price: number; changePercent: number };
@@ -114,6 +115,8 @@ export interface AIContextProvenance {
   portfolioScope: 'allocation_weights' | 'performance_returns' | 'full_financials' | 'none';
   dataSources: string[];
   observedAt: string | null;
+  newsSource?: string | null;
+  newsTitle?: string | null;
   modelCommentaryNote: string;
   missingSummary: string | null;
 }
@@ -125,13 +128,20 @@ export interface LiveAIContextBundle {
 
 export async function buildLiveAIContextWithMetadata(
   userPrompt: string,
-  portfolioPayload?: PortfolioContextPayload
+  portfolioPayload?: PortfolioContextPayload,
+  newsContext?: NewsAnalysisContext
 ): Promise<LiveAIContextBundle> {
   const [macro, directory] = await Promise.all([
     getLiveMacroSnapshot(),
     Promise.resolve().then(() => getAllStocksLive()).catch(() => []),
   ]);
-  const detectedSymbols = detectSymbolsInText(userPrompt, directory);
+  const promptSearchText = newsContext
+    ? `${userPrompt}\n${newsContext.title}\n${newsContext.summary}`
+    : userPrompt;
+  const detectedFromText = detectSymbolsInText(promptSearchText, directory);
+  const detectedSymbols = Array.from(
+    new Set([...(newsContext?.relatedSymbols ?? []), ...detectedFromText])
+  ).slice(0, 6);
 
   // Fetch live quotes for detected symbols in parallel
   const stockQuotes: Record<string, StockMarketInfo | null> = {};
@@ -276,6 +286,10 @@ export async function buildLiveAIContextWithMetadata(
   }
 
   lines.push('');
+  if (newsContext) {
+    lines.push(formatNewsContextForAI(newsContext));
+    lines.push('');
+  }
   lines.push('**[VERİ KULLANIM KURALLARI]:**');
   lines.push('Yalnızca yukarıda açıkça verilen fiyat ve göstergeleri kullan. Eksik verileri tahmin etme.');
   lines.push('Sağlayıcıdan gelen sayısal veriler ile genel model yorumunu birbirinden ayır.');
@@ -288,6 +302,9 @@ export async function buildLiveAIContextWithMetadata(
   }
 
   const dataSources: string[] = [];
+  if (newsContext) {
+    dataSources.push(`Haber Kaynağı: ${newsContext.source}`);
+  }
   if (macroAvailableCount > 0) {
     dataSources.push(`StockMind Piyasa Motoru (Makro ${macroAvailableCount}/${macroEntries.length})`);
   }
@@ -334,6 +351,8 @@ export async function buildLiveAIContextWithMetadata(
         : 'none',
     dataSources,
     observedAt: hasLiveMarketData ? macro.timestamp : null,
+    newsSource: newsContext?.source ?? null,
+    newsTitle: newsContext?.title ?? null,
     modelCommentaryNote:
       'Model değerlendirmeleri ve öngörüler genel yapay zekâ yorumudur; sağlayıcı verisinden ayrı okunmalıdır.',
     missingSummary: missingParts.length > 0 ? missingParts.join(' • ') : null,
@@ -347,8 +366,9 @@ export async function buildLiveAIContextWithMetadata(
 
 export async function buildLiveAIContext(
   userPrompt: string,
-  portfolioPayload?: PortfolioContextPayload
+  portfolioPayload?: PortfolioContextPayload,
+  newsContext?: NewsAnalysisContext
 ): Promise<string> {
-  const result = await buildLiveAIContextWithMetadata(userPrompt, portfolioPayload);
+  const result = await buildLiveAIContextWithMetadata(userPrompt, portfolioPayload, newsContext);
   return result.promptContext;
 }

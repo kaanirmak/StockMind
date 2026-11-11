@@ -11,6 +11,7 @@ import { matchNewsAssetIdentity, mentionsNewsSymbol, normalizeNewsText, type New
 import { normalizeNewsSortOrder, rankNews, type NewsSortOrder } from '@/lib/news/relevance';
 import { buildNewsToneAndImpact, classifyNewsCardKind } from '@/lib/news/cardClassification';
 import { mapNewsFetchErrorToTurkish, parseNewsApiResponse } from '@/lib/news/responseParser';
+import { buildNewsAnalysisHref } from '@/lib/ai/newsAnalysisContext';
 import {
   NEWS_CLIENT_SNAPSHOT_KEY,
   getNewsCategorySnapshot,
@@ -737,16 +738,45 @@ export default function NewsPage() {
                     </a>
 
                     <Link
-                      href={`/ai-assistant?prompt=${encodeURIComponent(
-                        `Şu haberin olası piyasa etkisini ve belirsizliklerini açıkla.${
-                          isPortfolioRelated ? ` İlgilendiğim varlıklar: ${matchedSymbols.join(', ')}.` : ''
-                        }\nKaynak: ${item.source}\nBaşlık: ${item.title}\nÖzet: ${item.summary.slice(0, 500)}`
-                      )}`}
+                      href={buildNewsAnalysisHref(
+                        {
+                          title: item.title,
+                          summary: item.summary,
+                          source: item.source,
+                          publishedAt: item.publishedAt,
+                          url: item.url,
+                          relatedSymbols: matchedSymbols,
+                        },
+                        false
+                      )}
+                      data-testid="news-ai-analyze-link"
                       className="text-[11px] font-semibold text-accent hover:underline flex items-center gap-0.5"
                     >
                       <span>AI Analiz</span>
                       <span>&rarr;</span>
                     </Link>
+
+                    {isPortfolioRelated && (
+                      <Link
+                        href={buildNewsAnalysisHref(
+                          {
+                            title: item.title,
+                            summary: item.summary,
+                            source: item.source,
+                            publishedAt: item.publishedAt,
+                            url: item.url,
+                            relatedSymbols: matchedSymbols,
+                          },
+                          true
+                        )}
+                        data-testid="news-ai-portfolio-link"
+                        className="text-[11px] font-semibold text-emerald-500 hover:underline flex items-center gap-0.5"
+                        title="Portföy bağlamını ekleyerek analiz et"
+                      >
+                        <span>Portföyümle</span>
+                        <span>&rarr;</span>
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

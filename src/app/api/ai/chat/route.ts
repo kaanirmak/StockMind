@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { callOpenRouter, OpenRouterError, type OpenRouterMessage } from '@/lib/ai/openrouter';
 import * as marketContext from '@/lib/ai/market-context';
 import type { AIContextProvenance, PortfolioContextPayload } from '@/lib/ai/market-context';
+import { sanitizeNewsContextPayload } from '@/lib/ai/newsAnalysisContext';
 import { ApiError, apiErrorResponse, authorizeAction, isRecord, optionalText, readJsonObject } from '@/lib/api/security';
 import {
   getHourlyChatQuota,
@@ -124,11 +125,18 @@ export async function POST(request: Request) {
 
     const effectivePortfolio = body.portfolioContext ?? (isRecord(body.context) ? body.context.portfolio : undefined);
     const portfolio = parsePortfolio(effectivePortfolio);
+    const newsContext = sanitizeNewsContextPayload(
+      body.newsContext ?? (isRecord(body.context) ? body.context.news : undefined)
+    );
     let liveContext = '';
     let provenance: AIContextProvenance | undefined;
     try {
       if (typeof marketContext.buildLiveAIContextWithMetadata === 'function') {
-        const bundle = await marketContext.buildLiveAIContextWithMetadata(messages.at(-1)!.content, portfolio);
+        const bundle = await marketContext.buildLiveAIContextWithMetadata(
+          messages.at(-1)!.content,
+          portfolio,
+          newsContext
+        );
         liveContext = bundle.promptContext;
         provenance = bundle.provenance;
       } else {
