@@ -258,22 +258,39 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
         }
       }
 
-      // Risk value
-      let riskValue = profil?.riskDegeri ? Number(profil.riskDegeri) : 0;
-      if (!riskValue || isNaN(riskValue)) {
-        if (category === 'Para Piyasası Fonu') riskValue = 1;
-        else if (category === 'Borçlanma Araçları Fonu') riskValue = 3;
-        else if (category === 'Kıymetli Madenler Fonu' || category === 'Altın Fonu') riskValue = 5;
-        else if (category === 'Hisse Senedi Fonu') riskValue = 6;
-        else if (category === 'Fon Sepeti Fonu') riskValue = 7;
-        else riskValue = 5;
-      }
+      // Risk value (only from verified TEFAS profile)
+      const parsedRisk = profil?.riskDegeri != null ? Number(profil.riskDegeri) : NaN;
+      const riskValue =
+        Number.isFinite(parsedRisk) && parsedRisk >= 1 && parsedRisk <= 7
+          ? Math.round(parsedRisk)
+          : null;
 
-      const totalValue = Number(bilgi.portBuyukluk) || 1000000000;
-      const investorCount = Number(bilgi.yatirimciSayi) || 5000;
-      const managementFee = category === 'Para Piyasası Fonu' ? 0.95 : category === 'Borçlanma Araçları Fonu' ? 1.5 : 2.5;
+      const parsedTotalValue = bilgi?.portBuyukluk != null ? Number(bilgi.portBuyukluk) : NaN;
+      const totalValue = Number.isFinite(parsedTotalValue) && parsedTotalValue > 0 ? parsedTotalValue : null;
 
-      const assetAllocation = getCategoryAssetAllocation(category, name);
+      const parsedInvestorCount = bilgi?.yatirimciSayi != null ? Number(bilgi.yatirimciSayi) : NaN;
+      const investorCount =
+        Number.isFinite(parsedInvestorCount) && parsedInvestorCount > 0
+          ? Math.round(parsedInvestorCount)
+          : null;
+
+      const rawFee = profil?.yonetimUcreti ?? bilgi?.yonetimUcreti ?? bilgi?.yillikYonetimUcreti;
+      const parsedFee = rawFee != null ? Number(rawFee) : NaN;
+      const managementFee =
+        Number.isFinite(parsedFee) && parsedFee >= 0 ? Number(parsedFee.toFixed(2)) : null;
+
+      const rawAllocation = profil?.varlikDagilimi ?? bilgi?.varlikDagilimi;
+      const assetAllocation: { category: string; percentage: number }[] = Array.isArray(rawAllocation)
+        ? rawAllocation
+            .map((item: any) => ({
+              category: String(item?.varlikAdi || item?.category || '').trim(),
+              percentage: Number(item?.oran ?? item?.percentage ?? NaN),
+            }))
+            .filter(
+              (item: { category: string; percentage: number }) =>
+                item.category.length > 0 && Number.isFinite(item.percentage) && item.percentage > 0
+            )
+        : [];
       const kapLink = profil?.kapLink || `https://www.kap.org.tr/tr/fon-bilgileri/genel/${sym.toLowerCase()}`;
 
       const fetchedAt = new Date().toISOString();

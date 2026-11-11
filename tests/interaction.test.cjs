@@ -3943,6 +3943,94 @@ test('VER-11: data provider policies and markdown documentation capture markets,
   assert.match(badgeSource, /getProviderComplianceSummary/);
 });
 
+test('FON-06: fund detail handles missing fee, risk, allocation, and history gracefully', () => {
+  const loadWithAlias = createAliasedLoader();
+  const stateMod = loadWithAlias('src/lib/market/fundDetailState.ts');
+
+  // 1. All fields missing
+  const missingState = stateMod.resolveFundDetailStates(
+    {
+      managementFee: null,
+      riskValue: null,
+      assetAllocation: [],
+      history: [],
+      totalValue: null,
+      investorCount: null,
+    },
+    { loading: false, days: 90 },
+  );
+  assert.equal(missingState.managementFee.available, false);
+  assert.equal(missingState.managementFee.displayText, 'Bilgi bulunamadı');
+  assert.match(missingState.managementFee.emptyReason, /yönetim ücreti/i);
+
+  assert.equal(missingState.risk.available, false);
+  assert.equal(missingState.risk.displayText, 'Risk profili yok');
+  assert.match(missingState.risk.emptyReason, /risk değeri/i);
+
+  assert.equal(missingState.assetAllocation.available, false);
+  assert.equal(missingState.assetAllocation.displayText, 'Dağılım verisi bulunamadı');
+  assert.match(missingState.assetAllocation.emptyReason, /varlık dağılımı/i);
+
+  assert.equal(missingState.history.available, false);
+  assert.equal(missingState.history.displayText, 'Geçmiş fiyat yok');
+  assert.match(missingState.history.emptyReason, /90 günlük dönem/i);
+
+  assert.equal(missingState.hasMissingData, true);
+  assert.deepEqual([...missingState.missingFields], [
+    'Yönetim ücreti',
+    'Risk değeri',
+    'Portföy dağılımı',
+    'Geçmiş fiyat',
+  ]);
+
+  // 2. Complete fund data
+  const completeState = stateMod.resolveFundDetailStates(
+    {
+      managementFee: 1.95,
+      riskValue: 6,
+      assetAllocation: [{ category: 'BIST Hisse Senetleri', percentage: 91.5 }],
+      history: [
+        { date: '2026-10-01', price: 0.421 },
+        { date: '2026-10-02', price: 0.425 },
+      ],
+      totalValue: 2_500_000_000,
+      investorCount: 12450,
+    },
+    { loading: false, days: 90 },
+  );
+  assert.equal(completeState.managementFee.available, true);
+  assert.equal(completeState.managementFee.displayText, '%1.95');
+  assert.equal(completeState.risk.available, true);
+  assert.equal(completeState.risk.displayText, '6 / 7');
+  assert.equal(completeState.assetAllocation.available, true);
+  assert.equal(completeState.history.available, true);
+  assert.equal(completeState.totalValue.displayText, '₺2.50 Milyar');
+  assert.equal(completeState.hasMissingData, false);
+
+  // 3. Static TEFAS directory fallback does not invent fee/risk
+  const fundsMod = loadWithAlias('src/lib/data/funds.ts', {
+    '@supabase/supabase-js': { createClient: () => null },
+    '@/lib/utils/search': { calculateFuzzyScore: () => 0 },
+  });
+  const macFallback = fundsMod.getFundByCode('MAC');
+  assert.ok(macFallback);
+  assert.equal(macFallback.riskValue, null);
+  assert.equal(macFallback.managementFee, null);
+  assert.equal(macFallback.assetAllocation.length, 0);
+
+  // 4. UI integrates resolveFundDetailStates and empty-state markers
+  const fundDetailPage = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/(dashboard)/funds/[code]/page.tsx'),
+    'utf8',
+  );
+  assert.match(fundDetailPage, /resolveFundDetailStates/);
+  assert.match(fundDetailPage, /data-testid="fund-missing-fields-notice"/);
+  assert.match(fundDetailPage, /data-testid="fund-history-empty"/);
+  assert.match(fundDetailPage, /data-testid="fund-allocation-empty"/);
+  assert.match(fundDetailPage, /data-testid="fund-fee-value"/);
+  assert.match(fundDetailPage, /data-testid="fund-risk-value"/);
+});
+
 
 
 

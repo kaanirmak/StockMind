@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useFundDetail } from '@/hooks/useFunds';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
 import { classifyFundPriceStatus } from '@/lib/market/priceStatus';
+import { resolveFundDetailStates } from '@/lib/market/fundDetailState';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatDate } from '@/lib/utils/format';
@@ -146,6 +147,7 @@ export default function FundDetailPage({
 
   const isDailyPos = fund.dailyReturn >= 0;
   const priceStatus = classifyFundPriceStatus(fund);
+  const detailState = resolveFundDetailStates(fund, { loading, days });
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-fade-in pb-32 sm:pb-16">
@@ -169,9 +171,15 @@ export default function FundDetailPage({
                 <Badge variant="purple" size="sm">
                   {fund.category}
                 </Badge>
-                <Badge variant={fund.riskValue <= 3 ? 'success' : fund.riskValue <= 5 ? 'warning' : 'danger'} size="sm">
-                  Risk: {fund.riskValue}/7
-                </Badge>
+                {detailState.risk.available && detailState.risk.value != null ? (
+                  <Badge variant={detailState.risk.value <= 3 ? 'success' : detailState.risk.value <= 5 ? 'warning' : 'danger'} size="sm">
+                    Risk: {detailState.risk.value}/7
+                  </Badge>
+                ) : (
+                  <Badge variant="default" size="sm" title={detailState.risk.emptyReason ?? undefined}>
+                    {detailState.risk.displayText}
+                  </Badge>
+                )}
               </div>
 
               {/* Collapsible Fund Name */}
@@ -266,6 +274,14 @@ export default function FundDetailPage({
             <span>{fund.navDate ? <>Değerleme <time dateTime={fund.navDate}>{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time></> : 'Değerleme tarihi bilinmiyor'}</span>
             {fund.lastSyncAt && <span>Alınma zamanı <time dateTime={fund.lastSyncAt}>{new Date(fund.lastSyncAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short', timeStyle: 'short' })}</time></span>}
           </div>}
+          {detailState.hasMissingData && (
+            <div
+              data-testid="fund-missing-fields-notice"
+              className="mt-1 px-3 py-2 rounded-xl border border-amber-500/25 bg-amber-500/10 text-xs text-amber-200"
+            >
+              TEFAS kaynağında şu alanlar eksik veya henüz alınamadı: <span className="font-semibold">{detailState.missingFields.join(', ')}</span>. Eksik alanlar için tahmini değer üretilmez.
+            </div>
+          )}
         </div>
       </div>
 
@@ -341,8 +357,12 @@ export default function FundDetailPage({
             })()}
           </div>
         ) : (
-          <div className="h-32 flex items-center justify-center text-xs text-text-muted bg-bg-secondary/40 rounded-xl">
-            Bu dönem için geçmiş fiyat verisi hazırlanıyor...
+          <div
+            data-testid="fund-history-empty"
+            className="h-32 flex flex-col items-center justify-center gap-1 px-4 text-center text-xs text-text-muted bg-bg-secondary/40 rounded-xl border border-border/50"
+          >
+            <span className="font-semibold text-text-secondary">{detailState.history.displayText}</span>
+            <span>{detailState.history.emptyReason}</span>
           </div>
         )}
       </div>
@@ -386,20 +406,30 @@ export default function FundDetailPage({
           </div>
 
           <div className="space-y-3 pt-2">
-            {fund.assetAllocation?.map((asset) => (
-              <div key={asset.category} className="space-y-1.5">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-text-primary">{asset.category}</span>
-                  <span className="font-mono text-accent font-bold">%{asset.percentage.toFixed(1)}</span>
+            {detailState.assetAllocation.available ? (
+              detailState.assetAllocation.items.map((asset) => (
+                <div key={asset.category} className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-text-primary">{asset.category}</span>
+                    <span className="font-mono text-accent font-bold">%{asset.percentage.toFixed(1)}</span>
+                  </div>
+                  <div className="w-full bg-bg-input h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-accent to-accent-secondary h-full rounded-full transition-all duration-500"
+                      style={{ width: `${asset.percentage}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-bg-input h-2 rounded-full overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-accent to-accent-secondary h-full rounded-full transition-all duration-500"
-                    style={{ width: `${asset.percentage}%` }}
-                  />
-                </div>
+              ))
+            ) : (
+              <div
+                data-testid="fund-allocation-empty"
+                className="p-4 rounded-xl border border-border/50 bg-bg-tertiary/40 text-xs text-text-muted space-y-1"
+              >
+                <p className="font-semibold text-text-secondary">{detailState.assetAllocation.displayText}</p>
+                <p>{detailState.assetAllocation.emptyReason}</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -413,30 +443,42 @@ export default function FundDetailPage({
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
               <span className="text-xs text-text-muted block">Toplam Fon Büyüklüğü (AUM)</span>
-              <span className="text-base font-bold font-mono text-text-primary mt-1 block">
-                ₺{(fund.totalValue / 1e9).toFixed(2)} Milyar
+              <span className={`text-base font-bold font-mono mt-1 block ${detailState.totalValue.available ? 'text-text-primary' : 'text-text-muted'}`}>
+                {detailState.totalValue.displayText}
               </span>
+              {detailState.totalValue.emptyReason && (
+                <span className="text-[11px] text-text-muted mt-1 block">{detailState.totalValue.emptyReason}</span>
+              )}
             </div>
 
             <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
               <span className="text-xs text-text-muted block">Yatırımcı Sayısı</span>
-              <span className="text-base font-bold font-mono text-text-primary mt-1 block">
-                {fund.investorCount.toLocaleString('tr-TR')} Kişi
+              <span className={`text-base font-bold font-mono mt-1 block ${detailState.investorCount.available ? 'text-text-primary' : 'text-text-muted'}`}>
+                {detailState.investorCount.displayText}
               </span>
+              {detailState.investorCount.emptyReason && (
+                <span className="text-[11px] text-text-muted mt-1 block">{detailState.investorCount.emptyReason}</span>
+              )}
             </div>
 
-            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
+            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50" data-testid="fund-fee-value">
               <span className="text-xs text-text-muted block">Yıllık Yönetim Ücreti</span>
-              <span className="text-base font-bold font-mono text-text-primary mt-1 block">
-                %{fund.managementFee.toFixed(2)}
+              <span className={`text-base font-bold font-mono mt-1 block ${detailState.managementFee.available ? 'text-text-primary' : 'text-text-muted'}`}>
+                {detailState.managementFee.displayText}
               </span>
+              {detailState.managementFee.emptyReason && (
+                <span className="text-[11px] text-text-muted mt-1 block">{detailState.managementFee.emptyReason}</span>
+              )}
             </div>
 
-            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50">
+            <div className="bg-bg-tertiary/60 p-4 rounded-xl border border-border/50" data-testid="fund-risk-value">
               <span className="text-xs text-text-muted block">Risk Değeri</span>
-              <span className="text-base font-bold font-mono text-warning mt-1 block">
-                {fund.riskValue} / 7
+              <span className={`text-base font-bold font-mono mt-1 block ${detailState.risk.available ? 'text-warning' : 'text-text-muted'}`}>
+                {detailState.risk.displayText}
               </span>
+              {detailState.risk.emptyReason && (
+                <span className="text-[11px] text-text-muted mt-1 block">{detailState.risk.emptyReason}</span>
+              )}
             </div>
           </div>
         </div>

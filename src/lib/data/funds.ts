@@ -37,10 +37,10 @@ export interface TefasFundInfo {
   yearlyReturn: number;
   return3y: number;
   return5y: number;
-  riskValue: number; // 1 to 7
-  totalValue: number; // AUM in TRY
-  investorCount: number;
-  managementFee: number; // % annual
+  riskValue: number | null; // 1 to 7
+  totalValue: number | null; // AUM in TRY
+  investorCount: number | null;
+  managementFee: number | null; // % annual
   assetAllocation: {
     category: string;
     percentage: number;
@@ -96,11 +96,23 @@ function mapDatabaseFundRow(row: any): TefasFundInfo {
     yearlyReturn: Number(row.yearly_return || 0),
     return3y: Number(row.return_3y || 0),
     return5y: Number(row.return_5y || 0),
-    riskValue: Number(row.risk_value || 5),
-    totalValue: Number(row.total_value || 0),
-    investorCount: Number(row.investor_count || 0),
-    managementFee: Number(row.management_fee || 2),
-    assetAllocation: row.asset_allocation || [],
+    riskValue:
+      row.risk_value != null && Number(row.risk_value) >= 1 && Number(row.risk_value) <= 7
+        ? Number(row.risk_value)
+        : null,
+    totalValue:
+      row.total_value != null && Number(row.total_value) > 0 ? Number(row.total_value) : null,
+    investorCount:
+      row.investor_count != null && Number(row.investor_count) > 0
+        ? Number(row.investor_count)
+        : null,
+    managementFee:
+      row.management_fee != null &&
+      Number.isFinite(Number(row.management_fee)) &&
+      Number(row.management_fee) >= 0
+        ? Number(row.management_fee)
+        : null,
+    assetAllocation: Array.isArray(row.asset_allocation) ? row.asset_allocation : [],
     kapLink: row.kap_link,
     navDate,
     lastSyncAt: row.last_sync_at,
@@ -127,19 +139,10 @@ export const TEFAS_FUNDS: TefasFundInfo[] = (
   yearlyReturn: 0,
   return3y: 0,
   return5y: 0,
-  riskValue:
-    item.category === 'Para Piyasası Fonu'
-      ? 1
-      : item.category === 'Borçlanma Araçları Fonu'
-      ? 3
-      : item.category === 'Hisse Senedi Fonu'
-      ? 6
-      : item.category === 'Fon Sepeti Fonu'
-      ? 7
-      : 5,
-  totalValue: 0,
-  investorCount: 0,
-  managementFee: 2.0,
+  riskValue: null,
+  totalValue: null,
+  investorCount: null,
+  managementFee: null,
   assetAllocation: [],
   kapLink: `https://www.kap.org.tr/tr/fon-bilgileri/genel/${item.code.toLowerCase()}`,
 }));
@@ -265,19 +268,10 @@ export function getFundByCode(code: string): TefasFundInfo | null {
     yearlyReturn: 0,
     return3y: 0,
     return5y: 0,
-    riskValue:
-      dirEntry.category === 'Para Piyasası Fonu'
-        ? 1
-        : dirEntry.category === 'Borçlanma Araçları Fonu'
-        ? 3
-        : dirEntry.category === 'Hisse Senedi Fonu'
-        ? 6
-        : dirEntry.category === 'Fon Sepeti Fonu'
-        ? 7
-        : 5,
-    totalValue: 0,
-    investorCount: 0,
-    managementFee: 2.0,
+    riskValue: null,
+    totalValue: null,
+    investorCount: null,
+    managementFee: null,
     assetAllocation: [],
     kapLink: `https://www.kap.org.tr/tr/fon-bilgileri/genel/${sym.toLowerCase()}`,
   };
@@ -297,8 +291,8 @@ export function getAllFunds(filter?: {
 
     for (const fund of list) {
       if (filter.category && filter.category !== 'ALL' && fund.category !== filter.category) continue;
-      if (filter.minRisk && fund.riskValue < filter.minRisk) continue;
-      if (filter.maxRisk && fund.riskValue > filter.maxRisk) continue;
+      if (filter.minRisk && (fund.riskValue == null || fund.riskValue < filter.minRisk)) continue;
+      if (filter.maxRisk && (fund.riskValue == null || fund.riskValue > filter.maxRisk)) continue;
 
       const score = calculateFuzzyScore(q, fund.code, fund.name, [fund.founder, fund.category]);
       if (score > 0) {
@@ -312,8 +306,8 @@ export function getAllFunds(filter?: {
 
   return list.filter((fund) => {
     if (filter?.category && filter.category !== 'ALL' && fund.category !== filter.category) return false;
-    if (filter?.minRisk && fund.riskValue < filter.minRisk) return false;
-    if (filter?.maxRisk && fund.riskValue > filter.maxRisk) return false;
+    if (filter?.minRisk && (fund.riskValue == null || fund.riskValue < filter.minRisk)) return false;
+    if (filter?.maxRisk && (fund.riskValue == null || fund.riskValue > filter.maxRisk)) return false;
     return true;
   });
 }

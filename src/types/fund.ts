@@ -48,10 +48,10 @@ export interface FundDetail extends Fund {
   ytdReturn: number;
   return3y: number;
   return5y: number;
-  riskValue: number;
-  totalValue: number;
-  investorCount: number;
-  managementFee: number;
+  riskValue: number | null;
+  totalValue: number | null;
+  investorCount: number | null;
+  managementFee: number | null;
   assetAllocation: {
     category: string;
     percentage: number;
