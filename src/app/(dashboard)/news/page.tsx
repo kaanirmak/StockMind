@@ -19,7 +19,15 @@ import {
 } from '@/lib/news/clientSnapshot';
 import type { NewsCoverageSummary } from '@/lib/news/sourceCoverage';
 import { getProviderPolicy, KAP_ACCESS_TERMS } from '@/lib/market/providerPolicies';
+import type { UpcomingEventItem } from '@/lib/market/upcomingEvents';
+import {
+  collectCalendarTargetSymbols,
+  filterCorporateCalendarEvents,
+  type CalendarScopeFilter,
+  type CalendarTypeFilter,
+} from '@/lib/market/corporateCalendar';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { useWatchlistStore } from '@/store/useWatchlistStore';
 
 export default function NewsPage() {
   const {
@@ -29,11 +37,16 @@ export default function NewsPage() {
     transactions,
     fetchPortfoliosAndTransactions,
   } = usePortfolioStore();
+  const { items: watchlistItems, refreshFromServer: refreshWatchlist } = useWatchlistStore();
 
   const requestRef = useRef<AbortController | null>(null);
   const [newsError, setNewsError] = useState('');
   const [newsWarning, setNewsWarning] = useState('');
   const [news, setNews] = useState<NewsArticle[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<UpcomingEventItem[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarScope, setCalendarScope] = useState<CalendarScopeFilter>('ALL');
+  const [calendarTypeFilter, setCalendarTypeFilter] = useState<CalendarTypeFilter>('ALL');
   const [sourceCoverage, setSourceCoverage] = useState<NewsCoverageSummary | null>(null);
   const [showCoverageDetails, setShowCoverageDetails] = useState(false);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
@@ -65,7 +78,8 @@ export default function NewsPage() {
 
   useEffect(() => {
     fetchPortfoliosAndTransactions();
-  }, [fetchPortfoliosAndTransactions]);
+    void refreshWatchlist();
+  }, [fetchPortfoliosAndTransactions, refreshWatchlist]);
 
   // Extract unique portfolio asset identities (symbol + exchange)
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
@@ -96,6 +110,54 @@ export default function NewsPage() {
   );
 
   const fetchNews = async (isManualRefresh = false) => {
+    if (selectedCategory === 'CALENDAR') {
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
+      setNewsError('');
+      setNewsWarning('');
+      setLoading(false);
+      setCalendarLoading(true);
+      if (isManualRefresh) setIsRefreshing(true);
+      try {
+        const targets = collectCalendarTargetSymbols({
+          portfolioAssets: portfolioIdentities.map((p) => ({
+            symbol: p.symbol,
+            exchange: p.exchange,
+            assetType: p.exchange === 'TEFAS' ? 'fund' : 'stock',
+          })),
+          watchlistAssets: watchlistItems.map((w) => ({
+            symbol: w.symbol,
+            exchange: w.exchange,
+            assetType: w.assetType,
+          })),
+          maxSymbols: 16,
+        });
+        const settled = await Promise.allSettled(
+          targets.map(async (sym) => {
+            const res = await fetch(`/api/stocks/${encodeURIComponent(sym)}/events`, {
+              signal: controller.signal,
+            });
+            if (!res.ok) return [] as UpcomingEventItem[];
+            const payload = (await res.json()) as { events?: UpcomingEventItem[] };
+            return Array.isArray(payload.events) ? payload.events : [];
+          })
+        );
+        if (requestRef.current !== controller) return;
+        const aggregated = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+        setCalendarEvents(aggregated);
+      } catch {
+        if (requestRef.current !== controller) return;
+        setNewsError('Yaklaşan bilanço ve temettü takvimi yüklenemedi.');
+      } finally {
+        if (requestRef.current === controller) {
+          setCalendarLoading(false);
+          setIsRefreshing(false);
+        }
+      }
+      return;
+    }
+
     requestRef.current?.abort();
     const controller = new AbortController();
     requestRef.current = controller;
@@ -188,7 +250,25 @@ export default function NewsPage() {
       requestRef.current?.abort();
       requestRef.current = null;
     };
-  }, [selectedCategory, portfolioSymbols.join(',')]);
+  }, [selectedCategory, portfolioSymbols.join(','), watchlistItems.length]);
+
+  const watchlistSymbols = useMemo(
+    () => watchlistItems.map((w) => w.symbol.toUpperCase().trim()).filter(Boolean),
+    [watchlistItems]
+  );
+
+  const filteredCalendarEvents = useMemo(
+    () =>
+      filterCorporateCalendarEvents({
+        events: calendarEvents,
+        scope: calendarScope,
+        typeFilter: calendarTypeFilter,
+        portfolioSymbols,
+        watchlistSymbols,
+        searchQuery,
+      }),
+    [calendarEvents, calendarScope, calendarTypeFilter, portfolioSymbols, watchlistSymbols, searchQuery]
+  );
 
   const filteredNews = useMemo(() => {
     const matches = news.filter((item) => {
@@ -228,6 +308,7 @@ export default function NewsPage() {
     },
     { id: 'BIST', label: " BIST & Şirketler" },
     { id: 'KAP', label: " KAP Bildirimleri" },
+    { id: 'CALENDAR', label: " Bilanço & Temettü" },
     { id: 'GLOBAL', label: " Küresel Piyasalar" },
     { id: 'MACRO', label: " Makroekonomi & Emtia" },
   ];
@@ -548,7 +629,106 @@ export default function NewsPage() {
       })()}
 
       {/* Portfolio Empty State */}
-      {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length === 0 && !loading ? (
+      {selectedCategory === 'CALENDAR' ? (
+        <div data-testid="corporate-calendar-panel" className="space-y-4">
+          <div className="glass-card p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Takvim kapsam filtresi">
+              {[
+                { id: 'ALL' as const, label: 'Tümü' },
+                { id: 'PORTFOLIO' as const, label: `Portföyüm (${portfolioSymbols.length})` },
+                { id: 'WATCHLIST' as const, label: `Takip Listem (${watchlistSymbols.length})` },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setCalendarScope(opt.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    calendarScope === opt.id
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Olay türü filtresi">
+              {[
+                { id: 'ALL' as const, label: 'Tüm Olaylar' },
+                { id: 'earnings' as const, label: 'Bilanço' },
+                { id: 'dividend' as const, label: 'Temettü' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setCalendarTypeFilter(opt.id)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    calendarTypeFilter === opt.id
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {calendarLoading ? (
+            <StateView
+              kind="loading"
+              title="Bilanço ve temettü takvimi yükleniyor"
+              description="Portföy ve takip listenizdeki varlıklar için doğrulanmış tarihler taranıyor."
+            />
+          ) : filteredCalendarEvents.length === 0 ? (
+            <StateView
+              kind="empty"
+              title="Seçili kapsamda doğrulanmış bilanço veya temettü tarihi bulunamadı"
+              description="Sağlayıcıdan doğrulanan yaklaşan tarih yoksa tahmini tarih gösterilmez."
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredCalendarEvents.map((ev) => (
+                <div
+                  key={ev.id}
+                  data-testid="corporate-calendar-card"
+                  className="glass-card p-4 rounded-2xl border border-border/70 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant={ev.type === 'earnings' ? 'info' : 'success'} size="sm">
+                        {ev.typeLabel}
+                      </Badge>
+                      <Link href={`/stocks/${ev.symbol}`} className="font-mono font-bold text-accent hover:underline">
+                        {ev.symbol}
+                      </Link>
+                      {ev.inPortfolio && <Badge variant="success" size="sm">Portföyüm</Badge>}
+                      {ev.inWatchlist && <Badge variant="warning" size="sm">Takip Listesi</Badge>}
+                    </div>
+                    <time dateTime={ev.eventDate} className="font-mono font-semibold text-text-primary">
+                      {new Date(`${ev.eventDate}T00:00:00Z`).toLocaleDateString('tr-TR', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </time>
+                  </div>
+                  <p className="text-sm font-semibold text-text-primary">{ev.title}</p>
+                  {ev.details && <p className="text-xs text-text-secondary">{ev.details}</p>}
+                  <div className="flex items-center justify-between text-[11px] text-text-muted pt-1 border-t border-border/50">
+                    <span>Kaynak: {ev.source}</span>
+                    {ev.sourceUrl && (
+                      <a href={ev.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                        Resmî Bağlantı
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : selectedCategory === 'PORTFOLIO' && portfolioSymbols.length === 0 && !loading ? (
         <StateView
           kind="empty"
           statusLabel="Portföy Boş"

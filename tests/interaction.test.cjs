@@ -6891,6 +6891,97 @@ test('HBR-09: in-app KAP disclosure stream validates official source ID, timesta
   assert.match(newsPageSrc, /Orijinal Belge/);
 });
 
+test('HBR-10: corporate earnings and dividend calendar filters by portfolio or watchlist without fabricating unverified dates', () => {
+  const calMod = load('src/lib/market/corporateCalendar.ts');
+
+  const sampleEvents = [
+    {
+      id: 'THYAO.IS:earnings:2026-11-20',
+      symbol: 'THYAO.IS',
+      type: 'earnings',
+      typeLabel: 'Bilanço',
+      title: 'THYAO.IS Finansal Sonuç / Bilanço Açıklaması',
+      eventDate: '2026-11-20',
+      source: 'Yahoo Finance',
+      sourceUrl: null,
+      verified: true,
+      details: null,
+    },
+    {
+      id: 'AAPL:dividend:2026-11-18',
+      symbol: 'AAPL',
+      type: 'dividend',
+      typeLabel: 'Temettü Ödeme',
+      title: 'AAPL Temettü Ödeme Tarihi',
+      eventDate: '2026-11-18',
+      source: 'Yahoo Finance',
+      sourceUrl: null,
+      verified: true,
+      details: null,
+    },
+    {
+      id: 'ASELS.IS:ex_dividend:2026-12-01',
+      symbol: 'ASELS.IS',
+      type: 'ex_dividend',
+      typeLabel: 'Temettü Hak Ediş',
+      title: 'ASELS.IS Temettü Hak Ediş Tarihi',
+      eventDate: '2026-12-01',
+      source: 'Yahoo Finance',
+      sourceUrl: null,
+      verified: true,
+      details: null,
+    },
+    {
+      id: 'UNVERIFIED:1',
+      symbol: 'THYAO.IS',
+      type: 'earnings',
+      typeLabel: 'Bilanço',
+      title: 'Doğrulanmamış tahmini tarih',
+      eventDate: '2026-11-25',
+      source: 'Söylenti',
+      sourceUrl: null,
+      verified: false,
+    },
+  ];
+
+  const portfolioOnly = calMod.filterCorporateCalendarEvents({
+    events: sampleEvents,
+    scope: 'PORTFOLIO',
+    portfolioSymbols: ['THYAO'],
+    watchlistSymbols: ['AAPL'],
+  });
+  assert.equal(portfolioOnly.length, 1);
+  assert.equal(portfolioOnly[0].symbol, 'THYAO.IS');
+  assert.equal(portfolioOnly[0].inPortfolio, true);
+
+  const watchlistDividends = calMod.filterCorporateCalendarEvents({
+    events: sampleEvents,
+    scope: 'WATCHLIST',
+    typeFilter: 'dividend',
+    portfolioSymbols: ['THYAO'],
+    watchlistSymbols: ['AAPL', 'ASELS.IS'],
+  });
+  assert.equal(watchlistDividends.length, 2);
+  assert.equal(watchlistDividends[0].symbol, 'AAPL');
+  assert.equal(watchlistDividends[1].symbol, 'ASELS.IS');
+  assert.equal(watchlistDividends[0].inWatchlist, true);
+
+  // Target symbol collector skips TEFAS funds/crypto and preserves equity priority
+  const targets = calMod.collectCalendarTargetSymbols({
+    portfolioAssets: [
+      { symbol: 'TCD', exchange: 'TEFAS', assetType: 'fund' },
+      { symbol: 'THYAO', exchange: 'BIST', assetType: 'stock' },
+    ],
+    watchlistAssets: [{ symbol: 'AAPL', exchange: 'NASDAQ', assetType: 'stock' }],
+  });
+  assert.deepEqual(Array.from(targets), ['THYAO.IS', 'AAPL']);
+
+  const newsPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  assert.match(newsPageSrc, /corporate-calendar-panel/);
+  assert.match(newsPageSrc, /Bilanço & Temettü/);
+});
+
+
 
 
 
