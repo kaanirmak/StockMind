@@ -27,6 +27,11 @@ import {
   PRESET_FINANCIAL_PROFILES,
 } from '@/lib/quant/models';
 import { extractPeriodicDcfInputs } from '@/lib/quant/periodicDcf';
+import {
+  buildDCFScenarioComparison,
+  DEFAULT_BEAR_OVERRIDES,
+  DEFAULT_BULL_OVERRIDES,
+} from '@/lib/quant/scenarioComparison';
 import type { FinancialStatementsReport, StatementPeriodType } from '@/lib/market/financialStatements';
 import { Holding } from '@/types/portfolio';
 
@@ -146,8 +151,8 @@ export default function DCFValuationTab({
   };
 
   // Calculate live DCF result
-  const dcfResult = useMemo(() => {
-    const params: DCFParams = {
+  const dcfParams = useMemo<DCFParams>(
+    () => ({
       symbol: selectedPreset,
       currentPrice,
       freeCashFlow,
@@ -159,19 +164,33 @@ export default function DCFValuationTab({
       currency: nativeCurrency,
       statementCurrency: nativeCurrency,
       priceCurrency: nativeCurrency,
-    };
-    return calculateDCF(params);
-  }, [
-    selectedPreset,
-    nativeCurrency,
-    currentPrice,
-    freeCashFlow,
-    growthRate5Y,
-    terminalGrowthRate,
-    wacc,
-    netDebt,
-    sharesOutstanding,
-  ]);
+    }),
+    [
+      selectedPreset,
+      nativeCurrency,
+      currentPrice,
+      freeCashFlow,
+      growthRate5Y,
+      terminalGrowthRate,
+      wacc,
+      netDebt,
+      sharesOutstanding,
+    ]
+  );
+
+  const dcfResult = useMemo(() => calculateDCF(dcfParams), [dcfParams]);
+
+  const [bullGrowthDelta, setBullGrowthDelta] = useState<number>(DEFAULT_BULL_OVERRIDES.fcfGrowthDeltaPct);
+  const [bearGrowthDelta, setBearGrowthDelta] = useState<number>(DEFAULT_BEAR_OVERRIDES.fcfGrowthDeltaPct);
+
+  const scenarioComparison = useMemo(
+    () =>
+      buildDCFScenarioComparison(dcfParams, {
+        bull: { fcfGrowthDeltaPct: bullGrowthDelta },
+        bear: { fcfGrowthDeltaPct: bearGrowthDelta },
+      }),
+    [dcfParams, bullGrowthDelta, bearGrowthDelta]
+  );
 
   const upsideDownsidePercent = Math.abs(dcfResult.discountRate);
   const isCheap = dcfResult.isUndervalued;
@@ -729,6 +748,86 @@ export default function DCFValuationTab({
                 </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Side-by-Side Scenario Comparison (QNT-11) */}
+      <div
+        data-testid="scenario-comparison-table"
+        className="glass-card p-5 sm:p-6 rounded-2xl border border-border space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
+              <Scale className="w-4 h-4 text-accent" />
+              <span>Baz, İyimser ve Olumsuz Senaryo Karşılaştırması</span>
+            </h3>
+            <p className="text-xs text-text-muted mt-0.5">
+              Üç senaryonun nakit akışı/iskonto girdilerini ve adil değer sonuçlarını aynı tabloda yan yana inceleyin.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-[11px]">
+            <label className="flex items-center gap-1.5 text-text-secondary font-semibold">
+              <span>Olumsuz FCF Farkı (%):</span>
+              <input
+                type="number"
+                step={1}
+                min={-15}
+                max={0}
+                value={bearGrowthDelta}
+                onChange={(e) => setBearGrowthDelta(Number(e.target.value) || 0)}
+                className="w-16 px-2 py-1 rounded-lg bg-bg-input border border-border font-mono font-bold text-rose-400"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-text-secondary font-semibold">
+              <span>İyimser FCF Farkı (%):</span>
+              <input
+                type="number"
+                step={1}
+                min={0}
+                max={15}
+                value={bullGrowthDelta}
+                onChange={(e) => setBullGrowthDelta(Number(e.target.value) || 0)}
+                className="w-16 px-2 py-1 rounded-lg bg-bg-input border border-border font-mono font-bold text-emerald-400"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-border text-text-muted font-bold">
+                <th className="py-2 px-3">Tür</th>
+                <th className="py-2 px-3">Metrik</th>
+                <th className="py-2 px-3 text-right text-rose-400">Olumsuz Senaryo</th>
+                <th className="py-2 px-3 text-right text-accent">Baz Senaryo</th>
+                <th className="py-2 px-3 text-right text-emerald-400">İyimser Senaryo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {scenarioComparison.rows.map((row) => (
+                <tr key={row.key} className="hover:bg-bg-hover/40 transition-colors">
+                  <td className="py-2 px-3">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        row.section === 'Girdi'
+                          ? 'bg-bg-secondary text-text-muted'
+                          : 'bg-accent/15 text-accent'
+                      }`}
+                    >
+                      {row.section}
+                    </span>
+                  </td>
+                  <td className="py-2 px-3 font-semibold text-text-primary">{row.label}</td>
+                  <td className="py-2 px-3 text-right font-mono text-rose-300">{row.bearValue}</td>
+                  <td className="py-2 px-3 text-right font-mono font-bold text-text-primary">{row.baseValue}</td>
+                  <td className="py-2 px-3 text-right font-mono text-emerald-300">{row.bullValue}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

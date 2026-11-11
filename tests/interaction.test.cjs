@@ -7556,6 +7556,42 @@ test('QNT-10: portfolio stress test applies FX, rate, and market shocks across h
   assert.match(stressTabSrc, /data-testid=\{`portfolio-stress-row-\$\{pos\.symbol\}`\}/);
 });
 
+test('QNT-11: scenario comparison displays bear, base, and bull inputs and outputs side-by-side', () => {
+  const scenarioMod = load('src/lib/quant/scenarioComparison.ts');
+
+  const comp = scenarioMod.buildDCFScenarioComparison({
+    symbol: 'THYAO',
+    currentPrice: 310,
+    freeCashFlow: 45000,
+    growthRate5Y: 16,
+    terminalGrowthRate: 5,
+    wacc: 18,
+    netDebt: 120000,
+    sharesOutstanding: 1380,
+    currency: 'TRY',
+    statementCurrency: 'TRY',
+    priceCurrency: 'TRY',
+  });
+
+  const cols = Array.from(comp.columns);
+  assert.deepEqual(cols.map((c) => c.label), ['Olumsuz', 'Baz', 'İyimser']);
+  assert.ok(cols[0].outputs.fairValuePerShare < cols[1].outputs.fairValuePerShare);
+  assert.ok(cols[1].outputs.fairValuePerShare < cols[2].outputs.fairValuePerShare);
+
+  const rows = Array.from(comp.rows);
+  assert.ok(rows.some((r) => r.section === 'Girdi' && r.key === 'fcfGrowth'));
+  assert.ok(rows.some((r) => r.section === 'Girdi' && r.key === 'wacc'));
+  assert.ok(rows.some((r) => r.section === 'Sonuç' && r.key === 'fairValue'));
+  assert.ok(rows.some((r) => r.section === 'Sonuç' && r.key === 'upside'));
+
+  const dcfSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/quant/DCFValuationTab.tsx'), 'utf8');
+  assert.match(dcfSrc, /data-testid="scenario-comparison-table"/);
+  assert.match(dcfSrc, /buildDCFScenarioComparison/);
+  assert.match(dcfSrc, /Olumsuz Senaryo/);
+  assert.match(dcfSrc, /Baz Senaryo/);
+  assert.match(dcfSrc, /İyimser Senaryo/);
+});
+
 
 
 
