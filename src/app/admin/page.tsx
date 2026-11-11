@@ -13,6 +13,14 @@ interface AdminStats {
   dbFundsCount: number;
   directoryFundsCount: number;
   emailServiceMode: string;
+  emailDiagnostics?: {
+    mode: 'gmail' | 'resend' | 'brevo' | 'smtp' | 'unconfigured';
+    gmailOnly: boolean;
+    configured: boolean;
+    senderAddress: string;
+    expectedGmailSender: string;
+    senderMatchesExpectedGmail: boolean;
+  };
   systemTime: string;
   adminEmail: string;
 }
@@ -71,6 +79,7 @@ export default function AdminConsolePage() {
   // Cron execution console logs
   const [cronLogs, setCronLogs] = useState<Array<{ timestamp: string; text: string; status: 'info' | 'success' | 'error' }>>([]);
   const [isTriggeringCron, setIsTriggeringCron] = useState<string | null>(null);
+  const [isVerifyingGmail, setIsVerifyingGmail] = useState(false);
 
   // 1. Device check: Enforce Desktop Only
   useEffect(() => {
@@ -372,6 +381,44 @@ export default function AdminConsolePage() {
       ]);
     } finally {
       setIsTriggeringCron(null);
+    }
+  };
+
+  const handleVerifyGmailSender = async () => {
+    setIsVerifyingGmail(true);
+    setCronLogs((prev) => [
+      { timestamp: new Date().toLocaleTimeString('tr-TR'), text: '[gmail-verify] Yetkili test e-postası gönderiliyor...', status: 'info' },
+      ...prev,
+    ]);
+    try {
+      const res = await fetch('/api/send-test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDailyReport: false }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCronLogs((prev) => [
+          {
+            timestamp: new Date().toLocaleTimeString('tr-TR'),
+            text: `✅ [gmail-verify] Gönderen: ${data.from || data.senderAddress || 'bilinmiyor'} · Yöntem: ${data.method || 'smtp'} · Kabul: ${(data.accepted || []).join(', ') || 'alıcı'}`,
+            status: 'success',
+          },
+          ...prev,
+        ]);
+      } else {
+        setCronLogs((prev) => [
+          { timestamp: new Date().toLocaleTimeString('tr-TR'), text: `❌ [gmail-verify] ${data.error || data.message || 'Doğrulama başarısız.'}`, status: 'error' },
+          ...prev,
+        ]);
+      }
+    } catch (err: any) {
+      setCronLogs((prev) => [
+        { timestamp: new Date().toLocaleTimeString('tr-TR'), text: `❌ [gmail-verify] Bağlantı hatası: ${err.message}`, status: 'error' },
+        ...prev,
+      ]);
+    } finally {
+      setIsVerifyingGmail(false);
     }
   };
 
@@ -954,23 +1001,34 @@ export default function AdminConsolePage() {
 
               {/* Cron 2: Daily Report */}
               <div className="rounded-2xl border border-white/10 bg-[#070b16] p-5 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <span className="font-bold text-white text-sm">Günlük 18:30 Kapanış Bülteni</span>
                   <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
-                    Resend API
+                    {stats?.emailDiagnostics?.mode === 'gmail' ? 'Gmail SMTP' : (stats?.emailServiceMode || 'E-posta Servisi')}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400">
-                  BIST ve ons altın canlı piyasa kapanışını hazırlar ve tüm aktif Pro üyelerin e-postalarına iletir.
+                  BIST ve ons altın canlı piyasa kapanışını hazırlar ve tüm aktif Pro üyelerin e-postalarına iletir. Gönderen:{' '}
+                  <span className="font-mono text-slate-200">{stats?.emailDiagnostics?.senderAddress || stats?.adminEmail || 'kaanrmak7@gmail.com'}</span>
                 </p>
-                <button
-                  type="button"
-                  onClick={() => triggerCronJob('daily-report')}
-                  disabled={Boolean(isTriggeringCron)}
-                  className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50 cursor-pointer"
-                >
-                  {isTriggeringCron === 'daily-report' ? 'Gönderiliyor...' : '▶️ Bülteni Şimdi Gönder'}
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => triggerCronJob('daily-report')}
+                    disabled={Boolean(isTriggeringCron)}
+                    className="w-full rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white hover:bg-emerald-500 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {isTriggeringCron === 'daily-report' ? 'Gönderiliyor...' : '▶️ Bülteni Şimdi Gönder'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyGmailSender}
+                    disabled={isVerifyingGmail}
+                    className="w-full rounded-xl border border-white/15 bg-white/5 py-1.5 text-[11px] font-semibold text-slate-200 hover:bg-white/10 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {isVerifyingGmail ? 'Doğrulanıyor...' : '✉️ Gönderici Test E-postası Gönder'}
+                  </button>
+                </div>
               </div>
 
               {/* Cron 3: Session Purge */}

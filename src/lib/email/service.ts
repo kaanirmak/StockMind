@@ -86,8 +86,84 @@ export interface SendEmailResult {
   message: string;
   previewUrl?: string;
   method?: string;
+  from?: string;
+  senderAddress?: string;
+  accepted?: string[];
+  messageId?: string;
   requiresSmtpConfig?: boolean;
   error?: string;
+}
+
+export interface EmailTransportDiagnostics {
+  mode: 'gmail' | 'resend' | 'brevo' | 'smtp' | 'unconfigured';
+  gmailOnly: boolean;
+  configured: boolean;
+  senderAddress: string;
+  expectedGmailSender: string;
+  senderMatchesExpectedGmail: boolean;
+}
+
+export function getEmailTransportDiagnostics(): EmailTransportDiagnostics {
+  const gmailOnly = process.env.EMAIL_TRANSPORT?.trim() === 'gmail';
+  const smtpUser = (process.env.SMTP_USER || '').trim();
+  const smtpPass = (process.env.SMTP_PASS || '').trim();
+  const smtpService = (process.env.SMTP_SERVICE || '').trim();
+  const smtpHost = (process.env.SMTP_HOST || '').trim().toLowerCase();
+  const resendApiKey = gmailOnly ? '' : (process.env.RESEND_API_KEY || '').trim();
+  const brevoApiKey = gmailOnly ? '' : (process.env.BREVO_API_KEY || '').trim();
+  const expectedGmailSender = (process.env.ADMIN_EMAIL || 'kaanrmak7@gmail.com').trim().toLowerCase();
+
+  if (gmailOnly || (!resendApiKey && !brevoApiKey && (smtpService === 'gmail' || smtpHost === 'smtp.gmail.com'))) {
+    const configured = Boolean(smtpUser && smtpPass);
+    return {
+      mode: 'gmail',
+      gmailOnly,
+      configured,
+      senderAddress: smtpUser,
+      expectedGmailSender,
+      senderMatchesExpectedGmail: Boolean(smtpUser && smtpUser.toLowerCase() === expectedGmailSender),
+    };
+  }
+  if (resendApiKey) {
+    const resendFrom = (process.env.RESEND_FROM || process.env.SMTP_FROM || '').trim();
+    return {
+      mode: 'resend',
+      gmailOnly: false,
+      configured: true,
+      senderAddress: resendFrom,
+      expectedGmailSender,
+      senderMatchesExpectedGmail: false,
+    };
+  }
+  if (brevoApiKey) {
+    const brevoSender = (process.env.BREVO_SENDER || smtpUser || '').trim();
+    return {
+      mode: 'brevo',
+      gmailOnly: false,
+      configured: true,
+      senderAddress: brevoSender,
+      expectedGmailSender,
+      senderMatchesExpectedGmail: false,
+    };
+  }
+  if (smtpUser && smtpPass) {
+    return {
+      mode: 'smtp',
+      gmailOnly: false,
+      configured: true,
+      senderAddress: smtpUser,
+      expectedGmailSender,
+      senderMatchesExpectedGmail: smtpUser.toLowerCase() === expectedGmailSender,
+    };
+  }
+  return {
+    mode: 'unconfigured',
+    gmailOnly,
+    configured: false,
+    senderAddress: '',
+    expectedGmailSender,
+    senderMatchesExpectedGmail: false,
+  };
 }
 
 export interface SendEmailOptions {
@@ -135,10 +211,15 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
       const data: any = await res.json().catch(() => null);
 
       if (res.ok && data?.id) {
+        const formattedFrom = resendFrom.includes('<') ? resendFrom : `StockMind <${resendFrom}>`;
         return {
           success: true,
           message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
           method: 'resend_api',
+          from: formattedFrom,
+          senderAddress: resendFrom,
+          messageId: String(data.id),
+          accepted: [to],
         };
       } else {
         senderVerificationFailed = res.status === 403 &&
@@ -175,6 +256,10 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
           success: true,
           message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
           method: 'brevo_api',
+          from: `StockMind <${senderEmail}>`,
+          senderAddress: senderEmail,
+          messageId: String(data.messageId || data.id),
+          accepted: [to],
         };
       }
       console.warn('Brevo API rejected email', { status: res.status, code: data?.code });
@@ -209,8 +294,9 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
         tls: { rejectUnauthorized: true },
       });
 
+      const normalizedFrom = smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`;
       const info = await transporter.sendMail({
-        from: smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`,
+        from: normalizedFrom,
         to,
         subject,
         html,
@@ -221,6 +307,10 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
         success: true,
         message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
         method: isGmail ? 'google_smtp' : 'custom_smtp',
+        from: normalizedFrom,
+        senderAddress: smtpUser,
+        accepted: Array.isArray(info.accepted) ? info.accepted.map(String) : [to],
+        messageId: info.messageId ? String(info.messageId) : undefined,
       };
     } catch (err: any) {
       gmailAuthFailed = gmailOnly && err?.code === 'EAUTH';

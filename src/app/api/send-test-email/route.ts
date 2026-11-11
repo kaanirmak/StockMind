@@ -37,6 +37,10 @@ export async function POST(request: Request) {
         : (result.message || 'Test e-postası doğrulanmış adresinize gönderildi.'),
       previewUrl: result.previewUrl,
       method: result.method,
+      from: result.from,
+      senderAddress: result.senderAddress,
+      accepted: result.accepted,
+      messageId: result.messageId,
     });
   } catch (error) {
     return apiErrorResponse(error);

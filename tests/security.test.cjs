@@ -459,6 +459,44 @@ test('Gmail mode uses the authenticated sender and skips configured HTTP email p
   assert.equal(calls.options.secure, true);
 });
 
+test('EPO-01: Gmail gönderici doğrulaması kaanrmak7@gmail.com kimliğini ve kabul bilgilerini döner', async () => {
+  const load = loader({
+    nodemailer: {
+      createTransport: () => ({
+        sendMail: async mail => ({
+          accepted: [mail.to],
+          messageId: '<epo01-msg@gmail.com>',
+        }),
+      }),
+    },
+  }, {
+    EMAIL_TRANSPORT: 'gmail',
+    ADMIN_EMAIL: 'kaanrmak7@gmail.com',
+    SMTP_USER: 'kaanrmak7@gmail.com',
+    SMTP_PASS: 'app-password',
+    RESEND_API_KEY: 'ignored-in-gmail-mode',
+  }, { fetch: async () => { throw new Error('Should not call HTTP provider in gmail mode'); } });
+
+  const { sendEmailTransport, getEmailTransportDiagnostics } = load('src/lib/email/service.ts');
+  const diag = getEmailTransportDiagnostics();
+  assert.equal(diag.mode, 'gmail');
+  assert.equal(diag.configured, true);
+  assert.equal(diag.senderAddress, 'kaanrmak7@gmail.com');
+  assert.equal(diag.senderMatchesExpectedGmail, true);
+
+  const result = await sendEmailTransport({
+    to: 'verified-user@example.test',
+    subject: 'EPO-01 Test',
+    html: '<p>Test</p>',
+  });
+  assert.equal(result.success, true);
+  assert.equal(result.method, 'google_smtp');
+  assert.equal(result.from, 'StockMind <kaanrmak7@gmail.com>');
+  assert.equal(result.senderAddress, 'kaanrmak7@gmail.com');
+  assert.deepEqual(result.accepted, ['verified-user@example.test']);
+  assert.equal(result.messageId, '<epo01-msg@gmail.com>');
+});
+
 test('SEC-01: sendProRequestAdminEmail sanitizes user note, name and email against HTML injection', async () => {
   let capturedHtml = '';
   const load = loader({

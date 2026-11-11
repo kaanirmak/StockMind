@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireDesktopAdmin } from '@/lib/admin/desktopGuard';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { apiErrorResponse } from '@/lib/api/security';
+import { getEmailTransportDiagnostics } from '@/lib/email/service';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 
 export const dynamic = 'force-dynamic';
@@ -25,11 +26,19 @@ export async function GET(request: Request) {
     const proUsers = users.filter((u: any) => u.app_metadata?.plan === 'pro' || u.app_metadata?.is_pro === true).length;
     const pendingRequests = users.filter((u: any) => u.user_metadata?.pro_request_status === 'pending').length;
 
-    const emailServiceMode = process.env.RESEND_API_KEY
-      ? 'Resend REST API (Canlı/Aktif)'
-      : process.env.SMTP_USER
-      ? 'SMTP Nodemailer (Yedek)'
-      : 'Yapılandırılmamış';
+    const emailDiagnostics = getEmailTransportDiagnostics();
+    const emailServiceMode =
+      emailDiagnostics.mode === 'gmail'
+        ? emailDiagnostics.configured
+          ? `Gmail SMTP (${emailDiagnostics.senderAddress || 'SMTP_USER eksik'})`
+          : 'Gmail SMTP (Kimlik bilgisi eksik)'
+        : emailDiagnostics.mode === 'resend'
+          ? 'Resend REST API (Canlı/Aktif)'
+          : emailDiagnostics.mode === 'brevo'
+            ? 'Brevo SMTP API'
+            : emailDiagnostics.mode === 'smtp'
+              ? 'SMTP Nodemailer'
+              : 'Yapılandırılmamış';
 
     return NextResponse.json(
       {
@@ -42,6 +51,7 @@ export async function GET(request: Request) {
           dbFundsCount: fundsCount,
           directoryFundsCount: (TEFAS_DIRECTORY as any[]).length,
           emailServiceMode,
+          emailDiagnostics,
           environment: process.env.NODE_ENV || 'production',
           systemTime: new Date().toISOString(),
           adminEmail: process.env.ADMIN_EMAIL || 'kaanrmak7@gmail.com',
