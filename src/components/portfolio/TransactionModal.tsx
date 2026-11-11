@@ -7,6 +7,12 @@ import { CashPanel } from './CashPanel';
 import { BrokerDirectory } from './BrokerDirectory';
 import { BROKERS, Broker } from '@/lib/data/brokers';
 import { cleanSymbol } from '@/lib/utils/symbol';
+import {
+  TRANSACTION_CHANNEL_OPTIONS,
+  TransactionChannel,
+  getInitialTransactionChannel,
+  resolveChannelSubState,
+} from '@/lib/portfolio/transactionChannels';
 
 export interface TransactionModalProps {
   isOpen: boolean;
@@ -40,15 +46,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const { addTransaction, activePortfolioId, livePrices } = usePortfolioStore();
   const { showToast } = useToast();
 
-  // Top-level Execution Channel: 'broker' (Aracı Kurum) vs. 'virtual' (StockMind Sanal Bakiye)
+  const [selectedChannel, setSelectedChannel] = useState<TransactionChannel>(
+    getInitialTransactionChannel(initialMode)
+  );
+  // Execution Channel derived sub-state: 'broker' vs 'virtual' & 'instrument' vs 'cash'
   const [executionMode, setExecutionMode] = useState<'broker' | 'virtual'>(
-    initialMode === 'broker' ? 'broker' : 'virtual'
+    resolveChannelSubState(getInitialTransactionChannel(initialMode)).executionMode
   );
-  // Under StockMind Sanal Bakiye: 'stock' | 'fund' | 'cash'
   const [assetSubTab, setAssetSubTab] = useState<'instrument' | 'cash'>(
-    initialMode === 'cash' ? 'cash' : 'instrument'
+    resolveChannelSubState(getInitialTransactionChannel(initialMode)).assetSubTab
   );
-  const [cashMode, setCashMode] = useState(initialMode === 'cash');
+  const [cashMode, setCashMode] = useState(
+    resolveChannelSubState(getInitialTransactionChannel(initialMode)).cashMode
+  );
+  const selectChannel = (channel: TransactionChannel) => {
+    const next = resolveChannelSubState(channel);
+    setSelectedChannel(channel);
+    setExecutionMode(next.executionMode);
+    setAssetSubTab(next.assetSubTab);
+    setCashMode(next.cashMode);
+  };
   const [cashBusy, setCashBusy] = useState(false);
   const [assetType, setAssetType] = useState<'stock' | 'fund'>(initialMode === 'fund' ? 'fund' : 'stock');
   const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy');
@@ -96,18 +113,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         setSymbol(initialSymbol.toUpperCase().trim());
       }
       if (initialMode) {
-        if (initialMode === 'broker') {
-          setExecutionMode('broker');
-          setCashMode(false);
-        } else {
-          setExecutionMode('virtual');
-          setAssetSubTab(initialMode === 'cash' ? 'cash' : 'instrument');
-          if (initialMode === 'cash') {
-            setCashMode(true);
-          } else {
-            setCashMode(false);
-            setAssetType(initialMode);
-          }
+        selectChannel(getInitialTransactionChannel(initialMode));
+        if (initialMode === 'stock' || initialMode === 'fund') {
+          setAssetType(initialMode);
         }
       }
     }
@@ -382,13 +390,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   const modalTitle =
-    executionMode === 'broker'
-      ? (symbol ? `${symbol} — Aracı Kurum Seçimi` : 'İşlem Yap — Aracı Kurum Seçimi')
-      : assetSubTab === 'cash'
-      ? 'StockMind Sanal Nakit Yönetimi'
+    selectedChannel === 'external_broker'
+      ? symbol
+        ? `${symbol} — Dış Aracı Kuruma Git`
+        : 'Dış Aracı Kuruma Git'
+      : selectedChannel === 'virtual_cash'
+      ? 'Sanal Bakiye Yönetimi'
       : symbol
-      ? `${symbol} — StockMind Sanal Portföy İşlemi`
-      : 'StockMind Sanal Portföy İşlemi';
+      ? `${symbol} — İşlem Kaydet`
+      : 'İşlem Kaydet';
 
   return (
     <Modal
@@ -465,7 +475,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       onClick={() => {
                         setIsSpotlightOpen(false);
                         setSpotlightQuery('');
-                        setExecutionMode('broker');
+                        selectChannel('external_broker');
                         handleOpenBroker(b);
                       }}
                       className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-bg-secondary transition-colors cursor-pointer text-left group"
@@ -502,7 +512,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <div className="p-2">
                 <div className="text-[10px] font-bold text-text-muted px-2 py-1 uppercase tracking-wider flex items-center justify-between">
                   <span>📈 Hisseler</span>
-                  <span className="text-[9px] font-mono text-violet-400">StockMind Sanal Bakiye</span>
+                  <span className="text-[9px] font-mono text-violet-400">İşlem Kaydı</span>
                 </div>
                 <div className="space-y-1">
                   {spotlightResults.stocks.map((s) => (
@@ -512,9 +522,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       onClick={() => {
                         setIsSpotlightOpen(false);
                         setSpotlightQuery('');
-                        setExecutionMode('virtual');
-                        setAssetSubTab('instrument');
-                        setCashMode(false);
+                        selectChannel('record');
                         setAssetType('stock');
                         handleSelectAsset({ ...s, assetType: 'stock' });
                       }}
@@ -547,7 +555,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <div className="p-2">
                 <div className="text-[10px] font-bold text-text-muted px-2 py-1 uppercase tracking-wider flex items-center justify-between">
                   <span>📊 TEFAS Fonları</span>
-                  <span className="text-[9px] font-mono text-purple-400">StockMind Sanal Bakiye</span>
+                  <span className="text-[9px] font-mono text-purple-400">İşlem Kaydı</span>
                 </div>
                 <div className="space-y-1">
                   {spotlightResults.funds.map((f) => (
@@ -557,9 +565,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       onClick={() => {
                         setIsSpotlightOpen(false);
                         setSpotlightQuery('');
-                        setExecutionMode('virtual');
-                        setAssetSubTab('instrument');
-                        setCashMode(false);
+                        selectChannel('record');
                         setAssetType('fund');
                         handleSelectAsset({ ...f, assetType: 'fund' });
                       }}
@@ -595,16 +601,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   onClick={() => {
                     setIsSpotlightOpen(false);
                     setSpotlightQuery('');
-                    setExecutionMode('virtual');
-                    setAssetSubTab('cash');
-                    setCashMode(true);
+                    selectChannel('virtual_cash');
                   }}
                   className="w-full flex items-center justify-between p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-base">💵</span>
                     <div>
-                      <span className="text-xs font-bold block">StockMind Sanal Nakit Yönetimi</span>
+                      <span className="text-xs font-bold block">Sanal Bakiye Yönetimi</span>
                       <span className="text-[10px] text-text-muted block">Portföyünüze nakit yatırın veya çekin</span>
                     </div>
                   </div>
@@ -627,54 +631,38 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         )}
       </div>
 
-      {/* 2. Top-Level Execution Mode: Aracı Kurum vs. StockMind Sanal Bakiye */}
-      <div className="grid grid-cols-2 p-1 mb-3.5 rounded-xl bg-bg-secondary border border-border" role="tablist" aria-label="İşlem kanalı">
-        <button
-          type="button"
-          disabled={cashBusy || isSubmitting}
-          aria-selected={executionMode === 'broker'}
-          onClick={() => {
-            setExecutionMode('broker');
-            setCashMode(false);
-          }}
-          className={`py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-            executionMode === 'broker'
-              ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25'
-              : 'text-text-muted hover:text-text-primary'
-          }`}
+      {/* 2. Top-Level Execution Channel: İşlem Kaydet / Sanal Bakiye / Dış Aracı Kuruma Git */}
+      <div className="mb-3.5 space-y-1.5">
+        <div
+          className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-bg-secondary border border-border"
+          role="tablist"
+          aria-label="İşlem kanalı"
         >
-          <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-            <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <span>Aracı Kurum ile İşlem</span>
-        </button>
-
-        <button
-          type="button"
-          disabled={cashBusy || isSubmitting}
-          aria-selected={executionMode === 'virtual'}
-          onClick={() => {
-            setExecutionMode('virtual');
-            if (assetSubTab === 'cash') setCashMode(true);
-          }}
-          className={`py-2.5 px-3 rounded-lg text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-            executionMode === 'virtual'
-              ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25'
-              : 'text-text-muted hover:text-text-primary'
-          }`}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>StockMind Sanal Bakiye</span>
-        </button>
-      </div>
-
-      {executionMode === 'virtual' && (
-        <div className="grid grid-cols-2 gap-1 mb-4 rounded-xl bg-bg-secondary/70 p-1" role="group" aria-label="Varlık kategorisi">
-          {(['instrument', 'cash'] as const).map(type => <button type="button" key={type} disabled={cashBusy || isSubmitting} aria-pressed={assetSubTab === type} onClick={() => { setAssetSubTab(type); setCashMode(type === 'cash'); }} className={`min-h-11 px-2 rounded-lg text-xs sm:text-sm font-semibold ${assetSubTab === type ? 'bg-bg-card text-text-primary shadow-sm' : 'text-text-muted'}`}>{type === 'instrument' ? 'Yatırım enstrümanı' : 'Nakit'}</button>)}
+          {TRANSACTION_CHANNEL_OPTIONS.map((option) => {
+            const isActive = selectedChannel === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="tab"
+                disabled={cashBusy || isSubmitting}
+                aria-selected={isActive}
+                onClick={() => selectChannel(option.id)}
+                className={`min-h-11 py-2 px-2 rounded-lg text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer text-center ${
+                  isActive
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md shadow-violet-500/25'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
         </div>
-      )}
+        <p className="text-[11px] text-text-muted px-1">
+          {TRANSACTION_CHANNEL_OPTIONS.find((opt) => opt.id === selectedChannel)?.description}
+        </p>
+      </div>
 
       {executionMode === 'broker' ? (
         <div className="space-y-3.5">
@@ -683,17 +671,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             onSelectBroker={handleOpenBroker}
           />
           <div className="p-3 bg-bg-secondary/70 rounded-xl border border-dashed border-border flex items-center justify-between text-xs text-text-muted">
-            <span>İşlemi gerçek aracı kurum yerine sanal portföye eklemek ister misiniz?</span>
+            <span>Dış kurum yerine işlemi doğrudan portföy defterine kaydetmek ister misiniz?</span>
             <button
               type="button"
-              onClick={() => {
-                setExecutionMode('virtual');
-                setAssetSubTab('instrument');
-                setCashMode(false);
-              }}
+              onClick={() => selectChannel('record')}
               className="text-accent hover:underline font-bold shrink-0 ml-2 cursor-pointer"
             >
-              Sanal Portföye Ekle →
+              İşlem Kaydet →
             </button>
           </div>
         </div>

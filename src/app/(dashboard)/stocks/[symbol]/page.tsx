@@ -15,8 +15,10 @@ import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { BROKERS, Broker } from '@/lib/data/brokers';
 import { BrokerDirectory } from '@/components/portfolio/BrokerDirectory';
+import { CashPanel } from '@/components/portfolio/CashPanel';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
+import { TRANSACTION_CHANNEL_OPTIONS, TransactionChannel } from '@/lib/portfolio/transactionChannels';
 
 export default function StockDetailPage({
   params,
@@ -42,7 +44,7 @@ export default function StockDetailPage({
 
   // Buy/Sell Quick Modal & Broker Redirection
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [tradeModalTab, setTradeModalTab] = useState<'broker' | 'virtual'>('virtual');
+  const [tradeModalTab, setTradeModalTab] = useState<TransactionChannel>('record');
   const [brokerSearchQuery, setBrokerSearchQuery] = useState('');
   const [brokerCategoryFilter, setBrokerCategoryFilter] = useState<'ALL' | 'POPULAR' | 'Dijital / FinTech' | 'Banka İştiraki' | 'Bağımsız Kurum'>('ALL');
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
@@ -338,7 +340,7 @@ export default function StockDetailPage({
               size="md"
               onClick={() => {
                 setPriceInput(currentPrice.toString());
-                setTradeModalTab('virtual');
+                setTradeModalTab('record');
                 setIsTradeModalOpen(true);
               }}
             >
@@ -579,7 +581,7 @@ export default function StockDetailPage({
             <button
               onClick={() => {
                 setPriceInput(currentPrice.toString());
-                setTradeModalTab('virtual');
+                setTradeModalTab('record');
                 setIsTradeModalOpen(true);
               }}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-accent to-purple-600 hover:from-accent/90 hover:to-purple-600/90 text-white font-bold text-xs sm:text-sm tracking-wide shadow-md shadow-accent/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
@@ -626,37 +628,30 @@ export default function StockDetailPage({
             </div>
           </div>
 
-          {/* Tab Selector */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-bg-secondary rounded-xl border border-border">
-            <button
-              type="button"
-              onClick={() => setTradeModalTab('broker')}
-              className={`py-2 px-3 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                tradeModalTab === 'broker'
-                  ? 'bg-accent text-white shadow-md shadow-accent/20'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-              <span>Aracı Kurumlar</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTradeModalTab('virtual')}
-              className={`py-2 px-3 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                tradeModalTab === 'virtual'
-                  ? 'bg-bg-tertiary text-text-primary border border-border shadow-sm'
-                  : 'text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-              <span>Sanal Portföy</span>
-            </button>
+          {/* Channel Selector: İşlem Kaydet / Sanal Bakiye / Dış Aracı Kuruma Git */}
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-bg-secondary rounded-xl border border-border" role="tablist" aria-label="İşlem kanalı">
+            {TRANSACTION_CHANNEL_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                role="tab"
+                aria-selected={tradeModalTab === option.id}
+                onClick={() => setTradeModalTab(option.id)}
+                className={`py-2 px-2 rounded-lg font-bold text-[11px] sm:text-xs transition-all cursor-pointer flex items-center justify-center text-center ${
+                  tradeModalTab === option.id
+                    ? 'bg-accent text-white shadow-md shadow-accent/20'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <span>{option.label}</span>
+              </button>
+            ))}
           </div>
 
-          {/* Brokerage Tab Content */}
-          {tradeModalTab === 'broker' ? (
+          {tradeModalTab === 'external_broker' ? (
             <BrokerDirectory selectedSymbol={symbol} onSelectBroker={handleOpenBroker} />
+          ) : tradeModalTab === 'virtual_cash' ? (
+            <CashPanel embedded onComplete={() => setIsTradeModalOpen(false)} />
           ) : (
             /* Virtual Portfolio Tab Content */
             <form onSubmit={handleTradeSubmit} className="space-y-4">

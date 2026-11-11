@@ -2469,8 +2469,8 @@ test('POR-01 primary transaction action uses İşlem Kaydet and opens direct rec
     path.join(__dirname, '..', 'src/app/(dashboard)/stocks/[symbol]/page.tsx'),
     'utf8'
   );
-  assert.match(stockDetailSrc, /useState<'broker' \| 'virtual'>\('virtual'\)/);
-  assert.match(stockDetailSrc, /setTradeModalTab\('virtual'\)/);
+  assert.match(stockDetailSrc, /useState<TransactionChannel>\('record'\)/);
+  assert.match(stockDetailSrc, /setTradeModalTab\('record'\)/);
   assert.match(stockDetailSrc, /\{TRANSACTION_RECORD_ACTION_LABEL\}/);
 
   const fundDetailSrc = fs.readFileSync(
@@ -2479,6 +2479,60 @@ test('POR-01 primary transaction action uses İşlem Kaydet and opens direct rec
   );
   assert.match(fundDetailSrc, /\{TRANSACTION_RECORD_ACTION_LABEL\}/);
 });
+
+test('POR-02 separates transaction recording, virtual cash balance, and external broker channels', () => {
+  const {
+    TRANSACTION_CHANNEL_OPTIONS,
+    getInitialTransactionChannel,
+    resolveChannelSubState,
+  } = load('src/lib/portfolio/transactionChannels.ts');
+
+  const options = Array.from(TRANSACTION_CHANNEL_OPTIONS).map((o) => ({ ...o }));
+  assert.deepEqual(
+    options.map((o) => ({ id: o.id, label: o.label, external: o.external })),
+    [
+      { id: 'record', label: 'İşlem Kaydet', external: false },
+      { id: 'virtual_cash', label: 'Sanal Bakiye', external: false },
+      { id: 'external_broker', label: 'Dış Aracı Kuruma Git', external: true },
+    ]
+  );
+
+  assert.equal(getInitialTransactionChannel(undefined), 'record');
+  assert.equal(getInitialTransactionChannel('stock'), 'record');
+  assert.equal(getInitialTransactionChannel('fund'), 'record');
+  assert.equal(getInitialTransactionChannel('cash'), 'virtual_cash');
+  assert.equal(getInitialTransactionChannel('broker'), 'external_broker');
+
+  assert.deepEqual(
+    { ...resolveChannelSubState('record') },
+    { executionMode: 'virtual', assetSubTab: 'instrument', cashMode: false }
+  );
+  assert.deepEqual(
+    { ...resolveChannelSubState('virtual_cash') },
+    { executionMode: 'virtual', assetSubTab: 'cash', cashMode: true }
+  );
+  assert.deepEqual(
+    { ...resolveChannelSubState('external_broker') },
+    { executionMode: 'broker', assetSubTab: 'instrument', cashMode: false }
+  );
+
+  const txModalSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/portfolio/TransactionModal.tsx'),
+    'utf8'
+  );
+  assert.match(txModalSrc, /TRANSACTION_CHANNEL_OPTIONS/);
+  assert.match(txModalSrc, /selectedChannel/);
+  assert.doesNotMatch(txModalSrc, /StockMind Sanal Bakiye<\/span>/);
+
+  const stockDetailSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/stocks/[symbol]/page.tsx'),
+    'utf8'
+  );
+  assert.match(stockDetailSrc, /TRANSACTION_CHANNEL_OPTIONS/);
+  assert.match(stockDetailSrc, /tradeModalTab === 'virtual_cash'/);
+  assert.match(stockDetailSrc, /tradeModalTab === 'external_broker'/);
+});
+
 
 
 
