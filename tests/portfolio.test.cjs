@@ -2374,6 +2374,45 @@ test('POR-14: PDF/print and CSV export carry selected portfolio, period, currenc
   assert.match(reportsSrc, /buildPortfolioReportCsv/);
 });
 
+test('POR-15: documents read-only priority brokers, terms, cost, strict read-only scopes, and deletion flow', () => {
+  const policyMod = loadModule('src/lib/portfolio/brokerConnectionPolicy.ts');
+  const evaluations = Array.from(policyMod.READ_ONLY_BROKER_EVALUATIONS);
+
+  assert.ok(evaluations.length >= 4);
+  assert.equal(evaluations[0].id, 'midas');
+  for (const item of evaluations) {
+    assert.equal(item.readOnlyEnforced, true);
+    assert.ok(item.connectionTerms.length > 15);
+    assert.ok(item.estimatedMonthlyCostTryPerUser.length > 2);
+    assert.ok(Array.from(item.forbiddenScopes).includes('orders:write'));
+    assert.ok(Array.from(item.forbiddenScopes).includes('transfers:write'));
+  }
+
+  const stepIds = Array.from(policyMod.BROKER_DATA_DELETION_FLOW, (s) => s.id);
+  assert.deepEqual(stepIds, [
+    'revoke_token',
+    'purge_sync_state',
+    'handle_transactions',
+    'audit_confirmation',
+  ]);
+
+  const valid = policyMod.validateReadOnlyBrokerScopes(['positions:read', 'transactions:read']);
+  assert.equal(valid.accepted, true);
+  assert.deepEqual(Array.from(valid.rejectedScopes), []);
+
+  const unsafeWrite = policyMod.validateReadOnlyBrokerScopes(['transactions:read', 'orders:write']);
+  assert.equal(unsafeWrite.accepted, false);
+  assert.deepEqual(Array.from(unsafeWrite.rejectedScopes), ['orders:write']);
+
+  const docSrc = fs.readFileSync(
+    path.join(root, 'docs/araci-kurum-baglantisi-degerlendirme.md'),
+    'utf8',
+  );
+  assert.match(docSrc, /Midas/);
+  assert.match(docSrc, /orders:write/);
+  assert.match(docSrc, /revoke_token/);
+});
+
 
 
 
