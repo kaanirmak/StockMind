@@ -838,8 +838,13 @@ export async function buildTransactionsExcelBuffer(transactions: any[]): Promise
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'İşlem Geçmişi');
 
-  const out = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as Uint8Array | ArrayBuffer;
-  if (out instanceof ArrayBuffer) return out;
+  const out = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as Uint8Array | ArrayBuffer | number[];
+  if (out instanceof ArrayBuffer || Object.prototype.toString.call(out) === '[object ArrayBuffer]') {
+    return out as ArrayBuffer;
+  }
+  if (Array.isArray(out)) {
+    return new Uint8Array(out).buffer;
+  }
   return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
 }
 

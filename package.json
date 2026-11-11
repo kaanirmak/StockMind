@@ -16,9 +16,11 @@
     "typecheck": "tsc --noEmit",
     "test:security": "node --test tests/security.test.cjs",
     "test:portfolio": "node --test tests/portfolio.test.cjs",
-    "test": "node --test tests/security.test.cjs tests/portfolio.test.cjs tests/interaction.test.cjs tests/outage.test.cjs",
+    "test": "node --test tests/security.test.cjs tests/portfolio.test.cjs tests/interaction.test.cjs tests/outage.test.cjs tests/criticalFlows.test.cjs",
     "test:outage": "node --test tests/outage.test.cjs",
     "test:interaction": "node --test tests/interaction.test.cjs",
+    "test:flows": "node --test tests/criticalFlows.test.cjs",
+    "test:pre-release": "npm run typecheck && npm run test",
     "build:next": "next build --webpack"
   },
   "dependencies": {

@@ -203,7 +203,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | OPS-07 | P1 | Excel kütüphanesini isteğe bağlı yükle | İlk portföy açılışında Excel parçası indirilmez. İçe veya dışa aktarmada yüklenir. | ◐ |
 | OPS-08 | P1 | Gereksiz fiyat yenilemelerini azalt | Gizli sekme, kapalı piyasa ve geçersiz oturum durumlarında yenileme davranışı ölçülür ve uygun şekilde yavaşlatılır. | ◐ |
 | OPS-09 | P1 | Mobil ve masaüstü performans ölçümünü kur | LCP, INP, CLS, ilk yük boyutu ve kritik API süreleri platform bazında raporlanır. | ◐ |
-| OPS-10 | P1 | Kritik kullanıcı akışlarını otomatik test et | Misafir başlangıcı, işlem kaydı, dosya aktarımı, alarm kurma, haber kesintisi ve rapor üretimi sürüm öncesi çalışır. | ☐ |
+| OPS-10 | P1 | Kritik kullanıcı akışlarını otomatik test et | Misafir başlangıcı, işlem kaydı, dosya aktarımı, alarm kurma, haber kesintisi ve rapor üretimi sürüm öncesi çalışır. | ◐ |
 | OPS-11 | P1 | Sağlayıcı ve görev durum panosu oluştur | Son başarılı fiyat/fon/haber alımı, bülten gecikmesi ve alarm hataları hassas bilgi taşımadan izlenir. | ☐ |
 | OPS-12 | P1 | Kullanım ölçümlerini tanımla | İlk işlem tamamlama, başarılı içe aktarma, alarm kurma ve tekrar kullanım ölçülür. Özel portföy tutarları analitik olaylara girmez. | ☐ |
 | OPS-13 | P2 | Lint uyarılarını etkisine göre azalt | Önce erişilebilirlik, React bağımlılıkları ve gerçek hata riski taşıyan uyarılar düşer. Toplam uyarı sayısı CI’da izlenir. | ☐ |
