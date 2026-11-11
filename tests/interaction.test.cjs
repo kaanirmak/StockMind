@@ -2870,6 +2870,55 @@ test('HBR-04 matches news by asset identity, company aliases, and exchange witho
   assert.equal(matchNewsAssetIdentity('$LOGO bilançosu beklentileri aştı', { symbol: 'LOGO', exchange: 'BIST' }).matched, true);
 });
 
+test('HBR-05: news ranking exposes matched asset, event type, and match reason for portfolio connections', () => {
+  const { rankNews } = load('src/lib/news/relevance.ts');
+  const newsPageSource = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  const now = Date.now();
+  const ranked = Array.from(rankNews(
+    [
+      {
+        title: 'Aselsan yeni sözleşme imzaladı',
+        summary: 'Savunma tarafında ek sipariş duyuruldu.',
+        publishedAt: new Date(now - 3_600_000).toISOString(),
+        category: 'BIST',
+        source: 'KAP',
+      },
+      {
+        title: 'Küresel teknoloji hisseleri',
+        summary: 'NASDAQ:NVDA için temettü duyurusu paylaşıldı.',
+        publishedAt: new Date(now - 7_200_000).toISOString(),
+        category: 'GLOBAL',
+        source: 'Reuters',
+      },
+    ],
+    [
+      { symbol: 'ASELS', exchange: 'BIST', name: 'Aselsan Elektronik A.Ş.' },
+      { symbol: 'NVDA', exchange: 'NASDAQ', name: 'NVIDIA Corporation' },
+    ],
+    true,
+    now,
+  ));
+
+  assert.equal(ranked.length, 2);
+  assert.deepEqual(Array.from(ranked[0].matchedSymbols), ['ASELS']);
+  assert.equal(ranked[0].event, 'Şirket işlemi veya sözleşme');
+  assert.equal(ranked[0].eventTypeLabel, 'Şirket işlemi veya sözleşme');
+  assert.equal(ranked[0].matchDetails.length, 1);
+  assert.equal(ranked[0].matchDetails[0].matchedBy, 'company_alias');
+  assert.match(ranked[0].matchDetails[0].reasonText, /Şirket adı/i);
+  assert.match(ranked[0].connectionSummary, /ASELS \(BIST\).*Şirket işlemi veya sözleşme/);
+
+  assert.deepEqual(Array.from(ranked[1].matchedSymbols), ['NVDA']);
+  assert.equal(ranked[1].event, 'Temettü veya sermaye işlemi');
+  assert.equal(ranked[1].matchDetails[0].matchedBy, 'exchange_ticker');
+  assert.match(ranked[1].matchDetails[0].reasonText, /Borsa kodu/i);
+
+  assert.match(newsPageSource, /data-testid="news-portfolio-reason"/);
+  assert.match(newsPageSource, /Portföy Bağlantısı:/);
+  assert.match(newsPageSource, /Olay: \{eventTypeLabel\}/);
+  assert.match(newsPageSource, /detail\.reasonText/);
+});
+
 
 
 

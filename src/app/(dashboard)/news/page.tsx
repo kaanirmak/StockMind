@@ -191,8 +191,12 @@ export default function NewsPage() {
         item.relatedSymbols?.some(symbol => normalizeNewsText(symbol).includes(q))
       );
     });
-    return rankNews(matches, portfolioSymbols, sortOrder === 'important');
-  }, [news, searchQuery, selectedSymbolFilter, portfolioSymbols, sortOrder]);
+    return rankNews(
+      matches,
+      portfolioIdentities.length > 0 ? portfolioIdentities : portfolioSymbols,
+      sortOrder === 'important',
+    );
+  }, [news, searchQuery, selectedSymbolFilter, portfolioIdentities, portfolioSymbols, sortOrder]);
 
   const categories = [
     { id: 'ALL', label: 'Tüm Haberler' },
@@ -511,7 +515,7 @@ export default function NewsPage() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredNews.map(({ article: item, matchedSymbols, event }, idx) => {
+          {filteredNews.map(({ article: item, matchedSymbols, matchDetails, event, eventTypeLabel }, idx) => {
             const sentimentBadge =
               item.sentiment === 'positive' ? (
                 <Badge variant="success" size="sm">
@@ -586,6 +590,34 @@ export default function NewsPage() {
                     <p className="text-xs text-text-secondary leading-relaxed line-clamp-2">
                       {item.summary}
                     </p>
+                  )}
+
+                  {matchDetails.length > 0 && (
+                    <div
+                      data-testid="news-portfolio-reason"
+                      className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-2.5 py-2 text-[11px] space-y-1"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="font-semibold text-emerald-300">
+                          Portföy Bağlantısı:{' '}
+                          <span className="font-mono text-text-primary">
+                            {matchDetails
+                              .map((d) => (d.exchange ? `${d.symbol} (${d.exchange})` : d.symbol))
+                              .join(', ')}
+                          </span>
+                        </span>
+                        <span className="rounded bg-bg-secondary/80 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary border border-border/60">
+                          Olay: {eventTypeLabel}
+                        </span>
+                      </div>
+                      <ul className="space-y-0.5 text-text-secondary">
+                        {matchDetails.map((detail) => (
+                          <li key={`reason-${item.id || idx}-${detail.symbol}`}>
+                            • {detail.symbol}: {detail.reasonText}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
 
