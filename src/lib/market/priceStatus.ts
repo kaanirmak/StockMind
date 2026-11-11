@@ -268,6 +268,7 @@ export function classifyStockPriceStatus(
     price?: number | null;
     observation?: MarketPriceObservation | null;
     exchange?: string | null;
+    isLastKnown?: boolean;
   } | null | undefined,
   now?: Date
 ): PriceStatusInfo {
@@ -282,6 +283,7 @@ export function classifyStockPriceStatus(
     price: hasObservedPrice ? stock!.price : null,
     observation: stock?.observation ?? null,
     exchange: stock?.exchange ?? null,
+    isLastKnown: Boolean(stock?.isLastKnown),
     now,
   });
 }

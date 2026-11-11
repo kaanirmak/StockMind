@@ -644,6 +644,12 @@ test('Market overview returns unavailable for configured fallback prices and kee
   const { GET } = load('src/app/api/markets/overview/route.ts', {
     require: name => {
       if (name === 'next/server') return { NextResponse: { json: body => body } };
+      if (name === '@/lib/market/lastVerifiedStore') {
+        return {
+          recordVerifiedQuotes: async () => 0,
+          getLastVerifiedQuotes: async () => new Map(),
+        };
+      }
       assert.equal(name, '@/lib/data/stocks');
       return {
         fetchAllAlternativeMarkets: async () => ({
@@ -913,10 +919,13 @@ test('TEFAS resume reports coverage from stored quotes and retries only missing 
   assert.deepEqual(writeAttempts.sort(), ['DDD', 'EEE', 'EEE', 'FFF', 'GGG']);
 });
 
-test('VER-02: valid stock, index, commodity, forex, crypto, fund, and history APIs include observation metadata and reject fake fallbacks', async () => {
-  function loadWithAlias(file, extraRequire = {}, extraGlobals = {}) {
+function createAliasedLoader() {
+  const cache = new Map();
+  return function loadWithAlias(file, extraRequire = {}, extraGlobals = {}) {
     const resolved = path.resolve(file);
+    if (cache.has(resolved)) return cache.get(resolved);
     const module = { exports: {} };
+    cache.set(resolved, module.exports);
     const source = ts.transpileModule(fs.readFileSync(resolved, 'utf8'), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     }).outputText;
@@ -968,8 +977,13 @@ test('VER-02: valid stock, index, commodity, forex, crypto, fund, and history AP
       require: customRequire,
       ...extraGlobals,
     });
+    cache.set(resolved, module.exports);
     return module.exports;
-  }
+  };
+}
+
+test('VER-02: valid stock, index, commodity, forex, crypto, fund, and history APIs include observation metadata and reject fake fallbacks', async () => {
+  const loadWithAlias = createAliasedLoader();
 
   // 1. TradingView BIST & US list + specific symbols (Index, TR Gold, Commodity, Forex, Crypto, Scanner null rejection)
   const yahooTime = 1762858800; // 2025-11-11T11:00:00.000Z
@@ -1319,4 +1333,120 @@ test('VER-03: classifyPriceStatus consistently separates current, delayed, last-
   const tefasMissing = classifyFundPriceStatus({ price: null, navDate: null }, bistOpenNow);
   assert.equal(tefasMissing.status, 'missing');
   assert.equal(tefasMissing.label, 'Eksik');
+});
+
+test('VER-04: last verified quotes survive provider outages with original timestamps and stay empty when never observed', async () => {
+  const loadWithAlias = createAliasedLoader();
+  const dbRows = new Map();
+  const supabaseStub = {
+    createClient: () => ({
+      from: () => ({
+        upsert: async (rows) => {
+          for (const r of rows) dbRows.set(r.symbol, r);
+          return { error: null };
+        },
+        select: () => ({
+          in: async (_col, symbols) => ({
+            data: symbols.filter((s) => dbRows.has(s)).map((s) => ({ symbol: s, quote: dbRows.get(s).quote })),
+            error: null,
+          }),
+        }),
+      }),
+    }),
+  };
+
+  const envGlobals = {
+    process: {
+      env: {
+        NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+        SUPABASE_SERVICE_ROLE_KEY: 'service-role-test',
+      },
+    },
+  };
+
+  let providerDown = false;
+  let liveMarkets = {
+    commodity: [
+      {
+        symbol: 'XAUTRYG',
+        name: 'Gram Altın',
+        exchange: 'COMMODITY',
+        currency: 'TRY',
+        sector: 'Kıymetli Madenler',
+        basePrice: 3100,
+        price: 3125.4,
+        observation: {
+          source: 'TradingView',
+          asOf: null,
+          fetchedAt: '2026-11-11T09:30:00.000Z',
+          changePercent: 0.85,
+        },
+      },
+    ],
+    forex: [],
+    crypto: [],
+    indices: [],
+  };
+
+  const nextServerStub = {
+    NextResponse: {
+      json: (body, init) => ({ body, status: init?.status || 200 }),
+    },
+  };
+
+  const route = loadWithAlias(
+    'src/app/api/markets/overview/route.ts',
+    {
+      'next/server': nextServerStub,
+      '@supabase/supabase-js': supabaseStub,
+      '@/lib/data/stocks': {
+        fetchAllAlternativeMarkets: async () => {
+          if (providerDown) throw new Error('Provider outage');
+          return liveMarkets;
+        },
+      },
+    },
+    envGlobals
+  );
+
+  // 1. Live request stores XAUTRYG cleanly, leaves unobserved symbols (e.g. XU100) unavailable
+  const firstRes = await route.GET();
+  assert.equal(firstRes.status, 200);
+  const goldFirst = firstRes.body.data.find((d) => d.symbol === 'GA');
+  const xuFirst = firstRes.body.data.find((d) => d.symbol === 'XU100');
+  assert.equal(goldFirst.status, 'available');
+  assert.equal(goldFirst.value, 3125.4);
+  assert.equal(goldFirst.observation.fetchedAt, '2026-11-11T09:30:00.000Z');
+  assert.equal(xuFirst.status, 'unavailable');
+  assert.equal(xuFirst.value, null);
+  assert.equal(xuFirst.observation, null);
+  assert.ok(dbRows.has('XAUTRYG'));
+
+  // 2. Simulate complete cold-start memory wipe + provider outage: DB still recovers XAUTRYG with original timestamp!
+  const storeMod = loadWithAlias(
+    'src/lib/market/lastVerifiedStore.ts',
+    { '@supabase/supabase-js': supabaseStub },
+    envGlobals
+  );
+  storeMod.__clearLastVerifiedQuotesForTests();
+  providerDown = true;
+
+  const outageRes = await route.GET();
+  assert.equal(outageRes.status, 200);
+  const goldOutage = outageRes.body.data.find((d) => d.symbol === 'GA');
+  const xuOutage = outageRes.body.data.find((d) => d.symbol === 'XU100');
+  assert.equal(goldOutage.status, 'last-known');
+  assert.equal(goldOutage.value, 3125.4);
+  assert.equal(goldOutage.observation.fetchedAt, '2026-11-11T09:30:00.000Z');
+  assert.equal(goldOutage.observation.source, 'TradingView');
+  // Unseen symbol remains unavailable (never fabricated)
+  assert.equal(xuOutage.status, 'unavailable');
+  assert.equal(xuOutage.value, null);
+  assert.equal(xuOutage.observation, null);
+
+  // 3. Classify recovered StockMarketInfo as Eski (stale) while preserving timestamp
+  const { classifyStockPriceStatus } = load('src/lib/market/priceStatus.ts');
+  const recoveredStock = await storeMod.getLastVerifiedQuote('XAUTRYG');
+  assert.equal(recoveredStock.isLastKnown, true);
+  assert.equal(classifyStockPriceStatus(recoveredStock).label, 'Eski');
 });

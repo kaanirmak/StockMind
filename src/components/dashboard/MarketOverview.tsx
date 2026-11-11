@@ -15,6 +15,45 @@ const marketTargets: Record<string, string> = {
   BTC: 'crypto',
 };
 
+const STORAGE_KEY = 'stockmind_market_overview_last_verified_v1';
+
+function readStoredOverviewQuotes(): Map<string, MarketOverviewItem> {
+  const map = new Map<string, MarketOverviewItem>();
+  if (typeof window === 'undefined') return map;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return map;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return map;
+    for (const item of parsed) {
+      if (
+        item &&
+        typeof item === 'object' &&
+        typeof item.symbol === 'string' &&
+        typeof item.value === 'number' &&
+        Number.isFinite(item.value) &&
+        item.value > 0 &&
+        item.observation &&
+        typeof item.observation.fetchedAt === 'string'
+      ) {
+        map.set(item.symbol, item as MarketOverviewItem);
+      }
+    }
+  } catch {
+    // Ignore storage read errors
+  }
+  return map;
+}
+
+function writeStoredOverviewQuotes(map: Map<string, MarketOverviewItem>) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(map.values())));
+  } catch {
+    // Ignore storage write errors
+  }
+}
+
 export default function MarketOverview() {
   const [items, setItems] = useState<MarketOverviewItem[]>([]);
   const [error, setError] = useState(false);
@@ -24,6 +63,13 @@ export default function MarketOverview() {
   const lastQuotes = useRef(new Map<string, MarketOverviewItem>());
 
   useEffect(() => {
+    const stored = readStoredOverviewQuotes();
+    for (const [symbol, item] of stored.entries()) {
+      if (!lastQuotes.current.has(symbol)) {
+        lastQuotes.current.set(symbol, item);
+      }
+    }
+
     const controller = new AbortController();
     let pending = false;
     let flashTimer: ReturnType<typeof setTimeout>;
@@ -40,15 +86,23 @@ export default function MarketOverview() {
 
         const changes: Record<string, string> = {};
         const data: MarketOverviewItem[] = payload.data;
+        let updatedStorage = false;
         const next = data.map((item): MarketOverviewItem => {
           const previous = lastQuotes.current.get(item.symbol);
           if (item.value === null) return previous ? { ...previous, status: 'last-known' } : item;
-          if (previous?.value != null && item.value !== previous.value) {
-            changes[item.symbol] = item.value > previous.value ? 'price-flash-up' : 'price-flash-down';
+          if (item.status === 'available') {
+            if (previous?.value != null && item.value !== previous.value) {
+              changes[item.symbol] = item.value > previous.value ? 'price-flash-up' : 'price-flash-down';
+            }
+            lastQuotes.current.set(item.symbol, item);
+            updatedStorage = true;
           }
-          lastQuotes.current.set(item.symbol, item);
           return item;
         });
+
+        if (updatedStorage) {
+          writeStoredOverviewQuotes(lastQuotes.current);
+        }
 
         setItems(next);
         setError(false);
@@ -60,7 +114,13 @@ export default function MarketOverview() {
       } catch {
         if (!controller.signal.aborted) {
           setError(true);
-          setItems(previous => previous.map(item => item.value === null ? item : { ...item, status: 'last-known' }));
+          setItems(previous => {
+            if (previous.length > 0) {
+              return previous.map(item => (item.value === null ? item : { ...item, status: 'last-known' }));
+            }
+            const cached = Array.from(lastQuotes.current.values());
+            return cached.map(item => ({ ...item, status: 'last-known' }));
+          });
         }
       } finally {
         pending = false;

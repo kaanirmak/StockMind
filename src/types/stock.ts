@@ -156,4 +156,5 @@ export interface StockMarketInfo {
   low52w?: number;
   timestamp?: string;
   observation?: MarketPriceObservation;
+  isLastKnown?: boolean;
 }

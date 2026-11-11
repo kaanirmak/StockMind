@@ -4,6 +4,7 @@ import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { fetchTefasLiveDetail } from '@/lib/api/tefas';
 import { cleanSymbol } from '@/lib/utils/symbol';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
+import { getLastVerifiedQuote, isVerifiedMarketQuote, recordVerifiedQuotes } from '@/lib/market/lastVerifiedStore';
 import {
   Candle,
   calculateBollingerBands,
@@ -1925,7 +1926,14 @@ export function getAllStocks(filter?: {
 
 export async function getStockBySymbolLive(symbol: string): Promise<(StockMarketInfo & StockQuote) | null> {
   const stock = await fetchSpecificSymbolLive(symbol, false);
-  return stock as any;
+  if (stock && isVerifiedMarketQuote(stock)) {
+    await recordVerifiedQuotes([stock]);
+    return stock as any;
+  }
+
+  const normalized = cleanSymbol(symbol).symbol.toUpperCase().trim();
+  const fallback = normalized ? await getLastVerifiedQuote(normalized) : null;
+  return (fallback as any) ?? null;
 }
 
 export function getStockBySymbol(symbol: string): (StockMarketInfo & StockQuote) | null {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchAllAlternativeMarkets } from '@/lib/data/stocks';
+import { getLastVerifiedQuotes, recordVerifiedQuotes } from '@/lib/market/lastVerifiedStore';
 import type { MarketOverviewItem, StockMarketInfo } from '@/types/stock';
 
 export const dynamic = 'force-dynamic';
@@ -20,22 +21,54 @@ function verifiedQuotes(quotes: StockMarketInfo[]) {
 
 export async function GET() {
   try {
-    const markets = await fetchAllAlternativeMarkets();
+    const markets = await fetchAllAlternativeMarkets().catch(() => null);
     const verified = {
-      commodity: verifiedQuotes(markets.commodity),
-      forex: verifiedQuotes(markets.forex),
-      crypto: verifiedQuotes(markets.crypto),
-      indices: verifiedQuotes(markets.indices),
+      commodity: verifiedQuotes(markets?.commodity ?? []),
+      forex: verifiedQuotes(markets?.forex ?? []),
+      crypto: verifiedQuotes(markets?.crypto ?? []),
+      indices: verifiedQuotes(markets?.indices ?? []),
     };
 
+    const allVerified = [...verified.commodity, ...verified.forex, ...verified.crypto, ...verified.indices];
+    if (allVerified.length > 0) {
+      await recordVerifiedQuotes(allVerified);
+    }
+
+    const missingTickers = cards
+      .filter(({ group, ticker }) => !verified[group].some(item => item.symbol === ticker))
+      .map(card => card.ticker);
+    const fallbackQuotes =
+      missingTickers.length > 0 ? await getLastVerifiedQuotes(missingTickers) : new Map<string, StockMarketInfo>();
+
     const data = cards.map(({ group, ticker, ...card }): MarketOverviewItem => {
-      const quote = verified[group].find(item => item.symbol === ticker);
+      const liveQuote = verified[group].find(item => item.symbol === ticker);
+      if (liveQuote) {
+        return {
+          ...card,
+          value: liveQuote.price ?? null,
+          change: liveQuote.observation?.changePercent ?? null,
+          observation: liveQuote.observation ?? null,
+          status: 'available',
+        };
+      }
+
+      const lastKnown = fallbackQuotes.get(ticker);
+      if (lastKnown) {
+        return {
+          ...card,
+          value: lastKnown.price ?? null,
+          change: lastKnown.observation?.changePercent ?? null,
+          observation: lastKnown.observation ?? null,
+          status: 'last-known',
+        };
+      }
+
       return {
         ...card,
-        value: quote?.price ?? null,
-        change: quote?.observation?.changePercent ?? null,
-        observation: quote?.observation ?? null,
-        status: quote ? 'available' : 'unavailable',
+        value: null,
+        change: null,
+        observation: null,
+        status: 'unavailable',
       };
     });
 
