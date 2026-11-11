@@ -1051,5 +1051,72 @@ test('EPO-06: bulletin subscription status and verified target address are visib
   assert.match(dailyCronSrc, /isUserEligibleForScheduledBulletin/);
 });
 
+test('EPO-07: daily bulletin includes quote observation timestamps and explicit missing-source empty states', async () => {
+  // 1. Partial source outage in getBulletinMarketData records valid observations + missingFields
+  const marketLoader = loader({
+    '@/lib/data/stocks': {
+      fetchSpecificSymbolLive: async (symbol) => {
+        if (symbol === 'XU100') {
+          return {
+            price: 10250.5,
+            observation: {
+              source: 'TradingView',
+              asOf: '2026-11-11T15:10:00.000Z',
+              fetchedAt: '2026-11-11T15:30:00.000Z',
+            },
+          };
+        }
+        if (symbol === 'USDTRY') {
+          return {
+            price: 34.45,
+            observation: {
+              source: 'TradingView',
+              asOf: '2026-11-11T15:25:00.000Z',
+              fetchedAt: '2026-11-11T15:30:00.000Z',
+            },
+          };
+        }
+        return null; // Simulate missing XAUUSD, BTCUSD, THYAO -> Gram Altin also missing
+      },
+    },
+  });
+  const mdMod = marketLoader('src/lib/email/marketData.ts');
+  const partialData = await mdMod.getBulletinMarketData();
+
+  assert.equal(partialData.bist100, 10250.5);
+  assert.equal(partialData.usdtry, 34.45);
+  assert.equal(partialData.btc, undefined);
+  assert.equal(partialData.observedAt, '2026-11-11T15:25:00.000Z');
+  assert.equal(partialData.observations.bist100.observedAt, '2026-11-11T15:10:00.000Z');
+  assert.equal(partialData.observations.bist100.source, 'TradingView');
+  assert.equal(partialData.missingFields.includes('Bitcoin (BTC/USD)'), true);
+  assert.equal(partialData.missingFields.includes('Gram Altın (hesaplanan)'), true);
+
+  // 2. Email HTML contains observation time column/text and explicit missing-source disclosure
+  const emailLoader = loader({ nodemailer: {}, '@supabase/supabase-js': {} });
+  const { generateStockMindEmailHtml } = emailLoader('src/lib/email/service.ts');
+  const html = generateStockMindEmailHtml('Yatırımcı', {
+    isDailyReport: true,
+    marketData: partialData,
+  });
+  assert.match(html, /Veri gözlem zamanı/);
+  assert.match(html, /Gözlem Zamanı/);
+  assert.match(html, /TSİ/);
+  assert.match(html, /TradingView/);
+  assert.match(html, /Eksik \/ Alınamayan Kaynaklar \(Boş Veri\)/);
+  assert.match(html, /Bitcoin \(BTC\/USD\)/);
+
+  // 3. Complete outage shows explicit empty-data notice
+  const emptyHtml = generateStockMindEmailHtml('Yatırımcı', {
+    isDailyReport: true,
+    marketData: {
+      observedAt: null,
+      missingFields: ['BIST 100 (XU100)', 'Bitcoin (BTC/USD)'],
+    },
+  });
+  assert.match(emptyHtml, /Boş Veri Durumu/);
+  assert.match(emptyHtml, /güncel fiyat alınamadı/);
+});
+
 
 

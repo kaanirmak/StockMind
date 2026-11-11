@@ -124,7 +124,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | EPO-04 | P0 | Yeniden denemede çift gönderimi önle | Aynı bülten günü ve alıcı için tekrar tetikleme ikinci gönderim oluşturmaz. | ◐ |
 | EPO-05 | P0 | Gönderim sonuçlarını operasyon ekranına ekle | Bekleyen, kabul edilen, başarısız ve yeniden denenecek gönderimler ayrı sayaçlarla görünür. | ◐ |
 | EPO-06 | P1 | Bülten aboneliğini ve doğrulanmış adresi görünür yap | Hesaptan değiştirilen tercih bir sonraki otomatik çalıştırmada uygulanır. Gönderilecek adres ekranda belirtilir. | ◐ |
-| EPO-07 | P1 | Bültene verinin zamanını ve eksik alanları ekle | E-posta fiyatların gözlem zamanını içerir. Eksik kaynak olduğunda boş veri durumu görünür. | ☐ |
+| EPO-07 | P1 | Bültene verinin zamanını ve eksik alanları ekle | E-posta fiyatların gözlem zamanını içerir. Eksik kaynak olduğunda boş veri durumu görünür. | ◐ |
 | EPO-08 | P1 | Zamanlanmış bülten gecikmesini izle | Planlanan zaman, başlama zamanı ve dağıtım süresi kaydedilir. Kaçan çalıştırma izlenebilir. | ☐ |
 | EPO-09 | P2 | Kişiselleştirilmiş bülteni ekle | Tercih açıldığında yalnızca ilgili portföy olayları ve izin verilen özet bilgileri bültene eklenir. | ☐ |
 

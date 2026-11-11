@@ -1,6 +1,7 @@
 import { palette } from '@/theme/palette';
 import { escapeHtml } from '@/lib/utils/html';
 import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
+import type { BulletinMarketDataPayload, BulletinMarketKey } from '@/lib/email/marketData';
 import nodemailer from 'nodemailer';
 
 export interface EmailPayload {
@@ -8,16 +9,7 @@ export interface EmailPayload {
   subject?: string;
   userName?: string;
   isDailyReport?: boolean;
-  marketData?: {
-    gold?: number;
-    goldChange?: number;
-    gramAltin?: number;
-    usdtry?: number;
-    btc?: number;
-    brent?: number;
-    bist100?: number;
-    thyao?: number;
-  };
+  marketData?: BulletinMarketDataPayload;
   portfolioSummary?: {
     totalValue?: number;
     totalPnL?: number;
@@ -33,6 +25,21 @@ export interface EmailPayload {
   };
 }
 
+function formatBulletinObservationTime(value: string | null | undefined): string | null {
+  if (!value || typeof value !== 'string') return null;
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  const formatted = parsed.toLocaleString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return `${formatted} TSİ`;
+}
+
 export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırımcı', payload?: Partial<EmailPayload>): string {
   if (payload?.isDailyReport === false) {
     return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>StockMind test e-postası</title></head><body><h1>StockMind</h1><p>Bu bir test e-postasıdır. Doğrulanmış hesabınıza e-posta gönderimi başarılı oldu.</p><p>Bu mesaj piyasa verisi veya portföy raporu içermez.</p></body></html>';
@@ -40,18 +47,32 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
   const date = new Date().toLocaleDateString('tr-TR', { dateStyle: 'long', timeZone: 'Europe/Istanbul' });
   const market = payload?.marketData;
   const gram = market?.gramAltin ?? (market?.gold && market?.usdtry ? market.gold * market.usdtry / 31.1034768 : undefined);
-  const marketRows = [
-    { label: 'BIST 100', value: market?.bist100, unit: 'puan' },
-    { label: 'Türk Hava Yolları (THYAO)', value: market?.thyao, unit: 'TRY' },
-    { label: 'Dolar / TL', value: market?.usdtry, unit: 'TRY' },
-    { label: 'Ons Altın', value: market?.gold, unit: 'USD' },
-    { label: 'Gram Altın (hesaplanan)', value: gram, unit: 'TRY' },
-    { label: 'Bitcoin', value: market?.btc, unit: 'USD' },
-  ].filter(row => typeof row.value === 'number' && Number.isFinite(row.value) && row.value > 0);
+  const candidateRows: Array<{
+    key: BulletinMarketKey;
+    label: string;
+    value: number | undefined;
+    unit: string;
+  }> = [
+    { key: 'bist100', label: 'BIST 100', value: market?.bist100, unit: 'puan' },
+    { key: 'thyao', label: 'Türk Hava Yolları (THYAO)', value: market?.thyao, unit: 'TRY' },
+    { key: 'usdtry', label: 'Dolar / TL', value: market?.usdtry, unit: 'TRY' },
+    { key: 'gold', label: 'Ons Altın', value: market?.gold, unit: 'USD' },
+    { key: 'gramAltin', label: 'Gram Altın (hesaplanan)', value: gram, unit: 'TRY' },
+    { key: 'btc', label: 'Bitcoin', value: market?.btc, unit: 'USD' },
+  ];
+  const marketRows = candidateRows.filter(
+    (row) => typeof row.value === 'number' && Number.isFinite(row.value) && row.value > 0
+  );
   const formatValue = (value: number, unit: string) =>
     unit === 'puan'
       ? `${value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} puan`
       : value.toLocaleString('tr-TR', { style: 'currency', currency: unit });
+  const overallObservationLabel =
+    formatBulletinObservationTime(market?.observedAt) ??
+    formatBulletinObservationTime(market?.fetchedAt);
+  const missingFields = Array.isArray(market?.missingFields)
+    ? market.missingFields.map((item) => escapeHtml(String(item)))
+    : [];
   const portfolio = payload?.portfolioSummary;
   const appUrl = escapeHtml(process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev');
 
@@ -63,15 +84,39 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
     <p style="font-weight:bold;color:#4f46e5">StockMind · ${date}</p>
     <h1 style="font-size:24px">18:30 Piyasa Bülteni</h1>
     <p>Merhaba ${escapeHtml(userName)},</p>
+    ${overallObservationLabel ? `<p style="font-size:13px;color:#475569;margin-top:4px">Veri gözlem zamanı: <strong>${escapeHtml(overallObservationLabel)}</strong></p>` : ''}
     ${marketRows.length ? `
     <p>Bülten hazırlanırken alınabilen son piyasa fiyatları</p>
     <table style="width:100%;border-collapse:collapse">
-      <tbody>${marketRows.map(({ label, value, unit }) => `
+      <thead>
+        <tr>
+          <th scope="col" style="text-align:left;border-bottom:2px solid #cbd5e1;padding:8px;font-size:12px;color:#475569">Enstrüman</th>
+          <th scope="col" style="text-align:right;border-bottom:2px solid #cbd5e1;padding:8px;font-size:12px;color:#475569">Fiyat</th>
+          <th scope="col" style="text-align:right;border-bottom:2px solid #cbd5e1;padding:8px;font-size:12px;color:#475569">Gözlem Zamanı</th>
+        </tr>
+      </thead>
+      <tbody>${marketRows.map(({ key, label, value, unit }) => {
+        const obsMeta = market?.observations?.[key];
+        const rowObsText =
+          formatBulletinObservationTime(obsMeta?.observedAt) ??
+          overallObservationLabel ??
+          'Zaman bilgisi yok';
+        const obsSuffix = obsMeta?.source ? ` (${escapeHtml(obsMeta.source)})` : '';
+        return `
         <tr>
           <th scope="row" style="text-align:left;border-bottom:1px solid #e2e8f0;padding:8px">${label}</th>
           <td style="text-align:right;border-bottom:1px solid #e2e8f0;padding:8px">${formatValue(value!, unit)}</td>
-        </tr>`).join('')}</tbody>
-    </table>` : '<p>Bu gönderim için piyasa fiyatı alınamadı.</p>'}
+          <td style="text-align:right;border-bottom:1px solid #e2e8f0;padding:8px;font-size:12px;color:#475569">${escapeHtml(rowObsText)}${obsSuffix}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : '<div style="padding:12px 14px;border-radius:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;margin-top:12px"><strong>Boş Veri Durumu:</strong> Bu gönderim için piyasa kaynaklarından güncel fiyat alınamadı. Tahmini veya örnek veri eklenmedi.</div>'}
+    ${missingFields.length > 0 ? `
+    <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#f8fafc;border:1px solid #cbd5e1;font-size:13px;color:#334155">
+      <strong>Eksik / Alınamayan Kaynaklar (Boş Veri):</strong>
+      <ul style="margin:6px 0 0 18px;padding:0">
+        ${missingFields.map((field) => `<li>${field} — kaynak verisi yok</li>`).join('')}
+      </ul>
+    </div>` : ''}
     ${typeof portfolio?.totalValue === 'number' && Number.isFinite(portfolio.totalValue)
       ? `<p>Portföy değeri ${formatValue(portfolio.totalValue, 'TRY')}</p>`
       : ''}
