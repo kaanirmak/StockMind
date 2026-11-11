@@ -41,6 +41,12 @@ export const MOBILE_DRAWER_NAV_ITEMS: readonly MobileDrawerNavMeta[] = [
     description: 'Fiyat alarmları & bildirim tercihleri',
     iconKey: 'bell',
   },
+  {
+    href: '/alerts',
+    label: 'Tüm Alarmlar',
+    description: 'Aktif ve duraklatılmış alarm kuralları',
+    iconKey: 'bell',
+  },
   { href: '/reports', label: 'Raporlar', iconKey: 'reports' },
   { href: '/quant-lab', label: 'Quant Lab', badge: 'Pro', iconKey: 'cpu' },
   { href: '/widgets', label: "Widget'lar", badge: 'Yeni', iconKey: 'grid' },

@@ -112,7 +112,12 @@ export default function WatchlistPage() {
     <div className="space-y-5 sm:space-y-6 animate-fade-in pb-12">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0"><h1 className="text-lg font-semibold text-text-primary">Takip Listem <span className="text-sm text-text-muted">({items.length})</span></h1>{syncStatus === 'syncing' && <p className="text-xs text-text-muted">Senkronize ediliyor…</p>}</div>
-        <Button size="sm" onClick={() => setIsAddModalOpen(true)}>+ Varlık Ekle</Button>
+        <div className="flex items-center gap-2">
+          <Link href="/alerts">
+            <Button variant="secondary" size="sm">Tüm Alarmlar</Button>
+          </Link>
+          <Button size="sm" onClick={() => setIsAddModalOpen(true)}>+ Varlık Ekle</Button>
+        </div>
       </div>
 
       {syncStatus === 'error' && <div role="alert" className="rounded-xl p-3 bg-warning/10 text-warning text-sm flex items-center justify-between gap-2"><p>Değişiklikleriniz henüz hesabınıza kaydedilemedi.</p><Button variant="secondary" onClick={() => { retrySync(); void refreshFromServer(); }}>Tekrar Dene</Button></div>}

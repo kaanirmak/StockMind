@@ -3133,6 +3133,106 @@ test('ALR-04: asset detail quick alert creation supports price/percent threshold
   assert.match(fundPageSource, /<PriceAlertModal/);
 });
 
+test('ALR-05: All Alerts screen partitions active vs paused rules, describes thresholds, and supports pausing/editing', () => {
+  const {
+    partitionAlertRules,
+    describeAlertRule,
+    isAlertPaused,
+  } = load('src/lib/market/alertRules.ts');
+  const alertFormMod = load('src/lib/market/alertForm.ts');
+  const alertFreshnessMod = load('src/lib/market/alertFreshness.ts');
+  let storeState = {
+    items: [
+      {
+        id: '1',
+        symbol: 'ASELS',
+        name: 'Aselsan',
+        assetType: 'stock',
+        price: 100,
+        targetPrice: 110,
+        alertType: 'price',
+        alertBasePrice: 100,
+        alertCurrency: 'TRY',
+        alertDirection: 'up',
+        alertPaused: false,
+      },
+      {
+        id: '2',
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        assetType: 'stock',
+        price: 200,
+        targetPrice: 210,
+        alertPercent: 5,
+        alertType: 'percent_up',
+        alertBasePrice: 200,
+        alertCurrency: 'USD',
+        alertPaused: true,
+      },
+      {
+        id: '3',
+        symbol: 'THYAO',
+        name: 'Türk Hava Yolları',
+        assetType: 'stock',
+        price: 300,
+      },
+    ],
+    currentUserId: null,
+  };
+  const loadWithAlias = createAliasedLoader();
+  const { isPriceAlertTriggered, useWatchlistStore } = loadWithAlias('src/store/useWatchlistStore.ts', {
+    '@/lib/market/alertFreshness': alertFreshnessMod,
+    '@/lib/market/alertForm': alertFormMod,
+    zustand: {
+      create: (fn) => {
+        const set = (partial) => {
+          storeState = { ...storeState, ...(typeof partial === 'function' ? partial(storeState) : partial) };
+        };
+        const get = () => storeState;
+        const actions = fn(set, get);
+        storeState = { ...actions, ...storeState };
+        return Object.assign(() => storeState, { getState: () => storeState, setState: set });
+      },
+    },
+  });
+
+  const all = { ...partitionAlertRules(storeState.items, 'all') };
+  assert.equal(all.allRules.length, 2);
+  assert.equal(all.activeRules.length, 1);
+  assert.equal(all.pausedRules.length, 1);
+  assert.equal(all.pausedRules[0].symbol, 'AAPL');
+  assert.equal(isAlertPaused(all.pausedRules[0]), true);
+
+  const onlyPaused = { ...partitionAlertRules(storeState.items, 'paused', 'apple') };
+  assert.equal(onlyPaused.filteredRules.length, 1);
+  assert.equal(onlyPaused.filteredRules[0].symbol, 'AAPL');
+
+  const descUsd = { ...describeAlertRule(storeState.items[1]) };
+  assert.equal(descUsd.modeLabel, 'Yüzde Eşiği');
+  assert.equal(descUsd.currency, 'USD');
+  assert.match(descUsd.conditionText, /\$210\.00/);
+
+  // Paused alert must not fire even when price breaches threshold
+  const pausedEval = { ...isPriceAlertTriggered(storeState.items[1], 220) };
+  assert.equal(pausedEval.triggered, false);
+  assert.equal(pausedEval.paused, true);
+
+  // Resume AAPL via toggleAlertPaused and verify it triggers now
+  useWatchlistStore.getState().toggleAlertPaused('AAPL', false);
+  assert.equal(storeState.items[1].alertPaused, false);
+  const resumedEval = { ...isPriceAlertTriggered(storeState.items[1], 220) };
+  assert.equal(resumedEval.triggered, true);
+  assert.match(resumedEval.message, /\$220\.00/);
+
+  const alertsPageSource = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/alerts/page.tsx'), 'utf8');
+  const proxySource = fs.readFileSync(path.join(process.cwd(), 'src/lib/supabase/proxy.ts'), 'utf8');
+  assert.match(alertsPageSource, /Tüm Alarmlar/);
+  assert.match(alertsPageSource, /data-testid="alert-edit-btn"/);
+  assert.match(alertsPageSource, /data-testid="alert-pause-toggle-btn"/);
+  assert.match(alertsPageSource, /<PriceAlertModal/);
+  assert.match(proxySource, /'\/alerts'/);
+});
+
 
 
 

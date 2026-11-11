@@ -105,7 +105,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | ALR-02 | P0 | Kapalı Android’de TEFAS alarmını doğrula | Geçerli fon değerlemesiyle tetikleme ve eksik veriyle erteleme ayrı test edilir. | ◐ |
 | ALR-03 | P0 | Bildirim izni ve teslimat durumunu ayır | İzin kapalıyken test sonucu bunu gösterir. İzin açık durumda kanalın sonucu ayrı kaydedilir. | ◐ |
 | ALR-04 | P1 | Varlık detayından hızlı alarm kurma ekle | Fiyat veya yüzde eşiği, yön ve para birimi anlaşılır biçimde seçilebilir. | ◐ |
-| ALR-05 | P1 | Tüm Alarmlar ekranı oluştur | Aktif ve duraklatılmış kurallar listelenir. Kullanıcı düzenleyebilir ve duraklatabilir. | ☐ |
+| ALR-05 | P1 | Tüm Alarmlar ekranı oluştur | Aktif ve duraklatılmış kurallar listelenir. Kullanıcı düzenleyebilir ve duraklatabilir. | ◐ |
 | ALR-06 | P1 | Alarmın son kontrolünü ve tetiklenmesini göster | Her kuralda son kontrol zamanı, görülen fiyat ve varsa son tetikleme görünür. | ☐ |
 | ALR-07 | P1 | Fiyat eşiği değerlendirmesini sunucuya taşı | Uygulama kapalıyken sunucu kuralları değerlendirir. Aynı eşik olayı bir defa kaydedilir. | ☐ |
 | ALR-08 | P1 | Bildirim kutusunu hesaba bağla | Okunma, arşiv ve tercihler cihazlar arasında eşitlenir. Hesap değişiminde eski hesabın kayıtları görünmez. | ☐ |

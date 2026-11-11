@@ -101,6 +101,7 @@ export async function updateSession(request: NextRequest) {
     '/stocks',
     '/funds',
     '/watchlist',
+    '/alerts',
     '/reports',
     '/ai-assistant',
     '/news',

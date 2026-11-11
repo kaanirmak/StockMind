@@ -60,7 +60,7 @@ export function WatchlistAlertWatcher() {
       if (isCheckingRef.current || document.hidden || !prefs.priceAlerts || (!prefs.enabled && !prefs.inAppEnabled)) return;
       const { items, currentUserId } = useWatchlistStore.getState();
       const activeAlertItems = items.filter(
-        (i) => (i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0)
+        (i) => !i.alertPaused && ((i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0))
       );
 
       if (activeAlertItems.length === 0) return;

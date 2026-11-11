@@ -22,6 +22,7 @@ export interface WatchlistAlertConfig {
   alertBasePrice?: number; // Price when alert was configured
   alertCurrency?: AlertCurrencyCode;
   alertDirection?: AlertDirection;
+  alertPaused?: boolean;
 }
 
 export interface WatchlistItem extends WatchlistAlertConfig {
@@ -57,12 +58,17 @@ export function isPriceAlertTriggered(
   now?: Date
 ): {
   triggered: boolean;
+  paused?: boolean;
   deferred?: boolean;
   deferralReason?: AlertDeferralReason;
   deferralDescription?: string;
   title: string;
   message: string;
 } {
+  if (item.alertPaused) {
+    return { triggered: false, paused: true, title: '', message: '' };
+  }
+
   if (quoteMeta !== undefined) {
     const freshness = evaluateAlertPriceFreshness(
       quoteMeta
@@ -178,6 +184,7 @@ interface WatchlistState {
   isWatchlisted: (symbol: string) => boolean;
   setTargetPrice: (id: string, targetPrice: number) => void;
   setAlert: (symbolOrId: string, alert: WatchlistAlertConfig, stockMeta?: Partial<WatchlistItem>) => void;
+  toggleAlertPaused: (symbolOrId: string, paused?: boolean) => void;
   removeAlert: (symbolOrId: string) => void;
   getAlert: (symbol: string) => WatchlistItem | undefined;
   updateAlertBasePrice: (symbol: string, newBasePrice: number) => void;
@@ -280,6 +287,7 @@ function fromServerRow(row: any, localBySymbol: Map<string, WatchlistItem>): Wat
     alertBasePrice: row.alert_base_price ?? undefined,
     alertCurrency: previous?.alertCurrency,
     alertDirection: previous?.alertDirection,
+    alertPaused: previous?.alertPaused,
   };
 }
 
@@ -494,7 +502,11 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
 
       let updated: WatchlistItem[];
       if (index >= 0) {
-        updated = items.map((i, idx) => (idx === index ? { ...i, ...alert } : i));
+        updated = items.map((i, idx) =>
+          idx === index
+            ? { ...i, ...alert, alertPaused: alert.alertPaused ?? false }
+            : i,
+        );
       } else if (stockMeta && stockMeta.symbol) {
         const newItem: WatchlistItem = {
           id: `w-${Date.now()}-${stockMeta.symbol.toUpperCase()}`,
@@ -516,6 +528,22 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       persist(currentUserId, items, updated);
     },
 
+    toggleAlertPaused: (symbolOrId, paused) => {
+      const { currentUserId, items } = get();
+      const searchKey = symbolOrId.toUpperCase();
+      const updated = items.map((i) => {
+        if (i.id === symbolOrId || i.symbol.toUpperCase() === searchKey) {
+          return {
+            ...i,
+            alertPaused: paused !== undefined ? paused : !Boolean(i.alertPaused),
+          };
+        }
+        return i;
+      });
+      set({ items: updated });
+      persist(currentUserId, items, updated);
+    },
+
     removeAlert: (symbolOrId) => {
       const { currentUserId, items } = get();
       const searchKey = symbolOrId.toUpperCase();
@@ -528,6 +556,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
           delete copy.alertBasePrice;
           delete copy.alertCurrency;
           delete copy.alertDirection;
+          delete copy.alertPaused;
           return copy;
         }
         return i;
