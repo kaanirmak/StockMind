@@ -867,3 +867,63 @@ test('Periods: historical FX is required and participates in USD asset return', 
   assert.equal(result.pnlPercent, -1);
   assert.equal(calculatePeriodPerformance(txs, prices, { AAPL: history.AAPL }, 'monthly', periodNow).available, false);
 });
+
+test('VER-05: eksik fiyat ve kur durumu kısmi değerlemeyi, etkilenen pozisyonları ve maliyet toplamını raporlar', () => {
+  const thyaoBuy = dailyTrade('buy', 10, 100, '2026-10-01', { symbol: 'THYAO' });
+  const aselsBuy = dailyTrade('buy', 5, 80, '2026-10-01', { symbol: 'ASELS' });
+  const aaplBuy = dailyTrade('buy', 2, 150, '2026-10-01', {
+    symbol: 'AAPL',
+    exchange: 'NASDAQ',
+    currency: 'USD',
+    exchangeRate: 40,
+  });
+
+  // THYAO has live price, ASELS and AAPL are missing prices, and USDTRY is missing
+  const partialSummary = calculatePortfolioSummary([thyaoBuy, aselsBuy, aaplBuy], {
+    THYAO: { price: 110, changePercent: 0 },
+  });
+
+  assert.equal(partialSummary.valuationStatus.isComplete, false);
+  assert.equal(partialSummary.valuationStatus.isPartialValuation, true);
+  assert.equal(partialSummary.valuationStatus.hasMissingPrices, true);
+  assert.deepEqual([...partialSummary.valuationStatus.missingPrices], ['ASELS', 'AAPL']);
+  assert.equal(partialSummary.valuationStatus.unpricedCostTotal, 400 + 12000);
+
+  const missingPositions = JSON.parse(
+    JSON.stringify(partialSummary.valuationStatus.missingPositions)
+  );
+  assert.equal(missingPositions.length, 2);
+  assert.deepEqual(
+    Array.from(missingPositions, (p) => [p.symbol, p.reason, p.costValueTry]),
+    [
+      ['ASELS', 'missing-price', 400],
+      ['AAPL', 'missing-price', 12000],
+    ]
+  );
+
+  const aselsHolding = partialSummary.holdings.find((h) => h.symbol === 'ASELS');
+  const thyaoHolding = partialSummary.holdings.find((h) => h.symbol === 'THYAO');
+  assert.equal(aselsHolding.priceMissing, true);
+  assert.equal(thyaoHolding.priceMissing, false);
+
+  // Cash missing FX rate also keeps isPartialValuation & hasMissingPrices true
+  const cashMissingFx = calculateCashLedger(
+    [thyaoBuy],
+    [cashMovement(100, 'deposit', 'EUR', 42, '2026-10-01')],
+    { THYAO: { price: 110, changePercent: 0 } },
+    liveDay
+  );
+  const fullLiveSummary = calculatePortfolioSummary([thyaoBuy], {
+    THYAO: { price: 110, changePercent: 0 },
+  });
+  assert.equal(fullLiveSummary.valuationStatus.isPartialValuation, false);
+  assert.equal(fullLiveSummary.valuationStatus.missingPositions.length, 0);
+  assert.equal(fullLiveSummary.valuationStatus.unpricedCostTotal, 0);
+
+  const withCashGap = includeCashInSummary(fullLiveSummary, cashMissingFx);
+  assert.equal(withCashGap.valuationStatus.isComplete, false);
+  assert.equal(withCashGap.valuationStatus.isPartialValuation, true);
+  assert.equal(withCashGap.valuationStatus.hasMissingPrices, true);
+  assert.equal(withCashGap.valuationStatus.missingFx, true);
+});
+

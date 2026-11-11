@@ -66,6 +66,19 @@ export function includeCashInSummary(summary: PortfolioSummary, cash: CashLedger
   return { ...summary, cash, totalValue,
     holdings: summary.holdings.map((h) => ({ ...h, weight: positiveValue > 0 ? h.currentValue / positiveValue * 100 : 0 })),
     allocation: allocation.map((row) => ({ ...row, percentage: positiveValue > 0 ? row.value / positiveValue * 100 : 0 })),
-    valuationStatus: { ...summary.valuationStatus, isComplete: summary.valuationStatus?.isComplete !== false && cash.missingRates.length === 0, missingFx: Boolean(summary.valuationStatus?.missingFx || cash.missingRates.length), missingPrices: summary.valuationStatus?.missingPrices || [] },
+    valuationStatus: {
+      ...summary.valuationStatus,
+      isComplete: summary.valuationStatus?.isComplete !== false && cash.missingRates.length === 0,
+      isPartialValuation: Boolean(
+        summary.valuationStatus?.isPartialValuation ||
+        summary.valuationStatus?.hasMissingPrices ||
+        cash.missingRates.length > 0
+      ),
+      missingFx: Boolean(summary.valuationStatus?.missingFx || cash.missingRates.length),
+      missingPrices: summary.valuationStatus?.missingPrices || [],
+      missingPositions: summary.valuationStatus?.missingPositions || [],
+      unpricedCostTotal: summary.valuationStatus?.unpricedCostTotal ?? 0,
+      hasMissingPrices: Boolean(summary.valuationStatus?.hasMissingPrices || cash.missingRates.length > 0),
+    },
   };
 }

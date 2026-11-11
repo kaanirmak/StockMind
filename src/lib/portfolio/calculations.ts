@@ -1,5 +1,5 @@
 import { palette } from '@/theme/palette';
-import { Holding, PortfolioSummary, Transaction, ValuationStatus } from '@/types/portfolio';
+import { Holding, MissingPositionImpact, PortfolioSummary, Transaction, ValuationStatus } from '@/types/portfolio';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { cleanSymbol, normalizeSymbolKey } from '@/lib/utils/symbol';
 
@@ -149,6 +149,8 @@ function processPortfolioTransactions(
 
   const missingPrices: string[] = [];
   const stalePrices: string[] = [];
+  const missingPositions: MissingPositionImpact[] = [];
+  let unpricedCostTotal = 0;
   let missingFx = false;
   let totalRealizedPnL = 0;
   let totalRealizedCost = 0;
@@ -343,7 +345,7 @@ function processPortfolioTransactions(
         item.lastPrice
       );
 
-      if (priceRes.isMissing) {
+      if (!priceRes.isLive) {
         missingPrices.push(item.symbol);
       }
       if (priceRes.isStale) {
@@ -377,6 +379,27 @@ function processPortfolioTransactions(
 
       const isFund = item.assetType === 'fund' || item.symbol.length === 3;
       const precision = isFund ? 6 : 4;
+      const roundedQuantity = roundShares(item.totalShares, isFund);
+
+      if (!priceRes.isLive) {
+        missingPositions.push({
+          symbol: item.symbol,
+          assetType: item.assetType,
+          costValueTry: Number(totalCostTry.toFixed(2)),
+          totalQuantity: roundedQuantity,
+          reason: 'missing-price',
+        });
+        unpricedCostTotal += totalCostTry;
+      } else if (isUsd && !liveUsdTry) {
+        missingPositions.push({
+          symbol: item.symbol,
+          assetType: item.assetType,
+          costValueTry: Number(totalCostTry.toFixed(2)),
+          totalQuantity: roundedQuantity,
+          reason: 'missing-fx',
+        });
+        unpricedCostTotal += totalCostTry;
+      }
 
       holdings.push({
         symbol: item.symbol,
@@ -386,7 +409,7 @@ function processPortfolioTransactions(
         originalCurrency: item.currency,
         originalPrice: Number(currentPriceNative.toFixed(precision)),
         originalAverageCost: Number(originalAvgCost.toFixed(precision)),
-        totalQuantity: roundShares(item.totalShares, isFund),
+        totalQuantity: roundedQuantity,
         averageCost: Number(averageCostTry.toFixed(precision)),
         totalCost: Number(totalCostTry.toFixed(2)),
         currentPrice: Number(currentPriceTry.toFixed(precision)),
@@ -399,6 +422,8 @@ function processPortfolioTransactions(
         feesPaid: Number(item.feesPaid.toFixed(2)),
         dailyChangePercent: Number(priceRes.changePercent.toFixed(2)),
         weight: 0,
+        priceMissing: !priceRes.isLive,
+        priceStale: priceRes.isStale,
         lots: item.lots.map((l) => ({
           shares: l.shares,
           costTry: l.costTry,
@@ -428,8 +453,11 @@ function processPortfolioTransactions(
     feesTotal: Number(totalFees.toFixed(2)),
     valuationStatus: {
       isComplete: !missingFx && missingPrices.length === 0,
+      isPartialValuation: missingPrices.length > 0 || missingFx,
       missingFx,
       missingPrices,
+      missingPositions,
+      unpricedCostTotal: Number(unpricedCostTotal.toFixed(2)),
       stalePrices,
       hasMissingPrices: missingPrices.length > 0 || missingFx,
     },

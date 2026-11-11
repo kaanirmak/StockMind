@@ -9,6 +9,7 @@ import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { type PerformancePeriod as MetricView } from '@/lib/portfolio/periodPerformance';
+import { PartialValuationBadge, PartialValuationBanner } from '@/components/portfolio/PartialValuationBanner';
 
 export default function PortfolioSummary() {
   const router = useRouter();
@@ -374,6 +375,12 @@ export default function PortfolioSummary() {
                   ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </h2>
 
+                <PartialValuationBadge
+                  valuationStatus={summary.valuationStatus}
+                  missingCashRates={summary.cash?.missingRates}
+                  className="self-center"
+                />
+
                 {/* Clean K/Z text */}
                 <div
                   className={`inline-flex items-center gap-1.5 text-sm sm:text-lg font-bold tabular-nums transition-all duration-300 ${
@@ -423,13 +430,12 @@ export default function PortfolioSummary() {
 
               {summary.cash?.configured && summary.cash.hasDeficit && <p role="alert" className="mt-2 p-2 rounded-xl bg-warning/15 text-white text-xs">Nakit açığı var; geçmiş para girişlerini kontrol edin.</p>}
               {!!summary.cash?.missingRates.length && <p role="alert" className="mt-2 p-2 rounded-xl bg-warning/15 text-white text-xs">Nakit için güncel kur alınamadı; toplam değer eksik olabilir.</p>}
-              {/* Valuation Warning Banner if any live quotes were missing */}
-              {summary.valuationStatus?.hasMissingPrices && (
-                <div className="mt-2.5 py-1.5 px-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-medium flex items-center gap-1.5">
-                  <span className="shrink-0"><UIIcon name="warning" className="w-4 h-4" /></span>
-                  <span>Bazı varlıkların anlık piyasa fiyatı henüz alınamadı; değerlemede son maliyet fiyatı kullanılıyor.</span>
-                </div>
-              )}
+              {/* Partial valuation notice when live market prices or FX rates are unavailable */}
+              <PartialValuationBanner
+                compact
+                valuationStatus={summary.valuationStatus}
+                missingCashRates={summary.cash?.missingRates}
+              />
             </div>
           )}
         </div>

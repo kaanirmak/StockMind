@@ -5,6 +5,30 @@ import { Holding } from '@/types/portfolio';
 import { Button, InstrumentLogo } from '@/components/ui';
 import { getAssetTypeLabel } from '@/lib/utils/symbol';
 
+function HoldingPriceFlag({ holding }: { holding: Holding }) {
+  if (holding.priceMissing) {
+    return (
+      <span
+        className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0"
+        title="Anlık fiyat alınamadı; değerlemede son bilinen maliyet kullanılıyor."
+      >
+        Fiyat eksik
+      </span>
+    );
+  }
+  if (holding.priceStale) {
+    return (
+      <span
+        className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 shrink-0"
+        title="Eski/önbellek fiyat verisi kullanılıyor."
+      >
+        Eski fiyat
+      </span>
+    );
+  }
+  return null;
+}
+
 function MiniSparkline({ changePercent }: { changePercent: number }) {
   const positive = changePercent >= 0;
   const path = positive ? 'M0 20 Q18 18 34 13 T70 5' : 'M0 6 Q18 8 34 13 T70 22';
@@ -103,6 +127,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
                     }`}>
                       {assetInfo.typeLabel}
                     </span>
+                    <HoldingPriceFlag holding={h} />
                   </div>
                 </Link>
 
@@ -277,6 +302,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
                                 USD
                               </span>
                             )}
+                            <HoldingPriceFlag holding={h} />
                           </div>
                           <span className="text-[11px] text-text-muted">
                             {assetInfo.exchangeLabel}

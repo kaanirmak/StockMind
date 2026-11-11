@@ -10,6 +10,7 @@ import { ConfirmAction } from '@/components/ui/ConfirmAction';
 import React, { useState, useEffect } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
+import { PartialValuationBadge, PartialValuationBanner } from '@/components/portfolio/PartialValuationBanner';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
@@ -331,20 +332,24 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Valuation Warning Banner if any live prices are missing */}
-      {summary.valuationStatus?.hasMissingPrices && (
-        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2.5">
-          <span className="text-base shrink-0"><UIIcon name="warning" className="w-4 h-4" /></span>
-          <span>Portföyünüzdeki bazı varlıkların canlı piyasa fiyatı alınamadı; değerleme son bilinen işlem maliyeti üzerinden gösteriliyor.</span>
-        </div>
-      )}
+      {/* Partial Valuation Banner when live market prices or FX rates are unavailable */}
+      <PartialValuationBanner
+        valuationStatus={summary.valuationStatus}
+        missingCashRates={summary.cash?.missingRates}
+      />
 
       {/* Summary KPI Cards - compact, mobile-first */}
       <div className="portfolio-metrics grid grid-cols-2 gap-2 sm:gap-3.5">
         {/* Total value and allocation share the same compact summary. */}
         <div className="portfolio-metric-card col-span-2 p-3 sm:p-4 flex items-center justify-between gap-3" style={{ '--metric-color': palette.primaryDark } as React.CSSProperties}>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Portföy Değeri</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wider">Portföy Değeri</p>
+              <PartialValuationBadge
+                valuationStatus={summary.valuationStatus}
+                missingCashRates={summary.cash?.missingRates}
+              />
+            </div>
             <h2 className="text-xl sm:text-3xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
             <p className="mt-2 text-xs text-text-muted">{summary.cash?.configured ? 'Net yatırılan' : 'Maliyet'}: ₺{(summary.cash?.configured ? summary.cash.netContributions : summary.totalCost).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</p>
       <p className="mt-1 text-[10px] sm:text-xs text-text-muted leading-relaxed">İşlem hacmi: ₺{summary.totalVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Alış: ₺{summary.buyVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Satış: ₺{summary.sellVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</p>

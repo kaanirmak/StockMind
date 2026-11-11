@@ -57,6 +57,8 @@ export interface Holding {
   dividendsEarned?: number; // Received dividends in TRY (FIN-06)
   feesPaid?: number; // Fees paid in TRY (FIN-06)
   weight: number; // percentage of portfolio
+  priceMissing?: boolean;
+  priceStale?: boolean;
   dailyChangePercent?: number;
   dailyPnL?: number; // Includes intraday trades and FX in TRY.
   dailyReturnPercent?: number;
@@ -71,10 +73,21 @@ export interface Holding {
   }[];
 }
 
+export interface MissingPositionImpact {
+  symbol: string;
+  assetType: AssetType;
+  costValueTry: number;
+  totalQuantity: number;
+  reason: 'missing-price' | 'missing-fx';
+}
+
 export interface ValuationStatus {
   isComplete: boolean;
+  isPartialValuation?: boolean;
   missingFx: boolean;
   missingPrices: string[];
+  missingPositions?: MissingPositionImpact[];
+  unpricedCostTotal?: number;
   stalePrices?: string[];
   hasMissingPrices?: boolean;
 }
