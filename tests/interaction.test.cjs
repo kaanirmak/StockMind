@@ -1450,3 +1450,157 @@ test('VER-04: last verified quotes survive provider outages with original timest
   assert.equal(recoveredStock.isLastKnown, true);
   assert.equal(classifyStockPriceStatus(recoveredStock).label, 'Eski');
 });
+
+test('VER-06: eksik, kaynaksız veya eski fiyatla alarm tetiklenmez; ertelenir ve nedeni kaydedilir', () => {
+  const loadWithAlias = createAliasedLoader();
+  const priceStatusMod = load('src/lib/market/priceStatus.ts');
+  const alertFreshnessMod = loadWithAlias('src/lib/market/alertFreshness.ts', {
+    '@/lib/market/priceStatus': priceStatusMod,
+  });
+  const watchlistStoreMod = loadWithAlias('src/store/useWatchlistStore.ts', {
+    '@/lib/market/alertFreshness': alertFreshnessMod,
+    zustand: { create: (fn) => () => fn(() => {}, () => ({ items: [] })) },
+  });
+
+  const {
+    evaluateAlertPriceFreshness,
+    recordDeferredAlert,
+    loadDeferredAlerts,
+    clearDeferredAlert,
+  } = alertFreshnessMod;
+  const { isPriceAlertTriggered } = watchlistStoreMod;
+
+  const now = new Date('2026-11-11T10:15:00Z'); // BIST open
+
+  // 1. Missing quote -> ineligible
+  const missingRes = evaluateAlertPriceFreshness(null, now);
+  assert.equal(missingRes.eligible, false);
+  assert.equal(missingRes.reason, 'missing-quote');
+
+  // 2. Placeholder / missing source -> ineligible
+  const noSourceRes = evaluateAlertPriceFreshness(
+    {
+      price: 350,
+      observation: { source: 'fallback', asOf: '2026-11-11T10:14:00Z', fetchedAt: '2026-11-11T10:14:00Z' },
+    },
+    now
+  );
+  assert.equal(noSourceRes.eligible, false);
+  assert.equal(noSourceRes.reason, 'missing-source');
+
+  // 3. Missing timestamp -> ineligible
+  const noTsRes = evaluateAlertPriceFreshness(
+    { price: 350, observation: { source: 'TradingView', asOf: null, fetchedAt: null } },
+    now
+  );
+  assert.equal(noTsRes.eligible, false);
+  assert.equal(noTsRes.reason, 'missing-timestamp');
+
+  // 4. Last-known fallback -> ineligible
+  const lastKnownRes = evaluateAlertPriceFreshness(
+    {
+      price: 350,
+      isLastKnown: true,
+      exchange: 'BIST',
+      observation: { source: 'TradingView', asOf: '2026-11-11T10:14:00Z', fetchedAt: '2026-11-11T10:14:00Z' },
+    },
+    now
+  );
+  assert.equal(lastKnownRes.eligible, false);
+  assert.equal(lastKnownRes.reason, 'last-known-fallback');
+
+  // 5. Stale quote (fetched > 24h ago during open market / stale threshold) -> ineligible
+  const staleRes = evaluateAlertPriceFreshness(
+    {
+      price: 350,
+      exchange: 'BIST',
+      observation: { source: 'TradingView', asOf: '2026-11-08T10:00:00Z', fetchedAt: '2026-11-08T10:00:00Z' },
+    },
+    now
+  );
+  assert.equal(staleRes.eligible, false);
+  assert.equal(staleRes.reason, 'stale-price');
+
+  // 6. Alert threshold crossed with stale quote is deferred instead of triggered
+  const item = {
+    id: 'w-ver06',
+    symbol: 'THYAO',
+    name: 'Türk Hava Yolları',
+    assetType: 'stock',
+    price: 300,
+    changePercent: 0,
+    alertType: 'price',
+    targetPrice: 320,
+    alertBasePrice: 300,
+  };
+  const deferredCheck = isPriceAlertTriggered(
+    item,
+    350,
+    {
+      price: 350,
+      isLastKnown: true,
+      exchange: 'BIST',
+      observation: { source: 'TradingView', asOf: '2026-11-11T10:14:00Z', fetchedAt: '2026-11-11T10:14:00Z' },
+    },
+    now
+  );
+  assert.equal(deferredCheck.triggered, false);
+  assert.equal(deferredCheck.deferred, true);
+  assert.equal(deferredCheck.deferralReason, 'last-known-fallback');
+  assert.ok(deferredCheck.deferralDescription.includes('ertelendi'));
+
+  // 7. Record and clear deferral reason in storage
+  const backing = new Map();
+  const memStorage = {
+    getItem: (k) => backing.get(k) ?? null,
+    setItem: (k, v) => backing.set(k, v),
+    removeItem: (k) => backing.delete(k),
+  };
+  recordDeferredAlert(
+    {
+      symbol: 'THYAO',
+      assetType: 'stock',
+      alertType: 'price',
+      targetPrice: 320,
+      reason: deferredCheck.deferralReason,
+      description: deferredCheck.deferralDescription,
+      status: 'stale',
+      source: 'TradingView',
+      observedAt: '2026-11-11T10:14:00Z',
+      deferredAt: now.toISOString(),
+    },
+    memStorage
+  );
+  const stored = loadDeferredAlerts(memStorage);
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].symbol, 'THYAO');
+  assert.equal(stored[0].reason, 'last-known-fallback');
+
+  // 8. Fresh live quote clears deferral and triggers normally
+  const freshQuote = {
+    price: 350,
+    exchange: 'BIST',
+    observation: { source: 'TradingView', asOf: '2026-11-11T10:14:00Z', fetchedAt: '2026-11-11T10:14:00Z' },
+  };
+  assert.equal(evaluateAlertPriceFreshness(freshQuote, now).eligible, true);
+  clearDeferredAlert('THYAO', 'stock', memStorage);
+  assert.equal(loadDeferredAlerts(memStorage).length, 0);
+
+  const triggeredCheck = isPriceAlertTriggered(item, 350, freshQuote, now);
+  assert.equal(triggeredCheck.triggered, true);
+  assert.match(triggeredCheck.title, /THYAO/);
+
+  // 9. Fresh TEFAS fund quote passes as well
+  const fundFresh = evaluateAlertPriceFreshness(
+    {
+      price: 12.5,
+      assetType: 'fund',
+      navDate: '2026-11-11',
+      lastSyncAt: '2026-11-11T08:00:00Z',
+    },
+    now
+  );
+  assert.equal(fundFresh.eligible, true);
+  assert.equal(fundFresh.source, 'TEFAS');
+});
+

@@ -1,6 +1,11 @@
 'use client';
 
 import { create } from 'zustand';
+import {
+  evaluateAlertPriceFreshness,
+  type AlertDeferralReason,
+  type AlertPriceQuote,
+} from '@/lib/market/alertFreshness';
 
 export type PriceAlertType = 'price' | 'percent_up' | 'percent_down' | 'percent_both';
 
@@ -39,8 +44,40 @@ export function calculateTargetPriceFromPercent(
 
 export function isPriceAlertTriggered(
   item: WatchlistItem,
-  currentLivePrice: number
-): { triggered: boolean; title: string; message: string } {
+  currentLivePrice: number,
+  quoteMeta?: AlertPriceQuote | null,
+  now?: Date
+): {
+  triggered: boolean;
+  deferred?: boolean;
+  deferralReason?: AlertDeferralReason;
+  deferralDescription?: string;
+  title: string;
+  message: string;
+} {
+  if (quoteMeta !== undefined) {
+    const freshness = evaluateAlertPriceFreshness(
+      quoteMeta
+        ? {
+            ...quoteMeta,
+            price: quoteMeta.price ?? currentLivePrice,
+            assetType: quoteMeta.assetType ?? item.assetType,
+          }
+        : null,
+      now
+    );
+    if (!freshness.eligible) {
+      return {
+        triggered: false,
+        deferred: true,
+        deferralReason: freshness.reason,
+        deferralDescription: freshness.description,
+        title: '',
+        message: '',
+      };
+    }
+  }
+
   if (currentLivePrice <= 0) return { triggered: false, title: '', message: '' };
 
   const alertType = item.alertType || 'price';

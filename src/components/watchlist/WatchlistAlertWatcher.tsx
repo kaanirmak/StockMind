@@ -4,6 +4,14 @@ import { useEffect, useRef } from 'react';
 import { useWatchlistStore, isPriceAlertTriggered } from '@/store/useWatchlistStore';
 import { sendPushNotification, loadPushPreferences } from '@/lib/notifications/pushNotification';
 import { marketJson } from '@/lib/api/clientCache';
+import {
+  evaluateAlertPriceFreshness,
+  recordDeferredAlert,
+  clearDeferredAlert,
+  type AlertDeferralReason,
+  type AlertPriceQuote,
+} from '@/lib/market/alertFreshness';
+import type { MarketPriceObservation } from '@/types/stock';
 
 /** localStorage-based cooldown per symbol to survive WebView restarts */
 const ALERT_COOLDOWN_KEY = 'stockmind_alert_cooldowns';
@@ -28,6 +36,17 @@ function saveAlertCooldowns(cache: Record<string, number>): void {
   } catch { /* ignore */ }
 }
 
+type QuotePayload = {
+  symbol?: string;
+  code?: string;
+  price?: number | null;
+  exchange?: string | null;
+  isLastKnown?: boolean;
+  lastSyncAt?: string | null;
+  navDate?: string | null;
+  observation?: MarketPriceObservation | null;
+};
+
 export function WatchlistAlertWatcher() {
   const isCheckingRef = useRef(false);
 
@@ -47,36 +66,70 @@ export function WatchlistAlertWatcher() {
 
       isCheckingRef.current = true;
       try {
-        type Quote = { symbol?: string; code?: string; price: number; lastSyncAt?: string };
         const types = Array.from(new Set(activeAlertItems.map(item => item.assetType)));
         const results = await Promise.allSettled(types.map(type =>
-          marketJson<{ data: Quote[] }>(type === 'fund' ? '/api/funds' : '/api/stocks?liveOnly=true', 60_000)
+          marketJson<{ data: QuotePayload[] }>(type === 'fund' ? '/api/funds' : '/api/stocks?liveOnly=true', 60_000)
         ));
         const current = useWatchlistStore.getState();
         if (!active || current.currentUserId !== currentUserId) return;
 
-        const priceMap = new Map<string, number>();
+        const quoteMap = new Map<string, AlertPriceQuote>();
         results.forEach((result, index) => {
           if (result.status !== 'fulfilled' || !Array.isArray(result.value.data)) return;
           const type = types[index];
           for (const quote of result.value.data) {
             const symbol = type === 'fund' ? quote.code : quote.symbol;
-            if (symbol && Number.isFinite(quote.price) && quote.price > 0 &&
-                (type !== 'fund' || quote.lastSyncAt)) {
-              priceMap.set(`${type}:${symbol.toUpperCase()}`, quote.price);
+            if (symbol) {
+              quoteMap.set(`${type}:${symbol.toUpperCase()}`, {
+                price: quote.price,
+                observation: quote.observation,
+                exchange: quote.exchange || (type === 'fund' ? 'TEFAS' : undefined),
+                isLastKnown: quote.isLastKnown,
+                assetType: type,
+                lastSyncAt: quote.lastSyncAt,
+                navDate: quote.navDate,
+              });
             }
           }
         });
 
         const cooldowns = loadAlertCooldowns();
         let cooldownsDirty = false;
+        const configuredItems = current.items.filter(
+          (i) => (i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0)
+        );
 
-        for (const item of current.items) {
+        for (const item of configuredItems) {
           const sym = item.symbol.toUpperCase();
-          const livePrice = priceMap.get(`${item.assetType}:${sym}`);
-          if (!livePrice || livePrice <= 0) continue;
+          const quote = quoteMap.get(`${item.assetType}:${sym}`);
+          const freshness = evaluateAlertPriceFreshness(quote);
 
-          const check = isPriceAlertTriggered(item, livePrice);
+          if (!freshness.eligible) {
+            recordDeferredAlert({
+              symbol: sym,
+              assetType: item.assetType,
+              alertType: item.alertType || 'price',
+              targetPrice: item.targetPrice,
+              alertPercent: item.alertPercent,
+              reason: freshness.reason as Exclude<AlertDeferralReason, 'ok'>,
+              description: freshness.description,
+              status: freshness.status,
+              source: freshness.source,
+              observedAt: freshness.observedAt,
+              deferredAt: new Date().toISOString(),
+            });
+            const logKey = `defer:${currentUserId}:${item.assetType}:${sym}:${freshness.reason}`;
+            if (Date.now() - (cooldowns[logKey] || 0) >= ALERT_COOLDOWN_MS) {
+              console.warn(`[WatchlistAlertWatcher] ${sym} alarmı ertelendi (${freshness.reason}): ${freshness.description}`);
+              cooldowns[logKey] = Date.now();
+              cooldownsDirty = true;
+            }
+            continue;
+          }
+
+          clearDeferredAlert(sym, item.assetType);
+          const livePrice = quote!.price!;
+          const check = isPriceAlertTriggered(item, livePrice, quote);
           if (check.triggered) {
             // Per-symbol + alert-type cooldown key (not price-dependent)
             const cooldownKey = JSON.stringify([currentUserId, item.assetType, sym, item.alertType, item.targetPrice, item.alertPercent]);
@@ -105,7 +158,7 @@ export function WatchlistAlertWatcher() {
         if (cooldownsDirty) {
           saveAlertCooldowns(cooldowns);
         }
-      } catch (err) {
+      } catch {
         // Silently catch background poll error
       } finally {
         isCheckingRef.current = false;

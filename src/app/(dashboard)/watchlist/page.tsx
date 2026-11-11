@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ReorderHandle } from '@/components/watchlist/ReorderHandle';
 import { Icon } from '@/components/ui/Icon';
@@ -9,6 +9,7 @@ import { Badge, Button, Input, Modal, useToast, InstrumentLogo } from '@/compone
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { POPULAR_FUNDS } from '@/lib/constants/funds';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
+import { loadDeferredAlerts, type DeferredAlertRecord } from '@/lib/market/alertFreshness';
 
 export default function WatchlistPage() {
   const { items, addItem, removeItem, syncStatus, retrySync, refreshFromServer } = useWatchlistStore();
@@ -21,7 +22,27 @@ export default function WatchlistPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('');
   const [customTickerInput, setCustomTickerInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deferredAlerts, setDeferredAlerts] = useState<DeferredAlertRecord[]>([]);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const syncDeferred = () => setDeferredAlerts(loadDeferredAlerts());
+    syncDeferred();
+    window.addEventListener('focus', syncDeferred);
+    window.addEventListener('storage', syncDeferred);
+    return () => {
+      window.removeEventListener('focus', syncDeferred);
+      window.removeEventListener('storage', syncDeferred);
+    };
+  }, [items]);
+
+  const deferredByKey = useMemo(() => {
+    const map = new Map<string, DeferredAlertRecord>();
+    for (const entry of deferredAlerts) {
+      map.set(`${entry.assetType}:${entry.symbol.toUpperCase()}`, entry);
+    }
+    return map;
+  }, [deferredAlerts]);
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,26 +172,36 @@ export default function WatchlistPage() {
                 {/* Row 2: Alarm Status, Reorder Handle & Options Menu */}
                 <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-xs">
                   {/* Alarm chip */}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex flex-wrap items-center gap-1.5">
                     {item.targetPrice ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedItemForAlert(item);
-                          setIsAlertModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-1 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded-lg text-[11px] font-mono font-semibold transition-colors cursor-pointer"
-                        title="Alarmı düzenle veya kaldır"
-                      >
-                        <Icon name="bell" className="h-3 w-3" />
-                        <span className="truncate max-w-[150px]">
-                          {item.alertType === 'percent_up'
-                            ? `+${item.alertPercent}% (₺${item.targetPrice.toFixed(2)})`
-                            : item.alertType === 'percent_down'
-                            ? `-${item.alertPercent}% (₺${item.targetPrice.toFixed(2)})`
-                            : `₺${item.targetPrice.toFixed(2)}`}
-                        </span>
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedItemForAlert(item);
+                            setIsAlertModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded-lg text-[11px] font-mono font-semibold transition-colors cursor-pointer"
+                          title="Alarmı düzenle veya kaldır"
+                        >
+                          <Icon name="bell" className="h-3 w-3" />
+                          <span className="truncate max-w-[150px]">
+                            {item.alertType === 'percent_up'
+                              ? `+${item.alertPercent}% (₺${item.targetPrice.toFixed(2)})`
+                              : item.alertType === 'percent_down'
+                              ? `-${item.alertPercent}% (₺${item.targetPrice.toFixed(2)})`
+                              : `₺${item.targetPrice.toFixed(2)}`}
+                          </span>
+                        </button>
+                        {deferredByKey.get(`${item.assetType}:${item.symbol.toUpperCase()}`) && (
+                          <span
+                            className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-medium"
+                            title={deferredByKey.get(`${item.assetType}:${item.symbol.toUpperCase()}`)!.description}
+                          >
+                            Ertelendi
+                          </span>
+                        )}
+                      </>
                     ) : (
                       <button
                         type="button"
@@ -324,26 +355,36 @@ export default function WatchlistPage() {
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
                         {item.targetPrice ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedItemForAlert(item);
-                              setIsAlertModalOpen(true);
-                            }}
-                            className="inline-flex items-center gap-1.5 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded text-xs font-semibold transition-colors cursor-pointer"
-                            title="Alarmı düzenle veya kaldır"
-                          >
-                            <Icon name="bell" className="h-4 w-4" />
-                            <span>
-                              {item.alertType === 'percent_up'
-                                ? `+%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
-                                : item.alertType === 'percent_down'
-                                ? `-%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
-                                : item.alertType === 'percent_both'
-                                ? `±%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
-                                : `₺${item.targetPrice.toFixed(2)}`}
-                            </span>
-                          </button>
+                          <div className="inline-flex items-center justify-end gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedItemForAlert(item);
+                                setIsAlertModalOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1.5 text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded text-xs font-semibold transition-colors cursor-pointer"
+                              title="Alarmı düzenle veya kaldır"
+                            >
+                              <Icon name="bell" className="h-4 w-4" />
+                              <span>
+                                {item.alertType === 'percent_up'
+                                  ? `+%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                                  : item.alertType === 'percent_down'
+                                  ? `-%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                                  : item.alertType === 'percent_both'
+                                  ? `±%${item.alertPercent} (₺${item.targetPrice.toFixed(2)})`
+                                  : `₺${item.targetPrice.toFixed(2)}`}
+                              </span>
+                            </button>
+                            {deferredByKey.get(`${item.assetType}:${item.symbol.toUpperCase()}`) && (
+                              <span
+                                className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] font-sans font-medium"
+                                title={deferredByKey.get(`${item.assetType}:${item.symbol.toUpperCase()}`)!.description}
+                              >
+                                Ertelendi
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <button
                             type="button"
