@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { EmailOtpType } from '@supabase/supabase-js';
+import { classifyAuthCallbackFailure } from '@/lib/auth/authMessages';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -9,6 +10,9 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
+  const urlError = searchParams.get('error');
+  const urlErrorCode = searchParams.get('error_code');
+  const urlErrorDescription = searchParams.get('error_description');
   let next = searchParams.get('next') ?? (type === 'recovery' ? '/reset-password' : '/dashboard');
   if (type === 'recovery' && next === '/dashboard') {
     next = '/reset-password';
@@ -34,6 +38,7 @@ export async function GET(request: Request) {
 
   const supabase = await createClient();
   let authSuccess = false;
+  let callbackError: { message?: string | null; code?: string | null } | null = null;
 
   // 1. PKCE Code Exchange (used by OAuth and PKCE email links)
   if (code) {
@@ -41,6 +46,7 @@ export async function GET(request: Request) {
     if (!error) {
       authSuccess = true;
     } else {
+      callbackError = { message: error.message, code: error.code };
       console.error('Auth callback exchangeCodeForSession error:', error.message);
     }
   }
@@ -53,6 +59,7 @@ export async function GET(request: Request) {
     if (!error) {
       authSuccess = true;
     } else {
+      callbackError = { message: error.message, code: error.code };
       console.error('Auth callback verifyOtp error:', error.message);
     }
   }
@@ -98,6 +105,15 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${appOrigin}${next}`);
   }
 
-  // Return the user to login with error indicator
-  return NextResponse.redirect(`${appOrigin}/login?error=auth_callback_error`);
+  // Return the user to an explicit auth status message (e.g., expired recovery/verification link vs general error)
+  const failure = classifyAuthCallbackFailure({
+    error: urlError,
+    errorCode: urlErrorCode ?? callbackError?.code,
+    errorMessage: urlErrorDescription ?? callbackError?.message,
+    type,
+    next,
+    hasTokenOrCode: Boolean(code || (tokenHash && type)),
+  });
+
+  return NextResponse.redirect(`${appOrigin}${failure.redirectPath}`);
 }

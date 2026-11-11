@@ -6,6 +6,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { mapAuthErrorMessage, validateRegisterInput } from '@/lib/auth/authMessages';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,13 +37,14 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Şifreler eşleşmiyor.');
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Şifre en az 6 karakter olmalıdır.');
+    const validationError = validateRegisterInput({
+      fullName,
+      email,
+      password,
+      confirmPassword,
+    });
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -54,32 +56,46 @@ export default function RegisterPage() {
 
     const emailRedirectTo = `${siteOrigin.replace(/\/$/, '')}/auth/callback?next=/dashboard`;
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      const cleanEmail = email.trim();
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+          },
+          emailRedirectTo,
         },
-        emailRedirectTo,
-      },
-    });
+      });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
+      if (error) {
+        setError(mapAuthErrorMessage(error, 'register'));
+        setLoading(false);
+        return;
+      }
 
-    if (data?.session) {
-      window.location.href = '/dashboard';
-    } else {
-      setSuccessEmail(email);
+      // Supabase returns an empty identities array for existing verified accounts to avoid leaking existence silently
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setError('Bu e-posta adresi ile kayıtlı bir hesap zaten bulunuyor. Giriş yapabilir veya şifrenizi sıfırlayabilirsiniz.');
+        setLoading(false);
+        return;
+      }
+
+      if (data?.session) {
+        window.location.href = '/dashboard';
+      } else {
+        setSuccessEmail(cleanEmail);
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError(mapAuthErrorMessage(err, 'register'));
       setLoading(false);
     }
   }
 
   async function handleGoogleSignUp() {
+    setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -88,11 +104,12 @@ export default function RegisterPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(mapAuthErrorMessage(error, 'register'));
     }
   }
 
   async function handleGithubSignUp() {
+    setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
@@ -101,7 +118,7 @@ export default function RegisterPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(mapAuthErrorMessage(error, 'register'));
     }
   }
 
@@ -131,7 +148,10 @@ export default function RegisterPage() {
       </p>
 
       {successEmail ? (
-        <div className="p-6 sm:p-7 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-4 text-center animate-fade-in">
+        <div
+          data-testid="register-verification-sent"
+          className="p-6 sm:p-7 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-4 text-center animate-fade-in"
+        >
           <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-3xl mx-auto shadow-lg shadow-emerald-500/10">
 
           </div>
@@ -202,7 +222,11 @@ export default function RegisterPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 dark:bg-danger-light dark:border-danger/20 dark:text-danger text-sm animate-fade-in-down">
+        <div
+          data-testid="register-error-alert"
+          role="alert"
+          className="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 dark:bg-danger-light dark:border-danger/20 dark:text-danger text-sm animate-fade-in-down"
+        >
           {error}
         </div>
       )}

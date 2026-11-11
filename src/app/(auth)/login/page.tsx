@@ -2,27 +2,39 @@
 import { palette } from '@/theme/palette';
 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import {
+  mapAuthErrorMessage,
+  resolveAuthPageNotice,
+  type AuthNotice,
+} from '@/lib/auth/authMessages';
 
-export default function LoginPage() {
+function LoginPageContent() {
   const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<AuthNotice | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
   const googleAuthEnabled = process.env.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH === 'true';
   const githubAuthEnabled = process.env.NEXT_PUBLIC_ENABLE_GITHUB_AUTH === 'true';
   const socialAuthEnabled = googleAuthEnabled || githubAuthEnabled;
 
-  // Show a friendly message when redirected due to oversized session cookies
+  // Show clear actionable status when redirected from auth callback, verification link expiry, or session errors
   useEffect(() => {
-    if (searchParams.get('reason') === 'session_too_large') {
-      setError('Oturum verileriniz çok büyük olduğu için temizlendi. Lütfen tekrar giriş yapın.');
+    const resolved = resolveAuthPageNotice({
+      reason: searchParams.get('reason'),
+      error: searchParams.get('error'),
+      errorCode: searchParams.get('error_code'),
+      errorDescription: searchParams.get('error_description'),
+    });
+    if (resolved) {
+      setNotice(resolved);
     }
   }, [searchParams]);
 
@@ -30,24 +42,26 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setNotice(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    if (error) {
-      setError(
-        error.message === 'Invalid login credentials'
-          ? 'E-posta veya şifre hatalı.'
-          : error.message
-      );
+      if (error) {
+        setError(mapAuthErrorMessage(error, 'login'));
+        setLoading(false);
+        return;
+      }
+
+      // Full navigation to ensure session cookies are flushed in mobile WebViews
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setError(mapAuthErrorMessage(err, 'login'));
       setLoading(false);
-      return;
     }
-
-    // Full navigation to ensure session cookies are flushed in mobile WebViews
-    window.location.href = '/dashboard';
   }
 
   async function handleGoogleLogin() {
@@ -59,7 +73,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(mapAuthErrorMessage(error, 'login'));
     }
   }
 
@@ -72,7 +86,7 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(mapAuthErrorMessage(error, 'login'));
     }
   }
 
@@ -153,9 +167,36 @@ export default function LoginPage() {
         <div className="flex-1 h-px bg-slate-200 dark:bg-border" />
       </div>}
 
+      {/* Callback / Session / Expired Link Notice */}
+      {notice && (
+        <div
+          data-testid="login-auth-notice"
+          role="status"
+          className={`mb-4 px-4 py-3 rounded-xl border text-sm animate-fade-in-down ${
+            notice.tone === 'warning'
+              ? 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-warning-light dark:border-warning/30 dark:text-warning'
+              : 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-danger-light dark:border-danger/20 dark:text-danger'
+          }`}
+        >
+          <p>{notice.message}</p>
+          {notice.actionHref && notice.actionLabel && (
+            <Link
+              href={notice.actionHref}
+              className="mt-2 inline-block text-xs font-semibold underline underline-offset-2 hover:opacity-80"
+            >
+              {notice.actionLabel}
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Error */}
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 dark:bg-danger-light dark:border-danger/20 dark:text-danger text-sm animate-fade-in-down">
+        <div
+          data-testid="login-error-alert"
+          role="alert"
+          className="mb-4 px-4 py-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 dark:bg-danger-light dark:border-danger/20 dark:text-danger text-sm animate-fade-in-down"
+        >
           {error}
         </div>
       )}
@@ -245,5 +286,13 @@ export default function LoginPage() {
         </Link>
       </p>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

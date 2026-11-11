@@ -4817,6 +4817,139 @@ test('HSP-02: account switch, guest mode, and sign-out isolate portfolio, notifi
   assert.match(headerSrc, /SESSION_BOUNDARY_EVENT/);
 });
 
+test('HSP-03: login, register, password reset and auth callback surface clear verification, expiry and session failure states', () => {
+  const authMsg = load('src/lib/auth/authMessages.ts');
+
+  // 1. Callback failure classification: recovery expiry vs verification link expiry vs missing code vs generic error
+  const recExpired = authMsg.classifyAuthCallbackFailure({
+    errorCode: 'otp_expired',
+    errorMessage: 'Email link is invalid or has expired',
+    type: 'recovery',
+    next: '/reset-password',
+    hasTokenOrCode: true,
+  });
+  assert.equal(recExpired.code, 'recovery_link_expired');
+  assert.equal(recExpired.redirectPath, '/reset-password?error=recovery_link_expired');
+
+  const verifyExpired = authMsg.classifyAuthCallbackFailure({
+    errorCode: 'otp_expired',
+    errorMessage: 'Token has expired',
+    type: 'signup',
+    next: '/dashboard',
+    hasTokenOrCode: true,
+  });
+  assert.equal(verifyExpired.code, 'link_expired');
+  assert.equal(verifyExpired.redirectPath, '/login?error=link_expired');
+
+  const missingCode = authMsg.classifyAuthCallbackFailure({
+    next: '/dashboard',
+    hasTokenOrCode: false,
+  });
+  assert.equal(missingCode.code, 'missing_verification_code');
+  assert.equal(missingCode.redirectPath, '/login?error=missing_verification_code');
+
+  const genericFailure = authMsg.classifyAuthCallbackFailure({
+    error: 'server_error',
+    hasTokenOrCode: true,
+  });
+  assert.equal(genericFailure.code, 'auth_callback_error');
+  assert.equal(genericFailure.redirectPath, '/login?error=auth_callback_error');
+
+  // 2. Auth page notices for session timeout, oversized session, expired verification & recovery links
+  const sessionExpiredNotice = authMsg.resolveAuthPageNotice({ reason: 'session_expired' });
+  assert.equal(sessionExpiredNotice.tone, 'warning');
+  assert.match(sessionExpiredNotice.message, /süresi doldu/i);
+
+  const oversizedNotice = authMsg.resolveAuthPageNotice({ reason: 'session_too_large' });
+  assert.equal(oversizedNotice.tone, 'warning');
+  assert.match(oversizedNotice.message, /çok büyük/i);
+
+  const recoveryNotice = authMsg.resolveAuthPageNotice({ error: 'recovery_link_expired' });
+  assert.equal(recoveryNotice.tone, 'error');
+  assert.equal(recoveryNotice.actionHref, '/forgot-password');
+  assert.match(recoveryNotice.message, /Şifre sıfırlama bağlantısının süresi dolmuş/i);
+
+  const linkNotice = authMsg.resolveAuthPageNotice({ error: 'link_expired' });
+  assert.equal(linkNotice.tone, 'error');
+  assert.equal(linkNotice.actionHref, '/forgot-password');
+
+  assert.equal(authMsg.resolveAuthPageNotice({}), null);
+
+  // 3. Register input validation and error message mapping across login/register/forgot/reset contexts
+  assert.match(
+    authMsg.validateRegisterInput({ fullName: '  ', email: 'a@b.com', password: 'secret', confirmPassword: 'secret' }),
+    /adınızı ve soyadınızı/i
+  );
+  assert.match(
+    authMsg.validateRegisterInput({ fullName: 'Ada', email: 'invalid-email', password: 'secret', confirmPassword: 'secret' }),
+    /geçerli bir e-posta/i
+  );
+  assert.match(
+    authMsg.validateRegisterInput({ fullName: 'Ada', email: 'ada@example.com', password: '123', confirmPassword: '123' }),
+    /en az 6 karakter/i
+  );
+  assert.match(
+    authMsg.validateRegisterInput({ fullName: 'Ada', email: 'ada@example.com', password: 'secret', confirmPassword: 'other' }),
+    /eşleşmiyor/i
+  );
+  assert.equal(
+    authMsg.validateRegisterInput({ fullName: 'Ada', email: 'ada@example.com', password: 'secret', confirmPassword: 'secret' }),
+    null
+  );
+
+  assert.match(
+    authMsg.mapAuthErrorMessage({ message: 'Invalid login credentials' }, 'login'),
+    /E-posta veya şifre hatalı/i
+  );
+  assert.match(
+    authMsg.mapAuthErrorMessage({ message: 'Email not confirmed' }, 'login'),
+    /henüz doğrulanmamış/i
+  );
+  assert.match(
+    authMsg.mapAuthErrorMessage({ message: 'User already registered' }, 'register'),
+    /zaten bulunuyor/i
+  );
+  assert.match(
+    authMsg.mapAuthErrorMessage({ message: 'Auth session missing!' }, 'reset_password'),
+    /Aktif şifre sıfırlama oturumu bulunamadı/i
+  );
+  assert.match(
+    authMsg.mapAuthErrorMessage({ status: 429, message: 'Too many requests' }, 'forgot_password'),
+    /Çok fazla deneme/i
+  );
+  assert.match(
+    authMsg.mapAuthErrorMessage({ message: 'Failed to fetch' }, 'login'),
+    /Sunucuya bağlanılamadı/i
+  );
+
+  // 4. End-to-end UI & callback wiring guarantees explicit status elements & Suspense safety
+  const callbackSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/auth/callback/route.ts'), 'utf8');
+  assert.match(callbackSrc, /classifyAuthCallbackFailure/);
+
+  const loginSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(auth)/login/page.tsx'), 'utf8');
+  assert.match(loginSrc, /data-testid="login-auth-notice"/);
+  assert.match(loginSrc, /data-testid="login-error-alert"/);
+  assert.match(loginSrc, /<Suspense[\s\S]*?<LoginPageContent\s*\/>/);
+
+  const registerSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(auth)/register/page.tsx'), 'utf8');
+  assert.match(registerSrc, /validateRegisterInput/);
+  assert.match(registerSrc, /data-user-duplicate|identities\.length === 0/);
+  assert.match(registerSrc, /data-testid="register-error-alert"/);
+  assert.match(registerSrc, /data-testid="register-verification-sent"/);
+
+  const forgotSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(auth)/forgot-password/page.tsx'), 'utf8');
+  assert.match(forgotSrc, /mapAuthErrorMessage/);
+  assert.match(forgotSrc, /data-testid="forgot-error-alert"/);
+  assert.match(forgotSrc, /data-testid="forgot-success-state"/);
+
+  const resetSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(auth)/reset-password/page.tsx'), 'utf8');
+  assert.match(resetSrc, /supabase\.auth\.getUser\(\)/);
+  assert.match(resetSrc, /data-testid="reset-expired-state"/);
+  assert.match(resetSrc, /data-testid="reset-error-alert"/);
+  assert.match(resetSrc, /<Suspense[\s\S]*?<ResetPasswordContent\s*\/>/);
+});
+
+
 
 
 

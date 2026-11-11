@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { mapAuthErrorMessage } from '@/lib/auth/authMessages';
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
@@ -28,12 +29,12 @@ export default function ForgotPasswordPage() {
       });
 
       if (resetError) {
-        setError(resetError.message || 'Şifre sıfırlama bağlantısı gönderilemedi.');
+        setError(mapAuthErrorMessage(resetError, 'forgot_password'));
       } else {
         setSuccess(true);
       }
     } catch (err: any) {
-      setError(err.message || 'Beklenmeyen bir hata oluştu.');
+      setError(mapAuthErrorMessage(err, 'forgot_password'));
     } finally {
       setLoading(false);
     }
@@ -51,7 +52,11 @@ export default function ForgotPasswordPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm flex items-start gap-3 animate-fade-in" role="alert">
+        <div
+          data-testid="forgot-error-alert"
+          className="mb-6 p-4 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm flex items-start gap-3 animate-fade-in"
+          role="alert"
+        >
           <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -60,7 +65,7 @@ export default function ForgotPasswordPage() {
       )}
 
       {success ? (
-        <div className="space-y-6 text-center animate-fade-in">
+        <div data-testid="forgot-success-state" className="space-y-6 text-center animate-fade-in">
           <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
