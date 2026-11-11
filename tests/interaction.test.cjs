@@ -4513,6 +4513,37 @@ test('AIP-06: haber analizi başlık, özet ve kaynağı kullanır; kullanıcı 
   assert.match(routeSrc, /sanitizeNewsContextPayload/);
 });
 
+test('QNT-04: komite ekranına girilince otomatik çağrı başlamaz; başlat, iptal ve yeniden dene net görünür', () => {
+  const committeeSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/quant/InvestmentCommitteeTab.tsx'),
+    'utf8'
+  );
+
+  // Must NOT auto-execute on mount or symbol change
+  assert.doesNotMatch(
+    committeeSrc,
+    /useEffect\(\(\)\s*=>\s*\{\s*executeCommittee\(initialSym\)/,
+    'InvestmentCommitteeTab must never auto-run executeCommittee on mount'
+  );
+  const selectFnMatch = committeeSrc.match(/const handleSelectSymbol\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*?\n  \};/);
+  assert.ok(selectFnMatch, 'handleSelectSymbol helper must exist');
+  assert.doesNotMatch(
+    selectFnMatch[0],
+    /executeCommittee\(/,
+    'Symbol selection alone must not trigger committee API call'
+  );
+
+  // Must expose explicit Run, Cancel, Idle, and Retry controls
+  assert.match(committeeSrc, /data-testid="committee-action-bar"/);
+  assert.match(committeeSrc, /data-testid="committee-run-button"/);
+  assert.match(committeeSrc, /data-testid="committee-cancel-button"/);
+  assert.match(committeeSrc, /data-testid="committee-loading-cancel-button"/);
+  assert.match(committeeSrc, /data-testid="committee-idle-state"/);
+  assert.match(committeeSrc, /data-testid="committee-error-state"/);
+  assert.match(committeeSrc, /data-testid="committee-retry-button"/);
+  assert.match(committeeSrc, /handleCancelCommittee/);
+});
+
 
 
 

@@ -62,7 +62,9 @@ export default function InvestmentCommitteeTab({
   const [showProModal, setShowProModal] = useState(false);
   const [isProRequired, setIsProRequired] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+  const [wasCancelled, setWasCancelled] = useState(false);
   const activeRequest = useRef<AbortController | null>(null);
+  const cancelReasonRef = useRef<'none' | 'timeout' | 'user' | 'superseded'>('none');
 
   const DELIBERATION_STEPS = [
     'Komite üyeleri toplanıyor...',
@@ -91,33 +93,53 @@ export default function InvestmentCommitteeTab({
     };
   }, [user]);
 
-  // Sync external selectedSymbol changes
+  // Sync external selectedSymbol changes without auto-triggering a paid/network analysis (QNT-04)
   useEffect(() => {
     if (selectedSymbol && selectedSymbol !== symbol) {
+      cancelReasonRef.current = 'superseded';
+      activeRequest.current?.abort();
+      activeRequest.current = null;
+      setIsLoading(false);
       setSymbol(selectedSymbol);
-      executeCommittee(selectedSymbol);
+      setReport(null);
+      setAnalysisError('');
+      setWasCancelled(false);
     }
   }, [selectedSymbol]);
 
-  // Initial fetch for first symbol
+  // Abort any in-flight committee call only on unmount; never auto-start on screen entry (QNT-04).
   useEffect(() => {
-    executeCommittee(initialSym);
     return () => {
+      cancelReasonRef.current = 'superseded';
       activeRequest.current?.abort();
       activeRequest.current = null;
     };
   }, []);
 
+  const handleCancelCommittee = () => {
+    if (!activeRequest.current) return;
+    cancelReasonRef.current = 'user';
+    activeRequest.current.abort();
+    activeRequest.current = null;
+    setIsLoading(false);
+    setDeliberationStep(0);
+    setWasCancelled(true);
+    setAnalysisError('Komite analizi kullanıcı tarafından iptal edildi.');
+  };
+
   const executeCommittee = async (targetSymbol: string) => {
     const cleanSym = targetSymbol.trim().toUpperCase();
     if (!cleanSym) return;
 
+    cancelReasonRef.current = 'superseded';
     activeRequest.current?.abort();
     const controller = new AbortController();
+    cancelReasonRef.current = 'none';
     activeRequest.current = controller;
     setIsLoading(true);
     setReport(null);
     setAnalysisError('');
+    setWasCancelled(false);
     setDeliberationStep(0);
 
     // Synchronously resolve key from memory or storage
@@ -130,9 +152,8 @@ export default function InvestmentCommitteeTab({
     const interval = setInterval(() => {
       setDeliberationStep((prev) => Math.min(prev + 1, DELIBERATION_STEPS.length - 1));
     }, 1600);
-    let timedOut = false;
     const timeout = setTimeout(() => {
-      timedOut = true;
+      cancelReasonRef.current = 'timeout';
       controller.abort();
     }, 50_000);
     controller.signal.addEventListener('abort', () => {
@@ -166,13 +187,22 @@ export default function InvestmentCommitteeTab({
         throw new Error(data.error || 'Komite analizi alınamadı. Lütfen tekrar deneyin.');
       }
     } catch (e) {
+      const cancelReason = cancelReasonRef.current as 'none' | 'timeout' | 'user' | 'superseded';
+      if (cancelReason === 'user') return;
       if (activeRequest.current !== controller) return;
       setReport(null);
-      setAnalysisError(timedOut ? 'Komite yanıtı zaman aşımına uğradı. Tekrar deneyin.' : e instanceof Error ? e.message : 'Komite servisine ulaşılamadı.');
+      setAnalysisError(
+        cancelReason === 'timeout'
+          ? 'Komite yanıtı zaman aşımına uğradı. Tekrar deneyin.'
+          : e instanceof Error
+            ? e.message
+            : 'Komite servisine ulaşılamadı.'
+      );
     } finally {
       clearTimeout(timeout);
       clearInterval(interval);
       if (activeRequest.current === controller) {
+        activeRequest.current = null;
         setIsLoading(false);
         setDeliberationStep(0);
       }
@@ -180,10 +210,16 @@ export default function InvestmentCommitteeTab({
   };
 
   const handleSelectSymbol = (sym: string) => {
+    cancelReasonRef.current = 'superseded';
+    activeRequest.current?.abort();
+    activeRequest.current = null;
+    setIsLoading(false);
     setSymbol(sym);
     setCustomInput('');
+    setReport(null);
+    setAnalysisError('');
+    setWasCancelled(false);
     onSelectSymbol?.(sym);
-    executeCommittee(sym);
   };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
@@ -236,7 +272,26 @@ export default function InvestmentCommitteeTab({
           AI yanıtı alınamadı. Bu örnek senaryodaki görüşler ve sayılar model varsayımlarına dayanır.
         </p>
       )}
-      {analysisError && <p role="alert" className="rounded-xl border border-border p-4 text-sm text-text-primary">{analysisError}</p>}
+      {analysisError && (
+        <div
+          role="alert"
+          data-testid="committee-error-state"
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 flex flex-wrap items-center justify-between gap-3 text-sm text-text-primary"
+        >
+          <span>{analysisError}</span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              data-testid="committee-retry-button"
+              onClick={() => executeCommittee(symbol)}
+            >
+              {wasCancelled ? 'Yeniden Başlat' : 'Yeniden Dene'}
+            </Button>
+          </div>
+        </div>
+      )}
       {/* Symbol selection and committee settings */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -256,13 +311,41 @@ export default function InvestmentCommitteeTab({
 
         </div>
 
-        <div className="mt-4 border-t border-border pt-3">
+        <div className="mt-4 border-t border-border pt-3 space-y-3">
           <QuantSymbolSelect
             value={symbol}
             onChange={handleSelectSymbol}
             portfolioStocks={portfolioStocks}
             fallbackSymbols={POPULAR_SYMBOLS.map((item) => item.symbol)}
           />
+          <div data-testid="committee-action-bar" className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <p className="text-xs text-text-muted">
+              Seçili sembol: <strong className="text-text-primary">{symbol}</strong> — analiz yalnız siz başlattığınızda çalışır.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {isLoading ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="danger"
+                  data-testid="committee-cancel-button"
+                  onClick={handleCancelCommittee}
+                >
+                  Analizi İptal Et
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  data-testid="committee-run-button"
+                  onClick={() => executeCommittee(symbol)}
+                >
+                  {report ? 'Komiteyi Yeniden Topla' : 'Komite Analizini Başlat'}
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         <details className="mt-3 rounded-xl border border-border p-3">
@@ -368,6 +451,42 @@ export default function InvestmentCommitteeTab({
                 width: `${((deliberationStep + 1) / DELIBERATION_STEPS.length) * 100}%`,
               }}
             />
+          </div>
+          <div>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              data-testid="committee-loading-cancel-button"
+              onClick={handleCancelCommittee}
+            >
+              İptal Et
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Idle Prompt-to-Run State (no automatic API call on screen entry per QNT-04) */}
+      {!isLoading && !report && !analysisError && !isProRequired && isUserPro && (
+        <div
+          data-testid="committee-idle-state"
+          className="glass-card p-6 rounded-2xl border border-border text-center space-y-3"
+        >
+          <h3 className="text-base font-bold text-text-primary">
+            {symbol} Komite Analizine Hazır
+          </h3>
+          <p className="text-xs text-text-muted max-w-md mx-auto">
+            Ekrana girildiğinde otomatik analiz veya yapay zekâ çağrısı yapılmaz. Komite değerlendirmesini başlatmak için aşağıdaki düğmeyi kullanın.
+          </p>
+          <div className="pt-1">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => executeCommittee(symbol)}
+            >
+              {symbol} İçin Komite Analizini Başlat
+            </Button>
           </div>
         </div>
       )}
@@ -571,7 +690,6 @@ export default function InvestmentCommitteeTab({
                     setTempKeyInput('');
                     saveStoredOpenRouterKey('', user?.id);
                     setShowKeyModal(false);
-                    executeCommittee(symbol);
                   }}
                   className="text-xs text-rose-400 hover:underline cursor-pointer font-medium"
                 >
