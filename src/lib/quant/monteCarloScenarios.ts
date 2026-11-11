@@ -150,3 +150,4 @@ export function deleteMonteCarloScenario(
   }
   return next;
 }
+

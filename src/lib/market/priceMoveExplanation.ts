@@ -245,3 +245,4 @@ export function buildPriceMoveExplanation(params: {
       'Nedensellik belirsiz: Belirli bir şirket haberi veya KAP açıklaması bulunmadığında hareket genel sektör akışı, endeks oynaklığı veya teknik likidite kaynaklı olabilir; uydurma neden üretilmemiştir.',
   };
 }
+

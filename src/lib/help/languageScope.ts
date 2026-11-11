@@ -32,3 +32,4 @@ export const LANGUAGE_SCOPE_DECISION = {
 export function getSupportedLanguageCodes(): string[] {
   return SUPPORTED_LANGUAGES.map((lang) => lang.code);
 }
+

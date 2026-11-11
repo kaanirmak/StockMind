@@ -200,3 +200,4 @@ export async function fetchMacroCalendarEvents(options?: {
     };
   }
 }
+

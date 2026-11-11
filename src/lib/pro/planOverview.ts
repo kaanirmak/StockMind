@@ -100,3 +100,4 @@ export const PRO_SAMPLE_ANALYSIS_PREVIEW: ProSampleOutputPreview = {
   disclaimer:
     'Bu önizleme yalnızca StockMind Pro raporlarının yapısını ve veri/varsayım ayrımını göstermek içindir; gerçek varlık tavsiyesi değildir.',
 };
+

@@ -133,3 +133,4 @@ test('AIP-09 Scenario 4: ambiguous/mixed financial news preserves neutral/uncert
   const overconfidentReply = 'Hemen kesinlikle satın al, tamamen risksiz fırsat.';
   assert.equal(evalMod.evaluateFinancialAiResponse(scenario, overconfidentReply).passed, false);
 });
+

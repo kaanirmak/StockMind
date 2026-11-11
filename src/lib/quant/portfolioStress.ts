@@ -233,3 +233,4 @@ export function calculatePortfolioStressTest(input: PortfolioStressInput): Portf
     positions,
   };
 }
+

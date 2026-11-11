@@ -197,3 +197,4 @@ export function validateReadOnlyBrokerScopes(requestedScopes: readonly string[])
     reason: null,
   };
 }
+

@@ -16,3 +16,4 @@ Bu belge, StockMind Android uygulamasının (`com.kaanirmak.stockmind`, `minSdk=
 
 1. **Hızlı Beta / Doğrudan Kanal:** Dahili ve erken test kullanıcıları için `/api/download/apk` + SHA-256 doğrulama akışı korunur.
 2. **Genel Dağıtım:** Play Console'da **Play App Signing** etkinleştirilerek Upload Key ayrımı kurulur, gizlilik politikası (`/help` + genel URL) ve finansal bilgilendirme beyanı bağlanıp `cd android && ./gradlew bundleRelease` çıktısıyla kapalı test sürecine girilir.
+

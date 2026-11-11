@@ -35,3 +35,4 @@ Not: Canlı ortam (`staging`/`production` veya yerel sunucu) üzerinde dış ağ
 ```bash
 STOCKMIND_LOAD_TEST_BASE_URL=http://127.0.0.1:3000 npm run perf:api-load -- --json
 ```
+

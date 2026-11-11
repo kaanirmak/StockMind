@@ -150,3 +150,4 @@ export function extractPeriodicDcfInputs(params: {
     isSourced: freeCashFlowMillions !== null || netDebtMillions !== null,
   };
 }
+

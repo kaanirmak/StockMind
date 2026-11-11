@@ -27,3 +27,4 @@ Kullanıcı bağlı bir kurumu kaldırdığında `BROKER_DATA_DELETION_FLOW` dö
 2. **Eşitleme İzlerini Sil (`purge_sync_state`):** Harici bağlantı kaydı, tekilleştirme imzaları (`externalRef`) ve ham ekstre önbellekleri temizlenir.
 3. **İşlemler İçin Kullanıcı Seçimi (`handle_transactions`):** İçe aktarılmış işlemler kullanıcının seçimine göre ya bağımsız yerel kayıt olarak bırakılır ya da portföyden topluca silinir.
 4. **Doğrulama (`audit_confirmation`):** Kesme zaman damgası kullanıcıya bildirilir ve arka plan eşitlemesi kalıcı olarak durdurulur.
+

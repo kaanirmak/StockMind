@@ -193,3 +193,4 @@ export const PriceMoveExplanationCard: React.FC<PriceMoveExplanationCardProps> =
     </section>
   );
 };
+

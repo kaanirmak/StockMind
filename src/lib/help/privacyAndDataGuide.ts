@@ -71,3 +71,4 @@ export function getPrivacyHelpSectionById(id: PrivacyHelpSection['id']): Privacy
   }
   return found;
 }
+
