@@ -6352,6 +6352,158 @@ test('PIY-10: screener column selection, sort persistence, and filtered CSV expo
   assert.match(piySrc, /fund-csv-export/);
 });
 
+test('ALR-10: Web Push validates supported browsers, iOS standalone PWA permission, test delivery, and safe deep links', async () => {
+  const {
+    normalizeWebPushRoute,
+    inspectWebPushSupport,
+    parseStoredPushSubscription,
+  } = load('src/lib/notifications/webPush.ts');
+
+  assert.equal(normalizeWebPushRoute('/alarms'), '/alarms');
+  assert.equal(normalizeWebPushRoute('/stocks/THYAO.IS'), '/stocks/THYAO.IS');
+  assert.equal(normalizeWebPushRoute('https://evil.example/phish'), '/dashboard');
+  assert.equal(normalizeWebPushRoute('//evil.example/phish'), '/dashboard');
+  assert.equal(normalizeWebPushRoute('javascript:alert(1)'), '/dashboard');
+
+  const iosBrowser = inspectWebPushSupport({
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
+    isStandalone: false,
+    isAndroidWebView: false,
+    hasNotificationApi: false,
+    hasServiceWorker: true,
+    hasPushManager: false,
+    permissionState: 'unsupported',
+  });
+  assert.equal(iosBrowser.mode, 'ios-requires-home-screen');
+  assert.equal(iosBrowser.supported, false);
+  assert.equal(iosBrowser.iosNeedsHomeScreen, true);
+
+  const iosPwa = inspectWebPushSupport({
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
+    isStandalone: true,
+    isAndroidWebView: false,
+    hasNotificationApi: true,
+    hasServiceWorker: true,
+    hasPushManager: true,
+    permissionState: 'default',
+  });
+  assert.equal(iosPwa.mode, 'ios-pwa-ready');
+  assert.equal(iosPwa.supported, true);
+  assert.equal(iosPwa.platform, 'pwa');
+  assert.equal(iosPwa.iosNeedsHomeScreen, false);
+
+  const desktopChrome = inspectWebPushSupport({
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/128.0.0.0 Safari/537.36',
+    isStandalone: false,
+    isAndroidWebView: false,
+    hasNotificationApi: true,
+    hasServiceWorker: true,
+    hasPushManager: true,
+    permissionState: 'granted',
+  });
+  assert.equal(desktopChrome.mode, 'browser-supported');
+  assert.equal(desktopChrome.supported, true);
+  assert.equal(desktopChrome.platform, 'web');
+
+  assert.equal(parseStoredPushSubscription(JSON.stringify({ endpoint: 'http://insecure.local/push' })), null);
+  const validSub = parseStoredPushSubscription(
+    JSON.stringify({
+      endpoint: 'https://web.push.apple.com/QABCD123',
+      keys: { p256dh: 'key-p', auth: 'key-a' },
+    }),
+  );
+  assert.equal(validSub?.endpoint, 'https://web.push.apple.com/QABCD123');
+  assert.equal(validSub?.keys?.auth, 'key-a');
+
+  // Test end-to-end iOS standalone PWA permission, SW registration, and deep-link test delivery
+  const swCalls = [];
+  const shownNotifications = [];
+  let perm = 'default';
+  const mockNotification = function MockNotification() {};
+  Object.defineProperty(mockNotification, 'permission', { get: () => perm });
+  mockNotification.requestPermission = async () => {
+    perm = 'granted';
+    return 'granted';
+  };
+
+  const mockNav = {
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) Mobile/15E148',
+    standalone: true,
+    serviceWorker: {
+      register: async (script, opts) => {
+        swCalls.push({ script, opts });
+        return { active: true };
+      },
+      ready: Promise.resolve({
+        active: true,
+        pushManager: {
+          getSubscription: async () => null,
+          subscribe: async () => ({
+            endpoint: 'https://web.push.apple.com/test-sub',
+            toJSON: () => ({ endpoint: 'https://web.push.apple.com/test-sub', keys: { p256dh: 'p', auth: 'a' } }),
+          }),
+        },
+        showNotification: async (title, opts) => {
+          shownNotifications.push({ title, opts });
+        },
+      }),
+    },
+  };
+  const mockWin = {
+    Notification: mockNotification,
+    PushManager: function PushManager() {},
+    navigator: mockNav,
+    matchMedia: () => ({ matches: true }),
+    location: { href: '' },
+    focus: () => {},
+  };
+  const pwaMod = load('src/lib/notifications/webPush.ts', {
+    window: mockWin,
+    navigator: mockNav,
+    Notification: mockNotification,
+    PushManager: mockWin.PushManager,
+    Buffer,
+    atob: (b64) => Buffer.from(b64, 'base64').toString('binary'),
+    Audio: function MockAudio() {
+      return { play: () => Promise.resolve() };
+    },
+  });
+
+  const reg = await pwaMod.registerWebPushChannel({
+    vapidPublicKey: Buffer.from('0'.repeat(65)).toString('base64url'),
+    requestPermissionFirst: true,
+  });
+  assert.equal(reg.ok, true, reg.reason);
+  assert.equal(reg.platform, 'pwa');
+  assert.equal(reg.permissionState, 'granted');
+  assert.equal(reg.subscriptionEndpoint, 'https://web.push.apple.com/test-sub');
+  assert.equal(swCalls[0].script, '/sw.js');
+
+  const testRes = await pwaMod.sendWebPushTestNotification({
+    title: 'Test Alarm',
+    body: 'THYAO hedef fiyata ulaştı',
+    route: '/stocks/THYAO.IS',
+  });
+  assert.equal(testRes.delivered, true);
+  assert.equal(testRes.usedServiceWorker, true);
+  assert.equal(testRes.verifiedRoute, '/stocks/THYAO.IS');
+  assert.equal(shownNotifications[0].opts.data.route, '/stocks/THYAO.IS');
+
+  const swSrc = fs.readFileSync(path.join(process.cwd(), 'public/sw.js'), 'utf8');
+  assert.match(swSrc, /addEventListener\('push'/);
+  assert.match(swSrc, /addEventListener\('notificationclick'/);
+  assert.match(swSrc, /normalizeSameOriginRoute/);
+
+  const manifestSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/manifest.ts'), 'utf8');
+  assert.match(manifestSrc, /display:\s*'standalone'/);
+  assert.match(manifestSrc, /\/icon-192\.png/);
+
+  const settingsSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/settings/page.tsx'), 'utf8');
+  assert.match(settingsSrc, /web-push-channel-card/);
+  assert.match(settingsSrc, /web-push-test-btn/);
+  assert.match(settingsSrc, /web-push-test-link/);
+});
+
 
 
 

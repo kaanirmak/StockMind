@@ -1,15 +1,19 @@
+import type { MetadataRoute } from 'next';
 import { palette } from '@/theme/palette';
-import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'StockMind — Akıllı Portföy & Piyasa Takip',
+    name: 'StockMind — Akıllı Borsa & Fon Takip Platformu',
     short_name: 'StockMind',
-    description: 'Borsa İstanbul, TEFAS Fonları ve Küresel Piyasa Takip & Portföy Platformu',
+    description:
+      'BIST, NYSE, NASDAQ hisselerini ve TEFAS fonlarını takip edin; fiyat alarmları ve Web Push bildirimleri alın.',
     start_url: '/dashboard',
+    scope: '/',
     display: 'standalone',
-    background_color: palette.black,
-    theme_color: palette.primaryDark,
+    orientation: 'portrait-primary',
+    background_color: palette.color0a0e1a,
+    theme_color: palette.color0a0e1a,
+    lang: 'tr',
     icons: [
       {
         src: '/icon-192.png',
@@ -25,38 +29,9 @@ export default function manifest(): MetadataRoute.Manifest {
       },
       {
         src: '/apple-icon.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable',
-      },
-      {
-        src: '/icon-brain-dark.png',
-        sizes: '150x130',
+        sizes: '180x180',
         type: 'image/png',
       },
     ],
-    // Windows 11 Widget Board Specification (PWA Widgets)
-    ...({
-      widgets: [
-        {
-          name: 'StockMind Portföy Widget',
-          short_name: 'Portföy',
-          description: 'Anlık portföy durumu ve günlük/aylık getiri takibi',
-          tag: 'stockmind-portfolio',
-          ms_ac_template: '/widgets/portfolio',
-          data: '/api/markets/overview',
-          type: 'application/json',
-        },
-        {
-          name: 'StockMind Isı Haritası',
-          short_name: 'Isı Haritası',
-          description: 'Canlı BIST ve portföy ağırlık ısı haritası',
-          tag: 'stockmind-heatmap',
-          ms_ac_template: '/widgets/heatmap',
-          data: '/api/markets/overview',
-          type: 'application/json',
-        },
-      ],
-    } as any),
   };
 }

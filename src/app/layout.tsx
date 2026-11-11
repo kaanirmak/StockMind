@@ -29,6 +29,12 @@ export const metadata: Metadata = {
     'StockMind',
   ],
   authors: [{ name: 'StockMind' }],
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'StockMind',
+  },
   icons: {
     icon: [
       { url: '/icon-brain-dark.png', sizes: 'any' },

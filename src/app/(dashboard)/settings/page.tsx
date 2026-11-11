@@ -39,6 +39,15 @@ import {
   removeNotificationDevice,
   type NotificationDeviceRecord,
 } from '@/lib/notifications/devices';
+import {
+  getBrowserWebPushSnapshot,
+  inspectWebPushSupport,
+  normalizeWebPushRoute,
+  registerWebPushChannel,
+  sendWebPushTestNotification,
+  type WebPushSupportReport,
+  type WebPushTestResult,
+} from '@/lib/notifications/webPush';
 
 const AVATAR_PRESETS: Array<{ label: string; icon: string; colors: [string, string] }> = [
   { label: 'Boğa (Bull)', icon: '🐂', colors: [palette.color059669, palette.success] },
@@ -105,6 +114,12 @@ export default function SettingsPage() {
   const [connectedDevices, setConnectedDevices] = useState<NotificationDeviceRecord[]>([]);
   const [prunedDevicesCount, setPrunedDevicesCount] = useState(0);
   const [loadingDevices, setLoadingDevices] = useState(false);
+  const [webPushSupport, setWebPushSupport] = useState<WebPushSupportReport | null>(null);
+  const [webPushEndpoint, setWebPushEndpoint] = useState<string | null>(null);
+  const [webPushToken, setWebPushToken] = useState<string | null>(null);
+  const [registeringWebPush, setRegisteringWebPush] = useState(false);
+  const [webPushTestRoute, setWebPushTestRoute] = useState('/alarms');
+  const [lastWebPushTest, setLastWebPushTest] = useState<WebPushTestResult | null>(null);
 
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -142,8 +157,15 @@ export default function SettingsPage() {
   useEffect(() => {
     const refreshPushPrefs = () => setPushSettings(loadPushPreferences());
     refreshPushPrefs();
+    const refreshWebPushState = () => {
+      setWebPushSupport(inspectWebPushSupport(getBrowserWebPushSnapshot()));
+    };
+    refreshWebPushState();
     setIsPermitted(hasNotificationPermission());
-    const refreshPermission = () => setIsPermitted(hasNotificationPermission());
+    const refreshPermission = () => {
+      setIsPermitted(hasNotificationPermission());
+      refreshWebPushState();
+    };
     window.addEventListener('focus', refreshPermission);
     window.addEventListener('stockmind:notification-permission', refreshPermission);
     window.addEventListener('stockmind:push-prefs', refreshPushPrefs);
@@ -198,6 +220,7 @@ export default function SettingsPage() {
           prefs: pushSettings,
           isAndroid,
           emailEnabled: dailyReportEnabled,
+          pushToken: webPushToken,
           registerCurrent,
         });
         setConnectedDevices(result.devices);
@@ -208,8 +231,60 @@ export default function SettingsPage() {
         setLoadingDevices(false);
       }
     },
-    [user?.id, pushSettings, isAndroid, dailyReportEnabled],
+    [user?.id, pushSettings, isAndroid, dailyReportEnabled, webPushToken],
   );
+
+  const handleEnableWebPush = async () => {
+    setRegisteringWebPush(true);
+    try {
+      const reg = await registerWebPushChannel({ requestPermissionFirst: true });
+      setWebPushSupport(reg.support);
+      setWebPushEndpoint(reg.subscriptionEndpoint);
+      setWebPushToken(reg.serializedSubscription);
+      setIsPermitted(reg.permissionState === 'granted');
+      if (user?.id) {
+        await fetchAndSyncNotificationDevices({
+          userId: user.id,
+          permissionState: reg.permissionState,
+          prefs: pushSettings,
+          isAndroid,
+          emailEnabled: dailyReportEnabled,
+          pushToken: reg.serializedSubscription,
+          registerCurrent: true,
+        }).then((syncRes) => {
+          setConnectedDevices(syncRes.devices);
+        });
+      }
+      showToast({
+        type: reg.ok ? 'success' : 'warning',
+        title: reg.ok ? 'Web Push Etkinleştirildi' : 'Web Push Durumu',
+        message: reg.reason,
+      });
+    } finally {
+      setRegisteringWebPush(false);
+    }
+  };
+
+  const handleTestWebPushRoute = async () => {
+    setIsSendingTestPush(true);
+    try {
+      const safeRoute = normalizeWebPushRoute(webPushTestRoute);
+      const res = await sendWebPushTestNotification({
+        title: 'StockMind Web Push Doğrulaması',
+        body: `Bildirim bağlantısı hedefi: ${safeRoute}`,
+        route: safeRoute,
+      });
+      setLastWebPushTest(res);
+      setIsPermitted(res.permissionState === 'granted');
+      showToast({
+        type: res.delivered ? 'success' : 'warning',
+        title: res.delivered ? 'Web Push Testi Başarılı' : 'Web Push Testi İletilmedi',
+        message: res.reason,
+      });
+    } finally {
+      setIsSendingTestPush(false);
+    }
+  };
 
   useEffect(() => {
     if (settingsSection === 'notifications' && user?.id) {
@@ -1367,6 +1442,104 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+          {/* Web Push & iOS Home Screen PWA Channel (ALR-10) */}
+          {webPushSupport && webPushSupport.mode !== 'android-native' && (
+            <div
+              data-testid="web-push-channel-card"
+              className="p-3.5 rounded-xl bg-bg-secondary/60 border border-border/50 space-y-2.5 text-xs"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="font-semibold text-text-primary">{webPushSupport.title}</h4>
+                  <p className="text-text-muted mt-0.5">{webPushSupport.guidance}</p>
+                </div>
+                <Badge
+                  variant={
+                    webPushSupport.iosNeedsHomeScreen
+                      ? 'warning'
+                      : webPushSupport.permissionState === 'granted'
+                        ? 'success'
+                        : 'default'
+                  }
+                  size="sm"
+                >
+                  {webPushSupport.iosNeedsHomeScreen
+                    ? 'Ana Ekrana Ekle'
+                    : webPushSupport.permissionState === 'granted'
+                      ? 'Web Push Hazır'
+                      : webPushSupport.permissionState === 'denied'
+                        ? 'İzin Engelli'
+                        : 'İzin Bekliyor'}
+                </Badge>
+              </div>
+
+              {webPushSupport.supported && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleEnableWebPush()}
+                    disabled={registeringWebPush}
+                  >
+                    {registeringWebPush
+                      ? 'Kaydediliyor...'
+                      : 'Web Push İzni ve Kanalı Doğrula'}
+                  </Button>
+
+                  <label className="inline-flex items-center gap-1.5 text-text-muted">
+                    <span>Hedef Bağlantı:</span>
+                    <select
+                      aria-label="Web Push test bildirimi hedef sayfası"
+                      value={webPushTestRoute}
+                      onChange={(e) => setWebPushTestRoute(normalizeWebPushRoute(e.target.value))}
+                      className="h-8 rounded-lg border border-border bg-bg-tertiary px-2 text-xs text-text-primary"
+                    >
+                      <option value="/alarms">/alarms (Alarmlar)</option>
+                      <option value="/dashboard">/dashboard (Özet)</option>
+                      <option value="/settings#notifications">/settings#notifications</option>
+                    </select>
+                  </label>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    data-testid="web-push-test-btn"
+                    onClick={() => void handleTestWebPushRoute()}
+                    disabled={isSendingTestPush}
+                  >
+                    Web Push Test & Bağlantı Doğrula
+                  </Button>
+                </div>
+              )}
+
+              {webPushEndpoint && (
+                <p className="text-[11px] text-emerald-400 break-all">
+                  Aktif Push Endpoint: {webPushEndpoint.slice(0, 72)}...
+                </p>
+              )}
+
+              {lastWebPushTest && (
+                <div
+                  data-testid="web-push-test-link"
+                  className={`p-2 rounded-lg border text-[11px] ${
+                    lastWebPushTest.delivered
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                  }`}
+                >
+                  <p className="font-medium">{lastWebPushTest.reason}</p>
+                  <p className="opacity-80 mt-0.5">
+                    İzin: {lastWebPushTest.permissionState} · Kanal:{' '}
+                    {lastWebPushTest.usedServiceWorker ? 'Service Worker' : 'Tarayıcı Bildirimi'} ·
+                    Bağlantı: {lastWebPushTest.verifiedRoute}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
