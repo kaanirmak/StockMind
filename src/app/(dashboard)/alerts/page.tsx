@@ -28,6 +28,21 @@ import {
 } from '@/lib/market/alertTelemetry';
 import { useAuth } from '@/hooks/useAuth';
 import { useWatchlistStore, type WatchlistItem } from '@/store/useWatchlistStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
+import {
+  DEFAULT_PORTFOLIO_MOVE_CONFIG,
+  PORTFOLIO_MOVE_FREQUENCY_LABELS,
+  evaluatePortfolioMoveAlerts,
+  isVerifiedPortfolioValuation,
+  readPortfolioMoveConfig,
+  readPortfolioMoveHistory,
+  writePortfolioMoveConfig,
+  writePortfolioMoveHistory,
+  type PortfolioMoveAlertConfig,
+  type PortfolioMoveDirection,
+  type PortfolioMoveFrequency,
+} from '@/lib/notifications/portfolioMoves';
+import { sendPushNotification } from '@/lib/notifications/pushNotification';
 
 function formatTelemetryTime(iso?: string): string {
   if (!iso) return 'Henüz yok';
@@ -50,6 +65,7 @@ interface LiveQuoteEntry {
 
 export default function AllAlertsPage() {
   const { items, currentUserId, toggleAlertPaused, removeAlert } = useWatchlistStore();
+  const { portfolios, activePortfolioId, isSampleMode, getSummary } = usePortfolioStore();
   const { user, profile } = useAuth();
   const { showToast } = useToast();
 
@@ -58,6 +74,101 @@ export default function AllAlertsPage() {
   const [liveQuotes, setLiveQuotes] = useState<Record<string, LiveQuoteEntry>>({});
   const [telemetryMap, setTelemetryMap] = useState<AlertTelemetryMap>({});
   const [editingRule, setEditingRule] = useState<WatchlistItem | null>(null);
+  const [moveConfig, setMoveConfig] = useState<PortfolioMoveAlertConfig>(DEFAULT_PORTFOLIO_MOVE_CONFIG);
+
+  useEffect(() => {
+    setMoveConfig(readPortfolioMoveConfig(currentUserId));
+  }, [currentUserId]);
+
+  const portfolioSnapshot = useMemo(() => {
+    const summary = getSummary();
+    const activePortfolio =
+      portfolios.find((p) => p.id === activePortfolioId) ?? portfolios[0];
+    if (!activePortfolio) return null;
+    const missingSymbols = [
+      ...(summary.valuationStatus?.missingPrices ?? []),
+      ...(summary.valuationStatus?.missingFx ? ['USDTRY'] : []),
+    ];
+    return {
+      portfolioId: activePortfolio.id,
+      portfolioName: activePortfolio.name,
+      currency: 'TRY' as const,
+      dailyChangePct: summary.dailyPnLPercent,
+      dailyChangeValue: summary.dailyPnL,
+      totalValue: summary.totalValue,
+      verifiedHoldingsCount: Math.max(
+        0,
+        summary.holdings.length - (summary.valuationStatus?.missingPrices?.length ?? 0),
+      ),
+      totalHoldingsCount: summary.holdings.length,
+      missingPriceSymbols: missingSymbols,
+      isSampleSnapshot: isSampleMode,
+    };
+  }, [getSummary, portfolios, activePortfolioId, isSampleMode]);
+
+  const portfolioVerdict = useMemo(
+    () =>
+      portfolioSnapshot
+        ? isVerifiedPortfolioValuation(portfolioSnapshot)
+        : { verified: false, reason: 'no-portfolio' },
+    [portfolioSnapshot],
+  );
+
+  const handleSaveMoveConfig = (next: PortfolioMoveAlertConfig) => {
+    const saved = writePortfolioMoveConfig(next, currentUserId);
+    setMoveConfig(saved);
+    showToast({
+      type: 'success',
+      title: 'Portföy Hareketi Kuralı Kaydedildi',
+      message: saved.enabled
+        ? `%${saved.thresholdPct} eşik · ${PORTFOLIO_MOVE_FREQUENCY_LABELS[saved.frequency]}`
+        : 'Portföy hareketi bildirimleri duraklatıldı.',
+    });
+  };
+
+  const handleEvaluatePortfolioNow = () => {
+    if (!portfolioSnapshot) {
+      showToast({
+        type: 'info',
+        title: 'Portföy Bulunamadı',
+        message: 'Önce gerçek portföy işlemleri ekleyin.',
+      });
+      return;
+    }
+    const history = readPortfolioMoveHistory(currentUserId);
+    const result = evaluatePortfolioMoveAlerts({
+      config: moveConfig,
+      snapshots: [portfolioSnapshot],
+      history,
+    });
+    if (result.triggered.length > 0) {
+      for (const ev of result.triggered) {
+        sendPushNotification(ev.title, ev.body, ev.route);
+      }
+      writePortfolioMoveHistory(result.updatedHistory, currentUserId);
+      showToast({
+        type: 'success',
+        title: 'Portföy Hareketi Bildirimi Tetiklendi',
+        message: result.triggered[0].body,
+      });
+    } else {
+      const skipReason = result.skipped[0]?.reason ?? 'unknown';
+      const skipMap: Record<string, string> = {
+        disabled: 'Portföy hareketi bildirimleri kapalı.',
+        'sample-snapshot': 'Örnek (demo) portföy verisinde hareket bildirimi tetiklenmez.',
+        'incomplete-price-coverage': 'Tüm varlık fiyatları doğrulanmadığı için sahte eşik uyarısı atlandı.',
+        'no-verified-holdings': 'Doğrulanmış açık pozisyon bulunamadı.',
+        'below-threshold': `Mevcut günlük değişim %${moveConfig.thresholdPct} eşiğinin altında.`,
+        'direction-filtered': 'Mevcut hareket seçili yön filtresinin dışında.',
+        'throttled-by-frequency': 'Seçili sıklık sınırı içinde zaten bildirim gönderildi.',
+      };
+      showToast({
+        type: 'info',
+        title: 'Tetikleme Koşulu Oluşmadı',
+        message: skipMap[skipReason] || `Durum: ${skipReason}`,
+      });
+    }
+  };
 
   useEffect(() => {
     const syncTelemetry = () => {
@@ -224,6 +335,117 @@ export default function AllAlertsPage() {
           <span className="text-lg sm:text-2xl font-extrabold font-mono text-amber-400">
             {pausedRules.length}
           </span>
+        </div>
+      </div>
+
+      {/* Portfolio Movement Notifications (ALR-11) */}
+      <div
+        data-testid="portfolio-move-alert-panel"
+        className="glass-card p-4 space-y-3 border border-border/60"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-text-primary">
+              Portföy Günlük Hareketi Bildirimleri
+            </h2>
+            <p className="text-xs text-text-muted mt-0.5">
+              Yalnızca tüm varlık fiyatları doğrulanmış gerçek portföy değerlemesine göre tetiklenir; tekrarlar seçtiğiniz sıklıkla sınırlandırılır.
+            </p>
+          </div>
+          <Badge variant={portfolioVerdict.verified ? 'success' : 'warning'} size="sm">
+            {portfolioVerdict.verified
+              ? `Doğrulanmış (${portfolioSnapshot?.verifiedHoldingsCount ?? 0}/${portfolioSnapshot?.totalHoldingsCount ?? 0})`
+              : portfolioSnapshot?.isSampleSnapshot
+                ? 'Örnek Portföy (Tetiklenmez)'
+                : 'Eksik Fiyat / Doğrulama Bekliyor'}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          <label className="flex items-center gap-2 p-2.5 rounded-xl bg-bg-secondary/60 border border-border cursor-pointer">
+            <input
+              type="checkbox"
+              checked={moveConfig.enabled}
+              onChange={(e) =>
+                setMoveConfig((prev) => ({ ...prev, enabled: e.target.checked }))
+              }
+              className="w-4 h-4 accent-accent"
+            />
+            <span className="font-medium text-text-primary">Hareket Bildirimi Açık</span>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-text-muted block">Günlük Eşik (%)</span>
+            <input
+              type="number"
+              min={0.5}
+              max={50}
+              step={0.5}
+              value={moveConfig.thresholdPct}
+              onChange={(e) =>
+                setMoveConfig((prev) => ({
+                  ...prev,
+                  thresholdPct: Number(e.target.value) || 3,
+                }))
+              }
+              className="w-full h-9 rounded-xl border border-border bg-bg-secondary px-3 text-xs text-text-primary"
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-text-muted block">Yön</span>
+            <select
+              value={moveConfig.direction}
+              onChange={(e) =>
+                setMoveConfig((prev) => ({
+                  ...prev,
+                  direction: e.target.value as PortfolioMoveDirection,
+                }))
+              }
+              className="w-full h-9 rounded-xl border border-border bg-bg-secondary px-2.5 text-xs text-text-primary"
+            >
+              <option value="both">Yükseliş ve Düşüş</option>
+              <option value="gain">Yalnızca Yükseliş (+)</option>
+              <option value="loss">Yalnızca Düşüş (-)</option>
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-text-muted block">Bildirim Sıklığı</span>
+            <select
+              value={moveConfig.frequency}
+              onChange={(e) =>
+                setMoveConfig((prev) => ({
+                  ...prev,
+                  frequency: e.target.value as PortfolioMoveFrequency,
+                }))
+              }
+              className="w-full h-9 rounded-xl border border-border bg-bg-secondary px-2.5 text-xs text-text-primary"
+            >
+              <option value="realtime">{PORTFOLIO_MOVE_FREQUENCY_LABELS.realtime}</option>
+              <option value="hourly">{PORTFOLIO_MOVE_FREQUENCY_LABELS.hourly}</option>
+              <option value="daily">{PORTFOLIO_MOVE_FREQUENCY_LABELS.daily}</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleEvaluatePortfolioNow}
+          >
+            Mevcut Portföyü Kontrol Et
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => handleSaveMoveConfig(moveConfig)}
+          >
+            Hareket Kuralını Kaydet
+          </Button>
         </div>
       </div>
 

@@ -6504,6 +6504,137 @@ test('ALR-10: Web Push validates supported browsers, iOS standalone PWA permissi
   assert.match(settingsSrc, /web-push-test-link/);
 });
 
+test('ALR-11: portfolio movement notifications persist user threshold/frequency, require verified valuation, and throttle repeats', () => {
+  const {
+    readPortfolioMoveConfig,
+    writePortfolioMoveConfig,
+    evaluatePortfolioMoveAlerts,
+  } = load('src/lib/notifications/portfolioMoves.ts');
+
+  const store = new Map();
+  const mockStorage = {
+    getItem(k) { return store.has(k) ? store.get(k) : null; },
+    setItem(k, v) { store.set(k, v); },
+  };
+
+  const savedCfg = writePortfolioMoveConfig(
+    { enabled: true, thresholdPct: 2.5, direction: 'both', frequency: 'hourly' },
+    'user-123',
+    mockStorage,
+  );
+  assert.equal(savedCfg.thresholdPct, 2.5);
+  assert.equal(readPortfolioMoveConfig('user-123', mockStorage).frequency, 'hourly');
+  assert.equal(readPortfolioMoveConfig('other-user', mockStorage).frequency, 'daily');
+
+  const baseNow = new Date('2026-11-11T10:00:00.000Z');
+  const unverifiedEval = evaluatePortfolioMoveAlerts({
+    config: savedCfg,
+    now: baseNow,
+    snapshots: [
+      {
+        portfolioId: 'p-sample',
+        portfolioName: 'Örnek',
+        currency: 'TRY',
+        dailyChangePct: 6.4,
+        dailyChangeValue: 12000,
+        totalValue: 200000,
+        verifiedHoldingsCount: 3,
+        totalHoldingsCount: 3,
+        missingPriceSymbols: [],
+        isSampleSnapshot: true,
+      },
+      {
+        portfolioId: 'p-partial',
+        portfolioName: 'Eksik Fiyatlı',
+        currency: 'TRY',
+        dailyChangePct: -8.1,
+        dailyChangeValue: -5000,
+        totalValue: 150000,
+        verifiedHoldingsCount: 2,
+        totalHoldingsCount: 3,
+        missingPriceSymbols: ['EREGL.IS'],
+        isSampleSnapshot: false,
+      },
+    ],
+  });
+  assert.equal(unverifiedEval.triggered.length, 0);
+  assert.equal(unverifiedEval.skipped[0].reason, 'sample-snapshot');
+  assert.equal(unverifiedEval.skipped[1].reason, 'incomplete-price-coverage');
+
+  const verifiedEval = evaluatePortfolioMoveAlerts({
+    config: savedCfg,
+    now: baseNow,
+    snapshots: [
+      {
+        portfolioId: 'p-main',
+        portfolioName: 'Ana Portföyüm',
+        currency: 'TRY',
+        dailyChangePct: 3.4,
+        dailyChangeValue: 17000,
+        totalValue: 517000,
+        verifiedHoldingsCount: 4,
+        totalHoldingsCount: 4,
+        missingPriceSymbols: [],
+        isSampleSnapshot: false,
+      },
+    ],
+  });
+  assert.equal(verifiedEval.triggered.length, 1);
+  assert.equal(verifiedEval.triggered[0].direction, 'gain');
+  assert.equal(verifiedEval.triggered[0].route, '/portfolio');
+
+  // Re-evaluating 15 minutes later within hourly window with slight drift (+3.6%) must be throttled
+  const repeatWithinWindow = evaluatePortfolioMoveAlerts({
+    config: savedCfg,
+    now: new Date(baseNow.getTime() + 15 * 60 * 1000),
+    history: verifiedEval.updatedHistory,
+    snapshots: [
+      {
+        portfolioId: 'p-main',
+        portfolioName: 'Ana Portföyüm',
+        currency: 'TRY',
+        dailyChangePct: 3.6,
+        dailyChangeValue: 18000,
+        totalValue: 518000,
+        verifiedHoldingsCount: 4,
+        totalHoldingsCount: 4,
+        missingPriceSymbols: [],
+      },
+    ],
+  });
+  assert.equal(repeatWithinWindow.triggered.length, 0);
+  assert.equal(repeatWithinWindow.skipped[0].reason, 'throttled-by-frequency');
+
+  // After 65 minutes (hourly cooldown elapsed), another threshold-breaching observation is allowed
+  const afterCooldown = evaluatePortfolioMoveAlerts({
+    config: savedCfg,
+    now: new Date(baseNow.getTime() + 65 * 60 * 1000),
+    history: verifiedEval.updatedHistory,
+    snapshots: [
+      {
+        portfolioId: 'p-main',
+        portfolioName: 'Ana Portföyüm',
+        currency: 'TRY',
+        dailyChangePct: -2.9,
+        dailyChangeValue: -15000,
+        totalValue: 485000,
+        verifiedHoldingsCount: 4,
+        totalHoldingsCount: 4,
+        missingPriceSymbols: [],
+      },
+    ],
+  });
+  assert.equal(afterCooldown.triggered.length, 1);
+  assert.equal(afterCooldown.triggered[0].direction, 'loss');
+
+  const alertsSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/alerts/page.tsx'), 'utf8');
+  assert.match(alertsSrc, /portfolio-move-alert-panel/);
+  assert.match(alertsSrc, /evaluatePortfolioMoveAlerts/);
+
+  const watcherSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/watchlist/WatchlistAlertWatcher.tsx'), 'utf8');
+  assert.match(watcherSrc, /evaluatePortfolioMoveAlerts/);
+});
+
 
 
 

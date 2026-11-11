@@ -2,7 +2,14 @@
 
 import { useEffect, useRef } from 'react';
 import { useWatchlistStore, isPriceAlertTriggered } from '@/store/useWatchlistStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { sendPushNotification, loadPushPreferences } from '@/lib/notifications/pushNotification';
+import {
+  evaluatePortfolioMoveAlerts,
+  readPortfolioMoveConfig,
+  readPortfolioMoveHistory,
+  writePortfolioMoveHistory,
+} from '@/lib/notifications/portfolioMoves';
 import { marketJson } from '@/lib/api/clientCache';
 import { buildScopedQuoteRequests } from '@/lib/market/symbolQuery';
 import { evaluateRefreshPolicy } from '@/lib/market/refreshPolicy';
@@ -229,6 +236,52 @@ export function WatchlistAlertWatcher() {
 
         if (cooldownsDirty) {
           saveAlertCooldowns(cooldowns);
+        }
+
+        // ALR-11: Evaluate portfolio daily movement alerts strictly on verified valuations
+        if (prefs.portfolioMoves && (prefs.enabled || prefs.inAppEnabled)) {
+          const portfolioState = usePortfolioStore.getState();
+          const summary = portfolioState.getSummary();
+          const activePortfolio =
+            portfolioState.portfolios.find((p) => p.id === portfolioState.activePortfolioId) ??
+            portfolioState.portfolios[0];
+          if (activePortfolio && summary.holdings.length > 0) {
+            const missingSymbols = [
+              ...(summary.valuationStatus?.missingPrices ?? []),
+              ...(summary.valuationStatus?.missingFx ? ['USDTRY'] : []),
+            ];
+            const moveConfig = readPortfolioMoveConfig(currentUserId);
+            const moveHistory = readPortfolioMoveHistory(currentUserId);
+            const moveResult = evaluatePortfolioMoveAlerts({
+              config: moveConfig,
+              history: moveHistory,
+              snapshots: [
+                {
+                  portfolioId: activePortfolio.id,
+                  portfolioName: activePortfolio.name,
+                  currency: 'TRY',
+                  dailyChangePct: summary.dailyPnLPercent,
+                  dailyChangeValue: summary.dailyPnL,
+                  totalValue: summary.totalValue,
+                  verifiedHoldingsCount: Math.max(
+                    0,
+                    summary.holdings.length - (summary.valuationStatus?.missingPrices?.length ?? 0),
+                  ),
+                  totalHoldingsCount: summary.holdings.length,
+                  missingPriceSymbols: missingSymbols,
+                  isSampleSnapshot: portfolioState.isSampleMode,
+                  asOf: checkedAtIso,
+                },
+              ],
+            });
+
+            if (moveResult.triggered.length > 0) {
+              for (const event of moveResult.triggered) {
+                sendPushNotification(event.title, event.body, event.route);
+              }
+              writePortfolioMoveHistory(moveResult.updatedHistory, currentUserId);
+            }
+          }
         }
       } catch {
         // Silently catch background poll error
