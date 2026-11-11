@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { ANDROID_RELEASE_METADATA } from '@/lib/app/releaseMetadata';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,14 +16,19 @@ export async function GET(request: NextRequest) {
       if (fs.existsSync(filePath)) {
         const stat = fs.statSync(filePath);
         const fileBuffer = fs.readFileSync(filePath);
+        const sha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
         return new NextResponse(fileBuffer, {
           status: 200,
           headers: {
             'Content-Type': 'application/vnd.android.package-archive',
-            'Content-Disposition': 'attachment; filename="StockMind.apk"',
+            'Content-Disposition': `attachment; filename="${ANDROID_RELEASE_METADATA.apkFilename}"`,
             'Content-Length': stat.size.toString(),
             'Cache-Control': 'public, max-age=3600',
+            'ETag': `"${sha256}"`,
+            'X-StockMind-Version': ANDROID_RELEASE_METADATA.version,
+            'X-StockMind-VersionCode': String(ANDROID_RELEASE_METADATA.versionCode),
+            'X-StockMind-SHA256': sha256,
           },
         });
       }

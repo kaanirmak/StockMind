@@ -964,5 +964,43 @@ test('OPS-02: Android APK upgrade path preserves cookies, WebView storage, and b
   assert.doesNotMatch(notifier, /localStorage\.clear\(/);
 });
 
+test('OPS-03: APK distribution returns archive headers & SHA-256 checksum alongside release notes and rollback steps', async () => {
+  const load = loader({
+    fs,
+    path,
+    '@/lib/supabase/server': {
+      createClient: async () => ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    },
+  }, {}, { process: { env: {}, cwd: () => root } });
+
+  const downloadRoute = load('src/app/api/download/apk/route.ts');
+  const apkRes = await downloadRoute.GET(new Request('https://stockmind.test/api/download/apk'));
+  assert.equal(apkRes.status, 200);
+  assert.equal(apkRes.headers.get('content-type'), 'application/vnd.android.package-archive');
+  const sha = apkRes.headers.get('x-stockmind-sha256');
+  assert.match(sha || '', /^[a-f0-9]{64}$/);
+  assert.equal(apkRes.headers.get('etag'), `"${sha}"`);
+  assert.equal(apkRes.headers.get('x-stockmind-version'), '1.5.1');
+  assert.equal(apkRes.headers.get('x-stockmind-versioncode'), '12');
+
+  const versionRoute = load('src/app/api/app/version/route.ts');
+  const versionPayload = await (await versionRoute.GET()).json();
+  assert.ok(typeof versionPayload.releaseNotes === 'string' && versionPayload.releaseNotes.length > 10);
+  assert.match(versionPayload.previousSha256 || '', /^[a-f0-9]{64}$/);
+  assert.ok(Array.isArray(versionPayload.rollbackSteps) && versionPayload.rollbackSteps.length >= 3);
+
+  const runbook = fs.readFileSync(path.join(root, 'docs/android-release-runbook.md'), 'utf8');
+  assert.match(runbook, /72677be35a633c22b6d77de19156a1f31e916e319de082c7997293772e12d39f/);
+  assert.match(runbook, /Rollback Steps/);
+});
+
 
 

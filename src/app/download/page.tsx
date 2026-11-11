@@ -4,6 +4,7 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { ANDROID_RELEASE_METADATA } from '@/lib/app/releaseMetadata';
 
 export default function DownloadPage() {
   const [selectedPlatform, setSelectedPlatform] = useState<'android' | 'ios'>('android');
@@ -135,14 +136,17 @@ export default function DownloadPage() {
                       </svg>
                     </div>
                     <div>
-                      <h2 className="text-lg sm:text-xl font-bold text-text-primary">StockMind.apk</h2>
+                      <h2 className="text-lg sm:text-xl font-bold text-text-primary">{ANDROID_RELEASE_METADATA.apkFilename}</h2>
                       <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">v1.5.0</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">v{ANDROID_RELEASE_METADATA.version}</span>
                         <span>•</span>
-                        <span>5.9 MB</span>
+                        <span>Build {ANDROID_RELEASE_METADATA.versionCode}</span>
                         <span>•</span>
-                        <span className="text-text-secondary">Android 7.0+</span>
+                        <span className="text-text-secondary">{ANDROID_RELEASE_METADATA.minAndroidVersion}</span>
                       </div>
+                      <p className="text-[11px] text-text-muted mt-1 line-clamp-2">
+                        {ANDROID_RELEASE_METADATA.releaseNotes}
+                      </p>
                     </div>
                   </div>
 
