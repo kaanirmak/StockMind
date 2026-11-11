@@ -62,7 +62,7 @@ export default function StockDetailPage({
   };
 
   const { stock, loading: stockLoading } = useStockDetail(symbol);
-  const { candles, loading: chartLoading } = useStockHistory(symbol, timeframe);
+  const { candles, historyMeta, loading: chartLoading, error: chartError } = useStockHistory(symbol, timeframe);
   const { indicators } = useStockIndicators(symbol, timeframe);
 
   const isIndexAsset =
@@ -367,6 +367,12 @@ export default function StockDetailPage({
             candles={candles}
             symbol={symbol}
             unit={isIndexAsset ? 'Puan' : currSymbol}
+            timeframe={timeframe}
+            currency={stock?.currency}
+            isIndex={isIndexAsset}
+            chartError={chartError}
+            chartLoading={chartLoading}
+            dataSource={historyMeta?.source}
             height={440}
             showSMA20={showSMA20}
             showSMA50={showSMA50}

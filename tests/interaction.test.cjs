@@ -2704,6 +2704,62 @@ test('PIY-03 ensures every search result displays symbol, exchange, asset type a
   }
 });
 
+test('PIY-04 exposes chart timeframe, price unit, last candle time and missing-data state', () => {
+  const { buildChartDataCoverageReport } = load('src/lib/market/chartDataCoverage.ts');
+
+  const complete = {
+    ...buildChartDataCoverageReport({
+      timeframe: '1Y',
+      currency: 'TRY',
+      candles: Array.from({ length: 120 }, (_, i) => ({
+        time: i === 0 ? '2025-05-01' : i === 119 ? '2026-04-30' : `2025-06-0${(i % 9) + 1}`,
+        close: 300 + i * 0.2,
+      })),
+    }),
+  };
+  assert.equal(complete.timeframeLabel, '1Y (1 Yıl)');
+  assert.equal(complete.priceUnitLabel, 'TRY (₺)');
+  assert.equal(complete.lastCandleTime, '2026-04-30');
+  assert.equal(complete.rangeSummary, '2025-05-01 – 2026-04-30');
+  assert.equal(complete.coverageStatus, 'complete');
+  assert.equal(complete.missingDataNotice, null);
+
+  const missing = {
+    ...buildChartDataCoverageReport({
+      timeframe: '1D',
+      currency: 'USD',
+      candles: [],
+      error: 'Tarihsel veri sağlayıcıda bulunamadı.',
+    }),
+  };
+  assert.equal(missing.coverageStatus, 'missing');
+  assert.equal(missing.priceUnitLabel, 'USD ($)');
+  assert.equal(missing.lastCandleTime, null);
+  assert.match(missing.missingDataNotice, /bulunamadı/);
+
+  const partial = {
+    ...buildChartDataCoverageReport({
+      timeframe: '1Y',
+      isIndex: true,
+      candles: [
+        { time: '2026-04-28', close: 9800 },
+        { time: '2026-04-29', close: 9850 },
+      ],
+    }),
+  };
+  assert.equal(partial.priceUnitLabel, 'Endeks Puanı (Puan)');
+  assert.equal(partial.coverageStatus, 'partial');
+  assert.match(partial.missingDataNotice, /2 mum/);
+
+  const chartSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/stocks/CandlestickChart.tsx'),
+    'utf8'
+  );
+  assert.match(chartSrc, /data-testid="chart-coverage-bar"/);
+  assert.match(chartSrc, /data-testid="chart-missing-data"/);
+  assert.match(chartSrc, /buildChartDataCoverageReport/);
+});
+
 
 
 

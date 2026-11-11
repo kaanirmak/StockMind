@@ -93,6 +93,7 @@ export function useStockDetail(symbol: string) {
 
 export function useStockHistory(symbol: string, timeframe: string = '1M') {
   const [candles, setCandles] = useState<Candle[]>([]);
+  const [historyMeta, setHistoryMeta] = useState<{ source?: string | null; fetchedAt?: string | null }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,16 +104,31 @@ export function useStockHistory(symbol: string, timeframe: string = '1M') {
       try {
         setLoading(true);
         setError(null);
-        const json = await marketJson<{ success: boolean; data: Candle[]; error?: string }>(`/api/stocks/${encodeURIComponent(symbol)}/history?timeframe=${timeframe}`, 60_000);
+        const json = await marketJson<{
+          success: boolean;
+          data: Candle[];
+          observation?: { source?: string | null; fetchedAt?: string | null };
+          error?: string;
+        }>(`/api/stocks/${encodeURIComponent(symbol)}/history?timeframe=${timeframe}`, 60_000);
         if (isMounted) {
-          if (json.success) {
+          if (json.success && Array.isArray(json.data)) {
             setCandles(json.data);
+            setHistoryMeta({
+              source: json.observation?.source ?? null,
+              fetchedAt: json.observation?.fetchedAt ?? null,
+            });
           } else {
+            setCandles([]);
+            setHistoryMeta({});
             setError(json.error || 'Tarihsel veri alınamadı');
           }
         }
       } catch (err) {
-        if (isMounted) setError('Ağ hatası oluştu');
+        if (isMounted) {
+          setCandles([]);
+          setHistoryMeta({});
+          setError('Tarihsel veri alınamadı');
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -124,7 +140,7 @@ export function useStockHistory(symbol: string, timeframe: string = '1M') {
     };
   }, [symbol, timeframe]);
 
-  return { candles, loading, error };
+  return { candles, historyMeta, loading, error };
 }
 
 export function useStockIndicators(symbol: string, timeframe: string = '1Y') {

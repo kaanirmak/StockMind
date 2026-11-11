@@ -17,11 +17,18 @@ import {
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { Candle, BollingerBandsResult, calculateSMA, calculateBollingerBands } from '@/lib/indicators';
+import { buildChartDataCoverageReport } from '@/lib/market/chartDataCoverage';
 
 export interface CandlestickChartProps {
   candles: Candle[];
   symbol: string;
   unit?: string;
+  timeframe?: string;
+  currency?: string;
+  isIndex?: boolean;
+  chartError?: string | null;
+  chartLoading?: boolean;
+  dataSource?: string | null;
   height?: number;
   bollingerBands?: BollingerBandsResult[];
   sma20?: { time: string | number; value: number }[];
@@ -37,6 +44,12 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
   candles,
   symbol,
   unit,
+  timeframe = '1Y',
+  currency,
+  isIndex = false,
+  chartError = null,
+  chartLoading = false,
+  dataSource = null,
   height = 450,
   bollingerBands = [],
   sma20 = [],
@@ -480,6 +493,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     activeCandle && activeCandle.open
       ? (((activeCandle.close - activeCandle.open) / activeCandle.open) * 100)
       : 0;
+  const coverage = buildChartDataCoverageReport({
+    timeframe,
+    currency: currency || (unit === '₺' ? 'TRY' : unit === '€' ? 'EUR' : unit === '$' ? 'USD' : undefined),
+    isIndex: isIndex || unit === 'Puan',
+    candles,
+    loading: chartLoading,
+    error: chartError,
+    source: dataSource,
+  });
 
   return (
     <div
@@ -569,14 +591,56 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
         </div>
       </div>
 
-      {/* Chart Canvas with Non-locking Mobile Touch Action */}
+      {/* Chart Data Coverage Strip */}
       <div
-        ref={chartContainerRef}
-        role="img"
-        aria-label={`${symbol} fiyat grafiği, ${candles.length} veri noktası${candles.length ? `, son kapanış ${candles[candles.length - 1].close}` : ''}`}
-        className="w-full relative"
-        style={{ touchAction: touchInspectMode ? 'none' : 'pan-y' }}
-      />
+        data-testid="chart-coverage-bar"
+        className="flex flex-wrap items-center justify-between gap-2 mb-2 px-2.5 py-1.5 rounded-lg bg-bg-secondary/50 border border-border/40 text-[11px] text-text-secondary"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            <strong className="text-text-muted font-medium">Aralık:</strong> {coverage.timeframeLabel} ({coverage.rangeSummary})
+          </span>
+          <span>
+            <strong className="text-text-muted font-medium">Fiyat Birimi:</strong> {coverage.priceUnitLabel}
+          </span>
+          <span>
+            <strong className="text-text-muted font-medium">Son Mum:</strong> {coverage.lastCandleTime ?? 'Veri yok'}
+          </span>
+        </div>
+        <span className="font-mono text-[10px] text-text-muted">
+          {coverage.candleCount} mum{dataSource ? ` • ${dataSource}` : ''}
+        </span>
+      </div>
+
+      {coverage.coverageStatus === 'partial' && coverage.missingDataNotice && (
+        <div
+          data-testid="chart-partial-data"
+          className="mb-2 px-3 py-1.5 rounded-lg bg-warning/10 border border-warning/30 text-warning text-xs flex items-center justify-between gap-2"
+        >
+          <span>{coverage.missingDataNotice}</span>
+        </div>
+      )}
+
+      {/* Chart Canvas with Non-locking Mobile Touch Action */}
+      {coverage.coverageStatus === 'missing' ? (
+        <div
+          data-testid="chart-missing-data"
+          role="status"
+          className="w-full rounded-2xl border border-border/60 bg-bg-secondary/30 flex flex-col items-center justify-center text-center p-6"
+          style={{ minHeight: `${Math.min(height, 360)}px` }}
+        >
+          <p className="text-sm font-semibold text-text-primary mb-1">Grafik verisi eksik</p>
+          <p className="text-xs text-text-muted max-w-md">{coverage.missingDataNotice}</p>
+        </div>
+      ) : (
+        <div
+          ref={chartContainerRef}
+          role="img"
+          aria-label={`${symbol} fiyat grafiği, ${candles.length} veri noktası${candles.length ? `, son kapanış ${candles[candles.length - 1].close}` : ''}`}
+          className="w-full relative"
+          style={{ touchAction: touchInspectMode ? 'none' : 'pan-y' }}
+        />
+      )}
 
       {/* Embedded Bottom Controls (Timeframe & Indicators inside the chart flow) */}
       {bottomControls && (
