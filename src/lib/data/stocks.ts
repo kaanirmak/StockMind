@@ -1,4 +1,4 @@
-import { StockQuote, StockMarketInfo } from '@/types/stock';
+import { StockQuote, StockMarketInfo, type MarketPriceObservation } from '@/types/stock';
 import { calculateFuzzyScore, normalizeText, POPULAR_ALIASES } from '@/lib/utils/search';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { fetchTefasLiveDetail } from '@/lib/api/tefas';
@@ -566,6 +566,21 @@ export const CURATED_COMMODITY_DEFINITIONS: CuratedCommodityDef[] = [
   { ticker: 'CT=F', symbol: 'COTTON', name: 'Pamuk ($)', currency: 'USD', sector: 'Tarım Emtiaları', subCategory: 'AGRI', unit: '$ / Lb', basePrice: 80.67, marketCap: 95_000_000_000 },
 ];
 
+function finiteMarketNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function marketObservation(source: string, change: unknown, epochSeconds?: unknown): MarketPriceObservation {
+  const seconds = finiteMarketNumber(epochSeconds);
+  const date = seconds !== null && seconds > 0 ? new Date(seconds * 1000) : null;
+  return {
+    source,
+    asOf: date && Number.isFinite(date.getTime()) ? date.toISOString() : null,
+    fetchedAt: new Date().toISOString(),
+    changePercent: finiteMarketNumber(change),
+  };
+}
+
 async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
   const result: AlternativeMarketsData = {
     crypto: [],
@@ -580,6 +595,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         // 1. Top Ranked Major Cryptocurrencies from Binance
         fetch('https://scanner.tradingview.com/crypto/scan', {
           method: 'POST',
+          signal: AbortSignal.timeout(5000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             symbols: { tickers: TOP_CRYPTO_RANKED_SYMBOLS.map((s) => `BINANCE:${s}`) },
@@ -591,6 +607,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         // 1.5 Additional high volume cryptocurrencies from Binance
         fetch('https://scanner.tradingview.com/crypto/scan', {
           method: 'POST',
+          signal: AbortSignal.timeout(5000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filter: [
@@ -607,6 +624,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         // 2. All Turkish Lira (TRY) currency pairs
         fetch('https://scanner.tradingview.com/forex/scan', {
           method: 'POST',
+          signal: AbortSignal.timeout(5000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filter: [{ left: 'name', operation: 'match', right: '.*TRY$' }],
@@ -620,6 +638,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         // 3. Top 100 Global Forex Pairs
         fetch('https://scanner.tradingview.com/forex/scan', {
           method: 'POST',
+          signal: AbortSignal.timeout(5000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
@@ -632,6 +651,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         // 4. Spot Gold CFD for fast precision
         fetch('https://scanner.tradingview.com/cfd/scan', {
           method: 'POST',
+          signal: AbortSignal.timeout(5000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filter: [{ left: 'name', operation: 'equal', right: 'XAUUSD' }],
@@ -643,6 +663,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         // 4.5 Spot Silver CFD for fast precision
         fetch('https://scanner.tradingview.com/cfd/scan', {
           method: 'POST',
+          signal: AbortSignal.timeout(5000),
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             filter: [{ left: 'name', operation: 'equal', right: 'SILVER' }],
@@ -668,8 +689,13 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
               clearTimeout(timeoutId);
 
               const meta = r?.chart?.result?.[0]?.meta;
-              const livePrice = meta?.regularMarketPrice || item.basePrice;
-              const liveChange = meta?.regularMarketChangePercent ?? 0;
+              const providerPrice = finiteMarketNumber(meta?.regularMarketPrice);
+              const hasPrice = providerPrice !== null && providerPrice > 0;
+              const livePrice = hasPrice ? providerPrice : item.basePrice;
+              const previousClose = finiteMarketNumber(meta?.chartPreviousClose ?? meta?.previousClose);
+              const providerChange = finiteMarketNumber(meta?.regularMarketChangePercent) ??
+                (hasPrice && previousClose && previousClose > 0 ? (livePrice / previousClose - 1) * 100 : null);
+              const liveChange = providerChange ?? 0;
               const high = meta?.regularMarketDayHigh || livePrice * 1.01;
               const low = meta?.regularMarketDayLow || livePrice * 0.99;
               const high52 = meta?.fiftyTwoWeekHigh || livePrice * 1.3;
@@ -678,6 +704,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
               return {
                 ...item,
                 price: Number(livePrice.toFixed(2)),
+                observation: hasPrice ? marketObservation('Yahoo Finance', providerChange, meta?.regularMarketTime) : undefined,
                 changePercent: Number(liveChange.toFixed(2)),
                 high: Number(high.toFixed(2)),
                 low: Number(low.toFixed(2)),
@@ -715,8 +742,13 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
               clearTimeout(timeoutId);
 
               const meta = r?.chart?.result?.[0]?.meta;
-              const livePrice = meta?.regularMarketPrice || item.basePrice;
-              const liveChange = meta?.regularMarketChangePercent ?? 0;
+              const providerPrice = finiteMarketNumber(meta?.regularMarketPrice);
+              const hasPrice = providerPrice !== null && providerPrice > 0;
+              const livePrice = hasPrice ? providerPrice : item.basePrice;
+              const previousClose = finiteMarketNumber(meta?.chartPreviousClose ?? meta?.previousClose);
+              const providerChange = finiteMarketNumber(meta?.regularMarketChangePercent) ??
+                (hasPrice && previousClose && previousClose > 0 ? (livePrice / previousClose - 1) * 100 : null);
+              const liveChange = providerChange ?? 0;
               const high = meta?.regularMarketDayHigh || livePrice * 1.01;
               const low = meta?.regularMarketDayLow || livePrice * 0.99;
               const high52 = meta?.fiftyTwoWeekHigh || livePrice * 1.25;
@@ -725,6 +757,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
               return {
                 ...item,
                 price: Number(livePrice.toFixed(2)),
+                observation: hasPrice ? marketObservation('Yahoo Finance', providerChange, meta?.regularMarketTime) : undefined,
                 changePercent: Number(liveChange.toFixed(2)),
                 high: Number(high.toFixed(2)),
                 low: Number(low.toFixed(2)),
@@ -750,7 +783,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
     const seenCrypto = new Set<string>();
     const parseCryptoItem = (item: any) => {
       const [name, close, change, volume, desc, high52, low52] = item.d;
-      if (!name || close === null || close === undefined || seenCrypto.has(name)) return;
+      if (!name || typeof close !== 'number' || !Number.isFinite(close) || close <= 0 || seenCrypto.has(name)) return;
       seenCrypto.add(name);
 
       const currentPrice = Number(close.toFixed(close < 1 ? (close < 0.001 ? 6 : 4) : 2));
@@ -765,6 +798,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         symbol: name,
         name: CRYPTO_NAMES[name] || desc || name,
         exchange: 'CRYPTO',
+        observation: marketObservation('TradingView / Binance', change),
         currency: 'USD',
         sector: 'Kripto Varlıklar',
         subCategory: isMajor ? 'MAJOR' : 'ALT',
@@ -803,7 +837,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
 
     const parseForexItem = (item: any) => {
       const [name, close, change, desc, high52, low52] = item.d;
-      if (!name || close === null || close === undefined || seenForex.has(name)) return;
+      if (!name || typeof close !== 'number' || !Number.isFinite(close) || close <= 0 || seenForex.has(name)) return;
       seenForex.add(name);
 
       const isTryPair = name.endsWith('TRY');
@@ -820,6 +854,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         symbol: name,
         name: FOREX_NAMES[name] || desc || name,
         exchange: 'FOREX',
+        observation: marketObservation('TradingView', change),
         currency: isTryPair ? 'TRY' : 'USD',
         sector: isTryPair ? 'Türk Lirası Kurları' : 'Majör Pariteler',
         subCategory: isTryPair ? 'TRY' : 'MAJOR',
@@ -855,6 +890,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         symbol: item.symbol,
         name: item.name,
         exchange: 'INDEX',
+        observation: item.observation,
         currency: item.currency,
         sector: item.sector,
         subCategory: item.subCategory,
@@ -879,10 +915,15 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
 
     // Parse Pure Curated Commodities
     // 1. Live spot gold & silver for Turkish gold varieties
-    const liveOnsAltin = cfdGoldRes?.data?.[0]?.d?.[1] || 4166.8;
-    const liveOnsAltinChange = cfdGoldRes?.data?.[0]?.d?.[2] || 0;
-    const liveOnsGumus = cfdSilverRes?.data?.[0]?.d?.[1] || 58.77;
-    const liveOnsGumusChange = cfdSilverRes?.data?.[0]?.d?.[2] || 0;
+    const goldPrice = finiteMarketNumber(cfdGoldRes?.data?.[0]?.d?.[1]);
+    const silverPrice = finiteMarketNumber(cfdSilverRes?.data?.[0]?.d?.[1]);
+    const goldChange = finiteMarketNumber(cfdGoldRes?.data?.[0]?.d?.[2]);
+    const silverChange = finiteMarketNumber(cfdSilverRes?.data?.[0]?.d?.[2]);
+    const fxObservation = result.forex.find(quote => quote.symbol === 'USDTRY')?.observation;
+    const liveOnsAltin = goldPrice && goldPrice > 0 ? goldPrice : 4166.8;
+    const liveOnsAltinChange = goldChange ?? 0;
+    const liveOnsGumus = silverPrice && silverPrice > 0 ? silverPrice : 58.77;
+    const liveOnsGumusChange = silverChange ?? 0;
 
     const gramPrice = Number(((liveOnsAltin * liveUsdTry) / 31.1034768).toFixed(2));
     const gramChangePercent = Number((liveOnsAltinChange + liveUsdTryChange).toFixed(2));
@@ -953,10 +994,20 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
     ];
 
     turkishGoldItems.forEach((tg) => {
-      const chgPct = (tg as any).isSilver ? gramGumusChangePercent : gramChangePercent;
+      const chgPct = tg.isSilver ? gramGumusChangePercent : gramChangePercent;
+      const metalPrice = tg.isSilver ? silverPrice : goldPrice;
+      const metalChange = tg.isSilver ? silverChange : goldChange;
+      const fxChange = fxObservation?.changePercent;
+      const combinedChange = metalChange !== null && fxChange != null
+        ? ((1 + metalChange / 100) * (1 + fxChange / 100) - 1) * 100
+        : null;
+      const observation = fxObservation && metalPrice !== null && metalPrice > 0
+        ? marketObservation('TradingView / Hesaplanan', combinedChange)
+        : undefined;
       const chgAmt = Number(((tg.price * chgPct) / 100).toFixed(2));
       result.commodity.push({
         symbol: tg.symbol,
+        observation,
         name: tg.name,
         exchange: 'COMMODITY',
         currency: 'TRY',
@@ -987,6 +1038,7 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
       result.commodity.push({
         symbol: item.symbol,
         name: item.name,
+        observation: item.observation,
         exchange: 'COMMODITY',
         currency: 'USD',
         sector: item.sector,
@@ -1082,6 +1134,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       }).then((r) => r.json()).catch(() => null);
 
       const meta = res?.chart?.result?.[0]?.meta;
+      if (!allowSynthetic && !(meta?.regularMarketPrice > 0)) return null;
       const currentPrice = meta?.regularMarketPrice || indexDef.basePrice;
       const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
       const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
@@ -1113,6 +1166,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       } as any;
     } catch (e) {
       console.warn(`Error resolving index ${sym}:`, e);
+      if (!allowSynthetic) return null;
       return {
         symbol: indexDef.symbol,
         name: indexDef.name,
@@ -1250,6 +1304,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         }).then((r) => r.json()).catch(() => null);
 
         const meta = res?.chart?.result?.[0]?.meta;
+        if (!allowSynthetic && !(meta?.regularMarketPrice > 0)) return null;
         const currentPrice = meta?.regularMarketPrice || commDef.basePrice;
         const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
         const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
@@ -1300,7 +1355,7 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
   if (isFundCode) {
     try {
       const fundDetail = await fetchTefasLiveDetail(originalSym);
-      if (fundDetail && fundDetail.price > 0) {
+      if (fundDetail && fundDetail.price !== null && fundDetail.price > 0) {
         return {
           symbol: originalSym,
           name: fundDetail.name,
@@ -1599,6 +1654,7 @@ export async function getAllStocksLive(filter?: {
   exchange?: string;
   sector?: string;
   search?: string;
+  liveOnly?: boolean;
 }): Promise<(StockMarketInfo & StockQuote)[]> {
   const exUpper = filter?.exchange?.toUpperCase();
 
@@ -1675,7 +1731,7 @@ export async function getAllStocksLive(filter?: {
   let allStocks = [...bist, ...us];
 
   // If list is empty due to initial fetch, fallback to POPULAR_STOCKS
-  if (allStocks.length === 0) {
+  if (allStocks.length === 0 && !filter?.liveOnly) {
     allStocks = [...POPULAR_STOCKS] as any;
   }
 

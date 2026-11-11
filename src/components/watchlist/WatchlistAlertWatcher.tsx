@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useWatchlistStore, isPriceAlertTriggered } from '@/store/useWatchlistStore';
 import { sendPushNotification, loadPushPreferences } from '@/lib/notifications/pushNotification';
+import { marketJson } from '@/lib/api/clientCache';
 
 /** localStorage-based cooldown per symbol to survive WebView restarts */
 const ALERT_COOLDOWN_KEY = 'stockmind_alert_cooldowns';
@@ -33,9 +34,11 @@ export function WatchlistAlertWatcher() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    let active = true;
     const checkAlerts = async () => {
-      if (isCheckingRef.current || document.hidden || !loadPushPreferences().priceAlerts) return;
-      const { items } = useWatchlistStore.getState();
+      const prefs = loadPushPreferences();
+      if (isCheckingRef.current || document.hidden || !prefs.priceAlerts || (!prefs.enabled && !prefs.inAppEnabled)) return;
+      const { items, currentUserId } = useWatchlistStore.getState();
       const activeAlertItems = items.filter(
         (i) => (i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0)
       );
@@ -44,31 +47,39 @@ export function WatchlistAlertWatcher() {
 
       isCheckingRef.current = true;
       try {
-        const res = await fetch('/api/stocks', { cache: 'no-store' });
-        if (!res.ok) return;
-        const json = await res.json();
-        const stockList: Array<{ symbol: string; price: number }> = json?.data || [];
-        if (!Array.isArray(stockList) || stockList.length === 0) return;
+        type Quote = { symbol?: string; code?: string; price: number; lastSyncAt?: string };
+        const types = Array.from(new Set(activeAlertItems.map(item => item.assetType)));
+        const results = await Promise.allSettled(types.map(type =>
+          marketJson<{ data: Quote[] }>(type === 'fund' ? '/api/funds' : '/api/stocks?liveOnly=true', 60_000)
+        ));
+        const current = useWatchlistStore.getState();
+        if (!active || current.currentUserId !== currentUserId) return;
 
         const priceMap = new Map<string, number>();
-        for (const s of stockList) {
-          if (s.symbol && typeof s.price === 'number') {
-            priceMap.set(s.symbol.toUpperCase(), s.price);
+        results.forEach((result, index) => {
+          if (result.status !== 'fulfilled' || !Array.isArray(result.value.data)) return;
+          const type = types[index];
+          for (const quote of result.value.data) {
+            const symbol = type === 'fund' ? quote.code : quote.symbol;
+            if (symbol && Number.isFinite(quote.price) && quote.price > 0 &&
+                (type !== 'fund' || quote.lastSyncAt)) {
+              priceMap.set(`${type}:${symbol.toUpperCase()}`, quote.price);
+            }
           }
-        }
+        });
 
         const cooldowns = loadAlertCooldowns();
         let cooldownsDirty = false;
 
-        for (const item of activeAlertItems) {
+        for (const item of current.items) {
           const sym = item.symbol.toUpperCase();
-          const livePrice = priceMap.get(sym);
+          const livePrice = priceMap.get(`${item.assetType}:${sym}`);
           if (!livePrice || livePrice <= 0) continue;
 
           const check = isPriceAlertTriggered(item, livePrice);
           if (check.triggered) {
             // Per-symbol + alert-type cooldown key (not price-dependent)
-            const cooldownKey = `${sym}_${item.alertType || 'price'}`;
+            const cooldownKey = JSON.stringify([currentUserId, item.assetType, sym, item.alertType, item.targetPrice, item.alertPercent]);
             const lastFired = cooldowns[cooldownKey] || 0;
 
             if (Date.now() - lastFired < ALERT_COOLDOWN_MS) {
@@ -76,21 +87,18 @@ export function WatchlistAlertWatcher() {
               continue;
             }
 
-            // Mark cooldown
-            cooldowns[cooldownKey] = Date.now();
-            cooldownsDirty = true;
-
-            // Send the notification
-            sendPushNotification(
+            const delivered = sendPushNotification(
               check.title,
               check.message,
-              item.assetType === 'fund' ? `/funds/${item.symbol}` : `/stocks/${item.symbol}`
+              item.assetType === 'fund' ? `/funds/${encodeURIComponent(sym)}` : `/stocks/${encodeURIComponent(sym)}`
             );
+            if (!delivered) continue;
 
-            // KEY FIX: Update the base price to the current live price so the
-            // same threshold doesn't re-trigger on the next poll cycle.
-            // The alarm stays active but is now anchored to the new price.
-            useWatchlistStore.getState().updateAlertBasePrice(sym, livePrice);
+            cooldowns[cooldownKey] = Date.now();
+            cooldownsDirty = true;
+            if (item.alertType && item.alertType !== 'price') {
+              useWatchlistStore.getState().updateAlertBasePrice(sym, livePrice);
+            }
           }
         }
 
@@ -112,10 +120,13 @@ export function WatchlistAlertWatcher() {
       checkAlerts();
     };
     window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
 
     return () => {
+      active = false;
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
     };
   }, []);
 

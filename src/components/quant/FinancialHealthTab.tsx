@@ -57,17 +57,18 @@ export default function FinancialHealthTab({
     onSelectSymbol?.(cleanSym);
   };
 
+  const holdingPrice = activeHolding?.originalPrice ?? activeHolding?.currentPrice;
   const piotroski = useMemo(
-    () => evaluatePiotroski(currentSymbol, activeHolding?.currentPrice),
-    [currentSymbol, activeHolding?.currentPrice]
+    () => evaluatePiotroski(currentSymbol, holdingPrice),
+    [currentSymbol, holdingPrice]
   );
   const altman = useMemo(
-    () => evaluateAltmanZ(currentSymbol, activeHolding?.currentPrice),
-    [currentSymbol, activeHolding?.currentPrice]
+    () => evaluateAltmanZ(currentSymbol, holdingPrice),
+    [currentSymbol, holdingPrice]
   );
   const dupont = useMemo(
-    () => evaluateDuPont(currentSymbol, activeHolding?.currentPrice),
-    [currentSymbol, activeHolding?.currentPrice]
+    () => evaluateDuPont(currentSymbol, holdingPrice),
+    [currentSymbol, holdingPrice]
   );
 
   // Group Piotroski items by category
@@ -88,6 +89,9 @@ export default function FinancialHealthTab({
 
   return (
     <div className="space-y-6">
+      <p className="rounded-xl border border-warning/30 p-3 text-sm text-text-secondary">
+        Skorlar örnek finansal profilden hesaplanır. Şirketin güncel finansal tabloları bu modele bağlı değildir.
+      </p>
       {/* Analysis header and symbol selection */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

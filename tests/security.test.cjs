@@ -8,7 +8,7 @@ const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
 
 // Run the real TypeScript modules, replacing only network/framework boundaries.
-function loader(stubs = {}, env = {}) {
+function loader(stubs = {}, env = {}, globals = {}) {
   const cache = new Map();
   function load(file) {
     const full = path.join(root, file);
@@ -22,6 +22,7 @@ function loader(stubs = {}, env = {}) {
       exports, module: { exports }, Request, Response, Headers, URL, TextDecoder, TextEncoder,
       Uint8Array, Buffer, AbortSignal, crypto: webcrypto, console: { warn() {}, error() {} },
       process: { env },
+      ...globals,
       require(name) {
         if (Object.hasOwn(stubs, name)) return stubs[name];
         if (name === 'next/server') {
@@ -55,6 +56,7 @@ function fixture(options = {}) {
     '@/lib/ai/market-context': { buildLiveAIContext: async () => 'server context' },
     '@/lib/ai/investment-committee': { runInvestmentCommittee: async (...args) => { calls.ai++; calls.aiArgs = args; return { isLiveLLM: true }; } },
     '@/lib/data/stocks': { getStockBySymbolLive: async () => { calls.quote++; return options.quote === undefined ? { price: 123, name: 'Verified' } : options.quote; } },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ gold: 123 }) },
     '@/lib/email/service': { sendTestEmail: async (payload) => { calls.mail++; calls.mailArgs = payload; return { success: true }; } },
     '@/lib/supabase/admin': { createAdminClient: () => ({ from: (table) => { calls.table = table; return { upsert: async (payload) => { calls.write++; calls.writeArgs = payload; return { error: options.writeError || null }; } }; } }) },
   }, { OPENROUTER_API_KEY: 'server-key', ADMIN_BROADCAST_KEY: options.adminKey });
@@ -214,6 +216,41 @@ test('test email template contains no fabricated market or portfolio metrics', (
   const html = load('src/lib/email/service.ts').generateStockMindEmailHtml('User', { isDailyReport: false });
   assert.match(html, /test e-postası/);
   for (const fake of ['184500', '184.500', '4309', '48.63', 'Kâr', 'Getiri']) assert.equal(html.includes(fake), false);
+});
+
+test('Scheduled bulletin respects preferences and reports partial provider failure', async () => {
+  const accepted = [];
+  const users = [
+    { email: 'ok@example.test', app_metadata: { plan: 'pro' } },
+    { email: 'fail@example.test', app_metadata: { plan: 'enterprise' } },
+    { email: 'optout@example.test', app_metadata: { plan: 'pro' }, user_metadata: { daily_report_enabled: false } },
+    { email: 'free@example.test', app_metadata: { plan: 'free' } },
+  ].map(user => ({ ...user, email_confirmed_at: '2026-01-01T00:00:00Z' }));
+  const load = loader({
+    '@/lib/email/service': { sendTestEmail: async ({ to }) => {
+      accepted.push(to);
+      return { success: to === 'ok@example.test' };
+    } },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({}) },
+    '@/lib/supabase/admin': { createAdminClient: () => ({
+      auth: { admin: { listUsers: async () => ({ data: { users } }) } },
+    }) },
+  }, { CRON_SECRET: 'cron-secret' });
+  const { POST } = load('src/app/api/cron/daily-report/route.ts');
+  const response = await POST(request({}, { authorization: 'Bearer cron-secret' }));
+  assert.equal(response.status, 207);
+  assert.equal((await response.json()).success, false);
+  assert.deepEqual(accepted, ['ok@example.test', 'fail@example.test']);
+});
+
+test('Daily bulletin shows supplied market prices and omits sample portfolio values', () => {
+  const load = loader({ nodemailer: {}, '@supabase/supabase-js': {} });
+  const { generateStockMindEmailHtml } = load('src/lib/email/service.ts');
+  const html = generateStockMindEmailHtml('<Üye>', { isDailyReport: true, marketData: { usdtry: 42, gold: NaN } });
+  assert.match(html, /Dolar \/ TL/);
+  assert.match(html, /42,00/);
+  assert.match(html, /&lt;Üye&gt;/);
+  assert.doesNotMatch(html, /Ons Altın|Portföy değeri|GÜÇLÜ AL|NaN/);
 });
 
 test('cron endpoints strictly enforce header-based CRON_SECRET and disallow URL query secrets', () => {
@@ -390,6 +427,36 @@ test('SEC-01 & SEC-03: escapeHtml neutralizes XSS and HTML markup characters', (
   assert.equal(escapeHtml("Tom & 'Jerry'"), 'Tom &amp; &#39;Jerry&#39;');
   assert.equal(escapeHtml(null), '');
   assert.equal(escapeHtml(undefined), '');
+});
+
+test('Gmail mode uses the authenticated sender and skips configured HTTP email providers', async () => {
+  const calls = { http: 0 };
+  const load = loader({
+    nodemailer: {
+      createTransport: (options) => {
+        calls.options = options;
+        return { sendMail: async mail => { calls.mail = mail; return { accepted: [mail.to] }; } };
+      },
+    },
+  }, {
+    EMAIL_TRANSPORT: 'gmail',
+    SMTP_USER: 'sender@gmail.com',
+    SMTP_PASS: 'app password',
+    SMTP_PORT: '587',
+    SMTP_FROM: 'legacy@example.test',
+    RESEND_API_KEY: 'test-key',
+    BREVO_API_KEY: 'test-key',
+  }, { fetch: async () => { calls.http++; throw new Error('Unexpected HTTP transport'); } });
+  const { sendEmailTransport } = load('src/lib/email/service.ts');
+  const result = await sendEmailTransport({
+    to: 'recipient@example.test', subject: 'Test', html: '<p>Test</p>', from: 'override@example.test',
+  });
+  assert.equal(result.method, 'google_smtp');
+  assert.equal(calls.http, 0);
+  assert.equal(calls.mail.from, 'StockMind <sender@gmail.com>');
+  assert.equal(calls.options.host, 'smtp.gmail.com');
+  assert.equal(calls.options.port, 465);
+  assert.equal(calls.options.secure, true);
 });
 
 test('SEC-01: sendProRequestAdminEmail sanitizes user note, name and email against HTML injection', async () => {

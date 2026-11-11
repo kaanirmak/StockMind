@@ -149,6 +149,9 @@ public class MainActivity extends AppCompatActivity {
                     if (isGranted) {
                         NotificationHelper.createNotificationChannel(this);
                     }
+                    if (webView != null) {
+                        webView.evaluateJavascript("window.dispatchEvent(new Event('stockmind:notification-permission'))", null);
+                    }
                 }
         );
         NotificationHelper.createNotificationChannel(this);
@@ -156,14 +159,17 @@ public class MainActivity extends AppCompatActivity {
 
     public void requestNotificationPermissionExplicit() {
         runOnUiThread(() -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
-                } else {
-                    Toast.makeText(this, "Bildirim izni zaten etkin! 🔔", Toast.LENGTH_SHORT).show();
-                }
+            if (NotificationHelper.canNotify(this)) return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS);
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Intent settings = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                settings.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName());
+                startActivity(settings);
             } else {
-                Toast.makeText(this, "Bildirimler aktif! 🔔", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", getPackageName(), null)));
             }
         });
     }

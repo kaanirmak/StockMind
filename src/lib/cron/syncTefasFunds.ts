@@ -45,7 +45,6 @@ export async function syncTefasFundsToDatabase(options: SyncOptions = {}): Promi
 
   const errors: { code: string; message: string }[] = [];
   const syncedCodes: string[] = [];
-  const todayDateStr = new Date().toISOString().split('T')[0];
 
   // Process in batches
   for (let i = 0; i < targetList.length; i += concurrency) {
@@ -68,6 +67,7 @@ export async function syncTefasFundsToDatabase(options: SyncOptions = {}): Promi
             category: detail.category || item.category,
             founder: detail.founder || item.founder,
             price: detail.price,
+            nav_date: detail.navDate ?? null,
             daily_return: detail.dailyReturn,
             monthly_return: detail.monthlyReturn,
             return_3m: detail.return3m,
@@ -82,7 +82,7 @@ export async function syncTefasFundsToDatabase(options: SyncOptions = {}): Promi
             management_fee: detail.managementFee,
             asset_allocation: detail.assetAllocation || [],
             kap_link: detail.kapLink,
-            last_sync_at: new Date().toISOString(),
+            last_sync_at: detail.lastSyncAt,
             updated_at: new Date().toISOString(),
           };
 
@@ -96,22 +96,20 @@ export async function syncTefasFundsToDatabase(options: SyncOptions = {}): Promi
             return;
           }
 
-          // 2. Insert today snapshot into public.fund_daily_history
-          const historyRecord = {
-            fund_code: detail.code,
-            price_date: todayDateStr,
-            price: detail.price,
-            daily_return: detail.dailyReturn,
-            total_value: detail.totalValue,
-            investor_count: detail.investorCount,
-          };
-
-          try {
-            await supabase
-              .from('fund_daily_history')
-              .upsert(historyRecord, { onConflict: 'fund_code,price_date' });
-          } catch {
-            // Ignore non-fatal history upsert errors
+          // 2. Archive only snapshots with a source valuation date.
+          if (detail.navDate && detail.price !== null) {
+            try {
+              await supabase.from('fund_daily_history').upsert({
+                fund_code: detail.code,
+                price_date: detail.navDate,
+                price: detail.price,
+                daily_return: detail.dailyReturn,
+                total_value: detail.totalValue,
+                investor_count: detail.investorCount,
+              }, { onConflict: 'fund_code,price_date' });
+            } catch {
+              // Ignore non-fatal history upsert errors
+            }
           }
 
           // 3. If full historical backfill requested, fetch past prices

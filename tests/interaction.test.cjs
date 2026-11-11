@@ -71,6 +71,29 @@ test('Notification inbox migrates old alarm fields and refuses external navigati
   assert.equal(readInbox()[0].archived, true);
   assert.deepEqual(events, ['stockmind:inbox']);
 });
+test('Android test notifications report denied permission and can be retried after granting it', async () => {
+  const data = new Map();
+  let permitted = false;
+  let sends = 0;
+  const { requestNotificationPermission, sendPushNotification } = load('src/lib/notifications/pushNotification.ts', {
+    Event,
+    localStorage: { getItem: key => data.get(key), setItem: (key, value) => data.set(key, value) },
+    window: {
+      dispatchEvent() {},
+      StockMindAndroid: {
+        requestNotificationPermission() {},
+        hasNotificationPermission: () => permitted,
+        sendNativeNotification: () => { sends++; return true; },
+      },
+    },
+  });
+  assert.equal(await requestNotificationPermission(), false);
+  assert.equal(sendPushNotification('Test', 'Cihaz bildirimi', '/settings', true), false);
+  permitted = true;
+  assert.equal(sendPushNotification('Test', 'Cihaz bildirimi', '/settings', true), true);
+  assert.equal(sends, 1);
+});
+
 test('Losses have an explicit minus sign so meaning does not depend on color', () => {
   const { getPnLSign } = load('src/lib/utils/format.ts');
   assert.equal(getPnLSign(-12.4), '-');
@@ -184,7 +207,7 @@ test('All failed news sources report service failure, rather than a successful e
 test('Fresh collected news avoids publisher calls; stale collected news survives an upstream outage', async () => {
   const makeArticle = age => ({ id: 'snapshot-1', title: 'BIST haber', summary: 'Haber', url: 'https://example.com/news', source: 'TRT Haber', feedId: 'trt-economy', category: 'BIST', sentiment: 'neutral', publishedAt: new Date().toISOString(), collectedAt: new Date(Date.now() - age).toISOString() });
   let calls = 0;
-  const freshArticles = load('src/lib/news/feeds.ts').NEWS_FEEDS.filter(feed => feed.categories.includes('BIST')).map((feed, i) => ({ ...makeArticle(0), id: `fresh-${i}`, title: `BIST haber ${i}`, feedId: feed.id, source: feed.name }));
+  const freshArticles = load('src/lib/news/feeds.ts').NEWS_FEEDS.filter(feed => feed.categories.includes('BIST')).map((feed, i) => ({ ...makeArticle(0), id: `fresh-${i}`, title: `BIST haber ${i}`, url: `https://example.com/news/${i}`, feedId: feed.id, source: feed.name }));
   const fresh = newsRoute(async () => { calls++; throw new Error('Unavailable'); }, freshArticles);
   const result = await fresh.GET(new Request('https://example.com/api/news?category=BIST'));
   assert.equal(result.status, 200);
@@ -240,11 +263,39 @@ test('News sentiment distinguishes financial context, ambiguity, negation and mi
   ]) assert.equal(analyzeNewsSentiment(title).sentiment, expected, title);
 });
 test('Snapshot sentiment is recalculated instead of trusting old cached labels', async () => {
-  const article = { id: '1', title: 'Enflasyon yükseldi', summary: '', category: 'MACRO', feedId: 'trt-economy', sentiment: 'positive', collectedAt: new Date().toISOString(), publishedAt: new Date().toISOString() };
+  const article = { id: '1', title: 'Enflasyon yükseldi', summary: '', url: 'https://example.com/inflation', category: 'MACRO', feedId: 'trt-economy', sentiment: 'positive', collectedAt: new Date().toISOString(), publishedAt: new Date().toISOString() };
   const { GET } = newsRoute(async () => { throw new Error('Must not fetch'); }, [article]);
   const result = await GET(new Request('https://example.com/api/news?category=MACRO'));
   assert.equal(result.body.data[0].sentiment, 'negative');
   assert.ok(result.body.data[0].sentimentReason);
+});
+
+test('A fresh news feed survives while only stale feeds are fetched again', async () => {
+  const called = [];
+  const now = new Date().toISOString();
+  const article = { id: 'trt', title: 'BIST bilanço', summary: '', url: 'https://example.com/trt',
+    source: 'TRT Haber', feedId: 'trt-economy', category: 'BIST', collectedAt: now, publishedAt: now };
+  const { GET } = newsRoute(async url => { called.push(url); return { ok: false, status: 503 }; }, [article]);
+  const result = await GET(new Request('https://example.com/api/news?category=BIST'));
+  assert.ok(called.length > 0);
+  assert.ok(called.every(url => !url.includes('trthaber')));
+  assert.equal(result.body.count, 1);
+  assert.equal(result.body.partial, true);
+  assert.equal(result.body.stale, false);
+});
+
+test('News relevance prioritizes fresh portfolio events and keeps chronological sorting available', () => {
+  const { rankNews } = load('src/lib/news/relevance.ts');
+  const now = Date.now();
+  const article = (title, hours) => ({ title, summary: '', publishedAt: new Date(now - hours * 3_600_000).toISOString() });
+  const general = article('Piyasalarda günün görünümü', 0);
+  const event = article('Aselsan yeni sözleşme imzaladı', 4);
+  const old = article('Aselsan finansal sonuçlar', 72);
+  const ranked = rankNews([general, old, event], ['ASELS'], true, now);
+  assert.equal(ranked[0].article, event);
+  assert.equal(ranked[0].event, 'Şirket işlemi veya sözleşme');
+  assert.equal(ranked[1].article, general);
+  assert.equal(rankNews([event, general], ['ASELS'], false, now)[0].article, general);
 });
 
 test('news symbols reject month names, substrings and ordinary prose', () => {
@@ -582,3 +633,282 @@ test('AI response parser detects openrouter_free_tier_daily rate limit and falls
 });
 
 
+
+test('Market overview returns unavailable for configured fallback prices and keeps observed quote metadata', async () => {
+  const observation = {
+    source: 'Yahoo Finance',
+    asOf: '2026-11-10T10:00:00.000Z',
+    fetchedAt: '2026-11-10T10:01:00.000Z',
+    changePercent: null,
+  };
+  const { GET } = load('src/app/api/markets/overview/route.ts', {
+    require: name => {
+      if (name === 'next/server') return { NextResponse: { json: body => body } };
+      assert.equal(name, '@/lib/data/stocks');
+      return {
+        fetchAllAlternativeMarkets: async () => ({
+          indices: [{ symbol: 'XU100', price: 12188.73 }, { symbol: 'SPX', price: 7000, observation }],
+          commodity: [{ symbol: 'XAUTRYG', price: 6645 }],
+          forex: [],
+          crypto: [],
+        }),
+      };
+    },
+  });
+  const result = await GET();
+  assert.equal(result.success, true);
+  const bist = result.data.find(item => item.symbol === 'XU100');
+  const gold = result.data.find(item => item.symbol === 'GA');
+  const spx = result.data.find(item => item.symbol === 'SPX');
+  assert.equal(bist.value, null);
+  assert.equal(bist.status, 'unavailable');
+  assert.equal(gold.value, null);
+  assert.equal(result.sections.indices.length, 1);
+  assert.equal(result.sections.commodity.length, 0);
+  assert.equal(spx.value, 7000);
+  assert.equal(spx.unit, 'points');
+  assert.equal(spx.change, null);
+  assert.equal(spx.observation, observation);
+});
+
+test('Fund directory has no price and a verified one-lira database price remains usable', async () => {
+  const directory = [
+    { code: 'AAA', name: 'First Fund', founder: 'Manager', category: 'Değişken Fon' },
+    { code: 'BBB', name: 'Second Fund', founder: 'Manager', category: 'Değişken Fon' },
+  ];
+  const rows = [
+    { ...directory[0], price: '1.0', last_sync_at: null },
+    { ...directory[1], price: '1.0', last_sync_at: '2026-11-10T10:00:00.000Z' },
+  ];
+  const { getAllFunds, getFundByCode, getFundsFromDatabase } = load('src/lib/data/funds.ts', {
+    process: { env: { NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'fixture' } },
+    require: name => {
+      if (name === './tefas_funds_directory.json') return { default: directory };
+      if (name === '@/lib/utils/search') return {};
+      assert.equal(name, '@supabase/supabase-js');
+      return {
+        createClient: () => ({
+          from: () => ({ select: () => ({ neq: () => ({ order: async () => ({ data: rows, error: null }) }) }) }),
+        }),
+      };
+    },
+  });
+  assert.equal(getAllFunds()[0].price, null);
+  assert.equal(getFundByCode('AAA').price, null);
+  const funds = await getFundsFromDatabase();
+  assert.equal(funds[0].price, null);
+  assert.equal(funds[1].price, 1);
+});
+
+test('TEFAS sync identifies a rejected source and keeps the available fund price', async () => {
+  const { fetchLiveFundDetail } = await import('../scripts/sync-tefas-funds.mjs');
+  const issues = [];
+  const detail = await fetchLiveFundDetail('TI2', issue => issues.push(issue), async url => {
+    if (url.endsWith('fonBilgiGetir')) return Response.json({ resultList: [{ sonFiyat: 4.25 }] });
+    if (url.endsWith('fonProfilBilgiGetir')) return new Response('blocked', { status: 403 });
+    return new Response('<html>gateway</html>');
+  });
+
+  assert.equal(detail.price, 4.25);
+  assert.equal(detail.nav_date, null);
+  assert.equal(detail.risk_value, undefined);
+  assert.equal(detail.monthly_return, undefined);
+  assert.ok(issues.some(issue => issue.code === 'TI2' && issue.endpoint === 'fonProfilBilgiGetir' && issue.httpStatus === 403));
+  assert.ok(issues.some(issue => issue.endpoint === 'fonFiyatBilgiGetir' && issue.reason === 'invalid_json'));
+});
+
+test('TEFAS sync identifies missing verified prices and never emits a placeholder record', async () => {
+  const { fetchLiveFundDetail } = await import('../scripts/sync-tefas-funds.mjs');
+  const issues = [];
+  const detail = await fetchLiveFundDetail('TI2', issue => issues.push(issue), async url => {
+    if (url.endsWith('fonBilgiGetir')) return Response.json({ resultList: [{ sonFiyat: 0 }] });
+    if (url.endsWith('fonProfilBilgiGetir')) throw new DOMException('Deadline', 'TimeoutError');
+    return Response.json({ resultList: [{ fiyat: 'invalid' }] });
+  });
+
+  assert.equal(detail, null);
+  assert.ok(issues.some(issue => issue.endpoint === 'fonProfilBilgiGetir' && issue.reason === 'timeout'));
+  assert.ok(issues.some(issue => issue.stage === 'price' && issue.reason === 'missing_positive_price'));
+});
+
+test('TEFAS sync keeps valuation date tied to the latest matching history price', async () => {
+  const { fetchLiveFundDetail } = await import('../scripts/sync-tefas-funds.mjs');
+  const rows = [
+    { tarih: '2026-11-10', fiyat: '0.117476' },
+    { tarih: '2026-11-09', fiyat: 0.114111 },
+    { tarih: '2026-11-31', fiyat: 0.114111 },
+    { tarih: '2026-11-11', fiyat: 'Infinity' },
+  ];
+  const fetchDetail = sonFiyat => fetchLiveFundDetail('TI2', () => {}, async url => {
+    if (url.endsWith('fonBilgiGetir')) return Response.json({ resultList: [{ sonFiyat }] });
+    if (url.endsWith('fonFiyatBilgiGetir')) return Response.json({ resultList: rows });
+    return Response.json({ resultList: [] });
+  });
+
+  const matching = await fetchDetail(0.117476);
+  assert.equal(matching.price, 0.117476);
+  assert.equal(matching.nav_date, '2026-11-10');
+  assert.ok(Number.isFinite(Date.parse(matching.last_sync_at)));
+
+  const newerPriceWithoutDate = await fetchDetail(0.114111);
+  assert.equal(newerPriceWithoutDate.price, 0.114111);
+  assert.equal(newerPriceWithoutDate.nav_date, null);
+
+  const fallback = await fetchDetail(undefined);
+  assert.equal(fallback.price, 0.117476);
+  assert.equal(fallback.nav_date, '2026-11-10');
+});
+
+test('TEFAS cron archives only a source-dated snapshot and keeps its retrieval timestamp', async () => {
+  const lastSyncAt = '2026-11-11T00:15:00Z';
+  const details = {
+    TI2: { code: 'TI2', price: 0.117476, navDate: '2026-11-10', lastSyncAt },
+    AAL: { code: 'AAL', price: 3.777852, navDate: null, lastSyncAt },
+  };
+  const writes = [];
+  const { syncTefasFundsToDatabase } = load('src/lib/cron/syncTefasFunds.ts', {
+    require: name => ({
+      '@/lib/supabase/admin': { createAdminClient: () => ({
+        from: table => ({ upsert: async (data, options) => {
+          writes.push({ table, data, options });
+          return { error: null };
+        } }),
+      }) },
+      '@/lib/api/tefas': { fetchTefasLiveDetail: async code => details[code] },
+      '@/lib/data/tefas_funds_directory.json': { default: Object.keys(details).map(code => ({ code })) },
+    })[name],
+  });
+
+  assert.equal((await syncTefasFundsToDatabase()).successCount, 2);
+  const snapshot = writes.find(write => write.table === 'funds' && write.data.code === 'TI2');
+  assert.equal(snapshot.data.nav_date, '2026-11-10');
+  assert.equal(snapshot.data.last_sync_at, lastSyncAt);
+  assert.equal(writes.find(write => write.data.code === 'AAL').data.nav_date, null);
+  const history = writes.filter(write => write.table === 'fund_daily_history');
+  assert.equal(history.length, 1);
+  assert.equal(history[0].data.fund_code, 'TI2');
+  assert.equal(history[0].data.price_date, '2026-11-10');
+  assert.equal(history[0].options.onConflict, 'fund_code,price_date');
+});
+
+test('TEFAS sync write mode reports missing writer configuration instead of using an anonymous key', () => {
+  const { spawnSync } = require('node:child_process');
+  const cwd = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'stockmind-tefas-test-'));
+  try {
+    const script = path.resolve(__dirname, '../scripts/sync-tefas-funds.mjs');
+    const summaryPath = path.join(cwd, 'summary.md');
+    const result = spawnSync(process.execPath, [script, '--code=TI2'], {
+      cwd,
+      env: { NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anonymous-fixture', GITHUB_STEP_SUMMARY: summaryPath },
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 1);
+    assert.deepEqual(JSON.parse(result.stderr), {
+      event: 'tefas_sync_configuration_error',
+      missing: ['SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY'],
+    });
+    assert.equal(result.stdout, '');
+    assert.match(fs.readFileSync(summaryPath, 'utf8'), /Kapsam hesaplanamadı/);
+  } finally {
+    fs.rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test('TEFAS resume uses the Istanbul date and rejects invalid or future dates', async () => {
+  const { getResumeCutoff } = await import('../scripts/sync-tefas-funds.mjs');
+  const now = new Date('2026-11-10T21:01:00Z');
+  assert.equal(getResumeCutoff(undefined, now), '2026-11-10T21:00:00.000Z');
+  assert.equal(getResumeCutoff('2026-11-10', now), '2026-11-09T21:00:00.000Z');
+  assert.equal(getResumeCutoff('2026-02-30', now), null);
+  assert.equal(getResumeCutoff('2026-11-12', now), null);
+});
+
+test('TEFAS resume reports coverage from stored quotes and retries only missing or failed records', async () => {
+  const { createClient } = require('@supabase/supabase-js');
+  const { syncFunds } = await import('../scripts/sync-tefas-funds.mjs');
+  const resumeSince = '2024-11-07T21:00:00.000Z';
+  const now = new Date('2024-11-09T12:00:00Z');
+  const selected = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE', 'FFF', 'GGG'].map(code => ({ code }));
+  const records = new Map(['AAA', 'BBB', 'CCC', 'DDD', 'EEE'].map(code => [code, {
+    code,
+    price: code === 'DDD' ? 0 : 4.25,
+    nav_date: code === 'CCC' ? null : ['BBB', 'EEE'].includes(code) ? '2024-11-07' : '2024-11-08',
+    last_sync_at: code === 'EEE' ? '2024-11-07T00:00:00+03:00' : '2024-11-08T00:00:00+03:00',
+  }]));
+  let rejectWrite = true;
+  let rejectCheckpoint = false;
+  const checkpointCursors = [];
+  const requested = [];
+  const writeAttempts = [];
+  const report = () => {};
+  const supabase = createClient('https://example.supabase.co', 'test-key', {
+    auth: { persistSession: false },
+    global: { fetch: async (input, init) => {
+      const url = new URL(input);
+      assert.equal(url.pathname, '/rest/v1/funds');
+      if (init.method === 'POST') {
+        assert.equal(url.searchParams.get('on_conflict'), 'code');
+        const record = JSON.parse(init.body);
+        writeAttempts.push(record.code);
+        if (record.code === 'EEE' && rejectWrite) return Response.json({ code: '57014' }, { status: 500 });
+        records.set(record.code, record);
+        return new Response(null, { status: 201 });
+      }
+      if (rejectCheckpoint) return Response.json({ code: '42501' }, { status: 403 });
+      assert.equal(url.searchParams.get('select'), 'code,price,nav_date,last_sync_at');
+      assert.equal(url.searchParams.get('price'), 'gt.0');
+      assert.equal(url.searchParams.get('order'), 'code.asc');
+      const cursor = url.searchParams.get('code')?.slice(3) ?? '';
+      checkpointCursors.push(cursor);
+      const rows = [...records.values()]
+        .filter(row => row.price > 0 && row.code > cursor)
+        .sort((a, b) => a.code.localeCompare(b.code));
+      // Simulate a server page cap below the requested limit.
+      return Response.json(rows.slice(0, 2));
+    } },
+  });
+  const fetcher = async (url, init) => {
+    if (url.endsWith('fonBilgiGetir')) {
+      const code = JSON.parse(init.body).fonKodu;
+      requested.push(code);
+      if (code === 'GGG' && rejectWrite) return Response.json({ resultList: [] });
+      return Response.json({ resultList: [{ sonFiyat: 4.25 }] });
+    }
+    return Response.json({ resultList: [{ fiyat: 4.25, tarih: '2024-11-08', riskDegeri: 3 }] });
+  };
+  const run = () => syncFunds({ selected, supabase, resumeSince, fetcher, report, now });
+
+  const first = await run();
+  assert.deepEqual(checkpointCursors, ['', 'BBB', 'EEE']);
+  assert.deepEqual(requested, ['DDD', 'EEE', 'FFF', 'GGG']);
+  assert.equal(first.skipped, 3);
+  assert.equal(first.succeeded, 2);
+  assert.equal(first.databaseFailures, 1);
+  assert.equal(first.failed, 2);
+  assert.equal(first.remaining, 2);
+  assert.deepEqual(first.coverage, { referenceDate: '2024-11-08', current: 3, stale: 2, missing: 1, unverified: 1 });
+
+  rejectWrite = false;
+  requested.length = 0;
+  const second = await run();
+  assert.deepEqual(requested, ['EEE', 'GGG']);
+  assert.equal(second.skipped, 5);
+  assert.equal(second.remaining, 0);
+  assert.equal(records.size, 7);
+  assert.deepEqual(second.coverage, { referenceDate: '2024-11-08', current: 5, stale: 1, missing: 0, unverified: 1 });
+
+  requested.length = 0;
+  const complete = await run();
+  assert.equal(complete.status, 'ok');
+  assert.equal(complete.skipped, 7);
+  assert.deepEqual(complete.coverage, second.coverage);
+  assert.deepEqual(requested, []);
+
+  rejectCheckpoint = true;
+  const failed = await run();
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.issues['[checkpoint] funds.select read_failed'], 1);
+  assert.equal(failed.coverage, null);
+  assert.deepEqual(requested, []);
+  assert.deepEqual(writeAttempts.sort(), ['DDD', 'EEE', 'EEE', 'FFF', 'GGG']);
+});

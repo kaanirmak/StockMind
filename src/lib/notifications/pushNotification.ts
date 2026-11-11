@@ -67,7 +67,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (bridge && typeof bridge.requestNotificationPermission === 'function') {
     try {
       bridge.requestNotificationPermission();
-      return true;
+      return hasNotificationPermission();
     } catch (e) {
       console.warn('Native permission request error:', e);
     }
@@ -151,7 +151,8 @@ const COOLDOWN_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 function loadCooldownCache(): Record<string, number> {
   try {
     const raw = localStorage.getItem(COOLDOWN_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
   } catch { /* ignore */ }
   return {};
 }
@@ -171,7 +172,7 @@ function saveCooldownCache(cache: Record<string, number>): void {
 /**
  * Sends a native phone notification (or web notification if on browser)
  */
-export function sendPushNotification(title: string, message: string, route: string = '/dashboard'): boolean {
+export function sendPushNotification(title: string, message: string, route: string = '/dashboard', test = false): boolean {
   if (typeof window === 'undefined') return false;
 
   const prefs = loadPushPreferences();
@@ -181,20 +182,17 @@ export function sendPushNotification(title: string, message: string, route: stri
   const cooldownCache = loadCooldownCache();
   const notifFingerprint = `${title}::${message}`;
   const lastSent = cooldownCache[notifFingerprint] || 0;
-  if (Date.now() - lastSent < COOLDOWN_DURATION_MS) {
+  if (!test && Date.now() - lastSent < COOLDOWN_DURATION_MS) {
     return false;
   }
-  cooldownCache[notifFingerprint] = Date.now();
-  saveCooldownCache(cooldownCache);
 
   let sent = false;
 
   // 1. Android Native Push Notification
   const bridge = (window as any).StockMindAndroid;
-  if (prefs.enabled && bridge && typeof bridge.sendNativeNotification === 'function') {
+  if (prefs.enabled && hasNotificationPermission() && bridge && typeof bridge.sendNativeNotification === 'function') {
     try {
-      bridge.sendNativeNotification(title, message, route);
-      sent = true;
+      sent = bridge.sendNativeNotification(title, message, route) !== false;
     } catch (err) {
       console.error('Failed to send native notification:', err);
     }
@@ -220,6 +218,7 @@ export function sendPushNotification(title: string, message: string, route: stri
   }
 
   // 3. The inbox is independent of device push permission and preference.
+  let saved = false;
   if (prefs.inAppEnabled) try {
     const list = readInbox();
     list.unshift({
@@ -231,14 +230,16 @@ export function sendPushNotification(title: string, message: string, route: stri
       category: 'market',
       link: route,
     });
-    saveInbox(list);
-    // Dispatch storage event to immediately update Header badge
-    window.dispatchEvent(new Event('storage'));
+    saved = saveInbox(list);
   } catch (err) {
     console.warn('Could not save to local notification store', err);
   }
 
-  return sent;
+  if (!test && (sent || saved)) {
+    cooldownCache[notifFingerprint] = Date.now();
+    saveCooldownCache(cooldownCache);
+  }
+  return test ? sent : sent || saved;
 }
 
 /**

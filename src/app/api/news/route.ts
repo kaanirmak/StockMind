@@ -1,4 +1,4 @@
-import { mentionsNewsSymbol } from '@/lib/news/symbolMatch';
+import { mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { rssPlainText } from '@/lib/news/rssText';
@@ -31,8 +31,7 @@ const DEFAULT_SYMBOLS_TO_TRACK = [
 
 // Function to fetch and parse real live RSS financial news
 async function fetchLiveNews(
-  feed: NewsFeed,
-  extraSymbolsToCheck: string[] = []
+  feed: NewsFeed
 ): Promise<NewsArticle[]> {
   const started = Date.now();
   let stage = 'headers';
@@ -84,19 +83,9 @@ async function fetchLiveNews(
 
         const category = feedCategory(feed.id, rawTitle, rawSummary);
 
-        // Extract related symbols
-        const relatedSymbolsSet = new Set<string>();
-        const allSymbolsToCheck = Array.from(new Set([...DEFAULT_SYMBOLS_TO_TRACK, ...extraSymbolsToCheck]));
-
-        for (const sym of allSymbolsToCheck) {
-          if (mentionsNewsSymbol(`${rawTitle} ${rawSummary}`, sym)) relatedSymbolsSet.add(sym.trim().toUpperCase());
-        }
-
-        const { sentiment, reason: sentimentReason } = analyzeNewsSentiment(rawTitle, rawSummary);
-
         const articleLink = linkMatch ? rssPlainText(linkMatch[1]) : '';
         const date = new Date(pubDateMatch?.[1] || '');
-        if (!/^https?:\/\//.test(articleLink) || !Number.isFinite(date.getTime())) continue;
+        if (!rawTitle || !/^https?:\/\//.test(articleLink) || !Number.isFinite(date.getTime())) continue;
         const pubDateStr = date.toISOString();
 
         // Generate SHA-256 unique ID based on full title, link and category
@@ -112,12 +101,10 @@ async function fetchLiveNews(
           summary: rawSummary,
           category,
           feedId: feed.id,
-          sentiment,
-          sentimentReason,
+          sentiment: 'neutral',
           source,
           url: articleLink,
           publishedAt: pubDateStr,
-          relatedSymbols: relatedSymbolsSet.size > 0 ? Array.from(relatedSymbolsSet) : undefined,
         });
       }
 
@@ -140,7 +127,7 @@ export async function GET(request: Request) {
     const symbolsParam = searchParams.get('symbols'); // Comma-separated list of symbols (e.g. from user's portfolio)
 
     const portfolioSymbols = symbolsParam
-      ? symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+      ? symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(s => /^[A-Z0-9_.:=^/-]{1,40}$/.test(s)).slice(0, 100)
       : [];
 
     if (category === 'KAP') {
@@ -159,41 +146,44 @@ export async function GET(request: Request) {
       return !category || category === 'ALL' || article.category === category;
     };
     const snapshot = await fetchNewsSnapshot();
-    const snapshotFresh = feeds.length > 0 && feeds.every(feed => snapshot.some(article =>
-      article.feedId === feed.id && Date.now() - Date.parse(article.collectedAt) < 30 * 60 * 1000));
-    const results = snapshotFresh ? [] : await Promise.allSettled(feeds.map(feed => fetchLiveNews(feed, portfolioSymbols)));
-    const failedFeeds = results.filter(result => result.status === 'rejected').length;
-    const failedIds = new Set(feeds.filter((_, index) => results[index]?.status === 'rejected').map(feed => feed.id));
-    const fallback = snapshot.filter(article => snapshotFresh || failedIds.has(article.feedId as NewsFeed['id']));
+    const now = Date.now();
+    const freshIds = new Set(snapshot
+      .filter(article => now - Date.parse(article.collectedAt) < 30 * 60 * 1000)
+      .map(article => article.feedId));
+    const liveFeeds = feeds.filter(feed => !freshIds.has(feed.id));
+    const results = await Promise.allSettled(liveFeeds.map(feed => fetchLiveNews(feed)));
+    const failedIds = new Set(liveFeeds.filter((_, index) => results[index].status === 'rejected').map(feed => feed.id));
+    const fallback = snapshot.filter(article => feeds.some(feed => feed.id === article.feedId &&
+      (freshIds.has(feed.id) || failedIds.has(feed.id))));
+    const failedFeeds = failedIds.size;
     if (feeds.length > 0 && failedFeeds === feeds.length && fallback.length === 0) {
       return NextResponse.json({ success: false, error: 'Haber kaynaklarına şu anda ulaşılamıyor. Lütfen tekrar deneyin.', data: [] }, { status: 503 });
     }
-    let allNews = [...results.flatMap(result => result.status === 'fulfilled' ? result.value : []), ...fallback].filter(relevant);
-    const stale = !snapshotFresh && fallback.length > 0;
+    const allNews = [...results.flatMap(result => result.status === 'fulfilled' ? result.value : []), ...fallback].filter(relevant);
+    const stale = fallback.some(article => relevant(article) && !freshIds.has(article.feedId));
     const snapshotForCategory = fallback.filter(relevant);
 
     // Sort by publication date newest first
     allNews.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 
-    // Filter by single symbol if explicitly requested
-    if (symbol) {
-      const matched = allNews.filter(n => mentionsNewsSymbol(`${n.title} ${n.summary}`, symbol));
-      allNews = matched;
-    }
-
     // Deduplicate by normalized title and unique id
     const seenTitles = new Set<string>();
     const seenIds = new Set<string>();
 
+    const seenUrls = new Set<string>();
     const uniqueNews = allNews.filter((n) => {
+      if (symbol && !mentionsNewsSymbol(`${n.title} ${n.summary}`, symbol)) return false;
       if (seenIds.has(n.id)) return false;
-      const normTitle = n.title.toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, '').trim();
-      if (seenTitles.has(normTitle)) return false;
+      const normTitle = normalizeNewsText(n.title).replace(/[^a-z0-9]/g, '');
+      const canonicalUrl = n.url.split('#', 1)[0].replace(/\/$/, '');
+      if (seenTitles.has(normTitle) || seenUrls.has(canonicalUrl)) return false;
+      seenUrls.add(canonicalUrl);
       seenTitles.add(normTitle);
       seenIds.add(n.id);
       return true;
     });
 
+    const trackedSymbols = Array.from(new Set([...DEFAULT_SYMBOLS_TO_TRACK, ...portfolioSymbols, ...(symbol ? [symbol] : [])]));
     return NextResponse.json({
       success: true,
       count: uniqueNews.length,
@@ -203,7 +193,7 @@ export async function GET(request: Request) {
       warning: stale ? 'Canlı kaynaklara ulaşılamadı; son başarılı haberler gösteriliyor.' : failedFeeds > 0 ? 'Bazı haber kaynakları yanıt vermedi; ulaşılabilen haberler gösteriliyor.' : undefined,
       data: uniqueNews.map(article => {
         const analysis = analyzeNewsSentiment(article.title, article.summary);
-        return { ...article, relatedSymbols: Array.from(new Set([...DEFAULT_SYMBOLS_TO_TRACK, ...portfolioSymbols])).filter(symbol => mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)), sentiment: analysis.sentiment, sentimentReason: analysis.reason };
+        return { ...article, relatedSymbols: trackedSymbols.filter(symbol => mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)), sentiment: analysis.sentiment, sentimentReason: analysis.reason };
       }),
     });
   } catch (error) {

@@ -58,17 +58,23 @@ public class NotificationHelper {
         }
     }
 
-    public static void showNotification(Context context, String title, String message, String route) {
-        if (context == null) return;
+    public static boolean canNotify(Context context) {
+        if (context == null || !NotificationManagerCompat.from(context).areNotificationsEnabled()) return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            NotificationChannel channel = manager == null ? null : manager.getNotificationChannel(CHANNEL_ID);
+            return channel == null || channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        }
+        return true;
+    }
+
+    public static boolean showNotification(Context context, String title, String message, String route) {
+        if (context == null) return false;
         try {
             createNotificationChannel(context);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    android.util.Log.w("NotificationHelper", "POST_NOTIFICATIONS permission not granted");
-                    return;
-                }
-            }
+            if (!canNotify(context)) return false;
 
             Intent intent = new Intent(context, MainActivity.class);
             if (route != null && !route.isEmpty()) {
@@ -101,8 +107,10 @@ public class NotificationHelper {
             NotificationManagerCompat manager = NotificationManagerCompat.from(context);
             int notificationId = (int) (System.currentTimeMillis() % 100000);
             manager.notify(notificationId, builder.build());
+            return true;
         } catch (Throwable t) {
             android.util.Log.e("NotificationHelper", "Failed to show notification", t);
+            return false;
         }
     }
 }

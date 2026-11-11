@@ -46,12 +46,13 @@ export async function POST(request: Request) {
         });
 
         const reportData = await response.json().catch(() => null);
+        const complete = response.ok && reportData?.success === true;
         return NextResponse.json({
-          success: response.ok,
+          success: complete,
           job: 'daily-report',
           httpStatus: response.status,
           result: reportData,
-          message: response.ok
+          message: complete
             ? 'Günlük piyasa bülteni dağıtımı tetiklendi ve başarıyla tamamlandı.'
             : `Günlük bülten servisi yanıtı: HTTP ${response.status}`,
         });

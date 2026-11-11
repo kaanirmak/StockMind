@@ -1,4 +1,6 @@
 'use client';
+import { MarketQuoteValue } from '@/components/dashboard/MarketQuoteValue';
+import type { MarketOverviewItem } from '@/types/stock';
 import { Icon as MarketIcon } from '@/components/ui/Icon';
 import { WindowedRows } from '@/components/ui/WindowedRows';
 
@@ -9,7 +11,7 @@ import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
 import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal } from '@/components/ui';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
-import { formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
+import { formatDate, formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
 type MarketId = 'ALL' | 'BIST' | 'COMMODITY' | 'CRYPTO' | 'FOREX' | 'INDEX' | 'TEFAS' | 'NASDAQ' | 'NYSE';
 
@@ -51,7 +53,7 @@ function PiyasalarContent() {
 
   // Overview Data (for 'ALL' market tab)
   const [overviewData, setOverviewData] = useState<{
-    tickers: Array<{ symbol: string; name: string; value: number; change: number; currency: 'TRY' | 'USD'; flag: string }>;
+    tickers: MarketOverviewItem[];
     sections: OverviewSections | null;
   }>({ tickers: [], sections: null });
   const [overviewLoading, setOverviewLoading] = useState(false);
@@ -440,10 +442,9 @@ function PiyasalarContent() {
           {overviewData.tickers.length > 0 && (
             <div className="flex gap-3 overflow-x-auto no-scrollbar snap-x pb-1 sm:grid sm:grid-cols-3 lg:grid-cols-6">
               {overviewData.tickers.map((t) => {
-                const isPos = t.change >= 0;
-                const prefix = t.currency === 'TRY' ? '₺' : '$';
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={t.symbol}
                     onClick={() => {
                       if (t.symbol === 'XU100') handleMarketChange('BIST');
@@ -452,7 +453,7 @@ function PiyasalarContent() {
                       else if (t.symbol === 'BTC') handleMarketChange('CRYPTO');
                       else handleMarketChange('INDEX');
                     }}
-                    className="glass-card min-w-[148px] snap-start p-3.5 hover:border-accent/40 transition-all cursor-pointer group sm:min-w-0"
+                    className="glass-card min-w-[148px] snap-start p-3.5 text-left hover:border-accent/40 transition-all cursor-pointer group sm:min-w-0"
                   >
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <MarketIcon name="chart" />
@@ -460,13 +461,8 @@ function PiyasalarContent() {
                         {t.name}
                       </span>
                     </div>
-                    <div className="text-sm sm:text-base font-bold font-mono text-text-primary">
-                      {prefix}{t.value < 10 ? t.value.toFixed(2) : formatNumber(t.value)}
-                    </div>
-                    <div className={`text-xs font-semibold font-mono mt-0.5 ${getPnLColor(t.change)}`}>
-                      {getPnLSign(t.change)}{Math.abs(t.change).toFixed(2)}%
-                    </div>
-                  </div>
+                    <MarketQuoteValue item={t} />
+                  </button>
                 );
               })}
             </div>
@@ -1040,18 +1036,21 @@ function PiyasalarContent() {
                             </Link>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
-                            ₺{fund.price ? fund.price.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) : '-'}
+                            {fund.price == null ? 'Fiyat yok' : `₺${fund.price.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`}
+                            {fund.price != null && <span className="block font-sans text-[10px] font-normal text-text-muted">
+                              {fund.navDate ? <time dateTime={fund.navDate} title="TEFAS değerleme tarihi">{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time> : 'Tarih bilinmiyor'}
+                            </span>}
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-lg ${dailyPos ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
-                              {dailyPos ? '+' : ''}{fund.dailyReturn ? fund.dailyReturn.toFixed(2) : '0.00'}%
+                              {fund.price == null ? '—' : `${dailyPos ? '+' : ''}${fund.dailyReturn.toFixed(2)}%`}
                             </span>
                           </td>
                           <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs hidden sm:table-cell font-semibold ${(fund.monthlyReturn || 0) >= 0 ? 'text-success' : 'text-danger'}`}>
-                            {(fund.monthlyReturn || 0) >= 0 ? '+' : ''}{fund.monthlyReturn ? fund.monthlyReturn.toFixed(2) : '0.00'}%
+                            {fund.price == null ? '—' : `${fund.monthlyReturn >= 0 ? '+' : ''}${fund.monthlyReturn.toFixed(2)}%`}
                           </td>
                           <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs font-bold ${yearlyPos ? 'text-success' : 'text-danger'}`}>
-                            {yearlyPos ? '+' : ''}{fund.yearlyReturn ? fund.yearlyReturn.toFixed(2) : '0.00'}%
+                            {fund.price == null ? '—' : `${yearlyPos ? '+' : ''}${fund.yearlyReturn.toFixed(2)}%`}
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-center hidden md:table-cell">
                             {fund.riskValue ? (
@@ -1103,7 +1102,10 @@ function PiyasalarContent() {
                         <InstrumentLogo symbol={fund.code} name={fund.name} size="md" />
                         <div className="min-w-0">
                           <h4 className="font-bold text-text-primary group-hover:text-accent transition-colors text-sm truncate">{fund.code}</h4>
-                          <span className={`font-mono text-xs font-semibold ${dailyPos ? 'text-success' : 'text-danger'}`}>{dailyPos ? '+' : ''}{fund.dailyReturn?.toFixed(2)}%</span>
+                          <span className={`font-mono text-xs font-semibold ${dailyPos ? 'text-success' : 'text-danger'}`}>{fund.price == null ? 'Fiyat yok' : `${dailyPos ? '+' : ''}${fund.dailyReturn.toFixed(2)}%`}</span>
+                          {fund.price != null && <span className="block text-[10px] text-text-muted">
+                            {fund.navDate ? <>Değerleme <time dateTime={fund.navDate}>{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time></> : 'Değerleme tarihi bilinmiyor'}
+                          </span>}
                         </div>
                       </Link>
                       <button
@@ -1121,7 +1123,7 @@ function PiyasalarContent() {
                         <div>
                           <span className="text-[10px] text-text-muted block">1 Yıllık Getiri</span>
                           <span className={`text-sm font-bold font-mono ${yearlyPos ? 'text-success' : 'text-danger'}`}>
-                            {yearlyPos ? '+' : ''}{fund.yearlyReturn ? fund.yearlyReturn.toFixed(2) : '0.00'}%
+                            {fund.price == null ? '—' : `${yearlyPos ? '+' : ''}${fund.yearlyReturn.toFixed(2)}%`}
                           </span>
                         </div>
                         <Badge variant="info" size="sm">TEFAS</Badge>

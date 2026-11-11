@@ -19,6 +19,7 @@ import {
 } from '@/components/quant/QuantIcons';
 import {
   calculateDCF,
+  getQuantCurrency,
   DCFParams,
   getFinancialProfile,
   PRESET_FINANCIAL_PROFILES,
@@ -46,10 +47,14 @@ export default function DCFValuationTab({
     );
   }, [portfolioStocks, selectedPreset]);
 
+  const nativeCurrency = getQuantCurrency(selectedPreset, activeHolding?.originalCurrency);
+  const currencySign = nativeCurrency === 'USD' ? '$' : '₺';
+  const holdingPrice = activeHolding?.originalPrice ?? activeHolding?.currentPrice;
+
   // Initial parameters based on preset & live price
   const presetData = useMemo(() => {
-    return getFinancialProfile(selectedPreset, activeHolding?.currentPrice);
-  }, [selectedPreset, activeHolding?.currentPrice]);
+    return getFinancialProfile(selectedPreset, holdingPrice);
+  }, [selectedPreset, holdingPrice]);
 
   const [currentPrice, setCurrentPrice] = useState<number>(presetData.currentPrice);
   const [freeCashFlow, setFreeCashFlow] = useState<number>(presetData.freeCashFlow);
@@ -72,7 +77,7 @@ export default function DCFValuationTab({
     setSelectedPreset(cleanSym);
     onSelectSymbol?.(cleanSym);
     const holding = portfolioStocks.find((h) => h.symbol.toUpperCase() === cleanSym);
-    const p = getFinancialProfile(cleanSym, holding?.currentPrice);
+    const p = getFinancialProfile(cleanSym, holding?.originalPrice ?? holding?.currentPrice);
     setCurrentPrice(p.currentPrice);
     setFreeCashFlow(p.freeCashFlow);
     setGrowthRate5Y(p.growthRate5Y);
@@ -93,11 +98,12 @@ export default function DCFValuationTab({
       wacc,
       netDebt,
       sharesOutstanding,
-      currency: 'TRY',
+      currency: nativeCurrency,
     };
     return calculateDCF(params);
   }, [
     selectedPreset,
+    nativeCurrency,
     currentPrice,
     freeCashFlow,
     growthRate5Y,
@@ -148,7 +154,7 @@ export default function DCFValuationTab({
                 <span className="font-bold text-text-primary ml-1.5">{activeHolding.totalQuantity} Lot</span>
                 <span className="text-text-muted mx-1.5">•</span>
                 <span className="text-text-secondary">Ortalama Maliyetiniz:</span>
-                <span className="font-bold text-text-primary ml-1">₺{activeHolding.averageCost.toFixed(2)}</span>
+                <span className="font-bold text-text-primary ml-1">{currencySign}{(activeHolding.originalAverageCost ?? activeHolding.averageCost).toFixed(2)}</span>
               </div>
             </div>
 
@@ -190,7 +196,7 @@ export default function DCFValuationTab({
             </span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl sm:text-3xl font-black text-text-primary">
-                ₺{currentPrice.toFixed(2)}
+                {currencySign}{currentPrice.toFixed(2)}
               </span>
             </div>
             <p className="text-[11px] text-text-muted mt-1">
@@ -205,7 +211,7 @@ export default function DCFValuationTab({
             </span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl sm:text-3xl font-black text-accent">
-                ₺{dcfResult.fairValuePerShare.toFixed(2)}
+                {currencySign}{dcfResult.fairValuePerShare.toFixed(2)}
               </span>
             </div>
             <p className="text-[11px] text-accent/80 mt-1">
@@ -346,11 +352,11 @@ export default function DCFValuationTab({
         {/* Detailed Financial Inputs Toggle */}
         <div className="pt-2 border-t border-border">
           <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-3">
-            Girdi Bilanço Verileri (Milyon TL / Adet)
+            Girdi Bilanço Verileri (Milyon {nativeCurrency} / Adet)
           </span>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <span className="text-[10px] text-text-muted block">Başlangıç FCF (Milyon TL)</span>
+              <span className="text-[10px] text-text-muted block">Başlangıç FCF (Milyon {nativeCurrency})</span>
               <input
                 type="number"
                 value={freeCashFlow}
@@ -359,7 +365,7 @@ export default function DCFValuationTab({
               />
             </div>
             <div>
-              <span className="text-[10px] text-text-muted block">Net Borç (Milyon TL)</span>
+              <span className="text-[10px] text-text-muted block">Net Borç (Milyon {nativeCurrency})</span>
               <input
                 type="number"
                 value={netDebt}
@@ -396,7 +402,7 @@ export default function DCFValuationTab({
             <Layers className="w-4 h-4 text-accent" />
             <span>5-Yıllık Serbest Nakit Akışı İndirgeme Tablosu</span>
           </h3>
-          <span className="text-xs text-text-muted">Değerler Milyon TL</span>
+          <span className="text-xs text-text-muted">Değerler Milyon {nativeCurrency}</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -416,13 +422,13 @@ export default function DCFValuationTab({
                     Yıl {row.year} ({new Date().getFullYear() + row.year})
                   </td>
                   <td className="py-2.5 px-3 text-right font-medium text-text-primary">
-                    ₺{row.cashFlow.toLocaleString('tr-TR')} M
+                    {currencySign}{row.cashFlow.toLocaleString('tr-TR')} M
                   </td>
                   <td className="py-2.5 px-3 text-right text-text-muted font-mono">
                     {row.discountFactor}
                   </td>
                   <td className="py-2.5 px-3 text-right font-bold text-accent">
-                    ₺{row.presentValue.toLocaleString('tr-TR')} M
+                    {currencySign}{row.presentValue.toLocaleString('tr-TR')} M
                   </td>
                 </tr>
               ))}
@@ -434,7 +440,7 @@ export default function DCFValuationTab({
                 </td>
                 <td colSpan={2}></td>
                 <td className="py-2 px-3 text-right text-accent">
-                  ₺{dcfResult.sumPVScheduled.toLocaleString('tr-TR')} M
+                  {currencySign}{dcfResult.sumPVScheduled.toLocaleString('tr-TR')} M
                 </td>
               </tr>
               <tr className="border-t border-border/50 text-text-secondary">
@@ -443,21 +449,21 @@ export default function DCFValuationTab({
                 </td>
                 <td colSpan={2}></td>
                 <td className="py-2 px-3 text-right font-bold text-text-primary">
-                  ₺{dcfResult.pvTerminalValue.toLocaleString('tr-TR')} M
+                  {currencySign}{dcfResult.pvTerminalValue.toLocaleString('tr-TR')} M
                 </td>
               </tr>
               <tr className="border-t border-border/50 text-text-secondary">
                 <td className="py-2 px-3">Firma Değeri (Enterprise Value)</td>
                 <td colSpan={2}></td>
                 <td className="py-2 px-3 text-right font-bold text-text-primary">
-                  ₺{dcfResult.enterpriseValue.toLocaleString('tr-TR')} M
+                  {currencySign}{dcfResult.enterpriseValue.toLocaleString('tr-TR')} M
                 </td>
               </tr>
               <tr className="border-t border-border/50 text-text-secondary">
                 <td className="py-2 px-3">Eksi: Net Borç</td>
                 <td colSpan={2}></td>
                 <td className="py-2 px-3 text-right font-bold text-rose-400">
-                  -₺{netDebt.toLocaleString('tr-TR')} M
+                  {currencySign}{(-netDebt).toLocaleString('tr-TR')} M
                 </td>
               </tr>
               <tr className="border-t-2 border-border font-black text-sm bg-accent/5">
@@ -466,7 +472,7 @@ export default function DCFValuationTab({
                 </td>
                 <td colSpan={2}></td>
                 <td className="py-3 px-3 text-right text-accent">
-                  ₺{dcfResult.equityValue.toLocaleString('tr-TR')} M
+                  {currencySign}{dcfResult.equityValue.toLocaleString('tr-TR')} M
                 </td>
               </tr>
             </tfoot>
@@ -524,7 +530,7 @@ export default function DCFValuationTab({
                             : 'text-rose-400 bg-rose-500/10'
                         }`}
                       >
-                        ₺{fairVal.toFixed(2)}
+                        {currencySign}{fairVal.toFixed(2)}
                       </td>
                     );
                   })}
@@ -539,7 +545,10 @@ export default function DCFValuationTab({
       <div className="p-4 rounded-xl bg-bg-secondary/50 border border-border text-[11px] text-text-muted flex items-start gap-2.5">
         <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
         <span className="leading-relaxed">
-          <strong className="text-text-secondary font-medium">Model Varsayımları ve Yasal Uyarı:</strong> Bu değerleme motorundaki serbest nakit akımları (FCF), AOMM (WACC) ve terminal büyüme oranları analitik projeksiyon varsayımlarıdır. Borsa işlem fiyatı canlı piyasa verisidir, ancak hesaplanan içsel değer simülasyon amaçlıdır ve kesin bir getiri taahhüdü veya yatırım tavsiyesi içermez.
+          {wacc <= terminalGrowthRate && (
+            <p className="mb-2 text-warning">AOMM terminal büyümesinden yüksek olmalı. Bu senaryoda hesaplanan AOMM %{(terminalGrowthRate + 1).toFixed(1)}.</p>
+          )}
+          <strong className="text-text-secondary font-medium">Model Varsayımları ve Yasal Uyarı:</strong> Bu değerleme motorundaki serbest nakit akımları (FCF), AOMM (WACC) ve terminal büyüme oranları analitik projeksiyon varsayımlarıdır. Başlangıç bilanço girdileri örnek değerlerdir. İşlem fiyatı portföyde mevcutsa oradan, aksi halde örnek profilden alınır. Sonuç girdiğiniz varsayımlara bağlı bir senaryodur.
         </span>
       </div>
     </div>
