@@ -28,6 +28,13 @@ export function useStocks(
   const [loading, setLoading] = useState(isEnabled);
   const [error, setError] = useState<string | null>(null);
   const symbolsKey = filter?.symbols ? filter.symbols.join(',') : '';
+  const filterExchange = filter?.exchange;
+  const filterSector = filter?.sector;
+  const filterSearch = filter?.search;
+  const filterSortBy = filter?.sortBy;
+  const filterOrder = filter?.order;
+  const filterPage = filter?.page;
+  const filterLimit = filter?.limit;
 
   const generation = useRef(0);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -40,13 +47,13 @@ export function useStocks(
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (filter?.exchange && filter.exchange !== 'ALL') params.append('exchange', filter.exchange);
-      if (filter?.sector && filter.sector !== 'ALL') params.append('sector', filter.sector);
-      if (filter?.search) params.append('search', filter.search);
-      if (filter?.sortBy) params.append('sortBy', filter.sortBy);
-      if (filter?.order) params.append('order', filter.order);
-      if (filter?.page && filter.page >= 1) params.append('page', String(filter.page));
-      if (filter?.limit && filter.limit > 0) params.append('limit', String(filter.limit));
+      if (filterExchange && filterExchange !== 'ALL') params.append('exchange', filterExchange);
+      if (filterSector && filterSector !== 'ALL') params.append('sector', filterSector);
+      if (filterSearch) params.append('search', filterSearch);
+      if (filterSortBy) params.append('sortBy', filterSortBy);
+      if (filterOrder) params.append('order', filterOrder);
+      if (filterPage && filterPage >= 1) params.append('page', String(filterPage));
+      if (filterLimit && filterLimit > 0) params.append('limit', String(filterLimit));
       if (symbolsKey) params.append('symbols', symbolsKey);
 
       const json = await marketJson<{
@@ -76,20 +83,24 @@ export function useStocks(
     }
   }, [
     isEnabled,
-    filter?.exchange,
-    filter?.sector,
-    filter?.search,
-    filter?.sortBy,
-    filter?.order,
-    filter?.page,
-    filter?.limit,
+    filterExchange,
+    filterSector,
+    filterSearch,
+    filterSortBy,
+    filterOrder,
+    filterPage,
+    filterLimit,
     symbolsKey,
   ]);
 
+  const invalidateGeneration = useCallback(() => {
+    generation.current++;
+  }, []);
+
   useEffect(() => {
     void fetchStocks();
-    return () => { generation.current++; };
-  }, [fetchStocks]);
+    return invalidateGeneration;
+  }, [fetchStocks, invalidateGeneration]);
 
   return { stocks, total, totalPages, hasMore, loading, error, updatedAt, refetch: () => fetchStocks(true) };
 }

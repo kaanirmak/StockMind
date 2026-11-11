@@ -387,6 +387,9 @@ function PiyasalarContent() {
       }
     }
     fetchOverview();
+    return () => {
+      isMounted = false;
+    };
   }, [activeMarket]);
 
   // Stocks data (active when activeMarket is BIST, COMMODITY, CRYPTO, FOREX, INDEX, NASDAQ, or NYSE)

@@ -103,8 +103,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       : null;
 
   useEffect(() => {
-    if (liveUsdRate && !exchangeRate) {
-      setExchangeRate(liveUsdRate.toFixed(2));
+    if (liveUsdRate) {
+      setExchangeRate((prev) => prev || liveUsdRate.toFixed(2));
     }
   }, [liveUsdRate]);
 

@@ -79,8 +79,9 @@ export default function StressTestTab({
   }, [portfolioStocks, currentSymbol]);
 
   useEffect(() => {
-    if (selectedSymbol && selectedSymbol.toUpperCase() !== currentSymbol.toUpperCase()) {
-      setCurrentSymbol(selectedSymbol.toUpperCase());
+    if (selectedSymbol) {
+      const next = selectedSymbol.toUpperCase();
+      setCurrentSymbol((prev) => (prev.toUpperCase() !== next ? next : prev));
     }
   }, [selectedSymbol]);
 

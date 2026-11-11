@@ -88,6 +88,7 @@ export default function SettingsPage() {
   const [openRouterKey, setOpenRouterKey] = useState('');
   const [models, setModels] = useState<CatalogModel[]>([AUTO_MODEL]);
   const [proModelsAllowed, setProModelsAllowed] = useState(false);
+  const [defaultModel, setDefaultModel] = useState('openrouter/free');
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/ai/models', { signal: controller.signal }).then(response => response.json()).then(data => {
@@ -99,7 +100,6 @@ export default function SettingsPage() {
     }).catch(() => {});
     return () => controller.abort();
   }, [user?.id]);
-  const [defaultModel, setDefaultModel] = useState('openrouter/free');
   const [isAdvancedAiOpen, setIsAdvancedAiOpen] = useState(false);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
   const [savedDailyReportEnabled, setSavedDailyReportEnabled] = useState(true);

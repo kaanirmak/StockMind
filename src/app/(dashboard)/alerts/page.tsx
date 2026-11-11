@@ -223,13 +223,19 @@ export default function AllAlertsPage() {
     [items, statusFilter, searchQuery],
   );
 
-  useEffect(() => {
-    if (allRules.length === 0) return;
-    let active = true;
+  const quoteTargets = useMemo(() => {
     const stockSymbols = allRules.filter((r) => r.assetType !== 'fund').map((r) => r.symbol);
     const fundSymbols = allRules.filter((r) => r.assetType === 'fund').map((r) => r.symbol);
-    const stockUrl = buildScopedQuotesUrl('stock', stockSymbols, { liveOnly: true });
-    const fundUrl = buildScopedQuotesUrl('fund', fundSymbols);
+    return {
+      stockUrl: buildScopedQuotesUrl('stock', stockSymbols, { liveOnly: true }),
+      fundUrl: buildScopedQuotesUrl('fund', fundSymbols),
+    };
+  }, [allRules]);
+
+  useEffect(() => {
+    const { stockUrl, fundUrl } = quoteTargets;
+    if (!stockUrl && !fundUrl) return;
+    let active = true;
 
     const loadQuotes = async () => {
       const next: Record<string, LiveQuoteEntry> = {};
@@ -281,7 +287,7 @@ export default function AllAlertsPage() {
     return () => {
       active = false;
     };
-  }, [allRules.length]);
+  }, [quoteTargets]);
 
   const handleTogglePause = (rule: WatchlistItem) => {
     const currentlyPaused = isAlertPaused(rule);

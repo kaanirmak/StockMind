@@ -2,7 +2,7 @@
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Badge, Input, Button, StateView } from '@/components/ui';
 import type { NewsArticle } from '@/app/api/news/route';
@@ -119,7 +119,7 @@ export default function NewsPage() {
     [portfolioIdentities]
   );
 
-  const fetchNews = async (isManualRefresh = false) => {
+  const fetchNews = useCallback(async (isManualRefresh = false) => {
     if (selectedCategory === 'MACRO_CALENDAR') {
       requestRef.current?.abort();
       const controller = new AbortController();
@@ -282,16 +282,16 @@ export default function NewsPage() {
       clearTimeout(timeout);
       if (requestRef.current === controller) { setLoading(false); setIsRefreshing(false); }
     }
-  };
+  }, [selectedCategory, portfolioIdentities, portfolioQuerySymbols, watchlistItems]);
 
   useEffect(() => {
-    fetchNews();
+    void fetchNews();
     setSelectedSymbolFilter('ALL');
     return () => {
       requestRef.current?.abort();
       requestRef.current = null;
     };
-  }, [selectedCategory, portfolioSymbols.join(','), watchlistItems.length]);
+  }, [fetchNews]);
 
   const watchlistSymbols = useMemo(
     () => watchlistItems.map((w) => w.symbol.toUpperCase().trim()).filter(Boolean),

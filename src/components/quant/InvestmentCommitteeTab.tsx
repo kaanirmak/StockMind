@@ -114,9 +114,12 @@ export default function InvestmentCommitteeTab({
     };
   }, [user]);
 
+  const lastSyncedSymbolRef = useRef<string | undefined>(selectedSymbol);
+
   // Sync external selectedSymbol changes without auto-triggering a paid/network analysis (QNT-04)
   useEffect(() => {
-    if (selectedSymbol && selectedSymbol !== symbol) {
+    if (selectedSymbol && selectedSymbol !== lastSyncedSymbolRef.current) {
+      lastSyncedSymbolRef.current = selectedSymbol;
       cancelReasonRef.current = 'superseded';
       activeRequest.current?.abort();
       activeRequest.current = null;

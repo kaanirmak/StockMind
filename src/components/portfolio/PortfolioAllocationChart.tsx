@@ -18,6 +18,16 @@ export interface PortfolioAllocationChartProps {
   compact?: boolean;
 }
 
+/** Precomputes cumulative SVG stroke offsets so render never mutates a running variable. */
+function buildAllocationSegments(allocation: AllocationItem[]) {
+  return allocation.reduce<Array<{ item: AllocationItem; start: number }>>((acc, item) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1] : null;
+    const start = prev ? prev.start + prev.item.percentage / 100 : 0;
+    acc.push({ item, start });
+    return acc;
+  }, []);
+}
+
 export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> = ({
   allocation,
   totalValue,
@@ -26,17 +36,16 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
   const [selected, setSelected] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { isPrivacyMode } = usePrivacyMode();
+  const segments = buildAllocationSegments(allocation);
   if (compact) {
-    let offset = 0;
+    const circumference = 2 * Math.PI * 39;
     return <>
       <button type="button" disabled={!allocation.length} aria-label="Varlık dağılımı ayrıntıları" onClick={() => setDetailsOpen(true)} className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0 rounded-full">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90" aria-hidden="true">
           <circle cx="50" cy="50" r="39" fill="none" stroke="var(--border)" strokeWidth="12" />
-          {allocation.map(item => {
-            const circumference = 2 * Math.PI * 39;
-            const start = offset; offset += item.percentage / 100;
-            return <circle key={item.label} cx="50" cy="50" r="39" fill="none" stroke={item.color} strokeWidth="12" strokeDasharray={`${circumference * item.percentage / 100} ${circumference}`} strokeDashoffset={-circumference * start} />;
-          })}
+          {segments.map(({ item, start }) => (
+            <circle key={item.label} cx="50" cy="50" r="39" fill="none" stroke={item.color} strokeWidth="12" strokeDasharray={`${circumference * item.percentage / 100} ${circumference}`} strokeDashoffset={-circumference * start} />
+          ))}
         </svg>
         <span className="absolute inset-0 flex flex-col items-center justify-center text-text-primary"><span className="text-base font-semibold">{allocation.length}</span><span className="text-[10px] text-text-muted">{allocation.length ? 'Dağılım' : 'Varlık'}</span></span>
       </button>
@@ -52,9 +61,7 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
     );
   }
 
-  // Calculate SVG donut slice paths
-  let cumulativePercent = 0;
-
+  const expandedCircumference = 2 * Math.PI * 0.8;
 
   return (
     <div className="glass-card p-5 space-y-4">
@@ -72,12 +79,9 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
         {/* SVG Donut Chart */}
         <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
           <svg viewBox="-1.1 -1.1 2.2 2.2" className="w-full h-full -rotate-90" role="img" aria-label={`Portföy dağılımı: ${allocation.map((item) => `${item.label} yüzde ${item.percentage.toFixed(1)}`).join(', ')}`}>
-            {allocation.map((item) => {
-              const circumference = 2 * Math.PI * 0.8;
-              const offset = cumulativePercent;
-              cumulativePercent += item.percentage / 100;
-              return <circle key={item.label} cx="0" cy="0" r="0.8" fill="none" stroke={item.color} strokeWidth="0.35" strokeDasharray={`${circumference * item.percentage / 100} ${circumference}`} strokeDashoffset={-circumference * offset} opacity={!selected || selected === item.label ? 1 : 0.35}><title>{item.label}: %{item.percentage.toFixed(1)}</title></circle>;
-            })}
+            {segments.map(({ item, start }) => (
+              <circle key={item.label} cx="0" cy="0" r="0.8" fill="none" stroke={item.color} strokeWidth="0.35" strokeDasharray={`${expandedCircumference * item.percentage / 100} ${expandedCircumference}`} strokeDashoffset={-expandedCircumference * start} opacity={!selected || selected === item.label ? 1 : 0.35}><title>{item.label}: %{item.percentage.toFixed(1)}</title></circle>
+            ))}
           </svg>
 
           {/* Center Text */}

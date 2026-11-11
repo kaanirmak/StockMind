@@ -39,5 +39,5 @@ jobs:
       - name: Run Automated Test Suites
         run: npm test
 
-      - name: ESLint Check
-        run: npm run lint
+      - name: ESLint Check & Warning Budget
+        run: npm run lint:budget

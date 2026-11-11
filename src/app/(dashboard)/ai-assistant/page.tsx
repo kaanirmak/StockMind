@@ -73,6 +73,10 @@ export interface ChatSession {
   messages: Message[];
 }
 
+function createClientId(prefix: string): string {
+  return `${prefix}-${Date.now()}`;
+}
+
 const INITIAL_MESSAGES: Message[] = [
   {
     id: 'msg-welcome',
@@ -128,15 +132,7 @@ function AIAssistantContent() {
     [effectivePortfolioScope]
   );
 
-  const portfolioTransactions = usePortfolioStore((s) => s.transactions);
-  const activePortfolioId = usePortfolioStore((s) => s.activePortfolioId);
-  const portfolioHoldingsCount = React.useMemo(() => {
-    try {
-      return usePortfolioStore.getState().getSummary()?.holdings?.length ?? 0;
-    } catch {
-      return 0;
-    }
-  }, [portfolioTransactions, activePortfolioId]);
+  const portfolioHoldingsCount = usePortfolioStore((s) => s.getSummary()?.holdings?.length ?? 0);
 
   useEffect(() => {
     setSavedReports(listSavedAnalysisReports(undefined, user?.id));
@@ -207,7 +203,10 @@ function AIAssistantContent() {
     } catch {}
   };
 
-  const currentModel = models.find((m) => m.id === selectedModel) || { id: selectedModel, name: selectedModel, free: true };
+  const currentModel = React.useMemo(
+    () => models.find((m) => m.id === selectedModel) || { id: selectedModel, name: selectedModel, free: true },
+    [models, selectedModel],
+  );
   const hasSavedCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
   const activeCustomKey = hasSavedCustomKey && usePersonalKey ? customApiKey.trim() : undefined;
   const usageVisibility = React.useMemo(
@@ -358,7 +357,7 @@ function AIAssistantContent() {
     abortControllerRef.current = null;
     setLoading(false);
     const newSession: ChatSession = {
-      id: `session-${Date.now()}`,
+      id: createClientId('session'),
       title: 'Yeni Finansal Sohbet',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -413,6 +412,9 @@ function AIAssistantContent() {
 
   // Handle URL prompt or sourced news analysis query params
   const promptProcessedRef = useRef<string | null>(null);
+  const latestSendMessageRef = useRef<(userText: string, includePortfolioOverride?: boolean) => Promise<void>>(
+    async () => {},
+  );
   useEffect(() => {
     const parsedNews = parseNewsAnalysisSearchParams(searchParams);
     if (parsedNews) {
@@ -431,7 +433,7 @@ function AIAssistantContent() {
       promptProcessedRef.current = urlPrompt;
       const includeFromParam = searchParams.get('includePortfolio');
       const shouldAttach = includeFromParam === '1' || includeFromParam === 'true';
-      handleSendMessage(urlPrompt, shouldAttach);
+      void latestSendMessageRef.current(urlPrompt, shouldAttach);
     }
   }, [searchParams]);
 
@@ -502,7 +504,7 @@ function AIAssistantContent() {
       }
       if (res.ok && data.success && data.message) {
         const assistantMessage: Message = {
-          id: `ast-${Date.now()}`,
+          id: createClientId('ast'),
           role: 'assistant',
           content: data.message.content,
           createdAt: data.message.createdAt || new Date().toISOString(),
@@ -529,7 +531,7 @@ function AIAssistantContent() {
         updateCurrentSessionMessages([
           ...baseHistory,
           {
-            id: `err-${Date.now()}`,
+            id: createClientId('err'),
             role: 'assistant',
             content: `**${classified.title}:** ${classified.message}`,
             createdAt: new Date().toISOString(),
@@ -547,7 +549,7 @@ function AIAssistantContent() {
       updateCurrentSessionMessages([
         ...baseHistory,
         {
-          id: isAbort ? `stop-${Date.now()}` : `err-${Date.now()}`,
+          id: isAbort ? createClientId('stop') : createClientId('err'),
           role: 'assistant',
           content: `**${classified.title}:** ${classified.message}`,
           createdAt: new Date().toISOString(),
@@ -579,7 +581,7 @@ function AIAssistantContent() {
     setReadinessError('');
 
     const userMessage: Message = {
-      id: `usr-${Date.now()}`,
+      id: createClientId('usr'),
       role: 'user',
       content: cleanText,
       createdAt: new Date().toISOString(),
@@ -594,6 +596,10 @@ function AIAssistantContent() {
     }
     await sendChatMessages(newMessages, cleanText, shouldIncludePortfolio, newsToAttach);
   };
+
+  useEffect(() => {
+    latestSendMessageRef.current = handleSendMessage;
+  });
 
   const handleRetryFailedPrompt = async (errorMessageId: string, promptText: string) => {
     if (loading || abortControllerRef.current || !promptText.trim()) return;

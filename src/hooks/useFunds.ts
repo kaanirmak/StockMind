@@ -31,6 +31,18 @@ export function useFunds(
   const [loading, setLoading] = useState(isEnabled);
   const [error, setError] = useState<string | null>(null);
   const symbolsKey = filter?.symbols ? filter.symbols.join(',') : '';
+  const filterCategory = filter?.category;
+  const filterSearch = filter?.search;
+  const filterMinRisk = filter?.minRisk;
+  const filterMaxRisk = filter?.maxRisk;
+  const filterRiskRange = filter?.riskRange;
+  const filterFeeTier = filter?.feeTier;
+  const filterReturnPeriod = filter?.returnPeriod;
+  const filterReturnThreshold = filter?.returnThreshold;
+  const filterSortBy = filter?.sortBy;
+  const filterOrder = filter?.order;
+  const filterPage = filter?.page;
+  const filterLimit = filter?.limit;
 
   const generation = useRef(0);
   const fetchFunds = useCallback(async (force = false) => {
@@ -42,18 +54,18 @@ export function useFunds(
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (filter?.category && filter.category !== 'ALL') params.append('category', filter.category);
-      if (filter?.search) params.append('search', filter.search);
-      if (filter?.minRisk) params.append('minRisk', String(filter.minRisk));
-      if (filter?.maxRisk) params.append('maxRisk', String(filter.maxRisk));
-      if (filter?.riskRange && filter.riskRange !== 'ALL') params.append('riskRange', filter.riskRange);
-      if (filter?.feeTier && filter.feeTier !== 'ALL') params.append('feeTier', filter.feeTier);
-      if (filter?.returnPeriod) params.append('returnPeriod', filter.returnPeriod);
-      if (filter?.returnThreshold && filter.returnThreshold !== 'ALL') params.append('returnThreshold', filter.returnThreshold);
-      if (filter?.sortBy) params.append('sortBy', filter.sortBy);
-      if (filter?.order) params.append('order', filter.order);
-      if (filter?.page && filter.page >= 1) params.append('page', String(filter.page));
-      if (filter?.limit && filter.limit > 0) params.append('limit', String(filter.limit));
+      if (filterCategory && filterCategory !== 'ALL') params.append('category', filterCategory);
+      if (filterSearch) params.append('search', filterSearch);
+      if (filterMinRisk) params.append('minRisk', String(filterMinRisk));
+      if (filterMaxRisk) params.append('maxRisk', String(filterMaxRisk));
+      if (filterRiskRange && filterRiskRange !== 'ALL') params.append('riskRange', filterRiskRange);
+      if (filterFeeTier && filterFeeTier !== 'ALL') params.append('feeTier', filterFeeTier);
+      if (filterReturnPeriod) params.append('returnPeriod', filterReturnPeriod);
+      if (filterReturnThreshold && filterReturnThreshold !== 'ALL') params.append('returnThreshold', filterReturnThreshold);
+      if (filterSortBy) params.append('sortBy', filterSortBy);
+      if (filterOrder) params.append('order', filterOrder);
+      if (filterPage && filterPage >= 1) params.append('page', String(filterPage));
+      if (filterLimit && filterLimit > 0) params.append('limit', String(filterLimit));
       if (symbolsKey) params.append('symbols', symbolsKey);
 
       const json = await marketJson<{
@@ -82,25 +94,29 @@ export function useFunds(
     }
   }, [
     isEnabled,
-    filter?.category,
-    filter?.search,
-    filter?.minRisk,
-    filter?.maxRisk,
-    filter?.riskRange,
-    filter?.feeTier,
-    filter?.returnPeriod,
-    filter?.returnThreshold,
-    filter?.sortBy,
-    filter?.order,
-    filter?.page,
-    filter?.limit,
+    filterCategory,
+    filterSearch,
+    filterMinRisk,
+    filterMaxRisk,
+    filterRiskRange,
+    filterFeeTier,
+    filterReturnPeriod,
+    filterReturnThreshold,
+    filterSortBy,
+    filterOrder,
+    filterPage,
+    filterLimit,
     symbolsKey,
   ]);
 
+  const invalidateGeneration = useCallback(() => {
+    generation.current++;
+  }, []);
+
   useEffect(() => {
     void fetchFunds();
-    return () => { generation.current++; };
-  }, [fetchFunds]);
+    return invalidateGeneration;
+  }, [fetchFunds, invalidateGeneration]);
 
   return { funds, total, totalPages, hasMore, loading, error, refetch: () => fetchFunds(true) };
 }

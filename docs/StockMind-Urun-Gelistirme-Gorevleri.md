@@ -206,7 +206,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | OPS-10 | P1 | Kritik kullanıcı akışlarını otomatik test et | Misafir başlangıcı, işlem kaydı, dosya aktarımı, alarm kurma, haber kesintisi ve rapor üretimi sürüm öncesi çalışır. | ◐ |
 | OPS-11 | P1 | Sağlayıcı ve görev durum panosu oluştur | Son başarılı fiyat/fon/haber alımı, bülten gecikmesi ve alarm hataları hassas bilgi taşımadan izlenir. | ◐ |
 | OPS-12 | P1 | Kullanım ölçümlerini tanımla | İlk işlem tamamlama, başarılı içe aktarma, alarm kurma ve tekrar kullanım ölçülür. Özel portföy tutarları analitik olaylara girmez. | ◐ |
-| OPS-13 | P2 | Lint uyarılarını etkisine göre azalt | Önce erişilebilirlik, React bağımlılıkları ve gerçek hata riski taşıyan uyarılar düşer. Toplam uyarı sayısı CI’da izlenir. | ☐ |
+| OPS-13 | P2 | Lint uyarılarını etkisine göre azalt | Önce erişilebilirlik, React bağımlılıkları ve gerçek hata riski taşıyan uyarılar düşer. Toplam uyarı sayısı CI’da izlenir. | ◐ |
 | OPS-14 | P2 | Piyasa ve portföy API’lerine yük testi yap | Tipik ve yoğun kullanımda yanıt süresi, hata oranı ve sağlayıcı çağrı sayısı ölçülür. | ☐ |
 | OPS-15 | P3 | Resmî Android dağıtım kanalını değerlendir | Mağaza gereksinimleri, imza yönetimi, güncelleme ve destek maliyeti karşılaştırılır. | ☐ |
 

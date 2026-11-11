@@ -193,7 +193,7 @@ export async function getFundsFromDatabase(filter?: {
     return [];
   }
 
-  let mapped: TefasFundInfo[] = data.map(mapDatabaseFundRow);
+  const mapped: TefasFundInfo[] = data.map(mapDatabaseFundRow);
 
   if (filter?.search && filter.search.trim().length > 0) {
     const q = filter.search.trim();
@@ -283,7 +283,7 @@ export function getAllFunds(filter?: {
   minRisk?: number;
   maxRisk?: number;
 }): TefasFundInfo[] {
-  let list = TEFAS_FUNDS;
+  const list = TEFAS_FUNDS;
 
   if (filter?.search && filter.search.trim().length > 0) {
     const q = filter.search.trim();

@@ -532,11 +532,12 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const local = loadLocalState(user.id);
 
         // 1. Fetch user's portfolios from Supabase DB
-        let { data: dbPortfolios, error: portError } = await supabase
+        const { data: initialPortfolios, error: portError } = await supabase
           .from('portfolios')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: true });
+        let dbPortfolios = initialPortfolios;
 
         if (generation !== fetchGeneration) return;
         if (portError) {
@@ -1043,7 +1044,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         const user = authData?.user;
 
         const currentPortfolios = get().portfolios;
-        let targetPort = currentPortfolios.find((p) => p.id === portfolioId) || currentPortfolios[0];
+        const targetPort = currentPortfolios.find((p) => p.id === portfolioId) || currentPortfolios[0];
 
         if (user && targetPort) {
           const realPortfolioId = await ensurePortfolioInSupabase(supabase, user, targetPort);

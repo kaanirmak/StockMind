@@ -467,7 +467,7 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
       );
     }
 
-    let symbol = String(rawSymbol || '').trim().toUpperCase();
+    const symbol = String(rawSymbol || '').trim().toUpperCase();
 
     if (!symbol) {
       errors.push('Hisse Kodu (Sembol) eksik');

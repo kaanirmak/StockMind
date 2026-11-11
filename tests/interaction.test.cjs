@@ -7707,6 +7707,49 @@ test('HSP-09: exposes visible data sources, AI data policy, widget sharing limit
   assert.match(helpSrc, /help-privacy-section-/);
 });
 
+test('OPS-13: tracks ESLint warning budget in CI and keeps high-impact hook/bug/a11y rules at zero', async () => {
+  const budgetMod = await import('../scripts/check-lint-warnings.mjs');
+  const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+  const ciSrc = fs.readFileSync(path.join(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
+
+  assert.equal(pkg.scripts['lint:budget'], 'node scripts/check-lint-warnings.mjs');
+  assert.match(ciSrc, /npm run lint:budget/);
+  assert.ok(budgetMod.MAX_TOTAL_WARNINGS < budgetMod.BASELINE_TOTAL_WARNINGS);
+
+  const clean = budgetMod.evaluateEslintReport([
+    {
+      errorCount: 0,
+      warningCount: 10,
+      messages: [{ ruleId: '@typescript-eslint/no-explicit-any' }],
+    },
+  ]);
+  assert.equal(clean.passed, true);
+
+  const overBudget = budgetMod.evaluateEslintReport(
+    [{ errorCount: 0, warningCount: budgetMod.MAX_TOTAL_WARNINGS + 1, messages: [] }],
+  );
+  assert.equal(overBudget.passed, false);
+
+  const highImpactFail = budgetMod.evaluateEslintReport([
+    {
+      errorCount: 0,
+      warningCount: 1,
+      messages: [{ ruleId: 'react-hooks/exhaustive-deps' }],
+    },
+  ]);
+  assert.equal(highImpactFail.passed, false);
+  assert.equal(highImpactFail.highImpactViolations['react-hooks/exhaustive-deps'], 1);
+
+  const a11yFail = budgetMod.evaluateEslintReport([
+    {
+      errorCount: 0,
+      warningCount: 1,
+      messages: [{ ruleId: 'jsx-a11y/alt-text' }],
+    },
+  ]);
+  assert.equal(a11yFail.passed, false);
+});
+
 
 
 

@@ -4,7 +4,7 @@ import QuantProfileBanner from './QuantProfileBanner';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Calculator,
   TrendingUp,
@@ -126,29 +126,44 @@ export default function DCFValuationTab({
     }
   }, [periodicInputs.periodId, periodicInputs.periodType, periodicInputs.freeCashFlowMillions, periodicInputs.netDebtMillions, periodicInputs.isSourced]);
 
-  // Synchronize when external selectedSymbol prop changes
-  useEffect(() => {
-    if (selectedSymbol && selectedSymbol.toUpperCase() !== selectedPreset.toUpperCase()) {
-      handleSelectPreset(selectedSymbol);
-    }
-  }, [selectedSymbol]);
-
   // When changing preset, update all inputs
+  const applyPreset = useCallback(
+    (sym: string, notifyParent: boolean) => {
+      const cleanSym = sym.trim().toUpperCase();
+      setSelectedPreset(cleanSym);
+      if (notifyParent) {
+        onSelectSymbol?.(cleanSym);
+      }
+      const holding = portfolioStocks.find((h) => h.symbol.toUpperCase() === cleanSym);
+      const nextMarket = resolveDcfHoldingMarketInputs(cleanSym, holding);
+      const p = getFinancialProfile(cleanSym, nextMarket.currentPrice);
+      setCurrentPrice(p.currentPrice);
+      setFreeCashFlow(p.freeCashFlow);
+      setGrowthRate5Y(p.growthRate5Y);
+      setTerminalGrowthRate(p.terminalGrowthRate);
+      setWacc(p.wacc);
+      setNetDebt(p.netDebt);
+      setSharesOutstanding(p.sharesOutstanding);
+    },
+    [onSelectSymbol, portfolioStocks],
+  );
+
   const handleSelectPreset = (sym: string) => {
     const cleanSym = sym.trim().toUpperCase();
-    setSelectedPreset(cleanSym);
-    onSelectSymbol?.(cleanSym);
-    const holding = portfolioStocks.find((h) => h.symbol.toUpperCase() === cleanSym);
-    const nextMarket = resolveDcfHoldingMarketInputs(cleanSym, holding);
-    const p = getFinancialProfile(cleanSym, nextMarket.currentPrice);
-    setCurrentPrice(p.currentPrice);
-    setFreeCashFlow(p.freeCashFlow);
-    setGrowthRate5Y(p.growthRate5Y);
-    setTerminalGrowthRate(p.terminalGrowthRate);
-    setWacc(p.wacc);
-    setNetDebt(p.netDebt);
-    setSharesOutstanding(p.sharesOutstanding);
+    lastSyncedSymbolRef.current = cleanSym;
+    applyPreset(cleanSym, true);
   };
+
+  const lastSyncedSymbolRef = useRef<string | undefined>(selectedSymbol?.trim().toUpperCase());
+
+  // Synchronize when external selectedSymbol prop changes
+  useEffect(() => {
+    const nextSym = selectedSymbol?.trim().toUpperCase();
+    if (nextSym && nextSym !== lastSyncedSymbolRef.current) {
+      lastSyncedSymbolRef.current = nextSym;
+      applyPreset(nextSym, false);
+    }
+  }, [selectedSymbol, applyPreset]);
 
   // Calculate live DCF result
   const dcfParams = useMemo<DCFParams>(

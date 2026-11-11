@@ -93,6 +93,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
     });
     setSelectedCurrency(existingItem?.alertCurrency || inferredCurr);
 
+    const stockCurrentPrice = stock.price || 0;
     if (existingItem?.alertType && existingItem.alertType !== 'price' && existingItem.alertPercent) {
       setMode('percent');
       setSelectedPercent(existingItem.alertPercent);
@@ -108,7 +109,7 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
       setDirection(
         existingItem.alertDirection === 'down' || existingItem.alertDirection === 'up'
           ? existingItem.alertDirection
-          : existingItem.targetPrice >= currentPrice
+          : existingItem.targetPrice >= stockCurrentPrice
             ? 'up'
             : 'down',
       );
@@ -117,9 +118,9 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
       setDirection('up');
       setSelectedPercent(2);
       setCustomPercent('');
-      const decimals = stock.assetType === 'fund' || currentPrice < 1 ? 4 : 2;
+      const decimals = stock.assetType === 'fund' || stockCurrentPrice < 1 ? 4 : 2;
       setTargetPriceInput(
-        currentPrice > 0 ? (currentPrice * 1.02).toFixed(decimals) : ''
+        stockCurrentPrice > 0 ? (stockCurrentPrice * 1.02).toFixed(decimals) : ''
       );
     }
   }, [stock, isOpen, existingItem]);

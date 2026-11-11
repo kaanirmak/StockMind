@@ -4,7 +4,7 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 import { palette } from '@/theme/palette';
 
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createChart,
   IChartApi,
@@ -119,6 +119,13 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     }
   };
 
+  const getResponsiveHeight = useCallback(() => {
+    if (typeof window === 'undefined') return height;
+    if (window.innerWidth < 640) return 330; // Mobile compact
+    if (window.innerWidth < 1024) return 380; // Tablet
+    return height;
+  }, [height]);
+
   useEffect(() => {
     const handleFsChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -135,14 +142,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     };
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
-  }, [isFullscreen]);
-
-  const getResponsiveHeight = () => {
-    if (typeof window === 'undefined') return height;
-    if (window.innerWidth < 640) return 330; // Mobile compact
-    if (window.innerWidth < 1024) return 380; // Tablet
-    return height;
-  };
+  }, [isFullscreen, getResponsiveHeight]);
 
 
 
@@ -485,6 +485,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     resolvedTheme,
     isFullscreen,
     touchInspectMode,
+    getResponsiveHeight,
   ]);
 
   const latestCandle = candles[candles.length - 1];
