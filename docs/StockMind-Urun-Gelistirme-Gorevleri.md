@@ -157,7 +157,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | AIP-06 | P1 | Haber analizini kaynaklı ve bağlama duyarlı yap | Haber başlığı, özeti ve kaynak kullanılır. Kullanıcı portföy bağlamını ayrı seçebilir. | ◐ |
 | AIP-07 | P2 | Pro özellik özetini ve örnek analizi ekle | Kullanıcı planın kapsamını, veri kapsamını ve örnek çıktı biçimini üyelikten önce görebilir. | ◐ |
 | AIP-08 | P2 | Kaydedilebilir analiz ekle | Rapor, sembol, veri tarihi, model ve varsayımlarıyla kaydedilip yeniden açılabilir. | ◐ |
-| AIP-09 | P2 | Finansal AI yanıtları için değerlendirme seti kur | Kaynak kesintisi, çelişkili veri, yanlış sembol ve belirsiz haber senaryoları düzenli test edilir. | ☐ |
+| AIP-09 | P2 | Finansal AI yanıtları için değerlendirme seti kur | Kaynak kesintisi, çelişkili veri, yanlış sembol ve belirsiz haber senaryoları düzenli test edilir. | ◐ |
 
 ## 10. Quant Lab
 
