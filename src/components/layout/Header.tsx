@@ -230,11 +230,13 @@ export default function Header() {
         {/* Notifications Dropdown */}
         <div className="relative" ref={notificationRef}>
           <button
+            type="button"
             onClick={() => { setShowUserMenu(false); setShowNotifications(!showNotifications); }}
             className={`relative p-2 min-h-11 min-w-11 flex items-center justify-center rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-hover transition-all duration-200 cursor-pointer ${
               showNotifications ? 'bg-bg-hover text-text-primary' : ''
             }`}
             title="Bildirimler"
+            aria-label={unreadCount > 0 ? `Bildirimler (${unreadCount} okunmamış)` : 'Bildirimler'}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -361,9 +363,11 @@ export default function Header() {
                       <button type="button" title="Bildirim tercihini düzenle" aria-label={`${item.title} bildirim tercihini düzenle`} onClick={(e) => { e.stopPropagation(); setShowNotifications(false); router.push('/settings#notifications'); }} className="min-w-11 text-text-muted hover:text-accent"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth="2" d="m16 3 5 5-12 12-6 1 1-6L16 3Z" /></svg></button>
                       {/* Delete button on hover */}
                       <button
+                        type="button"
                         onClick={(e) => deleteNotification(item.id, e)}
                         className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 p-1 text-text-muted hover:text-danger rounded hover:bg-bg-secondary transition-all shrink-0 cursor-pointer"
                         title="Sil"
+                        aria-label={`${item.title} bildirimini sil`}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

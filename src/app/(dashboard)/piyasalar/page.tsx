@@ -602,6 +602,8 @@ function PiyasalarContent() {
               {/* Search */}
               <div className="flex-1 min-w-0">
                 <Input
+                  type="search"
+                  aria-label={`${MARKETS.find((m) => m.id === activeMarket)?.name || activeMarket} pazarında ara`}
                   placeholder={`${MARKETS.find((m) => m.id === activeMarket)?.name || activeMarket} ara...`}
                   value={stockSearch}
                   onChange={(e) => setStockSearch(e.target.value)}
@@ -976,6 +978,8 @@ function PiyasalarContent() {
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0">
                 <Input
+                  type="search"
+                  aria-label="TEFAS fon kodu veya kurucu ara"
                   placeholder="Fon kodu veya kurucu ara (örn: TI2, MAC)..."
                   value={fundSearch}
                   onChange={(e) => { setFundSearch(e.target.value); setFundLimit(30); }}

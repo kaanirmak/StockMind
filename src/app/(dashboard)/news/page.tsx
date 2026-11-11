@@ -160,6 +160,8 @@ export default function NewsPage() {
           <div className="flex w-full min-w-0 lg:w-80 items-center gap-2">
             <div className="min-w-0 flex-1">
             <Input
+              type="search"
+              aria-label="Haber, hisse veya kaynak ara"
               placeholder="Haber, hisse veya kaynak ara..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

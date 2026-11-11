@@ -2193,6 +2193,29 @@ test('UX-06 portfolio summary card separates link, period selector, and privacy 
   assert.match(summarySrc, /<Link[\s\S]*?href="\/portfolio"[\s\S]*?data-testid="portfolio-summary-link"/);
 });
 
+test('UX-07 search inputs and icon buttons expose meaningful accessible names', () => {
+  const checks = [
+    ['src/app/(dashboard)/news/page.tsx', /aria-label="Haber, hisse veya kaynak ara"/],
+    ['src/app/(dashboard)/piyasalar/page.tsx', /aria-label="TEFAS fon kodu veya kurucu ara"/],
+    ['src/app/(dashboard)/portfolio/page.tsx', /aria-label="İşlem geçmişinde sembol veya not ara"/],
+    ['src/app/(dashboard)/portfolio/page.tsx', /aria-label="İşlem aramasını temizle"/],
+    ['src/app/(dashboard)/watchlist/page.tsx', /aria-label=\{`\$\{item\.symbol\} varlığını takip listesinden çıkar`\}/],
+    ['src/app/(dashboard)/ai-assistant/page.tsx', /aria-label="AI modeli ara"/],
+    ['src/app/(dashboard)/ai-assistant/page.tsx', /aria-label="Model aramasını temizle"/],
+    ['src/app/(dashboard)/stocks/[symbol]/page.tsx', /aria-label=\{`\$\{symbol\} sayfasını paylaş`\}/],
+    ['src/components/layout/Header.tsx', /aria-label=\{unreadCount > 0 \? `Bildirimler \(\$\{unreadCount\} okunmamış\)` : 'Bildirimler'\}/],
+    ['src/components/layout/Header.tsx', /aria-label=\{`\$\{item\.title\} bildirimini sil`\}/],
+    ['src/components/layout/Sidebar.tsx', /aria-label=\{collapsed \? 'Kenar çubuğunu genişlet' : 'Kenar çubuğunu daralt'\}/],
+    ['src/components/ui/ApkDownloadModal.tsx', /aria-label="APK indirme penceresini kapat"/],
+  ];
+
+  for (const [relPath, pattern] of checks) {
+    const content = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    assert.match(content, pattern, `Expected accessible name match in ${relPath}`);
+  }
+});
+
+
 
 
 

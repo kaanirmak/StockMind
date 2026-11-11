@@ -167,6 +167,7 @@ export default function Sidebar() {
           onClick={() => setShowApkModal(true)}
           className="w-10 h-10 mx-auto mb-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center hover:scale-105 transition-all cursor-pointer shadow-xs"
           title="StockMind Android APK İndir (5.9 MB)"
+          aria-label="StockMind Android APK indir"
         >
           <svg className="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993s-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993s-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.152-.5684.417.417 0 00-.569.152l-2.0223 3.503C15.583 8.359 13.856 8 12 8s-3.583.359-5.1352.949L4.8425 5.446a.417.417 0 00-.569-.152.416.416 0 00-.152.5684l1.997 3.459C2.688 11.086 0 14.887 0 19.341h24c0-4.454-2.688-8.255-6.1185-10.0196" />
@@ -218,7 +219,9 @@ export default function Sidebar() {
         </Link>
 
         <button
+          type="button"
           onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? 'Kenar çubuğunu genişlet' : 'Kenar çubuğunu daralt'}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-text-muted hover:text-text-secondary hover:bg-bg-hover transition-all duration-200 w-full cursor-pointer"
         >
           <svg

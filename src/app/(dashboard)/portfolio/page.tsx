@@ -611,7 +611,8 @@ export default function PortfolioPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                   <input
-                    type="text"
+                    type="search"
+                    aria-label="İşlem geçmişinde sembol veya not ara"
                     value={txSearchQuery}
                     onChange={(e) => setTxSearchQuery(e.target.value)}
                     placeholder="Sembol veya not ara..."
@@ -620,6 +621,7 @@ export default function PortfolioPage() {
                   {txSearchQuery && (
                     <button
                       type="button"
+                      aria-label="İşlem aramasını temizle"
                       onClick={() => setTxSearchQuery('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs cursor-pointer"
                     >

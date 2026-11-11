@@ -255,6 +255,7 @@ export default function WidgetEmbedModal({
             <input
               type="text"
               readOnly
+              aria-label="Widget yerleştirme URL bağlantısı"
               value={fullWidgetUrl}
               className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-text-secondary font-mono select-all focus:outline-none"
             />

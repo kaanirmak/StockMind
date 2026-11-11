@@ -547,9 +547,11 @@ export default function InvestmentCommitteeTab({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-text-secondary">OpenRouter API Anahtarı</label>
+              <label htmlFor="committee-openrouter-api-key" className="text-xs font-semibold text-text-secondary">OpenRouter API Anahtarı</label>
               <input
+                id="committee-openrouter-api-key"
                 type="password"
+                aria-label="OpenRouter API Anahtarı"
                 value={tempKeyInput}
                 onChange={(e) => setTempKeyInput(e.target.value)}
                 placeholder="sk-or-v1-xxxxxxxxxxxxxxxx..."

@@ -783,6 +783,7 @@ function AIAssistantContent() {
       <div className="glass-card p-1.5 sm:p-2 rounded-2xl border border-border shrink-0 flex items-center gap-1.5 sm:gap-2 shadow-sm mb-1 sm:mb-0 pb-[calc(0.375rem+env(safe-area-inset-bottom))] sm:pb-2 focus-within:border-accent/80 focus-within:ring-1 focus-within:ring-accent/30 transition-all">
         <input
           type="text"
+          aria-label="Hisse, fon veya teknik analiz sorusu sorun"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -1063,17 +1064,19 @@ function AIAssistantContent() {
             {/* Search Input */}
             <div className="relative">
               <input
-                type="text"
+                type="search"
+                aria-label="AI modeli ara"
                 placeholder="Model ara... (örn: gpt, gemini, claude, deepseek)"
                 value={modelSearchQuery}
                 onChange={(e) => setModelSearchQuery(e.target.value)}
                 className="w-full h-10 pl-9 pr-8 rounded-xl bg-bg-input border border-border text-xs sm:text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
                 autoFocus
               />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">🔍</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-text-muted" aria-hidden="true">🔍</span>
               {modelSearchQuery && (
                 <button
                   type="button"
+                  aria-label="Model aramasını temizle"
                   onClick={() => setModelSearchQuery('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted hover:text-text-primary"
                 >
