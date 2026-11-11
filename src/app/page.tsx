@@ -97,7 +97,9 @@ export default async function LandingPage() {
             Ücretsiz Başlayın →
           </Link>
           <Link
-            href="/login"
+            href="/demo"
+            prefetch={false}
+            data-testid="landing-demo-cta"
             className="px-8 py-3.5 min-h-12 text-center rounded-xl glass-card border border-border text-text-primary text-base font-medium hover:border-accent/30 transition-all duration-200"
           >
             Demo Görüntüle

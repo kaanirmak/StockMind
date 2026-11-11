@@ -11,6 +11,7 @@ import {
   resolveAuthPageNotice,
   type AuthNotice,
 } from '@/lib/auth/authMessages';
+import { enterGuestDemoClient } from '@/lib/auth/demoFlow';
 
 function LoginPageContent() {
   const supabase = createClient();
@@ -91,8 +92,7 @@ function LoginPageContent() {
   }
 
   function handleGuestLogin() {
-    document.cookie = 'stockmind_guest=true; path=/; max-age=31536000';
-    window.location.href = '/dashboard';
+    enterGuestDemoClient();
   }
 
   return (
@@ -122,6 +122,7 @@ function LoginPageContent() {
       <button
         onClick={handleGuestLogin}
         type="button"
+        data-testid="login-guest-demo-button"
         className="w-full min-h-[46px] flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-violet-50 hover:bg-violet-100/90 text-violet-700 border border-violet-200/90 shadow-xs font-semibold mb-4 cursor-pointer transition-all duration-200 dark:bg-accent/15 dark:hover:bg-accent/25 dark:text-accent dark:border-accent/30 text-sm"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

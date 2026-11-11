@@ -5117,6 +5117,63 @@ test('HSP-06: landing page claims match implemented markets, asset count, indica
   assert.deepEqual([...PRODUCT_SCOPE.supportedLanguages], ['Türkçe']);
 });
 
+test('HSP-07: demo CTA and guest login connect directly to guest sample flow without registration', () => {
+  const sampleSessionWrites = [];
+  const demoFlow = load('src/lib/auth/demoFlow.ts', {
+    require: (name) => {
+      if (name === '@/lib/portfolio/samplePortfolio') {
+        return { writeSampleModeSession: (v) => sampleSessionWrites.push(v) };
+      }
+      return require(name);
+    },
+  });
+
+  // 1. Client guest demo helper sets stockmind_guest cookie, enables sample mode, and routes straight to /dashboard?demo=1
+  const cookiesSet = [];
+  const sampleCalls = [];
+  const navigated = [];
+  demoFlow.enterGuestDemoClient({
+    setCookie: (c) => cookiesSet.push(c),
+    writeSampleSession: (v) => sampleCalls.push(v),
+    navigate: (u) => navigated.push(u),
+  });
+  assert.equal(cookiesSet.length, 1);
+  assert.match(cookiesSet[0], /^stockmind_guest=true/);
+  assert.deepEqual(sampleCalls, [true]);
+  assert.deepEqual(navigated, ['/dashboard?demo=1']);
+
+  // 2. Origin & demo query helpers
+  assert.equal(
+    demoFlow.resolveSafeAppOrigin(
+      { get: (k) => (k === 'x-forwarded-host' ? 'app.stockmind.dev' : k === 'x-forwarded-proto' ? 'https' : null) },
+      'http://localhost:3000',
+      undefined,
+      'production'
+    ),
+    'https://app.stockmind.dev'
+  );
+  assert.equal(demoFlow.isDemoQueryActive({ get: (k) => (k === 'demo' ? '1' : null) }), true);
+  assert.equal(demoFlow.isDemoQueryActive({ get: () => null }), false);
+
+  // 3. Landing page, /demo route handler, /login guest button, and /dashboard auto-sample activation
+  const landingSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/page.tsx'), 'utf8');
+  assert.match(landingSrc, /href="\/demo"/);
+  assert.match(landingSrc, /data-testid="landing-demo-cta"/);
+
+  const demoRouteSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/demo/route.ts'), 'utf8');
+  assert.match(demoRouteSrc, /response\.cookies\.set\(GUEST_COOKIE_NAME,\s*'true'/);
+  assert.match(demoRouteSrc, /DEMO_DESTINATION_PATH/);
+
+  const loginSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(auth)/login/page.tsx'), 'utf8');
+  assert.match(loginSrc, /enterGuestDemoClient/);
+  assert.match(loginSrc, /data-testid="login-guest-demo-button"/);
+
+  const dashboardSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/dashboard/page.tsx'), 'utf8');
+  assert.match(dashboardSrc, /isDemoQueryActive/);
+  assert.match(dashboardSrc, /setSampleMode\(true\)/);
+});
+
+
 
 
 

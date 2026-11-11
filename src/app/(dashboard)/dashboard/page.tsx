@@ -13,6 +13,7 @@ import WatchlistPreview from '@/components/dashboard/WatchlistPreview';
 import { ApkDownloadModal } from '@/components/ui';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useAuth } from '@/hooks/useAuth';
+import { isDemoQueryActive } from '@/lib/auth/demoFlow';
 
 import { useAppPlatform } from '@/hooks/useAppPlatform';
 
@@ -33,6 +34,16 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchPortfoliosAndTransactions();
   }, [fetchPortfoliosAndTransactions]);
+
+  // Direct demo entry (?demo=1 from landing CTA or guest login) lands straight in sample experience
+  useEffect(() => {
+    if (typeof window === 'undefined' || !hasLoaded || loading || authLoading) return;
+    if (isSampleMode || transactions.length > 0 || cashMovements.length > 0) return;
+    const params = new URLSearchParams(window.location.search);
+    if (isDemoQueryActive(params)) {
+      setSampleMode(true);
+    }
+  }, [hasLoaded, loading, authLoading, isSampleMode, transactions.length, cashMovements.length, setSampleMode]);
 
   const showSampleInvite =
     hasLoaded &&
