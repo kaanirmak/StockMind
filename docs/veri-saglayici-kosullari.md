@@ -11,6 +11,7 @@ Uygulama içi programatik eşlenik: [`src/lib/market/providerPolicies.ts`](../sr
 | `yahoo-finance` | Yahoo Finance | `BIST`, `NASDAQ`, `NYSE`, `INDEX`, `FOREX`, `COMMODITY` | `intraday-delayed` | Borsa kurallarına bağlı 15–20 dk gecikmeli veya son kapanış / tarihsel bar verisi | Grafik aralığı, kısmi/güncel bar kapsamı ve `Yahoo Finance` kaynağı gösterilir | Yalnızca uygulama içi görselleştirme kapsamındadır; harici yeniden dağıtım yasaktır |
 | `tefas` | TEFAS / Takasbank | `TEFAS` | `end-of-day` | Gün sonu resmî değerleme (`NAV`); tatil ve hafta sonlarında son iş günü verisi | `TL/pay` birimi, değerleme tarihi (`asOf`) ve resmî KAP fon bağlantısı gösterilir | İçerik değiştirilmeden ve kaynak atfıyla gösterilir; ücretli feed olarak satılamaz |
 | `rss-news` | Yayıncı RSS & KAP Bağlantıları | `BIST`, `MACRO`, `GLOBAL` | `feed-periodic` | Yayıncı RSS yayın sıklığı ve önbellek tazeleme döngüsüne bağlı | Yayıncı adı ve yayın saati gösterilir; yayıncı haberi asla resmî KAP bildirimi gibi sunulmaz | Yalnızca başlık, kısa özet ve orijinal link verilir; tam metin yeniden dağıtılmaz |
+| `kap` | Kamuyu Aydınlatma Platformu (KAP) | `BIST`, `TEFAS` | `feed-periodic` | Resmî KAP API veya doğrudan `kap.org.tr` bağlantısı; canlı fiyat verisi değildir ve önbellek gecikmesi içerebilir | Kaynak kimliği (`KAP`), yayın saati, şirket/sembol ve doğrudan `kap.org.tr` belge linki gösterilir; yayıncı haberi KAP sayılmaz | Tam metin ve ek PDF'ler yeniden dağıtılmaz; yalnızca doğrulanmış özet ve orijinal link sunulur |
 | `openrouter` | OpenRouter AI Gateway | `AI-COMMENTARY` | `on-demand-ai` | İstek anında metin üretimi; **canlı fiyat sağlayıcısı değildir** | Doğrulanmış uygulama verisine dayanır; eksik fiyat durumunda tahmin üretmez, yatırım tavsiyesi değildir | Kullanıcı oturumuna özel çıktıdır; seçili model sağlayıcı şartlarına tabidir |
 
 ---
@@ -47,3 +48,10 @@ Uygulama içi programatik eşlenik: [`src/lib/market/providerPolicies.ts`](../sr
 - **Gecikme Beklentisi:** İstek bazlı model yanıtı; zaman aşımı ve kota korumasına tabidir. **Piyasa fiyatı veya fon verisi kaynağı değildir.**
 - **Gösterim Koşulları:** Yapay zekâ yorumu yalnızca sunucudan doğrulanan mevcut fiyat ve fon verileriyle beslenir; eksik alanlarda kullanıcıya veri eksikliği açıkça bildirilir.
 - **Yeniden Dağıtım Kısıtı:** Çıktılar yalnızca ilgili oturum kullanıcısına sunulur ve seçili model sağlayıcılarının kullanım koşullarına tabidir.
+
+### 6. Kamuyu Aydınlatma Platformu (`kap`)
+- **İzinli Veri Kaynağı ve Erişim Modeli:** Yalnızca resmî KAP veri dağıtım/API kanalı veya doğrulanmış `kap.org.tr` bildirim bağlantıları kullanılır. Yetkisiz sayfa kazıma (scraping) ile sahte gerçek zamanlı KAP iddiasında bulunulmaz.
+- **Kapsam:** Özel Durum Açıklamaları (ÖDA), periyodik finansal tablolar ve faaliyet raporları, temettü/sermaye artırımı/genel kurul bildirimleri ile TEFAS fon KAP sayfaları.
+- **Gecikme Beklentisi:** Kaynak yayınlanma ve uygulama önbellek döngüsüne bağlı periyodik güncelleme (`feed-periodic`); canlı borsa emir/fiyat verisi değildir.
+- **Gösterim Koşulları:** Her resmî açıklamada kaynak kimliği (`KAP`), orijinal yayın zamanı, ilgili şirket/sembol ve doğrudan `https://www.kap.org.tr/` belge bağlantısı görünür. Yayıncı RSS haberleri asla resmî KAP bildirimi gibi sunulmaz.
+- **Yeniden Dağıtım Kısıtı:** Tam bildirim metinleri veya PDF ekleri barındırılıp toplu yeniden dağıtılmaz; yalnızca bildirim özeti ve resmî belge bağlantısı sunulur.

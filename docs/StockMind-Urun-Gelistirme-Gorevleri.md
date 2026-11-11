@@ -139,7 +139,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | HBR-05 | P1 | Haberde portföy bağlantısının nedenini göster | Eşleşen varlık, olay türü ve eşleşme nedeni kartta görünür. | ◐ |
 | HBR-06 | P1 | Öne çıkanlar ile en yeni akışını doğrula | Sıralama değiştirilebilir. Eski bir portföy haberi yeni gelişmeleri süresiz geriye itmez. | ◐ |
 | HBR-07 | P1 | Haber, resmî açıklama ve takvim olayını ayır | Kart türleri açıkça etiketlenir. Haber tonuyla olası portföy etkisi ayrı sunulur. | ◐ |
-| HBR-08 | P2 | KAP veri erişimini ve kullanım koşullarını doğrula | İzinli veri kaynağı, kapsam, gecikme ve gösterim koşulları belgelenir. | ☐ |
+| HBR-08 | P2 | KAP veri erişimini ve kullanım koşullarını doğrula | İzinli veri kaynağı, kapsam, gecikme ve gösterim koşulları belgelenir. | ◐ |
 | HBR-09 | P2 | Uygulama içi KAP akışını ekle | Resmî açıklamalar kaynak kimliği, yayın saati, şirket ve orijinal belge bağlantısıyla görünür. | ☐ |
 | HBR-10 | P2 | Bilanço ve temettü takvimi ekle | Kullanıcı yaklaşan olayları portföy veya takip listesine göre filtreleyebilir. | ☐ |
 | HBR-11 | P2 | Makroekonomi takvimi ekle | Önemli Türkiye ve küresel olaylarda saat, kaynak ve mevcutsa önceki, beklenen ve gerçekleşen değer gösterilir. | ☐ |

@@ -3,6 +3,7 @@ export type DataProviderId =
   | 'yahoo-finance'
   | 'tefas'
   | 'rss-news'
+  | 'kap'
   | 'openrouter';
 
 export interface DataProviderPolicy {
@@ -20,6 +21,26 @@ export interface DataProviderPolicy {
 }
 
 export const DATA_PROVIDER_POLICY_DOC_PATH = 'docs/veri-saglayici-kosullari.md';
+
+export const KAP_ACCESS_TERMS = {
+  providerId: 'kap' as const,
+  allowedDomains: ['kap.org.tr'] as const,
+  accessMode: 'Resmî KAP API anlaşması veya doğrudan kap.org.tr portal bağlantısı',
+  scope: [
+    'Özel Durum Açıklamaları (ÖDA)',
+    'Periyodik Finansal Tablo ve Faaliyet Raporları',
+    'Temettü, Sermaye Artırımı ve Genel Kurul Bildirimleri',
+    'TEFAS Fon KAP Bilgilendirme Sayfaları',
+  ] as const,
+  delayNotice:
+    'Resmî KAP portalı/izinli API akışı esas alınır; borsa canlı emir/fiyat verisi değildir ve önbellek gecikmesi içerebilir.',
+  displayRules: [
+    'Kaynak kimliği (KAP), orijinal bildirim tarihi/saati ve şirket/sembol bilgisi birlikte gösterilir.',
+    'Her kayıt doğrudan https://www.kap.org.tr/ belge bağlantısı içerir; yayıncı RSS haberleri asla resmî KAP açıklaması gibi sunulmaz.',
+  ] as const,
+  redistributionNotice:
+    'Resmî bildirim tam metinleri yeniden dağıtılmaz; yalnızca doğrulanmış özet ve orijinal kap.org.tr bağlantısı paylaşılır.',
+} as const;
 
 export const DATA_PROVIDER_POLICIES: readonly DataProviderPolicy[] = [
   {
@@ -103,6 +124,27 @@ export const DATA_PROVIDER_POLICIES: readonly DataProviderPolicy[] = [
     sourceModules: ['src/lib/news/feeds.ts', 'src/lib/news/snapshot.ts'],
   },
   {
+    id: 'kap',
+    name: 'Kamuyu Aydınlatma Platformu (KAP)',
+    coveredMarkets: ['BIST', 'TEFAS'],
+    coveredInstruments: [
+      'Özel Durum Açıklamaları (ÖDA)',
+      'Periyodik Finansal Tablo ve Faaliyet Raporları',
+      'Temettü, Sermaye Artırımı ve Genel Kurul Bildirimleri',
+      'TEFAS Yatırım Fonları KAP Sayfaları',
+    ],
+    delayClass: 'feed-periodic',
+    delayDisclosure:
+      'Resmî KAP API anlaşması veya doğrudan kap.org.tr bildirim bağlantısı üzerinden sunulur; canlı borsa veri dağıtım kapsamı dışındadır ve kısa önbellek gecikmesi içerebilir.',
+    displayConditions:
+      'Her bildirimde kaynak kimliği (KAP), orijinal yayın saati, ilgili şirket/sembol ve doğrudan https://www.kap.org.tr/ belge bağlantısı gösterilir; yayıncı RSS haberleri asla KAP bildirimi olarak etiketlenmez.',
+    redistributionTerms:
+      'Tam bildirim metinleri veya ek PDF dosyaları StockMind sunucularında yeniden dağıtılmaz; yalnızca doğrulanmış bildirim özeti ve resmî kap.org.tr bağlantısı verilir.',
+    attributionLabel: 'Resmî Bildirim: Kamuyu Aydınlatma Platformu (KAP)',
+    referenceDocPath: DATA_PROVIDER_POLICY_DOC_PATH,
+    sourceModules: ['src/app/api/news/route.ts', 'src/lib/notifications/kapCalendarAlerts.ts'],
+  },
+  {
     id: 'openrouter',
     name: 'OpenRouter AI Gateway',
     coveredMarkets: ['AI-COMMENTARY'],
@@ -139,6 +181,14 @@ export function getProviderPolicy(sourceOrId: string | null | undefined): DataPr
   }
   if (normalized === 'tefas' || normalized.includes('tefas') || normalized.includes('takasbank')) {
     return DATA_PROVIDER_POLICIES.find((p) => p.id === 'tefas') ?? null;
+  }
+  if (
+    normalized === 'kap' ||
+    normalized.includes('kap.org.tr') ||
+    normalized.includes('kamuyu aydınlatma') ||
+    normalized.includes('kamuyu aydinlatma')
+  ) {
+    return DATA_PROVIDER_POLICIES.find((p) => p.id === 'kap') ?? null;
   }
   if (
     normalized === 'rss-news' ||

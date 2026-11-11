@@ -18,6 +18,7 @@ import {
   upsertNewsCategorySnapshot,
 } from '@/lib/news/clientSnapshot';
 import type { NewsCoverageSummary } from '@/lib/news/sourceCoverage';
+import { getProviderPolicy, KAP_ACCESS_TERMS } from '@/lib/market/providerPolicies';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function NewsPage() {
@@ -506,13 +507,45 @@ export default function NewsPage() {
         </div>
       )}
 
-      {selectedCategory === 'KAP' && !loading && (
-        <p className="text-sm">
-          <a className="font-semibold text-accent underline" href="https://www.kap.org.tr/" target="_blank" rel="noopener noreferrer">
-            Resmî KAP bildirimlerini aç
-          </a>
-        </p>
-      )}
+      {selectedCategory === 'KAP' && !loading && (() => {
+        const kapPolicy = getProviderPolicy('kap');
+        return (
+          <div
+            data-testid="kap-terms-notice"
+            className="rounded-xl border border-line bg-surface-muted/40 p-4 space-y-2.5 text-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="accent">Resmî Kaynak Koşulları</Badge>
+                <span className="font-semibold text-ink">
+                  {kapPolicy?.name ?? 'Kamuyu Aydınlatma Platformu (KAP)'}
+                </span>
+              </div>
+              <a
+                className="font-semibold text-accent underline text-xs"
+                href="https://www.kap.org.tr/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Resmî KAP bildirimlerini aç
+              </a>
+            </div>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              {KAP_ACCESS_TERMS.delayNotice}
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-ink-secondary">
+              <div>
+                <span className="font-semibold text-ink">Kapsam: </span>
+                {KAP_ACCESS_TERMS.scope.join(', ')}
+              </div>
+              <div>
+                <span className="font-semibold text-ink">Gösterim Koşulu: </span>
+                {KAP_ACCESS_TERMS.displayRules.join(' ')}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Portfolio Empty State */}
       {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length === 0 && !loading ? (

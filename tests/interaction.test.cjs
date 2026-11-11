@@ -6763,6 +6763,34 @@ test('ALR-12: KAP and calendar alerts verify authorized sources, match portfolio
   assert.match(alertsSrc, /KAP_CALENDAR_EVENT_META/);
 });
 
+test('HBR-08: KAP data access terms, scope, delay and display rules are documented and surfaced programmatically', () => {
+  const policies = load('src/lib/market/providerPolicies.ts');
+  const kapPolicy = policies.getProviderPolicy('kap');
+  assert.ok(kapPolicy);
+  assert.equal(kapPolicy.id, 'kap');
+  assert.equal(kapPolicy.delayClass, 'feed-periodic');
+  assert.ok(kapPolicy.attributionLabel.includes('KAP'));
+  assert.ok(kapPolicy.displayConditions.includes('kap.org.tr'));
+
+  // Domain or Turkish title also resolves to the KAP policy rather than falling back to publisher RSS
+  assert.equal(policies.getProviderPolicy('https://www.kap.org.tr/tr/Bildirim/123456')?.id, 'kap');
+  assert.equal(policies.getProviderPolicy('Kamuyu Aydınlatma Platformu')?.id, 'kap');
+
+  assert.ok(Array.isArray(policies.KAP_ACCESS_TERMS.allowedDomains));
+  assert.ok(policies.KAP_ACCESS_TERMS.allowedDomains.includes('kap.org.tr'));
+  assert.ok(policies.KAP_ACCESS_TERMS.scope.length >= 3);
+  assert.ok(policies.KAP_ACCESS_TERMS.displayRules.length >= 2);
+
+  const policyDoc = fs.readFileSync(path.join(process.cwd(), 'docs/veri-saglayici-kosullari.md'), 'utf8');
+  assert.match(policyDoc, /Kamuyu Aydınlatma Platformu \(`kap`\)/);
+  assert.match(policyDoc, /kap\.org\.tr/);
+
+  const newsPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  assert.match(newsPageSrc, /kap-terms-notice/);
+  assert.match(newsPageSrc, /KAP_ACCESS_TERMS/);
+});
+
+
 
 
 
