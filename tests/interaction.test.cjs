@@ -2215,6 +2215,39 @@ test('UX-07 search inputs and icon buttons expose meaningful accessible names', 
   }
 });
 
+test('UX-08 mobile navigation keeps core one-tap flows and surfaces news and alarms prominently in drawer', () => {
+  const {
+    MOBILE_PRIMARY_NAV_ITEMS,
+    MOBILE_DRAWER_NAV_ITEMS,
+    isMobileNavHrefActive,
+  } = load('src/lib/navigation/mobileNavModel.ts');
+
+  const primaryHrefs = Array.from(MOBILE_PRIMARY_NAV_ITEMS).map((item) => item.href);
+  assert.deepEqual(
+    primaryHrefs.slice(0, 4),
+    ['/dashboard', '/piyasalar', '/portfolio', '/watchlist']
+  );
+  assert.ok(primaryHrefs.includes('/ai-assistant'));
+
+  const drawerItems = Array.from(MOBILE_DRAWER_NAV_ITEMS);
+  assert.equal(drawerItems[0].href, '/news');
+  assert.equal(drawerItems[0].label, 'Haberler');
+  assert.equal(drawerItems[1].href, '/settings#notifications');
+  assert.equal(drawerItems[1].label, 'Alarmlar');
+
+  assert.equal(isMobileNavHrefActive('/settings#notifications', '/settings', '#notifications'), true);
+  assert.equal(isMobileNavHrefActive('/settings', '/settings', '#notifications'), false);
+  assert.equal(isMobileNavHrefActive('/settings', '/settings', ''), true);
+
+  const mobileNavSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/layout/MobileNav.tsx'),
+    'utf8'
+  );
+  assert.match(mobileNavSrc, /MOBILE_PRIMARY_NAV_ITEMS/);
+  assert.match(mobileNavSrc, /MOBILE_DRAWER_NAV_ITEMS/);
+  assert.match(mobileNavSrc, /aria-label="Diğer sayfalar"/);
+});
+
 
 
 

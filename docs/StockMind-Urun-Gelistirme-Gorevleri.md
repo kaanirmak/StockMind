@@ -54,7 +54,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | UX-05 | P1 | Yüklenirken sıfır portföy değerini göstermeyi önle | Oturum ve portföy yüklenirken bekleme durumu görünür. Boş ve gerçek sıfır değerler ayrılır. | ◐ |
 | UX-06 | P1 | Ana özet kartını bağımsız kontrollere ayır | Portföy bağlantısı, dönem seçici ve gizlilik düğmesi klavyeyle ayrı ayrı çalışır ve doğru okunur. | ◐ |
 | UX-07 | P1 | Arama ve simge düğmelerine erişilebilir ad ekle | Haber araması dahil her arama alanı ve simge düğmesi ekran okuyucuda anlamlı ad taşır. | ◐ |
-| UX-08 | P1 | Mobil navigasyonda temel akışları koru | Ana ekran, piyasalar, portföy ve takip listesi tek dokunuşla erişilebilir. Haberler ve alarmlar menüde kolay bulunur. | ☐ |
+| UX-08 | P1 | Mobil navigasyonda temel akışları koru | Ana ekran, piyasalar, portföy ve takip listesi tek dokunuşla erişilebilir. Haberler ve alarmlar menüde kolay bulunur. | ◐ |
 | UX-09 | P1 | Açık ve koyu tema kontrastını doğrula | Temel metin, yardımcı etiket, grafik ve odak göstergeleri iki temada da ölçülür ve okunabilir hale gelir. | ☐ |
 | UX-10 | P1 | Klavye ve ekran okuyucu akışlarını test et | Menü, filtre, modal, geri dönüş ve hata mesajları klavyeyle ve ekran okuyucuyla kullanılabilir. | ☐ |
 | UX-11 | P1 | Yükleniyor, hata ve boş durumları birleştir | Ana ekranların her birinde durum adı, kısa neden ve uygun sonraki eylem görünür. | ☐ |
