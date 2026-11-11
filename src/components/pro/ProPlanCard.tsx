@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui';
 import { ProRequestModal } from './ProRequestModal';
+import { ProScopeAndSamplePreview } from './ProScopeAndSamplePreview';
 import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
 
 interface ProPlanCardProps {
@@ -178,6 +179,9 @@ export function ProPlanCard({
               </div>
               <p className="text-[11px] text-text-muted">StockMind AI asistanıyla genişletilmiş saatlik soru limiti.</p>
             </div>
+          </div>
+          <div className="mt-3">
+            <ProScopeAndSamplePreview />
           </div>
         </details>
       </div>

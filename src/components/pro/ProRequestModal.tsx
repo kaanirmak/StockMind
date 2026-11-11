@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Button, useToast } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
+import { ProScopeAndSamplePreview } from './ProScopeAndSamplePreview';
 
 interface ProRequestModalProps {
   isOpen: boolean;
@@ -108,6 +109,8 @@ export function ProRequestModal({
             <span><strong>Genişletilmiş AI Soru Kotası:</strong> StockMind AI Asistan ile saatte 20 soru hakkı (Standart: 5 soru/saat)</span>
           </div>
         </div>
+
+        <ProScopeAndSamplePreview compact />
 
         {/* Request Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

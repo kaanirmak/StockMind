@@ -7148,6 +7148,28 @@ test('HBR-12: price movement explanation reports correlated events with sources 
   assert.match(stockDetailSrc, /PriceMoveExplanationCard/);
 });
 
+test('AIP-07: Pro scope, data coverage and sample output preview are clearly accessible prior to membership', () => {
+  const planMod = load('src/lib/pro/planOverview.ts');
+  assert.ok(planMod.PRO_PLAN_CAPABILITIES.length >= 4);
+  for (const row of planMod.PRO_PLAN_CAPABILITIES) {
+    assert.ok(row.freeScope && row.proScope && row.dataScope);
+  }
+  assert.ok(planMod.PRO_DATA_SCOPE_SUMMARY.includedSources.length >= 2);
+  assert.ok(planMod.PRO_DATA_SCOPE_SUMMARY.exclusionsAndLimits.length >= 2);
+  assert.match(planMod.PRO_SAMPLE_ANALYSIS_PREVIEW.asOfLabel, /canlı piyasa verisi değildir/i);
+  assert.ok(planMod.PRO_SAMPLE_ANALYSIS_PREVIEW.verifiedDataLines.length >= 1);
+  assert.ok(planMod.PRO_SAMPLE_ANALYSIS_PREVIEW.assumptionLines.length >= 1);
+  assert.match(planMod.PRO_SAMPLE_ANALYSIS_PREVIEW.disclaimer, /tavsiye|yapısını/i);
+
+  const planCardSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/pro/ProPlanCard.tsx'), 'utf8');
+  const modalSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/pro/ProRequestModal.tsx'), 'utf8');
+  const committeeSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/quant/InvestmentCommitteeTab.tsx'), 'utf8');
+  assert.match(planCardSrc, /ProScopeAndSamplePreview/);
+  assert.match(modalSrc, /ProScopeAndSamplePreview/);
+  assert.match(committeeSrc, /ProScopeAndSamplePreview/);
+});
+
+
 
 
 

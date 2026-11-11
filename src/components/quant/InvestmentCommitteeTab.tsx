@@ -24,6 +24,7 @@ import { Holding } from '@/types/portfolio';
 import { getStoredOpenRouterKey, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { Button } from '@/components/ui/Button';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
+import { ProScopeAndSamplePreview } from '@/components/pro/ProScopeAndSamplePreview';
 import { hasProAccess } from '@/lib/ai/modelCatalog';
 
 const POPULAR_SYMBOLS = [
@@ -513,6 +514,9 @@ export default function InvestmentCommitteeTab({
             >
               🚀 Pro Hesap İste ve Erişimi Aç
             </Button>
+          </div>
+          <div className="max-w-2xl mx-auto pt-2">
+            <ProScopeAndSamplePreview compact />
           </div>
         </div>
       )}
