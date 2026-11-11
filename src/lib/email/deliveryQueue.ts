@@ -62,6 +62,46 @@ function isMissingTableError(error: any): boolean {
 }
 
 /**
+ * Pure check deciding whether a recipient has already been accepted for the bulletin date
+ * so retries and re-triggers never create duplicate deliveries.
+ */
+export function shouldSkipDuplicateDelivery(
+  existingRow: Pick<EmailDeliveryQueueRecord, 'status'> | null | undefined,
+  inMemoryAlreadySent: boolean,
+  force = false
+): boolean {
+  if (force) return false;
+  return existingRow?.status === 'accepted' || inMemoryAlreadySent;
+}
+
+/**
+ * Re-verifies durable queue status right before dispatching SMTP/API mail to avoid
+ * duplicate sends when triggers overlap or retry.
+ */
+export async function hasAcceptedDeliveryForDay(
+  admin: any,
+  bulletinDate: string,
+  recipientEmail: string,
+  jobType = 'daily_bulletin'
+): Promise<boolean> {
+  if (!hasTableSupport(admin)) return false;
+  try {
+    const normalizedEmail = recipientEmail.trim().toLowerCase();
+    const res = await admin
+      .from('email_delivery_queue')
+      .select('status')
+      .eq('bulletin_date', bulletinDate)
+      .eq('job_type', jobType);
+    if (res?.error) return false;
+    const rows: any[] = Array.isArray(res?.data) ? res.data : [];
+    const match = rows.find((r) => String(r?.recipient_email || '').trim().toLowerCase() === normalizedEmail);
+    return match?.status === 'accepted';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Ensures every eligible recipient has a persistent queue row before dispatch begins
  * without overwriting already completed ('accepted') rows across process restarts.
  */

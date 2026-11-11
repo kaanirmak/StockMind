@@ -34,6 +34,7 @@ export async function POST(request: Request) {
 
       case 'daily-report': {
         const targetEmail = body.email ? String(body.email).trim() : undefined;
+        const allowForce = body.force === true;
         console.log(`[Admin] Triggering Daily Report cron...`);
 
         const response = await fetch(`${baseUrl}/api/cron/daily-report`, {
@@ -42,7 +43,11 @@ export async function POST(request: Request) {
             Authorization: `Bearer ${cronSecret}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(targetEmail ? { email: targetEmail, force: true } : { force: true }),
+          body: JSON.stringify(
+            targetEmail
+              ? { email: targetEmail, force: allowForce }
+              : { force: allowForce }
+          ),
         });
 
         const reportData = await response.json().catch(() => null);

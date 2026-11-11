@@ -121,7 +121,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | EPO-01 | P0 | Canlı Gmail göndericisini doğrula | Yetkili test alıcısına gönderilen e-postada görünen gönderen kaanrmak7@gmail.com olur ve alıcı kutusuna teslimat doğrulanır. | ◐ |
 | EPO-02 | P0 | Bülten alıcı sınırını kaldır | 51 veya daha fazla uygun test alıcısının tamamı partiler halinde işlenir. | ◐ |
 | EPO-03 | P0 | Kalıcı e-posta gönderim kuyruğu kur | İş yarıda kesilse de bekleyen ve tamamlanan alıcılar yeniden başlatmadan sonra ayırt edilir. | ◐ |
-| EPO-04 | P0 | Yeniden denemede çift gönderimi önle | Aynı bülten günü ve alıcı için tekrar tetikleme ikinci gönderim oluşturmaz. | ☐ |
+| EPO-04 | P0 | Yeniden denemede çift gönderimi önle | Aynı bülten günü ve alıcı için tekrar tetikleme ikinci gönderim oluşturmaz. | ◐ |
 | EPO-05 | P0 | Gönderim sonuçlarını operasyon ekranına ekle | Bekleyen, kabul edilen, başarısız ve yeniden denenecek gönderimler ayrı sayaçlarla görünür. | ☐ |
 | EPO-06 | P1 | Bülten aboneliğini ve doğrulanmış adresi görünür yap | Hesaptan değiştirilen tercih bir sonraki otomatik çalıştırmada uygulanır. Gönderilecek adres ekranda belirtilir. | ☐ |
 | EPO-07 | P1 | Bültene verinin zamanını ve eksik alanları ekle | E-posta fiyatların gözlem zamanını içerir. Eksik kaynak olduğunda boş veri durumu görünür. | ☐ |

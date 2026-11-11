@@ -3,7 +3,9 @@ import { sendTestEmail } from '@/lib/email/service';
 import { getBulletinMarketData } from '@/lib/email/marketData';
 import {
   enqueueBulletinRecipients,
+  hasAcceptedDeliveryForDay,
   recordDeliveryOutcome,
+  shouldSkipDuplicateDelivery,
   summarizeDeliveryQueue,
 } from '@/lib/email/deliveryQueue';
 import { hasProAccess } from '@/lib/ai/modelCatalog';
@@ -158,6 +160,7 @@ async function handleDailyReport(request: Request) {
       email: string;
       success: boolean;
       skipped?: boolean;
+      duplicatePrevented?: boolean;
       status?: string;
       message?: string;
       batchIndex?: number;
@@ -170,15 +173,20 @@ async function handleDailyReport(request: Request) {
         const normalizedEmail = recipient.email.toLowerCase();
         const perUserKey = `${todayStr}:${normalizedEmail}`;
         const existingQueueRow = enqueueState.existingByEmail.get(normalizedEmail);
+        const alreadyAcceptedInDb =
+          !force &&
+          (existingQueueRow?.status === 'accepted' ||
+            (await hasAcceptedDeliveryForDay(admin, todayStr, normalizedEmail, 'daily_bulletin')));
 
-        if ((sentReportsCache.has(perUserKey) || existingQueueRow?.status === 'accepted') && !force) {
+        if (shouldSkipDuplicateDelivery(alreadyAcceptedInDb ? { status: 'accepted' } : existingQueueRow, sentReportsCache.has(perUserKey), force)) {
           sentReportsCache.add(perUserKey);
           results.push({
             email: recipient.email,
             success: true,
             skipped: true,
-            status: existingQueueRow?.status || 'accepted',
-            message: 'Bugün için zaten iletildi',
+            duplicatePrevented: true,
+            status: 'accepted',
+            message: 'Bugün için zaten iletildi (çift gönderim engellendi)',
             batchIndex,
           });
           continue;
@@ -220,6 +228,8 @@ async function handleDailyReport(request: Request) {
     }
 
     const successfulCount = results.filter((r) => r.success).length;
+    const skippedDuplicatesCount = results.filter((r) => r.duplicatePrevented).length;
+    const newlySentCount = results.filter((r) => r.success && !r.skipped).length;
     const complete = successfulCount === recipients.length;
     if (customIdempotencyKey && complete) sentReportsCache.add(customIdempotencyKey);
 
@@ -230,6 +240,8 @@ async function handleDailyReport(request: Request) {
       timestamp: new Date().toISOString(),
       recipientsCount: recipients.length,
       successfulCount,
+      newlySentCount,
+      skippedDuplicatesCount,
       batchesProcessed: batches.length,
       batchSize: BULLETIN_BATCH_SIZE,
       queueSummary,

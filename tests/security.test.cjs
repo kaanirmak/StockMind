@@ -366,6 +366,121 @@ test('EPO-03: kalıcı e-posta kuyruğu iş yarıda kesilse bile yeniden başlat
   assert.equal(recoverBody.queueSummary.pending, 0);
 });
 
+test('EPO-04: aynı bülten günü ve alıcı için yeniden deneme veya tekrar tetiklemede çift gönderim oluşmaz', async () => {
+  const queueStore = new Map();
+  const buildAdminMock = (users) => ({
+    auth: { admin: { listUsers: async () => ({ data: { users } }) } },
+    from: () => ({
+      select: () => ({
+        eq: (_col, val) => {
+          const rows = Array.from(queueStore.values()).filter((r) => r.bulletin_date === val || r.job_type === val);
+          return {
+            eq: (_c2, v2) => Promise.resolve({ data: rows.filter((r) => r.job_type === v2), error: null }),
+            order: () => ({ limit: () => Promise.resolve({ data: rows, error: null }) }),
+          };
+        },
+      }),
+      upsert: (payload, opts = {}) => {
+        const items = Array.isArray(payload) ? payload : [payload];
+        const saved = [];
+        for (const item of items) {
+          const key = `${item.bulletin_date}:${item.job_type}:${item.recipient_email}`;
+          if (!(opts.ignoreDuplicates && queueStore.has(key))) {
+            queueStore.set(key, { ...item });
+          }
+          saved.push(queueStore.get(key));
+        }
+        return {
+          select: () => Promise.resolve({ data: saved, error: null }),
+          then: (resolve) => resolve({ data: saved, error: null }),
+        };
+      },
+    }),
+  });
+
+  const users = [
+    { email: 'ok@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
+    { email: 'flaky@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
+  ];
+
+  // Run 1: ok succeeds, flaky temporarily fails
+  const run1Sent = [];
+  const loadRun1 = loader({
+    '@/lib/email/service': {
+      sendTestEmail: async ({ to }) => {
+        run1Sent.push(to);
+        if (to === 'flaky@example.test') {
+          return { success: false, message: 'Temporary SMTP timeout' };
+        }
+        return { success: true, method: 'google_smtp', messageId: 'ok-1' };
+      },
+    },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 42 }) },
+    '@/lib/supabase/admin': { createAdminClient: () => buildAdminMock(users) },
+  }, { CRON_SECRET: 'cron-secret' });
+
+  const res1 = await loadRun1('src/app/api/cron/daily-report/route.ts').POST(
+    request({}, { authorization: 'Bearer cron-secret' })
+  );
+  assert.equal(res1.status, 207);
+  const body1 = await res1.json();
+  assert.equal(body1.queueSummary.accepted, 1);
+  assert.equal(body1.queueSummary.retryScheduled, 1);
+
+  // Run 2 (fresh worker): flaky succeeds; ok (even with uppercase casing) must NOT be sent again
+  const run2Sent = [];
+  const loadRun2 = loader({
+    '@/lib/email/service': {
+      sendTestEmail: async ({ to }) => {
+        run2Sent.push(to);
+        return { success: true, method: 'google_smtp', messageId: 'flaky-2' };
+      },
+    },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 42 }) },
+    '@/lib/supabase/admin': {
+      createAdminClient: () => buildAdminMock([
+        { email: 'OK@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
+        { email: 'flaky@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
+      ]),
+    },
+  }, { CRON_SECRET: 'cron-secret' });
+
+  const res2 = await loadRun2('src/app/api/cron/daily-report/route.ts').POST(
+    request({}, { authorization: 'Bearer cron-secret' })
+  );
+  assert.equal(res2.status, 200);
+  const body2 = await res2.json();
+  assert.deepEqual(run2Sent, ['flaky@example.test']);
+  assert.equal(body2.newlySentCount, 1);
+  assert.equal(body2.skippedDuplicatesCount, 1);
+
+  // Run 3 (same bulletin day): zero emails sent
+  const run3Sent = [];
+  const loadRun3 = loader({
+    '@/lib/email/service': {
+      sendTestEmail: async ({ to }) => {
+        run3Sent.push(to);
+        return { success: true };
+      },
+    },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 42 }) },
+    '@/lib/supabase/admin': { createAdminClient: () => buildAdminMock(users) },
+  }, { CRON_SECRET: 'cron-secret' });
+
+  const res3 = await loadRun3('src/app/api/cron/daily-report/route.ts').POST(
+    request({}, { authorization: 'Bearer cron-secret' })
+  );
+  assert.equal(res3.status, 200);
+  const body3 = await res3.json();
+  assert.equal(run3Sent.length, 0);
+  assert.equal(body3.newlySentCount, 0);
+  assert.equal(body3.skippedDuplicatesCount, 2);
+
+  // trigger-cron must not default force=true on daily-report
+  const triggerSrc = fs.readFileSync(path.join(root, 'src/app/api/admin/system/trigger-cron/route.ts'), 'utf8');
+  assert.equal(/force:\s*true/.test(triggerSrc), false, 'trigger-cron must not hardcode force: true');
+});
+
 test('Daily bulletin shows supplied market prices and omits sample portfolio values', () => {
   const load = loader({ nodemailer: {}, '@supabase/supabase-js': {} });
   const { generateStockMindEmailHtml } = load('src/lib/email/service.ts');
