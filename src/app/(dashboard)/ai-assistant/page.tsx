@@ -1,6 +1,10 @@
 'use client';
 import { prepareChatHistory } from '@/lib/ai/chatHistory';
-import { chatErrorMessage } from '@/lib/ai/chatErrors';
+import {
+  chatErrorMessage,
+  classifyChatFailure,
+  type ChatErrorClassification,
+} from '@/lib/ai/chatErrors';
 import {
   PORTFOLIO_CONTEXT_FIELDS,
   PORTFOLIO_SCOPE_LABELS,
@@ -37,6 +41,7 @@ export interface Message {
   asOf?: string;
   disclaimer?: string;
   provenance?: AIContextProvenance;
+  errorInfo?: ChatErrorClassification & { retryPrompt?: string };
 }
 
 export interface ChatSession {
@@ -350,35 +355,13 @@ function AIAssistantContent() {
     }
   }, [searchParams]);
 
-  // 8. Send Message
-  const handleSendMessage = async (userText: string, includePortfolioOverride?: boolean) => {
-    const cleanText = userText.trim();
-    if (!cleanText || loading || abortControllerRef.current) return;
-
-    const shouldIncludePortfolio = includePortfolioOverride ?? includePortfolioContext;
-    if (includePortfolioOverride === true && !includePortfolioContext) {
-      setIncludePortfolioContext(true);
-    }
-
+  // 8. Send & Retry Message
+  const sendChatMessages = async (
+    baseHistory: Message[],
+    cleanText: string,
+    shouldIncludePortfolio: boolean
+  ) => {
     const hasCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
-
-    // The server checks the sliding window; a stale client snapshot must not block retries.
-    if (cleanText.length > 8000) {
-      setReadinessError('Mesaj en fazla 8000 karakter olabilir. Lütfen kısaltın.');
-      return;
-    }
-    setReadinessError('');
-
-    const userMessage: Message = {
-      id: `usr-${Date.now()}`,
-      role: 'user',
-      content: cleanText,
-      createdAt: new Date().toISOString(),
-    };
-
-    const newMessages = [...messages, userMessage];
-    updateCurrentSessionMessages(newMessages);
-    setInput('');
     setLoading(true);
     followLatest();
 
@@ -407,7 +390,7 @@ function AIAssistantContent() {
     }
 
     // Exclude welcome greeting and error/cancel alerts from model history
-    const validHistory = newMessages.filter(
+    const validHistory = baseHistory.filter(
       (m) => m.id !== 'msg-welcome' && !m.id.startsWith('err-') && !m.id.startsWith('stop-')
     );
 
@@ -426,7 +409,7 @@ function AIAssistantContent() {
         }),
       });
 
-      const data = await res.json();
+      const data = (await res.json().catch(() => null)) || {};
       if (abortControllerRef.current !== controller) return;
       if (data.quota) {
         setQuotaState(data.quota);
@@ -445,9 +428,14 @@ function AIAssistantContent() {
           disclaimer: data.disclaimer,
           provenance: data.provenance || data.message.provenance,
         };
-        updateCurrentSessionMessages([...newMessages, assistantMessage]);
+        updateCurrentSessionMessages([...baseHistory, assistantMessage]);
       } else {
-        const errorText = chatErrorMessage(res.status, data);
+        const classified = classifyChatFailure({
+          status: res.status,
+          code: data.code,
+          error: data.error,
+          retryAfterSeconds: data.quota?.retryAfter ?? data.quota?.resetInSeconds,
+        });
         if (data.code === 'HOURLY_QUOTA_EXCEEDED' && !data.quota?.isPro && !hasCustomKey) {
           setShowQuotaExceededModal(true);
         }
@@ -456,44 +444,75 @@ function AIAssistantContent() {
           setShowProModal(true);
         }
         updateCurrentSessionMessages([
-          ...newMessages,
+          ...baseHistory,
           {
             id: `err-${Date.now()}`,
             role: 'assistant',
-            content: ` **Analiz Uyarısı:** ${errorText}`,
+            content: `**${classified.title}:** ${classified.message}`,
             createdAt: new Date().toISOString(),
+            errorInfo: { ...classified, retryPrompt: cleanText },
           },
         ]);
       }
     } catch (err: any) {
       if (abortControllerRef.current !== controller) return;
-      if (err?.name === 'AbortError') {
-        updateCurrentSessionMessages([
-          ...newMessages,
-          {
-            id: `stop-${Date.now()}`,
-            role: 'assistant',
-            content: ` **Analiz Durduruldu:** *İstek kullanıcı tarafından iptal edildi.*`,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      } else {
-        updateCurrentSessionMessages([
-          ...newMessages,
-          {
-            id: `err-${Date.now()}`,
-            role: 'assistant',
-            content: ` **Ağ Bağlantı Hatası:** Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.`,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-      }
+      const isAbort = err?.name === 'AbortError';
+      const classified = classifyChatFailure({
+        aborted: isAbort,
+        networkError: !isAbort,
+      });
+      updateCurrentSessionMessages([
+        ...baseHistory,
+        {
+          id: isAbort ? `stop-${Date.now()}` : `err-${Date.now()}`,
+          role: 'assistant',
+          content: `**${classified.title}:** ${classified.message}`,
+          createdAt: new Date().toISOString(),
+          errorInfo: { ...classified, retryPrompt: cleanText },
+        },
+      ]);
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
         setLoading(false);
       }
     }
+  };
+
+  const handleSendMessage = async (userText: string, includePortfolioOverride?: boolean) => {
+    const cleanText = userText.trim();
+    if (!cleanText || loading || abortControllerRef.current) return;
+
+    const shouldIncludePortfolio = includePortfolioOverride ?? includePortfolioContext;
+    if (includePortfolioOverride === true && !includePortfolioContext) {
+      setIncludePortfolioContext(true);
+    }
+
+    // The server checks the sliding window; a stale client snapshot must not block retries.
+    if (cleanText.length > 8000) {
+      setReadinessError('Mesaj en fazla 8000 karakter olabilir. Lütfen kısaltın.');
+      return;
+    }
+    setReadinessError('');
+
+    const userMessage: Message = {
+      id: `usr-${Date.now()}`,
+      role: 'user',
+      content: cleanText,
+      createdAt: new Date().toISOString(),
+    };
+
+    const newMessages = [...messages, userMessage];
+    updateCurrentSessionMessages(newMessages);
+    setInput('');
+    await sendChatMessages(newMessages, cleanText, shouldIncludePortfolio);
+  };
+
+  const handleRetryFailedPrompt = async (errorMessageId: string, promptText: string) => {
+    if (loading || abortControllerRef.current || !promptText.trim()) return;
+    const cleanedHistory = messages.filter((m) => m.id !== errorMessageId);
+    updateCurrentSessionMessages(cleanedHistory);
+    await sendChatMessages(cleanedHistory, promptText, includePortfolioContext);
   };
 
   const [viewportHeight, setViewportHeight] = useState<number | undefined>();
@@ -669,6 +688,54 @@ function AIAssistantContent() {
                   <div className="prose prose-sm dark:prose-invert max-w-none break-words">
                     <ChatMessageContent content={msg.content} isUser={isUser} />
                   </div>
+
+                  {!isUser && msg.errorInfo && (
+                    <div
+                      data-testid="ai-error-actions"
+                      className="pt-2 border-t border-border/40 flex flex-wrap items-center justify-between gap-2 text-[10px]"
+                    >
+                      <span
+                        data-testid="ai-error-category-badge"
+                        className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-bg-secondary border border-border text-text-muted font-medium"
+                      >
+                        {msg.errorInfo.category === 'network' && 'Durum: Ağ Kesintisi'}
+                        {msg.errorInfo.category === 'quota' && 'Durum: Kota / Hız Sınırı'}
+                        {msg.errorInfo.category === 'model' && 'Durum: Model Hatası'}
+                        {msg.errorInfo.category === 'cancelled' && 'Durum: Kullanıcı İptali'}
+                        {msg.errorInfo.category === 'auth' && 'Durum: Oturum / Yetki'}
+                        {msg.errorInfo.category === 'unknown' && 'Durum: Bilinmeyen Hata'}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {msg.errorInfo.retryable && msg.errorInfo.retryPrompt && (
+                          <button
+                            type="button"
+                            data-testid="ai-error-retry-button"
+                            onClick={() => handleRetryFailedPrompt(msg.id, msg.errorInfo!.retryPrompt!)}
+                            className="px-2 py-1 rounded-lg bg-accent/15 text-accent font-semibold hover:bg-accent/25 transition-colors cursor-pointer"
+                          >
+                            Yeniden Dene
+                          </button>
+                        )}
+                        {msg.errorInfo.suggestModelSwitch && (
+                          <button
+                            type="button"
+                            onClick={() => setShowModelModal(true)}
+                            className="px-2 py-1 rounded-lg bg-bg-secondary border border-border text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                          >
+                            Model Değiştir
+                          </button>
+                        )}
+                        {msg.errorInfo.suggestSettingsKey && (
+                          <a
+                            href="/settings"
+                            className="px-2 py-1 rounded-lg bg-bg-secondary border border-border text-text-secondary hover:text-text-primary transition-colors"
+                          >
+                            API Anahtarı / Ayarlar
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {!isUser && (msg.sourceScope || msg.provenance) && (
                     <div

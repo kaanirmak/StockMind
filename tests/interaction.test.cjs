@@ -4340,6 +4340,44 @@ test('AIP-03: AI yanıtı veri kaynağı, gözlem zamanı, portföy kapsamı ve 
   assert.match(pageSrc, /Sağlayıcı Verisi/);
 });
 
+test('AIP-04: ağ kesintisi, kota, model hatası ve kullanıcı iptali ayrı anlaşılır mesaj ve yeniden deneme akışı üretir', () => {
+  const { classifyChatFailure, chatErrorMessage } = load('src/lib/ai/chatErrors.ts');
+
+  const network = classifyChatFailure({ networkError: true });
+  assert.equal(network.category, 'network');
+  assert.equal(network.retryable, true);
+  assert.match(network.title, /Ağ/i);
+
+  const quota = classifyChatFailure({
+    status: 429,
+    code: 'HOURLY_QUOTA_EXCEEDED',
+    error: 'Saatlik soru sınırına ulaştınız.',
+    retryAfterSeconds: 600,
+  });
+  assert.equal(quota.category, 'quota');
+  assert.equal(quota.retryable, false);
+  assert.equal(quota.suggestSettingsKey, true);
+  assert.match(quota.message, /10 dakika/);
+
+  const modelErr = classifyChatFailure({ status: 504, code: 'AI_TIMEOUT' });
+  assert.equal(modelErr.category, 'model');
+  assert.equal(modelErr.retryable, true);
+  assert.equal(modelErr.suggestModelSwitch, true);
+  assert.notEqual(modelErr.message, network.message);
+
+  const cancelled = classifyChatFailure({ aborted: true });
+  assert.equal(cancelled.category, 'cancelled');
+  assert.equal(cancelled.retryable, true);
+  assert.match(cancelled.title, /İptal/i);
+
+  assert.ok(chatErrorMessage(429, { code: 'AI_RATE_LIMITED' }).includes('hız sınırına'));
+
+  const pageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  assert.match(pageSrc, /data-testid="ai-error-retry-button"/);
+  assert.match(pageSrc, /data-testid="ai-error-category-badge"/);
+  assert.match(pageSrc, /handleRetryFailedPrompt/);
+});
+
 
 
 
