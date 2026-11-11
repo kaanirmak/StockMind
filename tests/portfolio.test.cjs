@@ -2265,6 +2265,116 @@ test('POR-13: concentration report combines largest positions, sector, country, 
   assert.match(portSrc, /ConcentrationAnalysisCard/);
 });
 
+test('POR-14: PDF/print and CSV export carry selected portfolio, period, currency and data date', () => {
+  const { resolveReportDataDate, buildReportExportModel, buildPortfolioReportCsv } = loadModule('src/lib/portfolio/reportExport.ts');
+
+  const dateInfo = resolveReportDataDate({
+    hasLivePrices: false,
+    periodEndDate: '2026-11-10',
+    transactions: [{ transactionDate: '2026-11-01' }],
+  });
+  assert.equal(dateInfo.isoDate, '2026-11-10');
+  assert.equal(dateInfo.displayDate, '10.11.2026');
+
+  const sampleSummary = {
+    totalValue: 400_000,
+    totalCost: 300_000,
+    totalPnL: 100_000,
+    totalPnLPercent: 33.33,
+    realizedPnL: 0,
+    unrealizedPnL: 100_000,
+    unrealizedPnLPercent: 33.33,
+    dailyPnL: 4_000,
+    dailyPnLPercent: 1,
+    totalVolume: 300_000,
+    buyVolume: 300_000,
+    sellVolume: 0,
+    holdings: [
+      {
+        symbol: 'THYAO',
+        assetType: 'stock',
+        exchange: 'BIST',
+        totalQuantity: 1000,
+        averageCost: 300,
+        totalCost: 300_000,
+        currentPrice: 400,
+        currentValue: 400_000,
+        pnl: 100_000,
+        pnlPercent: 33.33,
+        weight: 100,
+      },
+    ],
+    allocation: [],
+  };
+
+  const usdModel = buildReportExportModel({
+    portfolioId: 'p-growth',
+    portfolioName: 'Büyüme Portföyü',
+    period: 'monthly',
+    currency: 'USD',
+    usdTryRate: 40,
+    dataDateIso: dateInfo.isoDate,
+    dataDateDisplay: dateInfo.displayDate,
+    summary: sampleSummary,
+    periodBreakdown: {
+      period: 'monthly',
+      startDate: '2026-10-10',
+      endDate: '2026-11-10',
+      available: true,
+      missingSymbols: [],
+      realizedTradePnL: 4000,
+      unrealizedPnL: 20000,
+      assetPricePnL: 16000,
+      dividendsTotal: 800,
+      tradeCommissionsTotal: 200,
+      standaloneFeesTotal: 200,
+      feesAndCommissionsTotal: 400,
+      depositsTotal: 0,
+      withdrawalsTotal: 0,
+      fxImpact: 4000,
+      totalReturn: 24400,
+    },
+  });
+
+  assert.equal(usdModel.metadata.portfolioName, 'Büyüme Portföyü');
+  assert.equal(usdModel.metadata.periodLabel, 'Bu Ay');
+  assert.equal(usdModel.metadata.currency, 'USD');
+  assert.equal(usdModel.metadata.fxUnavailable, false);
+  assert.equal(usdModel.kpis.totalValue, 10_000);
+  assert.equal(usdModel.kpis.totalCost, 7_500);
+  assert.equal(usdModel.holdings[0].currentPrice, 10);
+  assert.match(usdModel.fileName, /buyume-portfoyu-monthly-usd-2026-11-10\.csv/);
+
+  const csv = buildPortfolioReportCsv(usdModel);
+  assert.match(csv, /Portföy,Büyüme Portföyü/);
+  assert.match(csv, /Dönem,Bu Ay \(monthly\)/);
+  assert.match(csv, /Para Birimi,USD/);
+  assert.match(csv, /Veri Tarihi,10\.11\.2026 \(2026-11-10\)/);
+  assert.match(csv, /USD\/TRY Kuru,40\.0000/);
+  assert.match(csv, /Toplam Piyasa Değeri \(USD\),10000\.00/);
+  assert.match(csv, /THYAO,Hisse Senedi,1000,7\.50,10\.00,10000\.00,2500\.00/);
+
+  // Missing USD/TRY rate falls back explicitly to TRY instead of fabricating conversion
+  const fallbackModel = buildReportExportModel({
+    portfolioId: 'p-growth',
+    portfolioName: 'Büyüme Portföyü',
+    period: 'weekly',
+    currency: 'USD',
+    usdTryRate: null,
+    dataDateIso: dateInfo.isoDate,
+    summary: sampleSummary,
+  });
+  assert.equal(fallbackModel.metadata.fxUnavailable, true);
+  assert.equal(fallbackModel.metadata.currency, 'TRY');
+  assert.ok(fallbackModel.metadata.fxWarning);
+
+  const reportsSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/reports/page.tsx'), 'utf8');
+  assert.match(reportsSrc, /report-export-metadata/);
+  assert.match(reportsSrc, /report-currency-toggle/);
+  assert.match(reportsSrc, /buildPortfolioReportCsv/);
+});
+
+
 
 
 

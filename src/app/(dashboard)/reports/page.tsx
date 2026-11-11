@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Button, Badge, useToast, InstrumentLogo } from '@/components/ui';
@@ -10,15 +10,33 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { maskDisplayValue } from '@/lib/privacy';
 import { PERIOD_LABELS, type PerformancePeriod } from '@/lib/portfolio/periodPerformance';
+import { getLiveUsdTryRate } from '@/lib/portfolio/calculations';
+import {
+  buildPortfolioReportCsv,
+  buildReportExportModel,
+  formatReportAmount,
+  resolveReportDataDate,
+  type ReportExportCurrency,
+} from '@/lib/portfolio/reportExport';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
-  const { portfolios, activePortfolioId, getSummary, fetchPortfoliosAndTransactions, loading: pricesLoading } = usePortfolioStore();
+  const {
+    portfolios,
+    activePortfolioId,
+    transactions,
+    cashMovements,
+    livePrices,
+    getSummary,
+    fetchPortfoliosAndTransactions,
+    loading: pricesLoading,
+  } = usePortfolioStore();
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const [isMounted, setIsMounted] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [reportPeriod, setReportPeriod] = useState<PerformancePeriod>('total');
+  const [reportCurrency, setReportCurrency] = useState<ReportExportCurrency>('TRY');
   const performance = usePortfolioPerformance(reportPeriod);
 
   useEffect(() => {
@@ -28,6 +46,57 @@ export default function ReportsPage() {
 
   const summary = getSummary();
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
+  const activeTransactions = useMemo(
+    () => (transactions || []).filter((t) => t.portfolioId === (activePortfolio?.id ?? activePortfolioId)),
+    [transactions, activePortfolio?.id, activePortfolioId]
+  );
+  const activeCashMovements = useMemo(
+    () => (cashMovements || []).filter((m) => m.portfolioId === (activePortfolio?.id ?? activePortfolioId)),
+    [cashMovements, activePortfolio?.id, activePortfolioId]
+  );
+  const usdTryRate = useMemo(() => getLiveUsdTryRate(livePrices), [livePrices]);
+  const dataDateInfo = useMemo(
+    () =>
+      resolveReportDataDate({
+        hasLivePrices: Object.keys(livePrices || {}).length > 0,
+        periodEndDate: performance.breakdown?.endDate,
+        transactions: activeTransactions,
+        cashMovements: activeCashMovements,
+      }),
+    [livePrices, performance.breakdown?.endDate, activeTransactions, activeCashMovements]
+  );
+  const exportModel = useMemo(
+    () =>
+      buildReportExportModel({
+        portfolioId: activePortfolio?.id ?? activePortfolioId ?? 'default',
+        portfolioName: activePortfolio?.name ?? 'Portföy',
+        portfolioDescription: activePortfolio?.description ?? 'Standart Portföy',
+        period: reportPeriod,
+        currency: reportCurrency,
+        usdTryRate,
+        dataDateIso: dataDateInfo.isoDate,
+        dataDateDisplay: dataDateInfo.displayDate,
+        summary,
+        periodBreakdown: performance.breakdown,
+        isPrivacyMode,
+      }),
+    [
+      activePortfolio?.id,
+      activePortfolio?.name,
+      activePortfolio?.description,
+      activePortfolioId,
+      reportPeriod,
+      reportCurrency,
+      usdTryRate,
+      dataDateInfo.isoDate,
+      dataDateInfo.displayDate,
+      summary,
+      performance.breakdown,
+      isPrivacyMode,
+    ]
+  );
+  const displayCurrency = exportModel.metadata.currency;
+  const maskedCurrPrefix = displayCurrency === 'USD' ? '$' : '₺';
 
   const handlePrint = () => {
     window.print();
@@ -163,24 +232,23 @@ export default function ReportsPage() {
 
 
   const handleExportCSV = () => {
-    if (summary.holdings.length === 0) return;
+    if (exportModel.holdings.length === 0) return;
 
-    const headers = 'Sembol,Varlık Türü,Adet,Ortalama Maliyet,Son Fiyat,Toplam Değer,Net Kar Zarar,Getiri Yüzdesi,Portföy Payı\n';
-    const rows = summary.holdings
-      .map(
-        (h) =>
-          `${h.symbol},${h.assetType === 'stock' ? 'Hisse' : 'TEFAS Fon'},${h.totalQuantity},${h.averageCost},${h.currentPrice},${h.currentValue},${h.pnl},${h.pnlPercent}%,%${h.weight}`
-      )
-      .join('\n');
-
-    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = buildPortfolioReportCsv(exportModel);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `StockMind_Portfoy_Raporu_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', exportModel.fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast({
+      type: 'success',
+      title: 'CSV Dışa Aktarıldı',
+      message: `${exportModel.metadata.portfolioName} · ${exportModel.metadata.periodLabel} · ${exportModel.metadata.currency} (${exportModel.metadata.dataDateDisplay})`,
+    });
   };
 
   if (!isMounted) {
@@ -211,25 +279,53 @@ export default function ReportsPage() {
       {/* Compact Header with Unified "Paylaş / Dışa Aktar" Menu */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">Performans Raporları</h1>
             <Badge variant="purple" size="sm">
-              {activePortfolio.name}
+              {exportModel.metadata.portfolioName}
+            </Badge>
+            <Badge variant="default" size="sm">
+              {exportModel.metadata.periodLabel} · {displayCurrency}
             </Badge>
           </div>
           <p className="text-text-muted text-xs sm:text-sm mt-0.5">
-            Portföy özet dökümü, varlık dağılımı ve getiri analizi
+            Portföy özet dökümü, varlık dağılımı ve getiri analizi · Veri tarihi:{' '}
+            <span className="font-mono text-text-secondary">{exportModel.metadata.dataDateDisplay}</span>
           </p>
         </div>
 
-        {/* Unified "Paylaş / Dışa aktar" Action Button & Dropdown */}
-        <div className="relative shrink-0">
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-            className="w-full sm:w-auto font-semibold flex items-center justify-center gap-2"
+        <div className="flex items-center gap-2 flex-wrap shrink-0 print:hidden">
+          <div
+            className="flex items-center gap-1 p-1 rounded-xl bg-bg-secondary border border-border"
+            role="group"
+            aria-label="Rapor para birimi"
+            data-testid="report-currency-toggle"
           >
+            {(['TRY', 'USD'] as ReportExportCurrency[]).map((curr) => (
+              <button
+                key={curr}
+                type="button"
+                aria-pressed={reportCurrency === curr}
+                onClick={() => setReportCurrency(curr)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  reportCurrency === curr
+                    ? 'bg-accent text-white'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {curr}
+              </button>
+            ))}
+          </div>
+
+          {/* Unified "Paylaş / Dışa aktar" Action Button & Dropdown */}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="w-full sm:w-auto font-semibold flex items-center justify-center gap-2"
+            >
             <svg className="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
@@ -311,8 +407,18 @@ export default function ReportsPage() {
               </div>
             </>
           )}
+          </div>
         </div>
       </div>
+
+      {exportModel.metadata.fxWarning && (
+        <div
+          data-testid="reports-fx-warning"
+          className="px-3.5 py-2 rounded-xl bg-warning/10 border border-warning/30 text-xs text-warning print:hidden"
+        >
+          {exportModel.metadata.fxWarning}
+        </div>
+      )}
 
       {isPrivacyMode && (
         <div
@@ -334,27 +440,27 @@ export default function ReportsPage() {
       {/* Primary Report Summary KPI Row (Appears right at top) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
-          <span className="text-[11px] text-text-muted block">Toplam Piyasa Değeri</span>
+          <span className="text-[11px] text-text-muted block">Toplam Piyasa Değeri ({displayCurrency})</span>
           <span className="text-base sm:text-xl font-bold font-mono text-text-primary mt-1 block">
-            {maskDisplayValue(`₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+            {maskDisplayValue(formatReportAmount(exportModel.kpis.totalValue, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••••`)}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
-          <span className="text-[11px] text-text-muted block">Toplam Yatırım Maliyeti</span>
+          <span className="text-[11px] text-text-muted block">Toplam Yatırım Maliyeti ({displayCurrency})</span>
           <span className="text-base sm:text-xl font-bold font-mono text-text-secondary mt-1 block">
-            {maskDisplayValue(`₺${summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+            {maskDisplayValue(formatReportAmount(exportModel.kpis.totalCost, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••••`)}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
-          <span className="text-[11px] text-text-muted block">Net Kar / Zarar</span>
-          <span className={`text-base sm:text-xl font-bold font-mono ${summary.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
-            {maskDisplayValue(`${summary.totalPnL >= 0 ? '+' : ''}₺${summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
+          <span className="text-[11px] text-text-muted block">Net Kar / Zarar ({displayCurrency})</span>
+          <span className={`text-base sm:text-xl font-bold font-mono ${exportModel.kpis.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+            {maskDisplayValue(formatReportAmount(exportModel.kpis.totalPnL, displayCurrency, { signed: true }), isPrivacyMode, `${maskedCurrPrefix}••••`)}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
           <span className="text-[11px] text-text-muted block">Toplam Getiri Oranı</span>
-          <span className={`text-base sm:text-xl font-bold font-mono ${summary.totalPnLPercent >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
-            {summary.totalPnLPercent >= 0 ? '+' : ''}%{summary.totalPnLPercent.toFixed(2)}
+          <span className={`text-base sm:text-xl font-bold font-mono ${exportModel.kpis.totalPnLPercent >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+            {exportModel.kpis.totalPnLPercent >= 0 ? '+' : ''}%{exportModel.kpis.totalPnLPercent.toFixed(2)}
           </span>
         </div>
       </div>
@@ -383,7 +489,10 @@ export default function ReportsPage() {
         /* Main Report Document Card */
         <div className="glass-card p-4 sm:p-6 space-y-8 print:border-none print:shadow-none">
           {/* Report Meta Header */}
-          <div className="flex flex-col sm:flex-row justify-between pb-6 border-b border-border/80 gap-4">
+          <div
+            data-testid="report-export-metadata"
+            className="flex flex-col sm:flex-row justify-between pb-6 border-b border-border/80 gap-4"
+          >
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xl font-black gradient-text">
@@ -391,12 +500,13 @@ export default function ReportsPage() {
                 </span>
                 <span className="text-xs text-text-muted">| Portföy Durum Belgesi</span>
               </div>
-              <h2 className="text-lg font-bold text-text-primary mt-2">{activePortfolio.name}</h2>
-              <p className="text-xs text-text-muted">{activePortfolio.description || 'Standart Portföy'}</p>
+              <h2 className="text-lg font-bold text-text-primary mt-2">{exportModel.metadata.portfolioName}</h2>
+              <p className="text-xs text-text-muted">{exportModel.metadata.portfolioDescription}</p>
             </div>
             <div className="text-left sm:text-right text-xs text-text-muted space-y-1">
-              <p>Rapor Tarihi: <span className="text-text-primary font-mono">{new Date().toLocaleDateString('tr-TR')}</span></p>
-              <p>Para Birimi: <span className="text-text-primary font-mono">{activePortfolio.currency}</span></p>
+              <p>Seçili Dönem: <span className="text-text-primary font-semibold">{exportModel.metadata.periodLabel}</span></p>
+              <p>Para Birimi: <span className="text-text-primary font-mono">{displayCurrency}{displayCurrency === 'USD' && exportModel.metadata.usdTryRate ? ` (Kur: ${exportModel.metadata.usdTryRate.toFixed(2)})` : ''}</span></p>
+              <p>Veri Tarihi: <span className="text-text-primary font-mono">{exportModel.metadata.dataDateDisplay}</span></p>
               <p>Durum: <span className="text-success font-semibold">Aktif Portföy</span></p>
             </div>
           </div>
@@ -404,27 +514,27 @@ export default function ReportsPage() {
           {/* High-level Summary Metrics (Print-only document view) */}
           <div className="hidden print:grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="glass-purple p-4 rounded-xl">
-              <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Piyasa Değeri</span>
+              <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Piyasa Değeri ({displayCurrency})</span>
               <span className="text-lg sm:text-xl font-bold font-mono text-text-primary mt-1 block">
-                {maskDisplayValue(`₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+                {maskDisplayValue(formatReportAmount(exportModel.kpis.totalValue, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••••`)}
               </span>
             </div>
             <div className="glass-purple p-4 rounded-xl">
-              <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Yatırım Maliyeti</span>
+              <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Yatırım Maliyeti ({displayCurrency})</span>
               <span className="text-lg sm:text-xl font-bold font-mono text-text-secondary mt-1 block">
-                {maskDisplayValue(`₺${summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+                {maskDisplayValue(formatReportAmount(exportModel.kpis.totalCost, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••••`)}
               </span>
             </div>
             <div className="glass-purple p-4 rounded-xl">
-              <span className="text-[11px] sm:text-xs text-text-muted block">Net Kar / Zarar</span>
-              <span className={`text-lg sm:text-xl font-bold font-mono ${summary.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
-                {maskDisplayValue(`${summary.totalPnL >= 0 ? '+' : ''}₺${summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
+              <span className="text-[11px] sm:text-xs text-text-muted block">Net Kar / Zarar ({displayCurrency})</span>
+              <span className={`text-lg sm:text-xl font-bold font-mono ${exportModel.kpis.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+                {maskDisplayValue(formatReportAmount(exportModel.kpis.totalPnL, displayCurrency, { signed: true }), isPrivacyMode, `${maskedCurrPrefix}••••`)}
               </span>
             </div>
             <div className="glass-purple p-4 rounded-xl">
               <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Getiri Oranı</span>
-              <span className={`text-lg sm:text-xl font-bold font-mono ${summary.totalPnLPercent >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
-                {summary.totalPnLPercent >= 0 ? '+' : ''}%{summary.totalPnLPercent.toFixed(2)}
+              <span className={`text-lg sm:text-xl font-bold font-mono ${exportModel.kpis.totalPnLPercent >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
+                {exportModel.kpis.totalPnLPercent >= 0 ? '+' : ''}%{exportModel.kpis.totalPnLPercent.toFixed(2)}
               </span>
             </div>
           </div>
@@ -435,7 +545,7 @@ export default function ReportsPage() {
               <h3 className="text-sm sm:text-base font-bold text-text-primary">
                 Dönem Bazlı Kâr ve Etki Dökümü
               </h3>
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-secondary border border-border" role="group" aria-label="Rapor dönemi">
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-secondary border border-border print:hidden" role="group" aria-label="Rapor dönemi">
                 {(['daily', 'weekly', 'monthly', 'total'] as PerformancePeriod[]).map((p) => (
                   <button
                     key={p}
@@ -456,6 +566,8 @@ export default function ReportsPage() {
             <PeriodBreakdownCard
               breakdown={performance.breakdown}
               loading={performance.loading}
+              currency={displayCurrency}
+              usdTryRate={usdTryRate}
             />
           </div>
 
@@ -464,7 +576,7 @@ export default function ReportsPage() {
 
           {/* Detailed Holdings Statement */}
           <div className="space-y-3">
-            <h3 className="text-base font-bold text-text-primary">Portföy Varlık Listesi</h3>
+            <h3 className="text-base font-bold text-text-primary">Portföy Varlık Listesi ({displayCurrency})</h3>
 
             {/* Desktop table — hidden on mobile */}
             <div className="hidden md:block overflow-x-auto">
@@ -482,18 +594,18 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {summary.holdings.map((h) => (
+                  {exportModel.holdings.map((h) => (
                     <tr key={h.symbol} className="hover:bg-bg-hover/40">
                       <td className="py-2.5 px-3 font-bold text-text-primary">{h.symbol}</td>
                       <td className="py-2.5 px-3 text-text-secondary">{h.assetType === 'stock' ? 'Hisse' : 'TEFAS Fon'}</td>
                       <td className="py-2.5 px-3 text-right font-mono">{maskDisplayValue(h.totalQuantity.toLocaleString('tr-TR'), isPrivacyMode, '•••')}</td>
-                      <td className="py-2.5 px-3 text-right font-mono">{maskDisplayValue(`₺${h.averageCost.toFixed(2)}`, isPrivacyMode, '₺••••')}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-semibold">{maskDisplayValue(`₺${h.currentPrice.toFixed(2)}`, isPrivacyMode, '₺••••')}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{maskDisplayValue(formatReportAmount(h.averageCost, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••`)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold">{maskDisplayValue(formatReportAmount(h.currentPrice, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••`)}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-text-primary">
-                        {maskDisplayValue(`₺${h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+                        {maskDisplayValue(formatReportAmount(h.currentValue, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••••`)}
                       </td>
                       <td className={`py-2.5 px-3 text-right font-mono font-bold ${h.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {maskDisplayValue(`${h.pnl >= 0 ? '+' : ''}₺${h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')} ({h.pnl >= 0 ? '+' : ''}{h.pnlPercent.toFixed(1)}%)
+                        {maskDisplayValue(formatReportAmount(h.pnl, displayCurrency, { signed: true }), isPrivacyMode, `${maskedCurrPrefix}••••`)} ({h.pnl >= 0 ? '+' : ''}{h.pnlPercent.toFixed(1)}%)
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-semibold">%{h.weight.toFixed(1)}</td>
                     </tr>
@@ -504,7 +616,7 @@ export default function ReportsPage() {
 
             {/* Mobile card layout — visible only on mobile */}
             <div className="md:hidden space-y-3 stagger-children">
-              {summary.holdings.map((h) => (
+              {exportModel.holdings.map((h) => (
                 <div
                   key={h.symbol}
                   className="glass-card p-4 space-y-3"
@@ -516,7 +628,7 @@ export default function ReportsPage() {
                       <div>
                         <span className="text-sm font-bold text-text-primary block">{h.symbol}</span>
                         <span className="text-[11px] text-text-muted">
-                          {h.assetType === 'stock' ? 'Hisse Senedi' : 'TEFAS Fon'}
+                          {h.assetLabel}
                         </span>
                       </div>
                     </div>
@@ -525,7 +637,7 @@ export default function ReportsPage() {
                         {h.pnl >= 0 ? '+' : ''}{h.pnlPercent.toFixed(1)}%
                       </span>
                       <span className={`text-[11px] font-mono ${h.pnl >= 0 ? 'text-success/70' : 'text-danger/70'}`}>
-                        {maskDisplayValue(`${h.pnl >= 0 ? '+' : ''}₺${h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
+                        {maskDisplayValue(formatReportAmount(h.pnl, displayCurrency, { signed: true }), isPrivacyMode, `${maskedCurrPrefix}••••`)}
                       </span>
                     </div>
                   </div>
@@ -538,15 +650,15 @@ export default function ReportsPage() {
                     </div>
                     <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
                       <span className="text-[10px] text-text-muted block uppercase tracking-wider">Maliyet</span>
-                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(`₺${h.averageCost.toFixed(2)}`, isPrivacyMode, '₺••••')}</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(formatReportAmount(h.averageCost, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••`)}</span>
                     </div>
                     <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
                       <span className="text-[10px] text-text-muted block uppercase tracking-wider">Son Fiyat</span>
-                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(`₺${h.currentPrice.toFixed(2)}`, isPrivacyMode, '₺••••')}</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(formatReportAmount(h.currentPrice, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••`)}</span>
                     </div>
                     <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
                       <span className="text-[10px] text-text-muted block uppercase tracking-wider">Değer</span>
-                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(`₺${h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(formatReportAmount(h.currentValue, displayCurrency), isPrivacyMode, `${maskedCurrPrefix}••••••`)}</span>
                     </div>
                   </div>
 
