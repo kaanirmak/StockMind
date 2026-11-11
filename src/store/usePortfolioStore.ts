@@ -24,6 +24,7 @@ interface PortfolioState {
   livePrices: Record<string, PriceQuote>;
   isRefreshingPrices: boolean;
   loading: boolean;
+  hasLoaded: boolean;
   error: string | null;
   currentUserId: string | null;
   isSampleMode: boolean;
@@ -323,6 +324,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     livePrices: {},
     isRefreshingPrices: false,
     loading: false,
+    hasLoaded: false,
     error: null,
     currentUserId: null,
     isSampleMode: readSampleModeSession(),
@@ -347,6 +349,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         cashError: null,
         currentUserId: null,
         error: null,
+        hasLoaded: false,
         isSampleMode: false,
       });
     },
@@ -520,6 +523,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             cashError: null,
             currentUserId: null,
             loading: false,
+            hasLoaded: true,
           });
           get().fetchLivePrices();
           return;
@@ -545,6 +549,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             transactions: local.transactions,
             currentUserId: user.id,
             loading: false,
+            hasLoaded: true,
           });
           get().fetchLivePrices();
           return;
@@ -653,6 +658,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           cashError: cashResult.error ? 'Nakit hareketleri yüklenemedi. Lütfen tekrar deneyin.' : null,
           currentUserId: user.id,
           loading: false,
+          hasLoaded: true,
         });
 
         get().fetchLivePrices();
@@ -667,6 +673,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         set({
           error: err.message,
           loading: false,
+          hasLoaded: true,
         });
       }
     },

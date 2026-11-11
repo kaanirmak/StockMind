@@ -51,7 +51,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | UX-02 | P1 | Isı haritasını kompakt başlat | İlk yükte küçük özet görünür. Kullanıcı genişletebilir ve varlık listesi eşdeğer bilgi sunar. | ◐ |
 | UX-03 | P1 | Boş portföy başlangıç akışını düzenle | İlk işlem kaydı, Excel yükleme ve örnek portföy seçeneklerine tek ekrandan ulaşılır. | ◐ |
 | UX-04 | P1 | Örnek portföy deneyimi ekle | Misafir, örnek veriyi kendi portföy kayıtlarına karıştırmadan inceleyebilir. | ◐ |
-| UX-05 | P1 | Yüklenirken sıfır portföy değerini göstermeyi önle | Oturum ve portföy yüklenirken bekleme durumu görünür. Boş ve gerçek sıfır değerler ayrılır. | ☐ |
+| UX-05 | P1 | Yüklenirken sıfır portföy değerini göstermeyi önle | Oturum ve portföy yüklenirken bekleme durumu görünür. Boş ve gerçek sıfır değerler ayrılır. | ◐ |
 | UX-06 | P1 | Ana özet kartını bağımsız kontrollere ayır | Portföy bağlantısı, dönem seçici ve gizlilik düğmesi klavyeyle ayrı ayrı çalışır ve doğru okunur. | ☐ |
 | UX-07 | P1 | Arama ve simge düğmelerine erişilebilir ad ekle | Haber araması dahil her arama alanı ve simge düğmesi ekran okuyucuda anlamlı ad taşır. | ☐ |
 | UX-08 | P1 | Mobil navigasyonda temel akışları koru | Ana ekran, piyasalar, portföy ve takip listesi tek dokunuşla erişilebilir. Haberler ve alarmlar menüde kolay bulunur. | ☐ |

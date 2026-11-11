@@ -17,8 +17,8 @@ import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendar
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
-import { shouldShowEmptyOnboarding } from '@/lib/portfolio/emptyOnboarding';
 import { getSamplePortfolioSnapshot } from '@/lib/portfolio/samplePortfolio';
+import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, StateView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
@@ -38,6 +38,7 @@ export default function PortfolioPage() {
     fetchLivePrices,
     livePrices,
     loading,
+    hasLoaded,
     isRefreshingPrices,
     isSampleMode,
     setSampleMode,
@@ -67,7 +68,7 @@ export default function PortfolioPage() {
   const isSamplePreview = isSampleMode;
   const setIsSamplePreview = setSampleMode;
 
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [showProModal, setShowProModal] = useState(false);
   const isPro = Boolean(
     user?.app_metadata?.plan === 'pro' ||
@@ -145,12 +146,18 @@ export default function PortfolioPage() {
     }
   }
 
-  const showEmptyOnboarding = !isSamplePreview && shouldShowEmptyOnboarding({
-    loading,
-    holdingsCount: liveSummary.holdings.length,
+  const displayPhase = resolvePortfolioDisplayPhase({
+    authLoading,
+    portfolioLoading: loading,
+    hasLoaded,
+    isSampleMode: isSamplePreview,
     transactionsCount: activeTransactions.length,
-    hasCash: Boolean(liveSummary.cash?.configured && liveSummary.cash.balances.length > 0),
+    cashConfigured: Boolean(summary.cash?.configured),
+    holdingsCount: summary.holdings.length,
+    totalValue: summary.totalValue,
   });
+
+  const showEmptyOnboarding = displayPhase === 'empty';
 
   const filteredTransactions = activeTransactions
     .filter((tx) => {
@@ -172,9 +179,14 @@ export default function PortfolioPage() {
 
   const isProfit = summary.totalPnL >= 0;
 
-  if (!isMounted) {
+  if (!isMounted || displayPhase === 'loading') {
     return (
-      <div className="space-y-6 animate-pulse pb-12">
+      <div
+        role="status"
+        aria-label="Oturum ve portföy yükleniyor"
+        data-testid="portfolio-loading-state"
+        className="space-y-6 animate-pulse pb-12"
+      >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="h-8 w-48 bg-bg-card rounded-lg border border-border" />

@@ -5,6 +5,8 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { useAuth } from '@/hooks/useAuth';
+import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
@@ -13,11 +15,23 @@ import { PartialValuationBadge, PartialValuationBanner } from '@/components/port
 
 export default function PortfolioSummary() {
   const router = useRouter();
-  const { getSummary, livePrices, loading } = usePortfolioStore();
+  const { getSummary, livePrices, loading, hasLoaded, transactions, isSampleMode } = usePortfolioStore();
+  const { loading: authLoading } = useAuth();
   const summary = getSummary();
   const [period, setPeriod] = useState<MetricView>('daily');
   const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
   const [fetchedUsdTry, setFetchedUsdTry] = useState<number | null>(null);
+
+  const displayPhase = resolvePortfolioDisplayPhase({
+    authLoading,
+    portfolioLoading: loading,
+    hasLoaded,
+    isSampleMode,
+    transactionsCount: transactions.length,
+    cashConfigured: Boolean(summary.cash?.configured),
+    holdingsCount: summary.holdings.length,
+    totalValue: summary.totalValue,
+  });
 
   useEffect(() => {
     try {
@@ -109,9 +123,14 @@ export default function PortfolioSummary() {
     }
   }, [summary, periodData, usdTry, currentPeriodObj]);
 
-  if (loading) {
+  if (displayPhase === 'loading') {
     return (
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 backdrop-blur-xl shadow-[0_12px_45px_rgba(16,185,129,0.12),0_0_80px_rgba(147,51,234,0.1)] select-none">
+      <div
+        role="status"
+        aria-label="Oturum ve portföy yükleniyor"
+        data-testid="portfolio-summary-loading"
+        className="relative overflow-hidden rounded-3xl border border-emerald-500/20 backdrop-blur-xl shadow-[0_12px_45px_rgba(16,185,129,0.12),0_0_80px_rgba(147,51,234,0.1)] select-none"
+      >
         {/* Dynamic gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#24114f] via-[#10272b] to-[#071318]" />
 
@@ -337,8 +356,8 @@ export default function PortfolioSummary() {
           </div>
 
           {/* Middle Row: Empty State Onboarding or Main Portfolio Value */}
-          {summary.holdings.length === 0 && summary.totalCost === 0 ? (
-            <div className="space-y-4 py-1">
+          {displayPhase === 'empty' ? (
+            <div data-testid="portfolio-summary-empty" className="space-y-4 py-1">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                   Portföyünüz Henüz Boş
@@ -374,6 +393,15 @@ export default function PortfolioSummary() {
                 >
                   ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </h2>
+
+                {displayPhase === 'zero_value' && (
+                  <span
+                    data-testid="portfolio-zero-value-badge"
+                    className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/10 text-white/80 border border-white/20"
+                  >
+                    Gerçek bakiye sıfır (işlem geçmişi mevcut)
+                  </span>
+                )}
 
                 <PartialValuationBadge
                   valuationStatus={summary.valuationStatus}

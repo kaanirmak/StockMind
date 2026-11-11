@@ -12,6 +12,7 @@ import RecentTransactions from '@/components/dashboard/RecentTransactions';
 import WatchlistPreview from '@/components/dashboard/WatchlistPreview';
 import { ApkDownloadModal } from '@/components/ui';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { useAuth } from '@/hooks/useAuth';
 
 import { useAppPlatform } from '@/hooks/useAppPlatform';
 
@@ -21,9 +22,11 @@ export default function DashboardPage() {
     transactions,
     cashMovements,
     loading,
+    hasLoaded,
     isSampleMode,
     setSampleMode,
   } = usePortfolioStore();
+  const { loading: authLoading } = useAuth();
   const [showApkModal, setShowApkModal] = useState(false);
   const { canDownloadApk } = useAppPlatform();
 
@@ -31,7 +34,13 @@ export default function DashboardPage() {
     fetchPortfoliosAndTransactions();
   }, [fetchPortfoliosAndTransactions]);
 
-  const showSampleInvite = !loading && !isSampleMode && transactions.length === 0 && cashMovements.length === 0;
+  const showSampleInvite =
+    hasLoaded &&
+    !loading &&
+    !authLoading &&
+    !isSampleMode &&
+    transactions.length === 0 &&
+    cashMovements.length === 0;
 
   return (
     <div className="dashboard-page flex flex-col gap-4 sm:gap-6 animate-fade-in pb-[calc(4rem+env(safe-area-inset-bottom))]">

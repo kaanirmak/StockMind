@@ -2090,6 +2090,91 @@ test('UX-04 sample portfolio preview isolates sample records from user persisten
   assert.match(dashboardSrc, /data-testid="dashboard-sample-banner"/);
 });
 
+test('UX-05 prevents 0 balance flash while auth or portfolio is loading and separates empty vs real zero', () => {
+  const { resolvePortfolioDisplayPhase } = load('src/lib/portfolio/displayState.ts');
+
+  assert.equal(
+    resolvePortfolioDisplayPhase({
+      authLoading: true,
+      portfolioLoading: false,
+      hasLoaded: false,
+      transactionsCount: 0,
+      cashConfigured: false,
+      holdingsCount: 0,
+      totalValue: 0,
+    }),
+    'loading'
+  );
+
+  assert.equal(
+    resolvePortfolioDisplayPhase({
+      authLoading: false,
+      portfolioLoading: false,
+      hasLoaded: false,
+      transactionsCount: 0,
+      cashConfigured: false,
+      holdingsCount: 0,
+      totalValue: 0,
+    }),
+    'loading'
+  );
+
+  assert.equal(
+    resolvePortfolioDisplayPhase({
+      authLoading: false,
+      portfolioLoading: false,
+      hasLoaded: true,
+      transactionsCount: 0,
+      cashConfigured: false,
+      holdingsCount: 0,
+      totalValue: 0,
+    }),
+    'empty'
+  );
+
+  assert.equal(
+    resolvePortfolioDisplayPhase({
+      authLoading: false,
+      portfolioLoading: false,
+      hasLoaded: true,
+      transactionsCount: 2,
+      cashConfigured: false,
+      holdingsCount: 0,
+      totalValue: 0,
+    }),
+    'zero_value'
+  );
+
+  assert.equal(
+    resolvePortfolioDisplayPhase({
+      authLoading: false,
+      portfolioLoading: false,
+      hasLoaded: true,
+      transactionsCount: 1,
+      cashConfigured: false,
+      holdingsCount: 1,
+      totalValue: 12500,
+    }),
+    'active'
+  );
+
+  const summarySrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/dashboard/PortfolioSummary.tsx'),
+    'utf8'
+  );
+  assert.match(summarySrc, /data-testid="portfolio-summary-loading"/);
+  assert.match(summarySrc, /data-testid="portfolio-summary-empty"/);
+  assert.match(summarySrc, /data-testid="portfolio-zero-value-badge"/);
+
+  const portfolioPageSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/portfolio/page.tsx'),
+    'utf8'
+  );
+  assert.match(portfolioPageSrc, /displayPhase === 'loading'/);
+  assert.match(portfolioPageSrc, /data-testid="portfolio-loading-state"/);
+});
+
+
 
 
 
