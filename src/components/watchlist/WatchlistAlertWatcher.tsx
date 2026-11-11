@@ -12,6 +12,8 @@ import {
   type AlertDeferralReason,
   type AlertPriceQuote,
 } from '@/lib/market/alertFreshness';
+import { inferAssetAlertCurrency } from '@/lib/market/alertForm';
+import { recordAlertCheck, recordAlertTrigger } from '@/lib/market/alertTelemetry';
 import type { MarketPriceObservation } from '@/types/stock';
 
 /** localStorage-based cooldown per symbol to survive WebView restarts */
@@ -96,16 +98,33 @@ export function WatchlistAlertWatcher() {
 
         const cooldowns = loadAlertCooldowns();
         let cooldownsDirty = false;
+        const checkedAtIso = new Date().toISOString();
         const configuredItems = current.items.filter(
-          (i) => (i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0)
+          (i) => !i.alertPaused && ((i.targetPrice && i.targetPrice > 0) || (i.alertPercent && i.alertPercent > 0))
         );
 
         for (const item of configuredItems) {
           const sym = item.symbol.toUpperCase();
           const quote = quoteMap.get(`${item.assetType}:${sym}`);
           const freshness = evaluateAlertPriceFreshness(quote);
+          const itemCurrency = item.alertCurrency || inferAssetAlertCurrency({
+            exchange: item.exchange,
+            assetType: item.assetType,
+            symbol: sym,
+          });
 
           if (!freshness.eligible) {
+            recordAlertCheck({
+              userId: currentUserId,
+              symbol: sym,
+              assetType: item.assetType,
+              checkedAt: checkedAtIso,
+              observedPrice: typeof quote?.price === 'number' ? quote.price : null,
+              currency: itemCurrency,
+              priceStatus: quote?.price ? 'deferred' : 'unavailable',
+              deferralDescription: freshness.description,
+              exchange: item.exchange,
+            });
             recordDeferredAlert({
               symbol: sym,
               assetType: item.assetType,
@@ -117,7 +136,7 @@ export function WatchlistAlertWatcher() {
               status: freshness.status,
               source: freshness.source,
               observedAt: freshness.observedAt,
-              deferredAt: new Date().toISOString(),
+              deferredAt: checkedAtIso,
             });
             const logKey = `defer:${currentUserId}:${item.assetType}:${sym}:${freshness.reason}`;
             if (Date.now() - (cooldowns[logKey] || 0) >= ALERT_COOLDOWN_MS) {
@@ -130,6 +149,16 @@ export function WatchlistAlertWatcher() {
 
           clearDeferredAlert(sym, item.assetType);
           const livePrice = quote!.price!;
+          recordAlertCheck({
+            userId: currentUserId,
+            symbol: sym,
+            assetType: item.assetType,
+            checkedAt: checkedAtIso,
+            observedPrice: livePrice,
+            currency: itemCurrency,
+            priceStatus: 'live',
+            exchange: item.exchange,
+          });
           const check = isPriceAlertTriggered(item, livePrice, quote);
           if (check.triggered) {
             // Per-symbol + alert-type cooldown key (not price-dependent)
@@ -148,6 +177,16 @@ export function WatchlistAlertWatcher() {
             );
             if (!delivered) continue;
 
+            recordAlertTrigger({
+              userId: currentUserId,
+              symbol: sym,
+              assetType: item.assetType,
+              triggeredAt: checkedAtIso,
+              triggeredPrice: livePrice,
+              triggeredTitle: check.title,
+              currency: itemCurrency,
+              exchange: item.exchange,
+            });
             cooldowns[cooldownKey] = Date.now();
             cooldownsDirty = true;
             if (item.alertType && item.alertType !== 'price') {

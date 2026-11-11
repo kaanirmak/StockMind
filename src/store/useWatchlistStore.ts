@@ -12,6 +12,7 @@ import {
   type AlertCurrencyCode,
   type AlertDirection,
 } from '@/lib/market/alertForm';
+import { clearAlertTelemetry } from '@/lib/market/alertTelemetry';
 
 export type PriceAlertType = 'price' | 'percent_up' | 'percent_down' | 'percent_both';
 
@@ -547,6 +548,7 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
     removeAlert: (symbolOrId) => {
       const { currentUserId, items } = get();
       const searchKey = symbolOrId.toUpperCase();
+      const target = items.find((i) => i.id === symbolOrId || i.symbol.toUpperCase() === searchKey);
       const updated = items.map((i) => {
         if (i.id === symbolOrId || i.symbol.toUpperCase() === searchKey) {
           const copy = { ...i };
@@ -563,6 +565,13 @@ export const useWatchlistStore = create<WatchlistState>((set, get) => {
       });
       set({ items: updated });
       persist(currentUserId, items, updated);
+      if (target) {
+        clearAlertTelemetry({
+          userId: currentUserId,
+          symbol: target.symbol,
+          assetType: target.assetType,
+        });
+      }
     },
 
     getAlert: (symbol) => {

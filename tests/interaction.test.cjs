@@ -3233,6 +3233,84 @@ test('ALR-05: All Alerts screen partitions active vs paused rules, describes thr
   assert.match(proxySource, /'\/alerts'/);
 });
 
+test('ALR-06: records and displays last check time, observed price, and last trigger telemetry per alert rule', () => {
+  const {
+    buildAlertTelemetryKey,
+    loadAlertTelemetryMap,
+    recordAlertCheck,
+    recordAlertTrigger,
+    clearAlertTelemetry,
+  } = load('src/lib/market/alertTelemetry.ts');
+
+  const backing = new Map();
+  const storage = {
+    getItem: (k) => (backing.has(k) ? backing.get(k) : null),
+    setItem: (k, v) => backing.set(k, String(v)),
+    removeItem: (k) => backing.delete(k),
+  };
+
+  recordAlertCheck({
+    userId: 'user-1',
+    symbol: 'NVDA',
+    assetType: 'stock',
+    checkedAt: '2026-11-11T14:00:00.000Z',
+    observedPrice: 142.5,
+    currency: 'USD',
+    priceStatus: 'live',
+  }, storage);
+
+  let map = { ...loadAlertTelemetryMap('user-1', storage) };
+  const nvdaKey = buildAlertTelemetryKey('stock', 'NVDA');
+  assert.equal(map[nvdaKey].lastCheckedAt, '2026-11-11T14:00:00.000Z');
+  assert.equal(map[nvdaKey].observedPrice, 142.5);
+  assert.equal(map[nvdaKey].lastTriggeredAt, undefined);
+
+  // Trigger records triggered timestamp and price
+  recordAlertTrigger({
+    userId: 'user-1',
+    symbol: 'NVDA',
+    assetType: 'stock',
+    triggeredAt: '2026-11-11T14:05:00.000Z',
+    triggeredPrice: 145.25,
+    triggeredTitle: 'Hedef Fiyat Ulaştı: NVDA',
+    currency: 'USD',
+  }, storage);
+
+  // Subsequent deferred check must update lastCheckedAt & status without wiping lastTriggeredAt
+  recordAlertCheck({
+    userId: 'user-1',
+    symbol: 'NVDA',
+    assetType: 'stock',
+    checkedAt: '2026-11-11T14:10:00.000Z',
+    observedPrice: null,
+    currency: 'USD',
+    priceStatus: 'deferred',
+    deferralDescription: 'Piyasa kapalı',
+  }, storage);
+
+  map = { ...loadAlertTelemetryMap('user-1', storage) };
+  assert.equal(map[nvdaKey].lastCheckedAt, '2026-11-11T14:10:00.000Z');
+  assert.equal(map[nvdaKey].observedPrice, null);
+  assert.equal(map[nvdaKey].priceStatus, 'deferred');
+  assert.equal(map[nvdaKey].lastTriggeredAt, '2026-11-11T14:05:00.000Z');
+  assert.equal(map[nvdaKey].lastTriggeredPrice, 145.25);
+
+  // Account isolation: different user has empty map
+  assert.deepEqual({ ...loadAlertTelemetryMap('user-2', storage) }, {});
+
+  clearAlertTelemetry({ userId: 'user-1', symbol: 'NVDA', assetType: 'stock' }, storage);
+  assert.equal(loadAlertTelemetryMap('user-1', storage)[nvdaKey], undefined);
+
+  const watcherSource = fs.readFileSync(path.join(process.cwd(), 'src/components/watchlist/WatchlistAlertWatcher.tsx'), 'utf8');
+  const alertsPageSource = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/alerts/page.tsx'), 'utf8');
+  assert.match(watcherSource, /recordAlertCheck/);
+  assert.match(watcherSource, /recordAlertTrigger/);
+  assert.match(alertsPageSource, /data-testid="alert-rule-telemetry"/);
+  assert.match(alertsPageSource, /Son Kontrol:/);
+  assert.match(alertsPageSource, /Görülen Fiyat:/);
+  assert.match(alertsPageSource, /Son Tetikleme:/);
+});
+
 
 
 

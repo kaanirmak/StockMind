@@ -19,8 +19,27 @@ import {
   partitionAlertRules,
   type AlertRuleStatusFilter,
 } from '@/lib/market/alertRules';
+import {
+  ALERT_TELEMETRY_UPDATED_EVENT,
+  buildAlertTelemetryKey,
+  loadAlertTelemetryMap,
+  type AlertTelemetryMap,
+} from '@/lib/market/alertTelemetry';
 import { useAuth } from '@/hooks/useAuth';
 import { useWatchlistStore, type WatchlistItem } from '@/store/useWatchlistStore';
+
+function formatTelemetryTime(iso?: string): string {
+  if (!iso) return 'Henüz yok';
+  const parsed = Date.parse(iso);
+  if (!Number.isFinite(parsed)) return 'Bilinmiyor';
+  return new Date(parsed).toLocaleString('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 interface LiveQuoteEntry {
   price: number;
@@ -29,14 +48,26 @@ interface LiveQuoteEntry {
 }
 
 export default function AllAlertsPage() {
-  const { items, toggleAlertPaused, removeAlert } = useWatchlistStore();
+  const { items, currentUserId, toggleAlertPaused, removeAlert } = useWatchlistStore();
   const { user, profile } = useAuth();
   const { showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState<AlertRuleStatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [liveQuotes, setLiveQuotes] = useState<Record<string, LiveQuoteEntry>>({});
+  const [telemetryMap, setTelemetryMap] = useState<AlertTelemetryMap>({});
   const [editingRule, setEditingRule] = useState<WatchlistItem | null>(null);
+
+  useEffect(() => {
+    const syncTelemetry = () => {
+      setTelemetryMap(loadAlertTelemetryMap(currentUserId));
+    };
+    syncTelemetry();
+    window.addEventListener(ALERT_TELEMETRY_UPDATED_EVENT, syncTelemetry);
+    return () => {
+      window.removeEventListener(ALERT_TELEMETRY_UPDATED_EVENT, syncTelemetry);
+    };
+  }, [currentUserId]);
 
   const isPro = Boolean(
     user?.app_metadata?.plan === 'pro' ||
@@ -280,6 +311,9 @@ export default function AllAlertsPage() {
             const desc = describeAlertRule(rule);
             const live = liveQuotes[rule.symbol.toUpperCase()];
             const displayPrice = live?.price && live.price > 0 ? live.price : rule.price;
+            const telemetry = telemetryMap[buildAlertTelemetryKey(rule.assetType, rule.symbol)];
+            const observedPriceValue = telemetry?.observedPrice ?? (displayPrice > 0 ? displayPrice : null);
+            const telemetryCurrency = telemetry?.currency || desc.currency;
             const detailHref =
               rule.assetType === 'fund' ? `/funds/${rule.symbol}` : `/stocks/${rule.symbol}`;
 
@@ -326,6 +360,41 @@ export default function AllAlertsPage() {
                           Güncel Referans: {formatAlertPrice(displayPrice, desc.currency, rule.assetType)}
                         </span>
                       )}
+                    </div>
+
+                    <div
+                      data-testid="alert-rule-telemetry"
+                      className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-border/60 bg-bg-secondary/50 px-2.5 py-1.5 text-[11px] text-text-secondary"
+                    >
+                      <span>
+                        <span className="text-text-muted">Son Kontrol:</span>{' '}
+                        <strong className="font-medium text-text-primary">
+                          {telemetry?.lastCheckedAt ? formatTelemetryTime(telemetry.lastCheckedAt) : 'Henüz kontrol edilmedi'}
+                        </strong>
+                      </span>
+                      <span>
+                        <span className="text-text-muted">Görülen Fiyat:</span>{' '}
+                        <strong className="font-mono text-text-primary">
+                          {observedPriceValue !== null
+                            ? formatAlertPrice(observedPriceValue, telemetryCurrency, rule.assetType)
+                            : 'Alınamadı'}
+                        </strong>
+                        {telemetry?.priceStatus === 'deferred' && (
+                          <span className="ml-1 text-amber-400">(Ertelendi)</span>
+                        )}
+                      </span>
+                      <span>
+                        <span className="text-text-muted">Son Tetikleme:</span>{' '}
+                        <strong className="font-medium text-text-primary">
+                          {telemetry?.lastTriggeredAt
+                            ? `${formatTelemetryTime(telemetry.lastTriggeredAt)}${
+                                typeof telemetry.lastTriggeredPrice === 'number'
+                                  ? ` (${formatAlertPrice(telemetry.lastTriggeredPrice, telemetryCurrency, rule.assetType)})`
+                                  : ''
+                              }`
+                            : 'Henüz tetiklenmedi'}
+                        </strong>
+                      </span>
                     </div>
                   </div>
                 </div>

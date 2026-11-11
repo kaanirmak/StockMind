@@ -34,6 +34,10 @@ function loadModule(relPath) {
         if (fs.existsSync(jsonPath)) return JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
         return [];
       }
+      if (name.startsWith('./') || name.startsWith('../')) {
+        const resolved = path.resolve(path.dirname(full), name + '.ts');
+        if (fs.existsSync(resolved)) return loadModule(path.relative(root, resolved));
+      }
       if (name.startsWith('@/')) {
         const candidateTs = path.join(root, name.replace('@/', 'src/') + '.ts');
         if (fs.existsSync(candidateTs)) return loadModule(name.replace('@/', 'src/') + '.ts');
