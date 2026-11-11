@@ -2533,6 +2533,40 @@ test('POR-02 separates transaction recording, virtual cash balance, and external
   assert.match(stockDetailSrc, /tradeModalTab === 'external_broker'/);
 });
 
+test('POR-03 moves portfolio deletion into management menu and shows portfolio impact on confirm', () => {
+  const { computePortfolioDeletionImpact } = load('src/lib/portfolio/portfolioDeletionImpact.ts');
+
+  const impact = {
+    ...computePortfolioDeletionImpact({
+      portfolio: { id: 'p-1', name: 'BIST Uzun Vade' },
+      transactions: [
+        { portfolioId: 'p-1', symbol: 'THYAO' },
+        { portfolioId: 'p-1', symbol: 'THYAO' },
+        { portfolioId: 'p-1', symbol: 'ASELS' },
+        { portfolioId: 'p-2', symbol: 'GARAN' },
+      ],
+    }),
+  };
+
+  assert.equal(impact.portfolioName, 'BIST Uzun Vade');
+  assert.equal(impact.transactionCount, 3);
+  assert.equal(impact.distinctSymbolCount, 2);
+  assert.match(impact.impactSummary, /"BIST Uzun Vade"/);
+  assert.match(impact.impactSummary, /3 adet işlem kaydı/);
+  assert.match(impact.impactSummary, /2 farklı varlığa/);
+
+  const portfolioSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/portfolio/page.tsx'),
+    'utf8'
+  );
+  assert.match(portfolioSrc, /title="Portföy Yönetimi"/);
+  assert.match(portfolioSrc, /aria-label="Portföy Yönetimi"/);
+  assert.match(portfolioSrc, /computePortfolioDeletionImpact/);
+  // Pill switcher should no longer embed an inline delete trigger right next to pill labels
+  assert.doesNotMatch(portfolioSrc, /portföyünü sil`/);
+});
+
+
 
 
 

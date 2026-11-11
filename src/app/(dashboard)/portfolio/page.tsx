@@ -23,6 +23,7 @@ import {
   TRANSACTION_RECORD_ACTION_LABEL,
   TRANSACTION_RECORD_DEFAULT_MODE,
 } from '@/lib/portfolio/transactionActionLabel';
+import { computePortfolioDeletionImpact } from '@/lib/portfolio/portfolioDeletionImpact';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, StateView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
@@ -61,6 +62,7 @@ export default function PortfolioPage() {
   );
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isNewPortModalOpen, setIsNewPortModalOpen] = useState(false);
+  const [isManagePortModalOpen, setIsManagePortModalOpen] = useState(false);
   const [isDeletePortModalOpen, setIsDeletePortModalOpen] = useState(false);
   const [portfolioToDelete, setPortfolioToDelete] = useState<(typeof portfolios)[0] | null>(null);
   const [isClearTxModalOpen, setIsClearTxModalOpen] = useState(false);
@@ -305,40 +307,22 @@ export default function PortfolioPage() {
             {portfolios.map((p) => {
               const isActive = activePortfolioId === p.id;
               return (
-                <div
+                <button
                   key={p.id}
-                  className={`group relative flex items-center gap-1.5 pl-3 pr-0 py-0 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
+                  type="button"
+                  onClick={() => setActivePortfolioId(p.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                     isActive
                       ? 'bg-accent text-white shadow'
                       : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                   }`}
                 >
-                  <button
-                    onClick={() => setActivePortfolioId(p.id)}
-                    className="cursor-pointer"
-                  >
-                    {p.name}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenDeletePortfolio(p);
-                    }}
-                    className={`p-0.5 rounded-md transition-colors cursor-pointer ${
-                      isActive
-                        ? 'text-white/70 hover:text-white hover:bg-white/20'
-                        : 'text-text-muted hover:text-danger hover:bg-danger/10'
-                    }`}
-                    title={`"${p.name}" portföyünü sil`}
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+                  {p.name}
+                </button>
               );
             })}
             <button
+              type="button"
               onClick={handleOpenNewPortfolio}
               className={`p-1.5 rounded-lg transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
                 !isPro && portfolios.length >= 1
@@ -359,6 +343,16 @@ export default function PortfolioPage() {
                   PRO
                 </span>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsManagePortModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer shrink-0 flex items-center gap-1 border border-transparent hover:border-border/60"
+              aria-label="Portföy Yönetimi"
+              title="Portföy Yönetimi"
+            >
+              <UIIcon name="settings" className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Yönet</span>
             </button>
           </div>
 
@@ -903,6 +897,90 @@ export default function PortfolioPage() {
         </form>
       </Modal>
 
+      {/* Portfolio Management Menu Modal */}
+      <Modal
+        isOpen={isManagePortModalOpen}
+        onClose={() => setIsManagePortModalOpen(false)}
+        title="Portföy Yönetimi"
+        description="Portföylerinizi görüntüleyin, yeni portföy oluşturun veya portföy silme işlemini yönetin."
+      >
+        <div className="space-y-4">
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {portfolios.map((p) => {
+              const impact = computePortfolioDeletionImpact({ portfolio: p, transactions });
+              const isActive = activePortfolioId === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className="p-3 rounded-xl bg-bg-secondary border border-border flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-text-primary truncate">{p.name}</span>
+                      {isActive && (
+                        <Badge variant="accent" size="sm">
+                          Aktif
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-text-muted mt-0.5">
+                      {impact.transactionCount} işlem · {impact.distinctSymbolCount} farklı varlık
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!isActive && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setActivePortfolioId(p.id);
+                          setIsManagePortModalOpen(false);
+                        }}
+                      >
+                        Seç
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="danger"
+                      onClick={() => {
+                        setIsManagePortModalOpen(false);
+                        handleOpenDeletePortfolio(p);
+                      }}
+                    >
+                      Portföyü Sil
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border/60">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setIsManagePortModalOpen(false);
+                handleOpenNewPortfolio();
+              }}
+            >
+              Yeni Portföy Oluştur
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setIsManagePortModalOpen(false)}
+            >
+              Kapat
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Delete Portfolio Confirmation Modal */}
       <Modal
         isOpen={isDeletePortModalOpen}
@@ -915,48 +993,52 @@ export default function PortfolioPage() {
         title="Portföyü Sil"
         description="Bu işlem portföyü ve içindeki tüm verileri silecektir."
       >
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-danger/10 border border-danger/20 flex items-start gap-3">
-            <svg className="w-6 h-6 text-danger shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div className="text-sm">
-              <p className="font-bold text-text-primary">
-                "{portfolioToDelete?.name}" portföyünü silmek istediğinize emin misiniz?
-              </p>
-              <p className="text-text-secondary text-xs mt-1 leading-relaxed">
-                Bu portföye ait{' '}
-                <span className="font-semibold text-danger">
-                  {transactions.filter((t) => t.portfolioId === portfolioToDelete?.id).length} adet işlem kaydı
-                </span>{' '}
-                ve tüm varlık dökümü kalıcı olarak silinecektir. Bu işlem geri alınamaz.
-              </p>
-            </div>
-          </div>
+        {(() => {
+          const deletionImpact = portfolioToDelete
+            ? computePortfolioDeletionImpact({ portfolio: portfolioToDelete, transactions })
+            : null;
+          return (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-danger/10 border border-danger/20 flex items-start gap-3">
+                <svg className="w-6 h-6 text-danger shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="text-sm">
+                  <p className="font-bold text-text-primary">
+                    &quot;{deletionImpact?.portfolioName || portfolioToDelete?.name}&quot; portföyünü silmek istediğinize emin misiniz?
+                  </p>
+                  <p className="text-text-secondary text-xs mt-1 leading-relaxed">
+                    {deletionImpact?.impactSummary ||
+                      'Bu portföye ait tüm işlem kayıtları ve varlık dökümü kalıcı olarak silinecektir. Bu işlem geri alınamaz.'}
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={isDeleting}
-              onClick={() => {
-                setIsDeletePortModalOpen(false);
-                setPortfolioToDelete(null);
-              }}
-            >
-              Vazgeç
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              disabled={isDeleting}
-              onClick={handleConfirmDeletePortfolio}
-              className="bg-danger hover:bg-danger/90 text-white"
-            >
-              {isDeleting ? 'Siliniyor...' : deleteConfirmed ? 'Son Onay: Kalıcı Olarak Sil' : 'Devam Et'}
-            </Button>
-          </div>
-        </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isDeleting}
+                  onClick={() => {
+                    setIsDeletePortModalOpen(false);
+                    setPortfolioToDelete(null);
+                  }}
+                >
+                  Vazgeç
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDeletePortfolio}
+                  className="bg-danger hover:bg-danger/90 text-white"
+                >
+                  {isDeleting ? 'Siliniyor...' : deleteConfirmed ? 'Son Onay: Kalıcı Olarak Sil' : 'Devam Et'}
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* Clear All Transactions Confirmation Modal */}
