@@ -1,5 +1,6 @@
 'use client';
 import QuantSymbolSelect from './QuantSymbolSelect';
+import QuantProfileBanner from './QuantProfileBanner';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 import { palette } from '@/theme/palette';
@@ -66,7 +67,11 @@ export default function StressTestTab({
   const nativeCurrency = getQuantCurrency(currentSymbol, activeHolding?.originalCurrency);
   const currencySign = nativeCurrency === 'USD' ? '$' : '₺';
   const holdingPrice = activeHolding?.originalPrice ?? activeHolding?.currentPrice;
-  const currentPrice = getFinancialProfile(currentSymbol, holdingPrice).currentPrice;
+  const profile = useMemo(
+    () => getFinancialProfile(currentSymbol, holdingPrice),
+    [currentSymbol, holdingPrice]
+  );
+  const currentPrice = profile.currentPrice;
 
   // Run simulation
   const mcResult = useMemo(() => {
@@ -108,6 +113,7 @@ export default function StressTestTab({
 
   return (
     <div className="space-y-6">
+      <QuantProfileBanner symbol={currentSymbol} meta={profile.profileMeta} />
       {/* Analysis header and symbol selection */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

@@ -474,6 +474,24 @@ export function runMonteCarloSimulation(
 // -------------------------------------------------------------
 // Gerçekçi BIST & Küresel Şirket Finansal Profilleri (Presetler)
 // -------------------------------------------------------------
+export type FinancialProfileKind = 'sourced' | 'preset' | 'synthetic';
+
+export interface FinancialProfileMeta {
+  kind: FinancialProfileKind;
+  isSample: boolean;
+  label: string;
+  sourceLabel: string;
+  financialPeriod: string | null;
+  priceSourceLabel: string;
+  summary: string;
+}
+
+export interface SourcedFinancialProfileInput {
+  financialPeriod: string;
+  sourceLabel: string;
+  profile: Partial<Omit<PresetProfile, 'profileMeta'>>;
+}
+
 export interface PresetProfile {
   name: string;
   sector: string;
@@ -500,6 +518,11 @@ export interface PresetProfile {
   marketCap: number;
   revenue: number;
   equity: number;
+  profileMeta?: FinancialProfileMeta;
+}
+
+export interface ResolvedFinancialProfile extends PresetProfile {
+  profileMeta: FinancialProfileMeta;
 }
 
 export const PRESET_FINANCIAL_PROFILES: Record<string, PresetProfile> = {
@@ -1153,21 +1176,97 @@ export const PRESET_FINANCIAL_PROFILES: Record<string, PresetProfile> = {
   },
 };
 
-/**
- * Dinamik olarak herhangi bir portföy hissesi için finansal profil üretir
- */
-export function getFinancialProfile(symbol: string, livePrice?: number): PresetProfile {
-  const cleanSym = (symbol || 'THYAO').trim().toUpperCase();
-  const base = PRESET_FINANCIAL_PROFILES[cleanSym];
-  if (base) {
+function buildFinancialProfileMeta(
+  kind: FinancialProfileKind,
+  options: {
+    hasLivePrice: boolean;
+    financialPeriod?: string | null;
+    sourceLabel?: string;
+  }
+): FinancialProfileMeta {
+  const hasPeriod = typeof options.financialPeriod === 'string' && options.financialPeriod.trim().length > 0;
+  const period = hasPeriod ? options.financialPeriod!.trim() : null;
+
+  if (kind === 'sourced' && period) {
     return {
-      ...base,
-      currentPrice: livePrice && livePrice > 0 ? livePrice : base.currentPrice,
+      kind: 'sourced',
+      isSample: false,
+      label: 'Kaynaklı Finansal Profil',
+      sourceLabel: options.sourceLabel?.trim() || 'Onaylı finansal tablo kaynağı',
+      financialPeriod: period,
+      priceSourceLabel: options.hasLivePrice ? 'Canlı / Portföy Fiyatı' : 'Finansal Profil Referans Fiyatı',
+      summary: `${period} dönemine ait kaynaklı bilanço ve nakit akışı verileri kullanılıyor.`,
     };
   }
 
-  // Portföydeki özel hisseler için fiyat ölçekli dinamik profil
-  const price = livePrice && livePrice > 0 ? livePrice : 150.0;
+  if (kind === 'preset') {
+    return {
+      kind: 'preset',
+      isSample: true,
+      label: 'Örnek Şirket Profili (Preset)',
+      sourceLabel: 'Dahili örnek şirket şablonu',
+      financialPeriod: null,
+      priceSourceLabel: options.hasLivePrice ? 'Canlı / Portföy Fiyatı (bilanço örnek)' : 'Örnek Referans Fiyatı',
+      summary: options.hasLivePrice
+        ? 'Hisse fiyatı canlı/portföy değerini kullanır; ancak bilanço, FCF ve oranlar güncel döneme bağlı olmayan sabit örnek profilden gelir.'
+        : 'Tüm finansal tablo ve değerleme girdileri güncel döneme bağlı olmayan sabit örnek profilden gelir.',
+    };
+  }
+
+  return {
+    kind: 'synthetic',
+    isSample: true,
+    label: 'Örnek Sentetik Profil (Fiyat Ölçekli)',
+    sourceLabel: 'Fiyattan oransal türetilen örnek model',
+    financialPeriod: null,
+    priceSourceLabel: options.hasLivePrice ? 'Canlı / Portföy Fiyatı' : 'Varsayılan Referans Fiyatı',
+    summary:
+      'Bu sembol için kaynaklı finansal tablo veya şirket preset verisi bağlı değildir; bilanço ve nakit akışı kalemleri fiyattan türetilen örnek varsayımlardır.',
+  };
+}
+
+/**
+ * Dinamik olarak herhangi bir portföy hissesi için finansal profil üretir
+ * ve profilin kaynaklı mı yoksa örnek/sentetik mi olduğunu açıkça işaretler.
+ */
+export function getFinancialProfile(
+  symbol: string,
+  livePrice?: number,
+  sourced?: SourcedFinancialProfileInput | null
+): ResolvedFinancialProfile {
+  const cleanSym = (symbol || 'THYAO').trim().toUpperCase();
+  const hasLivePrice = Boolean(livePrice && Number.isFinite(livePrice) && livePrice > 0);
+  const base = PRESET_FINANCIAL_PROFILES[cleanSym];
+
+  if (sourced && sourced.financialPeriod?.trim() && Object.keys(sourced.profile || {}).length > 0) {
+    const template = base || PRESET_FINANCIAL_PROFILES.DEFAULT;
+    const mergedPrice = hasLivePrice
+      ? livePrice!
+      : (sourced.profile.currentPrice && sourced.profile.currentPrice > 0
+          ? sourced.profile.currentPrice
+          : template.currentPrice);
+    return {
+      ...template,
+      ...sourced.profile,
+      currentPrice: mergedPrice,
+      profileMeta: buildFinancialProfileMeta('sourced', {
+        hasLivePrice,
+        financialPeriod: sourced.financialPeriod,
+        sourceLabel: sourced.sourceLabel,
+      }),
+    };
+  }
+
+  if (base) {
+    return {
+      ...base,
+      currentPrice: hasLivePrice ? livePrice! : base.currentPrice,
+      profileMeta: buildFinancialProfileMeta('preset', { hasLivePrice }),
+    };
+  }
+
+  // Portföydeki özel hisseler için fiyat ölçekli dinamik örnek profil
+  const price = hasLivePrice ? livePrice! : 150.0;
   const shares = 1200;
   const mcap = Math.round(price * shares);
   const fcf = Math.round(mcap * 0.09);
@@ -1200,5 +1299,6 @@ export function getFinancialProfile(symbol: string, livePrice?: number): PresetP
     marketCap: mcap,
     revenue,
     equity: Math.round(mcap * 1.05),
+    profileMeta: buildFinancialProfileMeta('synthetic', { hasLivePrice }),
   };
 }

@@ -1,5 +1,6 @@
 'use client';
 import QuantSymbolSelect from './QuantSymbolSelect';
+import QuantProfileBanner from './QuantProfileBanner';
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -17,6 +18,7 @@ import {
 import {
   type CommitteeReport,
 } from '@/lib/ai/investment-committee';
+import { getFinancialProfile } from '@/lib/quant/models';
 import { useAuth } from '@/hooks/useAuth';
 import { Holding } from '@/types/portfolio';
 import { getStoredOpenRouterKey, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
@@ -212,8 +214,23 @@ export default function InvestmentCommitteeTab({
     }
   };
 
+  const activeHolding = portfolioStocks.find(
+    (h) => h.symbol.toUpperCase() === symbol.trim().toUpperCase()
+  );
+  const holdingPrice = activeHolding?.originalPrice ?? activeHolding?.currentPrice;
+  const quantProfile = getFinancialProfile(symbol, holdingPrice);
+
   return (
     <div className="space-y-6">
+      <QuantProfileBanner
+        symbol={symbol}
+        meta={quantProfile.profileMeta}
+        committeeModeNote={
+          report?.isLiveLLM
+            ? 'Yatırım Komitesi sunucudan alınan canlı piyasa fiyatını kullanır; finansal tablo oranları bağlı değilse örnek/model varsayımlarına dayanır.'
+            : quantProfile.profileMeta.summary
+        }
+      />
       {report && !report.isLiveLLM && (
         <p className="rounded-xl border border-warning/30 p-3 text-sm text-text-secondary">
           AI yanıtı alınamadı. Bu örnek senaryodaki görüşler ve sayılar model varsayımlarına dayanır.

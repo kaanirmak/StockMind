@@ -1,5 +1,6 @@
 'use client';
 import QuantSymbolSelect from './QuantSymbolSelect';
+import QuantProfileBanner from './QuantProfileBanner';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
@@ -115,9 +116,22 @@ export default function DCFValuationTab({
 
   const upsideDownsidePercent = Math.abs(dcfResult.discountRate);
   const isCheap = dcfResult.isUndervalued;
+  const isUserCustomized =
+    currentPrice !== presetData.currentPrice ||
+    freeCashFlow !== presetData.freeCashFlow ||
+    growthRate5Y !== presetData.growthRate5Y ||
+    terminalGrowthRate !== presetData.terminalGrowthRate ||
+    wacc !== presetData.wacc ||
+    netDebt !== presetData.netDebt ||
+    sharesOutstanding !== presetData.sharesOutstanding;
 
   return (
     <div className="space-y-6">
+      <QuantProfileBanner
+        symbol={selectedPreset}
+        meta={presetData.profileMeta}
+        isUserCustomized={isUserCustomized}
+      />
       {/* Analysis header and symbol selection */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

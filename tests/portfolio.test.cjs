@@ -284,6 +284,42 @@ test('QNT-01: Monte Carlo koşu sayısı tek kaynaktan gelir ve arayüz metinler
   }
 });
 
+test('QNT-02: örnek preset, sentetik ve kaynaklı finansal profiller ayrılır ve analiz ekranlarının başında gösterilir', () => {
+  const { getFinancialProfile } = loadModule('src/lib/quant/models.ts');
+
+  const presetProfile = getFinancialProfile('THYAO', 310);
+  assert.equal(presetProfile.profileMeta.kind, 'preset');
+  assert.equal(presetProfile.profileMeta.isSample, true);
+  assert.equal(presetProfile.profileMeta.financialPeriod, null);
+
+  const syntheticProfile = getFinancialProfile('BILINMEYEN_HISSE', 125);
+  assert.equal(syntheticProfile.profileMeta.kind, 'synthetic');
+  assert.equal(syntheticProfile.profileMeta.isSample, true);
+  assert.equal(syntheticProfile.profileMeta.financialPeriod, null);
+
+  const sourcedProfile = getFinancialProfile('THYAO', 310, {
+    financialPeriod: '2025 Q4',
+    sourceLabel: 'KAP Finansal Tablosu',
+    profile: { freeCashFlow: 42500 },
+  });
+  assert.equal(sourcedProfile.profileMeta.kind, 'sourced');
+  assert.equal(sourcedProfile.profileMeta.isSample, false);
+  assert.equal(sourcedProfile.profileMeta.financialPeriod, '2025 Q4');
+  assert.equal(sourcedProfile.profileMeta.sourceLabel, 'KAP Finansal Tablosu');
+  assert.equal(sourcedProfile.freeCashFlow, 42500);
+
+  const tabFiles = [
+    'src/components/quant/DCFValuationTab.tsx',
+    'src/components/quant/FinancialHealthTab.tsx',
+    'src/components/quant/StressTestTab.tsx',
+    'src/components/quant/InvestmentCommitteeTab.tsx',
+  ];
+  for (const relPath of tabFiles) {
+    const src = fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+    assert.ok(src.includes('QuantProfileBanner'), `${relPath} must render QuantProfileBanner`);
+  }
+});
+
 test('AI-04: calculateDCF bankalar için model uygunluk uyarısı üretir', () => {
   const { calculateDCF } = loadModule('src/lib/quant/models.ts');
   const resGaran = calculateDCF({
