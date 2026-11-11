@@ -4544,6 +4544,83 @@ test('QNT-04: komite ekranına girilince otomatik çağrı başlamaz; başlat, i
   assert.match(committeeSrc, /handleCancelCommittee/);
 });
 
+test('QNT-05: DCF validates statement, market price, and valuation currency consistency', () => {
+  const models = load('src/lib/quant/models.ts');
+
+  const usdWithNative = models.resolveDcfHoldingMarketInputs('AAPL', {
+    originalCurrency: 'USD',
+    originalPrice: 215,
+    originalAverageCost: 190,
+    currentPrice: 7400,
+    averageCost: 6500,
+  });
+  assert.equal(usdWithNative.currency, 'USD');
+  assert.equal(usdWithNative.currentPrice, 215);
+  assert.equal(usdWithNative.averageCost, 190);
+  assert.equal(usdWithNative.averageCostCurrency, 'USD');
+  assert.equal(usdWithNative.mismatchWarning, null);
+
+  const usdWithoutNative = models.resolveDcfHoldingMarketInputs('AAPL', {
+    currentPrice: 7400,
+    averageCost: 6500,
+  });
+  assert.equal(usdWithoutNative.currency, 'USD');
+  assert.equal(usdWithoutNative.currentPrice, undefined);
+  assert.equal(usdWithoutNative.averageCost, 6500);
+  assert.equal(usdWithoutNative.averageCostCurrency, 'TRY');
+  assert.ok(typeof usdWithoutNative.mismatchWarning === 'string' && usdWithoutNative.mismatchWarning.length > 0);
+
+  const consistentUsd = models.calculateDCF({
+    symbol: 'AAPL',
+    currentPrice: 215,
+    freeCashFlow: 100000,
+    growthRate5Y: 12,
+    terminalGrowthRate: 3,
+    wacc: 9,
+    netDebt: -10000,
+    sharesOutstanding: 15000,
+    currency: 'USD',
+    statementCurrency: 'USD',
+    priceCurrency: 'USD',
+  });
+  assert.equal(consistentUsd.currency, 'USD');
+  assert.equal(consistentUsd.currencyConsistency.isConsistent, true);
+  assert.equal(consistentUsd.currencyConsistency.statementCurrency, 'USD');
+  assert.equal(consistentUsd.currencyConsistency.priceCurrency, 'USD');
+  assert.equal(consistentUsd.currencyConsistency.valuationCurrency, 'USD');
+
+  const mismatched = models.calculateDCF({
+    symbol: 'AAPL',
+    currentPrice: 7400,
+    freeCashFlow: 100000,
+    growthRate5Y: 12,
+    terminalGrowthRate: 3,
+    wacc: 9,
+    netDebt: -10000,
+    sharesOutstanding: 15000,
+    currency: 'USD',
+    statementCurrency: 'USD',
+    priceCurrency: 'TRY',
+  });
+  assert.equal(mismatched.currencyConsistency.isConsistent, false);
+  assert.ok(typeof mismatched.currencyConsistency.error === 'string' && mismatched.currencyConsistency.error.length > 0);
+  assert.equal(mismatched.discountRate, 0);
+  assert.equal(mismatched.isUndervalued, false);
+  assert.equal(mismatched.verdict, 'Para Birimi Uyumsuzluğu');
+
+  const dcfTabSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/quant/DCFValuationTab.tsx'),
+    'utf8'
+  );
+  assert.match(dcfTabSrc, /resolveDcfHoldingMarketInputs/);
+  assert.match(dcfTabSrc, /statementCurrency:\s*nativeCurrency/);
+  assert.match(dcfTabSrc, /priceCurrency:\s*nativeCurrency/);
+  assert.match(dcfTabSrc, /data-testid="dcf-currency-consistency-badge"/);
+  assert.match(dcfTabSrc, /data-testid="dcf-currency-warning"/);
+  assert.doesNotMatch(dcfTabSrc, /Cari Piyasa Fiyatı \(TL\)/);
+  assert.doesNotMatch(dcfTabSrc, /BIST son işlem fiyatı/);
+});
+
 
 
 

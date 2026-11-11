@@ -21,6 +21,7 @@ import {
 import {
   calculateDCF,
   getQuantCurrency,
+  resolveDcfHoldingMarketInputs,
   DCFParams,
   getFinancialProfile,
   PRESET_FINANCIAL_PROFILES,
@@ -48,9 +49,11 @@ export default function DCFValuationTab({
     );
   }, [portfolioStocks, selectedPreset]);
 
-  const nativeCurrency = getQuantCurrency(selectedPreset, activeHolding?.originalCurrency);
+  const holdingMarket = resolveDcfHoldingMarketInputs(selectedPreset, activeHolding);
+  const nativeCurrency = holdingMarket.currency ?? getQuantCurrency(selectedPreset, activeHolding?.originalCurrency);
   const currencySign = nativeCurrency === 'USD' ? '$' : '₺';
-  const holdingPrice = activeHolding?.originalPrice ?? activeHolding?.currentPrice;
+  const holdingPrice = holdingMarket.currentPrice;
+  const averageCostSign = holdingMarket.averageCostCurrency === 'USD' ? '$' : '₺';
 
   // Initial parameters based on preset & live price
   const presetData = useMemo(() => {
@@ -78,7 +81,8 @@ export default function DCFValuationTab({
     setSelectedPreset(cleanSym);
     onSelectSymbol?.(cleanSym);
     const holding = portfolioStocks.find((h) => h.symbol.toUpperCase() === cleanSym);
-    const p = getFinancialProfile(cleanSym, holding?.originalPrice ?? holding?.currentPrice);
+    const nextMarket = resolveDcfHoldingMarketInputs(cleanSym, holding);
+    const p = getFinancialProfile(cleanSym, nextMarket.currentPrice);
     setCurrentPrice(p.currentPrice);
     setFreeCashFlow(p.freeCashFlow);
     setGrowthRate5Y(p.growthRate5Y);
@@ -100,6 +104,8 @@ export default function DCFValuationTab({
       netDebt,
       sharesOutstanding,
       currency: nativeCurrency,
+      statementCurrency: nativeCurrency,
+      priceCurrency: nativeCurrency,
     };
     return calculateDCF(params);
   }, [
@@ -168,7 +174,7 @@ export default function DCFValuationTab({
                 <span className="font-bold text-text-primary ml-1.5">{activeHolding.totalQuantity} Lot</span>
                 <span className="text-text-muted mx-1.5">•</span>
                 <span className="text-text-secondary">Ortalama Maliyetiniz:</span>
-                <span className="font-bold text-text-primary ml-1">{currencySign}{(activeHolding.originalAverageCost ?? activeHolding.averageCost).toFixed(2)}</span>
+                <span className="font-bold text-text-primary ml-1">{averageCostSign}{(holdingMarket.averageCost ?? activeHolding.averageCost).toFixed(2)}</span>
               </div>
             </div>
 
@@ -214,8 +220,16 @@ export default function DCFValuationTab({
               </span>
             </div>
             <p className="text-[11px] text-text-muted mt-1">
-              BIST son işlem fiyatı
+              {nativeCurrency} son işlem fiyatı
             </p>
+            {holdingMarket.mismatchWarning && (
+              <p
+                data-testid="dcf-currency-warning"
+                className="text-[11px] text-amber-400 mt-1 leading-snug"
+              >
+                {holdingMarket.mismatchWarning}
+              </p>
+            )}
           </div>
 
           {/* Calculated Fair Value */}
@@ -397,7 +411,13 @@ export default function DCFValuationTab({
               />
             </div>
             <div>
-              <span className="text-[10px] text-text-muted block">Cari Piyasa Fiyatı (TL)</span>
+              <span className="text-[10px] text-text-muted block">Cari Piyasa Fiyatı ({nativeCurrency})</span>
+              <span
+                data-testid="dcf-currency-consistency-badge"
+                className="text-[10px] text-emerald-400/90 block mt-0.5"
+              >
+                Bilanço: {dcfResult.currencyConsistency.statementCurrency} • İşlem Fiyatı: {dcfResult.currencyConsistency.priceCurrency} • Değerleme: {dcfResult.currencyConsistency.valuationCurrency}
+              </span>
               <input
                 type="number"
                 value={currentPrice}

@@ -10,16 +10,101 @@ export function getQuantCurrency(symbol: string, holdingCurrency?: string): 'TRY
   return holdingCurrency === 'USD' || USD_PROFILES.has(symbol.toUpperCase()) ? 'USD' : 'TRY';
 }
 
+export interface DcfHoldingMarketResolution {
+  currency: 'TRY' | 'USD';
+  currentPrice?: number;
+  averageCost?: number;
+  averageCostCurrency?: 'TRY' | 'USD';
+  mismatchWarning: string | null;
+}
+
+/**
+ * Ensures portfolio holding prices/costs never mix portfolio base currency (TRY)
+ * into a USD statement valuation or vice versa (QNT-05).
+ */
+export function resolveDcfHoldingMarketInputs(
+  symbol: string,
+  holding?: {
+    originalCurrency?: string;
+    originalPrice?: number;
+    originalAverageCost?: number;
+    currency?: string;
+    currentPrice?: number;
+    averageCost?: number;
+  } | null
+): DcfHoldingMarketResolution {
+  const statementCurrency = getQuantCurrency(symbol, holding?.originalCurrency);
+  if (!holding) {
+    return { currency: statementCurrency, mismatchWarning: null };
+  }
+
+  let currentPrice: number | undefined;
+  let mismatchWarning: string | null = null;
+
+  const hasOrigPrice = typeof holding.originalPrice === 'number' && Number.isFinite(holding.originalPrice) && holding.originalPrice > 0;
+  const origCurr = holding.originalCurrency?.toUpperCase();
+
+  if (hasOrigPrice && (!origCurr || origCurr === statementCurrency)) {
+    currentPrice = holding.originalPrice;
+  } else if (
+    typeof holding.currentPrice === 'number' &&
+    Number.isFinite(holding.currentPrice) &&
+    holding.currentPrice > 0
+  ) {
+    const holdingCurr = (holding.originalCurrency || holding.currency || 'TRY').toUpperCase();
+    if (holdingCurr === statementCurrency && statementCurrency === 'TRY') {
+      currentPrice = holding.currentPrice;
+    } else if (holding.currency?.toUpperCase() === statementCurrency) {
+      currentPrice = holding.currentPrice;
+    } else {
+      mismatchWarning = `Portföydeki ${holdingCurr} fiyat verisi bilanço para birimi (${statementCurrency}) ile eşleşmediği için karışık kur kullanılmadı; işlem fiyatı ${statementCurrency} profilinden alındı.`;
+    }
+  }
+
+  let averageCost: number | undefined;
+  let averageCostCurrency: 'TRY' | 'USD' | undefined;
+  if (
+    typeof holding.originalAverageCost === 'number' &&
+    Number.isFinite(holding.originalAverageCost) &&
+    holding.originalAverageCost > 0 &&
+    (!origCurr || origCurr === statementCurrency)
+  ) {
+    averageCost = holding.originalAverageCost;
+    averageCostCurrency = statementCurrency;
+  } else if (typeof holding.averageCost === 'number' && Number.isFinite(holding.averageCost) && holding.averageCost > 0) {
+    averageCost = holding.averageCost;
+    averageCostCurrency = 'TRY';
+  }
+
+  return {
+    currency: statementCurrency,
+    currentPrice,
+    averageCost,
+    averageCostCurrency,
+    mismatchWarning,
+  };
+}
+
+export interface DCFCurrencyConsistency {
+  statementCurrency: 'TRY' | 'USD';
+  priceCurrency: 'TRY' | 'USD';
+  valuationCurrency: 'TRY' | 'USD';
+  isConsistent: boolean;
+  error?: string;
+}
+
 export interface DCFParams {
   symbol: string;
   currentPrice: number;
-  freeCashFlow: number; // Milyon TL veya USD
+  freeCashFlow: number; // Milyon TRY veya USD
   growthRate5Y: number; // % olarak örn 18 -> 0.18
   terminalGrowthRate: number; // % olarak örn 5 -> 0.05
   wacc: number; // % AOMM örn 16 -> 0.16
-  netDebt: number; // Milyon TL
+  netDebt: number; // Milyon TRY veya USD (statementCurrency ile aynı)
   sharesOutstanding: number; // Milyon Adet Lot
   currency: 'TRY' | 'USD';
+  statementCurrency?: 'TRY' | 'USD';
+  priceCurrency?: 'TRY' | 'USD';
 }
 
 export interface DCFProjectionYear {
@@ -30,6 +115,8 @@ export interface DCFProjectionYear {
 }
 
 export interface DCFResult {
+  currency: 'TRY' | 'USD';
+  currencyConsistency: DCFCurrencyConsistency;
   projections: DCFProjectionYear[];
   sumPVScheduled: number;
   terminalValue: number;
@@ -50,6 +137,19 @@ export interface DCFResult {
 }
 
 export function calculateDCF(params: DCFParams): DCFResult {
+  const statementCurrency = params.statementCurrency ?? params.currency;
+  const priceCurrency = params.priceCurrency ?? params.currency;
+  const isCurrencyConsistent = statementCurrency === priceCurrency;
+  const currencyConsistency: DCFCurrencyConsistency = {
+    statementCurrency,
+    priceCurrency,
+    valuationCurrency: statementCurrency,
+    isConsistent: isCurrencyConsistent,
+    error: isCurrencyConsistent
+      ? undefined
+      : `Para birimi uyuşmazlığı: Bilanço verileri ${statementCurrency}, işlem fiyatı ${priceCurrency} biriminde; farklı birimler doğrudan karşılaştırılamaz.`,
+  };
+
   const g = params.growthRate5Y / 100;
   const tg = params.terminalGrowthRate / 100;
   const wacc = Math.max(params.wacc / 100, tg + 0.01); // WACC must be > terminal growth
@@ -121,6 +221,8 @@ export function calculateDCF(params: DCFParams): DCFResult {
     : undefined;
 
   return {
+    currency: statementCurrency,
+    currencyConsistency,
     projections,
     sumPVScheduled: Math.round(sumPVScheduled),
     terminalValue: Math.round(terminalValue),
@@ -129,9 +231,9 @@ export function calculateDCF(params: DCFParams): DCFResult {
     equityValue: Math.round(equityValue),
     fairValuePerShare: Number(fairValuePerShare.toFixed(2)),
     currentPrice: params.currentPrice,
-    discountRate: Number(diff.toFixed(1)),
-    isUndervalued,
-    verdict,
+    discountRate: isCurrencyConsistent ? Number(diff.toFixed(1)) : 0,
+    isUndervalued: isCurrencyConsistent ? isUndervalued : false,
+    verdict: isCurrencyConsistent ? verdict : 'Para Birimi Uyumsuzluğu',
     modelApplicabilityWarning,
     sensitivityMatrix: {
       waccRates: waccSteps,
