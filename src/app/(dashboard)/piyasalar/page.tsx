@@ -11,7 +11,16 @@ import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
 import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal, PriceStatusBadge } from '@/components/ui';
 import { classifyFundPriceStatus, classifyStockPriceStatus } from '@/lib/market/priceStatus';
-import { MARKET_CATALOG, MOBILE_PRIMARY_MARKETS, normalizeMarketParam, type MarketId } from '@/lib/market/marketSelector';
+import { MARKET_CATALOG, MOBILE_PRIMARY_MARKETS, type MarketId } from '@/lib/market/marketSelector';
+import {
+  MARKET_FILTER_STORAGE_KEY,
+  buildMarketSearchParams,
+  resolveMarketStateWithPersistence,
+  type FundSortKey,
+  type PersistedMarketFilterState,
+  type SortDirection,
+  type StockSortKey,
+} from '@/lib/market/marketFilterPersistence';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatDate, formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -27,11 +36,15 @@ interface OverviewSections {
 function PiyasalarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParamsKey = searchParams.toString();
 
-  const rawParam = searchParams.get('market') || searchParams.get('tab') || searchParams.get('exchange') || 'ALL';
-  const initialMarket: MarketId = normalizeMarketParam(rawParam);
+  const initialResolved = React.useMemo(
+    () => resolveMarketStateWithPersistence(searchParams, null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
-  const [activeMarket, setActiveMarket] = useState<MarketId>(initialMarket);
+  const [activeMarket, setActiveMarket] = useState<MarketId>(initialResolved.market);
 
   // Overview Data (for 'ALL' market tab)
   const [overviewData, setOverviewData] = useState<{
@@ -40,32 +53,109 @@ function PiyasalarContent() {
   }>({ tickers: [], sections: null });
   const [overviewLoading, setOverviewLoading] = useState(false);
 
-  const initialSearch = searchParams.get('q') || searchParams.get('search') || '';
-  const initialSector = searchParams.get('sector') || 'ALL';
-  const initialCategory = searchParams.get('category') || 'ALL';
-
   // Stocks state
-  const [selectedSector, setSelectedSector] = useState<string>(initialSector);
-  const [stockSearch, setStockSearch] = useState<string>(initialSearch);
-  const [stockSortBy, setStockSortBy] = useState<'changePercent' | 'price' | 'volume' | 'marketCap'>('marketCap');
-  const [stockSortOrder, setStockSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [selectedSector, setSelectedSector] = useState<string>(initialResolved.sector);
+  const [stockSearch, setStockSearch] = useState<string>(initialResolved.search);
+  const [stockSortBy, setStockSortBy] = useState<StockSortKey>(initialResolved.stockSortBy);
+  const [stockSortOrder, setStockSortOrder] = useState<SortDirection>(initialResolved.stockSortOrder);
 
   // Infinite scroll / lazy loading for stocks (loads in chunks of 30)
   const [stockLimit, setStockLimit] = useState<number>(30);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   // Funds state
-  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
-  const [fundSearch, setFundSearch] = useState<string>(initialSearch);
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialResolved.category);
+  const [fundSearch, setFundSearch] = useState<string>(initialResolved.search);
   const [fundLimit, setFundLimit] = useState<number>(30);
   const loadMoreFundsRef = useRef<HTMLDivElement>(null);
-  const [fundSortBy, setFundSortBy] = useState<'dailyReturn' | 'monthlyReturn' | 'return3m' | 'yearlyReturn' | 'return3y' | 'return5y' | 'price' | 'riskValue'>('yearlyReturn');
-  const [fundSortOrder, setFundSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [fundSortBy, setFundSortBy] = useState<FundSortKey>(initialResolved.fundSortBy);
+  const [fundSortOrder, setFundSortOrder] = useState<SortDirection>(initialResolved.fundSortOrder);
 
   // Shared view mode
-  const [watchlistOnly, setWatchlistOnly] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [watchlistOnly, setWatchlistOnly] = useState<boolean>(initialResolved.watchlistOnly);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(initialResolved.viewMode);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+
+  // Hydrate persisted selection on mount (or when URL params change explicitly) without clobbering shared URLs
+  const hasHydratedFiltersRef = useRef(false);
+  const lastAppliedQueryRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (lastAppliedQueryRef.current === searchParamsKey && hasHydratedFiltersRef.current) {
+      return;
+    }
+
+    let storedRaw: unknown = null;
+    try {
+      const raw = window.localStorage.getItem(MARKET_FILTER_STORAGE_KEY);
+      storedRaw = raw ? JSON.parse(raw) : null;
+    } catch {
+      storedRaw = null;
+    }
+
+    const resolved = resolveMarketStateWithPersistence(
+      new URLSearchParams(searchParamsKey),
+      storedRaw
+    );
+    setActiveMarket(resolved.market);
+    setSelectedSector(resolved.sector);
+    setSelectedCategory(resolved.category);
+    setStockSearch(resolved.search);
+    setFundSearch(resolved.search);
+    setWatchlistOnly(resolved.watchlistOnly);
+    setViewMode(resolved.viewMode);
+    setStockSortBy(resolved.stockSortBy);
+    setStockSortOrder(resolved.stockSortOrder);
+    setFundSortBy(resolved.fundSortBy);
+    setFundSortOrder(resolved.fundSortOrder);
+
+    lastAppliedQueryRef.current = searchParamsKey;
+    hasHydratedFiltersRef.current = true;
+  }, [searchParamsKey]);
+
+  // Persist current market and filters & keep shareable URL query synchronized
+  useEffect(() => {
+    if (!hasHydratedFiltersRef.current) return;
+
+    const currentState: PersistedMarketFilterState = {
+      market: activeMarket,
+      sector: selectedSector,
+      category: selectedCategory,
+      search: activeMarket === 'TEFAS' ? fundSearch : stockSearch,
+      watchlistOnly,
+      viewMode,
+      stockSortBy,
+      stockSortOrder,
+      fundSortBy,
+      fundSortOrder,
+    };
+
+    try {
+      window.localStorage.setItem(MARKET_FILTER_STORAGE_KEY, JSON.stringify(currentState));
+    } catch {
+      // Ignore storage quota / private mode failures
+    }
+
+    const nextQuery = buildMarketSearchParams(currentState);
+    if (nextQuery !== searchParamsKey) {
+      lastAppliedQueryRef.current = nextQuery;
+      router.replace(nextQuery ? `/piyasalar?${nextQuery}` : '/piyasalar', { scroll: false });
+    }
+  }, [
+    activeMarket,
+    selectedSector,
+    selectedCategory,
+    stockSearch,
+    fundSearch,
+    watchlistOnly,
+    viewMode,
+    stockSortBy,
+    stockSortOrder,
+    fundSortBy,
+    fundSortOrder,
+    searchParamsKey,
+    router,
+  ]);
 
   const { showToast } = useToast();
   const { toggleWatchlist, isWatchlisted: checkWatchlisted } = useWatchlistStore();
@@ -73,10 +163,11 @@ function PiyasalarContent() {
   const handleMarketChange = (market: MarketId) => {
     setActiveMarket(market);
     setSelectedSector('ALL');
+    setSelectedCategory('ALL');
     setStockSearch('');
+    setFundSearch('');
     setStockLimit(30);
     setFundLimit(30);
-    router.replace(`/piyasalar?market=${market.toLowerCase()}`, { scroll: false });
   };
 
   // Reset lazy load limit when filter changes

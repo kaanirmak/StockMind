@@ -7,8 +7,8 @@ const path = require('node:path');
 function load(file, globals = {}) {
   const module = { exports: {} };
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(source, { module, exports: module.exports, Date, Map, Set, Symbol, console, process: { env: {} },
-    require: name => name.startsWith('.') ? load(path.join(path.dirname(file), `${name}.ts`), globals) : require(name), ...globals });
+  vm.runInNewContext(source, { module, exports: module.exports, Date, Map, Set, Symbol, URLSearchParams, console, process: { env: {} },
+    require: name => name.startsWith('.') ? load(path.join(path.dirname(file), `${name}.ts`), globals) : name.startsWith('@/') ? load(path.join('src', `${name.slice(2)}.ts`), globals) : require(name), ...globals });
   return module.exports;
 }
 test('Nested overlays keep background locked until the last overlay closes and restore scroll/style', () => {
@@ -2592,6 +2592,67 @@ test('PIY-01 keeps BIST, TEFAS and ABD market choices at the top on mobile', () 
   assert.match(piyasalarSrc, /data-testid="mobile-top-market-bar"/);
   assert.match(piyasalarSrc, /sticky top-0/);
   assert.match(piyasalarSrc, /MOBILE_PRIMARY_MARKETS/);
+});
+
+test('PIY-02 remembers last market and filter while honoring explicit shared URL params', () => {
+  const {
+    MARKET_FILTER_STORAGE_KEY,
+    resolveMarketStateWithPersistence,
+    buildMarketSearchParams,
+    sanitizePersistedMarketState,
+  } = load('src/lib/market/marketFilterPersistence.ts');
+
+  const saved = {
+    market: 'BIST',
+    sector: 'Teknoloji',
+    category: 'ALL',
+    search: 'ASELS',
+    watchlistOnly: true,
+    viewMode: 'grid',
+    stockSortBy: 'changePercent',
+    stockSortOrder: 'asc',
+    fundSortBy: 'yearlyReturn',
+    fundSortOrder: 'desc',
+  };
+
+  // Returning to /piyasalar without query params restores last selection
+  const restored = { ...resolveMarketStateWithPersistence(new URLSearchParams(''), saved) };
+  assert.equal(restored.market, 'BIST');
+  assert.equal(restored.sector, 'Teknoloji');
+  assert.equal(restored.search, 'ASELS');
+  assert.equal(restored.watchlistOnly, true);
+  assert.equal(restored.viewMode, 'grid');
+  assert.equal(restored.stockSortBy, 'changePercent');
+  assert.equal(restored.stockSortOrder, 'asc');
+
+  // Shared URL overrides stale localStorage selection deterministically
+  const sharedUrl = new URLSearchParams('market=tefas&category=Hisse+Senedi+Fonu&q=YAC');
+  const fromShared = { ...resolveMarketStateWithPersistence(sharedUrl, saved) };
+  assert.equal(fromShared.market, 'TEFAS');
+  assert.equal(fromShared.category, 'Hisse Senedi Fonu');
+  assert.equal(fromShared.sector, 'ALL');
+  assert.equal(fromShared.search, 'YAC');
+  assert.equal(fromShared.watchlistOnly, false);
+
+  // Round-trip query serialization preserves shared filters
+  const qs = buildMarketSearchParams(fromShared);
+  const reparsed = { ...resolveMarketStateWithPersistence(new URLSearchParams(qs), saved) };
+  assert.equal(reparsed.market, 'TEFAS');
+  assert.equal(reparsed.category, 'Hisse Senedi Fonu');
+  assert.equal(reparsed.search, 'YAC');
+
+  // Malformed storage payload degrades cleanly without crashing
+  const sanitized = { ...sanitizePersistedMarketState({ market: 'BOGUS', viewMode: 123, watchlistOnly: 'yes' }) };
+  assert.deepEqual(sanitized, {});
+  assert.equal(MARKET_FILTER_STORAGE_KEY, 'stockmind.piyasalar.filters.v1');
+
+  const piyasalarSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/piyasalar/page.tsx'),
+    'utf8'
+  );
+  assert.match(piyasalarSrc, /MARKET_FILTER_STORAGE_KEY/);
+  assert.match(piyasalarSrc, /resolveMarketStateWithPersistence/);
+  assert.match(piyasalarSrc, /buildMarketSearchParams/);
 });
 
 
