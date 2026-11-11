@@ -200,7 +200,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | OPS-04 | P0 | Kritik veri kesintisi testlerini otomatikleştir | Fiyat, fon, haber veya kur sağlayıcısı kesilince beklenen arayüz durumu doğrulanır. | ◐ |
 | OPS-05 | P1 | Alarm ve izleme için sembol bazlı sorgu ekle | Kontrol isteği yalnız aktif alarm veya takip sembollerini içerir. Tam piyasa listesinin yükü ortadan kalkar. | ◐ |
 | OPS-06 | P1 | Piyasa tablolarını sayfalandır | Liste ilk açılışta sınırlı sonuç getirir. Arama, sıralama ve filtre sayfalar arasında tutarlı çalışır. | ◐ |
-| OPS-07 | P1 | Excel kütüphanesini isteğe bağlı yükle | İlk portföy açılışında Excel parçası indirilmez. İçe veya dışa aktarmada yüklenir. | ☐ |
+| OPS-07 | P1 | Excel kütüphanesini isteğe bağlı yükle | İlk portföy açılışında Excel parçası indirilmez. İçe veya dışa aktarmada yüklenir. | ◐ |
 | OPS-08 | P1 | Gereksiz fiyat yenilemelerini azalt | Gizli sekme, kapalı piyasa ve geçersiz oturum durumlarında yenileme davranışı ölçülür ve uygun şekilde yavaşlatılır. | ☐ |
 | OPS-09 | P1 | Mobil ve masaüstü performans ölçümünü kur | LCP, INP, CLS, ilk yük boyutu ve kritik API süreleri platform bazında raporlanır. | ☐ |
 | OPS-10 | P1 | Kritik kullanıcı akışlarını otomatik test et | Misafir başlangıcı, işlem kaydı, dosya aktarımı, alarm kurma, haber kesintisi ve rapor üretimi sürüm öncesi çalışır. | ☐ |

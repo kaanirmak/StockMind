@@ -324,7 +324,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    downloadExcelTemplate();
+                    void downloadExcelTemplate();
                   }}
                   className="text-xs"
                 >

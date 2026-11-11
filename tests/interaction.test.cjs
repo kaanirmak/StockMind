@@ -5302,6 +5302,29 @@ test('OPS-06: market tables paginate with bounded initial page and consistent so
   assert.match(piyasalarSrc, /data-testid="funds-pagination"/);
 });
 
+test('OPS-07: xlsx library is dynamically loaded on import/export rather than initial portfolio load', async () => {
+  const parserPath = path.join(process.cwd(), 'src/lib/portfolio/excelParser.ts');
+  const parserSrc = fs.readFileSync(parserPath, 'utf8');
+
+  // 1. excelParser must never statically import 'xlsx' at top level
+  assert.doesNotMatch(parserSrc, /^import\s+.*['"]xlsx['"]/m);
+  assert.match(parserSrc, /import\(['"]xlsx['"]\)/);
+
+  // 2. portfolio page dynamically loads ExcelImportModal & excelParser only on interaction
+  const portfolioSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
+  assert.match(portfolioSrc, /import dynamic from ['"]next\/dynamic['"]/);
+  assert.doesNotMatch(portfolioSrc, /^import\s+.*from\s+['"]@\/components\/portfolio\/ExcelImportModal['"]/m);
+  assert.doesNotMatch(portfolioSrc, /^import\s+[\s\S]*from\s+['"]@\/lib\/portfolio\/excelParser['"]/m);
+  assert.match(portfolioSrc, /await import\(['"]@\/lib\/portfolio\/excelParser['"]\)/);
+
+  // 3. No other client component or route statically imports 'xlsx'
+  const modalSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/portfolio/ExcelImportModal.tsx'), 'utf8');
+  assert.doesNotMatch(modalSrc, /from\s+['"]xlsx['"]/);
+
+  // 4. ExcelImportModal is conditionally mounted only when opened
+  assert.match(portfolioSrc, /isExcelModalOpen &&[\s\S]*<ExcelImportModal/);
+});
+
 
 
 

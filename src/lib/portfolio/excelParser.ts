@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { TransactionFormData, AssetType, TransactionType } from '@/types/portfolio';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { cleanSymbol } from '@/lib/utils/symbol';
@@ -6,6 +5,18 @@ import {
   detectStatementTemplate,
   StatementTemplateMatch,
 } from '@/lib/portfolio/brokerStatementTemplates';
+
+let xlsxModulePromise: Promise<typeof import('xlsx')> | null = null;
+
+/**
+ * Dynamically loads the heavy SheetJS (`xlsx`) parser/writer only when an Excel import or export is triggered.
+ */
+export async function loadXlsxModule(): Promise<typeof import('xlsx')> {
+  if (!xlsxModulePromise) {
+    xlsxModulePromise = import('xlsx');
+  }
+  return xlsxModulePromise;
+}
 
 export interface ParsedRowResult {
   rowNumber: number;
@@ -393,6 +404,7 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
   }
 
   if (rawRows.length === 0) {
+    const XLSX = await loadXlsxModule();
     const workbook = XLSX.read(buffer, {
       type: 'array',
       raw: true,
@@ -641,8 +653,9 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
 /**
  * Downloads a pre-formatted Excel template file (.xlsx) with USD/TRY FX rate column
  */
-export function downloadExcelTemplate() {
+export async function downloadExcelTemplate() {
   if (typeof window === 'undefined') return;
+  const XLSX = await loadXlsxModule();
 
   const sampleData = [
     {
@@ -805,7 +818,8 @@ function escapeCsvCell(value: unknown): string {
 /**
  * Serializes transaction history into a formatted Excel (.xlsx) ArrayBuffer for export and verification.
  */
-export function buildTransactionsExcelBuffer(transactions: any[]): ArrayBuffer {
+export async function buildTransactionsExcelBuffer(transactions: any[]): Promise<ArrayBuffer> {
+  const XLSX = await loadXlsxModule();
   const exportData = mapTransactionsToExportRows(transactions);
   const worksheet = XLSX.utils.json_to_sheet(exportData);
   worksheet['!cols'] = [
@@ -844,10 +858,10 @@ export function buildTransactionsCsvContent(transactions: any[]): string {
 /**
  * Exports transaction history to formatted Excel file (.xlsx)
  */
-export function exportTransactionsToExcel(transactions: any[], portfolioName: string = 'Portfoy') {
+export async function exportTransactionsToExcel(transactions: any[], portfolioName: string = 'Portfoy') {
   if (typeof window === 'undefined') return;
 
-  const wbout = buildTransactionsExcelBuffer(transactions);
+  const wbout = await buildTransactionsExcelBuffer(transactions);
   const blob = new Blob([wbout], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });

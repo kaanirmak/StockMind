@@ -1405,7 +1405,7 @@ test('POR-06: end-to-end Excel and CSV export -> re-import round-trip preserves 
   ];
 
   // 1. Excel (.xlsx) round-trip
-  const xlsxBuffer = buildTransactionsExcelBuffer(sampleTransactions);
+  const xlsxBuffer = await buildTransactionsExcelBuffer(sampleTransactions);
   const reimportedXlsx = await parseExcelTransactions(xlsxBuffer);
   assert.equal(reimportedXlsx.invalidRows.length, 0);
   assert.equal(reimportedXlsx.validRows.length, sampleTransactions.length);

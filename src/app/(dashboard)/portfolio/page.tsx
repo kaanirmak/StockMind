@@ -8,6 +8,7 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { PERIOD_LABELS, type PerformancePeriod } from '@/lib/portfolio/periodPerformance';
 import { ConfirmAction } from '@/components/ui/ConfirmAction';
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PartialValuationBadge, PartialValuationBanner } from '@/components/portfolio/PartialValuationBanner';
@@ -16,11 +17,11 @@ import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
-import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
-import {
-  exportTransactionsToExcel,
-  exportTransactionsToCsv,
-} from '@/lib/portfolio/excelParser';
+
+const ExcelImportModal = dynamic(
+  () => import('@/components/portfolio/ExcelImportModal').then((m) => m.ExcelImportModal),
+  { ssr: false }
+);
 import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
 import { getSamplePortfolioSnapshot } from '@/lib/portfolio/samplePortfolio';
 import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
@@ -652,9 +653,10 @@ export default function PortfolioPage() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      exportTransactionsToCsv(activeTransactions, activePortfolio?.name || 'Portfoy')
-                    }
+                    onClick={async () => {
+                      const { exportTransactionsToCsv } = await import('@/lib/portfolio/excelParser');
+                      exportTransactionsToCsv(activeTransactions, activePortfolio?.name || 'Portfoy');
+                    }}
                   >
                     CSV Dışa Aktar
                   </Button>
@@ -662,9 +664,10 @@ export default function PortfolioPage() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      exportTransactionsToExcel(activeTransactions, activePortfolio?.name || 'Portfoy')
-                    }
+                    onClick={async () => {
+                      const { exportTransactionsToExcel } = await import('@/lib/portfolio/excelParser');
+                      await exportTransactionsToExcel(activeTransactions, activePortfolio?.name || 'Portfoy');
+                    }}
                   >
                     Excel Dışa Aktar
                   </Button>
@@ -903,11 +906,13 @@ export default function PortfolioPage() {
         initialMode={tradeModalMode}
       />
 
-      {/* Excel / CSV Import Modal */}
-      <ExcelImportModal
-        isOpen={isExcelModalOpen}
-        onClose={() => setIsExcelModalOpen(false)}
-      />
+      {/* Excel / CSV Import Modal (lazy-loaded on open) */}
+      {isExcelModalOpen && (
+        <ExcelImportModal
+          isOpen={isExcelModalOpen}
+          onClose={() => setIsExcelModalOpen(false)}
+        />
+      )}
 
       {/* New Portfolio Modal */}
       <Modal
