@@ -5,6 +5,7 @@ import {
   LANGUAGE_SCOPE_DECISION,
   SUPPORTED_LANGUAGES,
 } from '@/lib/help/languageScope';
+import { DATA_AND_PRIVACY_SECTIONS } from '@/lib/help/privacyAndDataGuide';
 
 export default function HelpPage() {
   return (
@@ -68,6 +69,51 @@ export default function HelpPage() {
           >
             Ayarlara Git
           </Link>
+        </div>
+      </section>
+
+      {/* Data & Privacy Help Guide (HSP-09) */}
+      <section data-testid="help-privacy-guide" className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-text-primary">
+            Veri Kaynakları, Gizlilik &amp; Kontrol Rehberi
+          </h2>
+          <p className="text-xs text-text-muted mt-0.5">
+            Piyasa verisinin kaynağı, yapay zekaya gönderilen bilgiler, widget paylaşımı ve hesap tercihleriniz.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {DATA_AND_PRIVACY_SECTIONS.map((section) => (
+            <article
+              key={section.id}
+              data-testid={`help-privacy-section-${section.id}`}
+              className="glass-card p-5 rounded-2xl border border-border flex flex-col justify-between space-y-4"
+            >
+              <div className="space-y-2.5">
+                <h3 className="text-sm sm:text-base font-bold text-text-primary">
+                  {section.title}
+                </h3>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  {section.summary}
+                </p>
+                <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-text-muted leading-relaxed">
+                  {section.bullets.map((bullet, idx) => (
+                    <li key={idx}>{bullet}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="pt-2 border-t border-border/60 flex justify-end">
+                <Link
+                  href={section.actionHref}
+                  className="text-xs font-semibold text-accent hover:underline"
+                >
+                  {section.actionLabel} →
+                </Link>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </div>

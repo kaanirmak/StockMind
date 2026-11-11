@@ -7680,6 +7680,33 @@ test('HSP-08: enforces clear single-language (Turkish) scope decision and lists 
   assert.match(sidebarSrc, /href="\/help"/);
 });
 
+test('HSP-09: exposes visible data sources, AI data policy, widget sharing limits, and account preference guides on /help', () => {
+  const privacyMod = load('src/lib/help/privacyAndDataGuide.ts');
+
+  const ids = Array.from(privacyMod.DATA_AND_PRIVACY_SECTIONS, (s) => s.id);
+  assert.deepEqual(ids, ['market_sources', 'ai_data_sharing', 'widget_sharing', 'account_preferences']);
+
+  for (const section of Array.from(privacyMod.DATA_AND_PRIVACY_SECTIONS)) {
+    assert.ok(section.title.length > 5);
+    assert.ok(section.summary.length > 10);
+    assert.ok(section.bullets.length >= 3);
+    assert.match(section.actionHref, /^\//);
+  }
+
+  const aiSec = privacyMod.getPrivacyHelpSectionById('ai_data_sharing');
+  assert.match(aiSec.bullets.join(' '), /sunucu/i);
+  const widgetSec = privacyMod.getPrivacyHelpSectionById('widget_sharing');
+  assert.match(widgetSec.bullets.join(' '), /Örnek Veri/);
+
+  const helpSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/(dashboard)/help/page.tsx'),
+    'utf8'
+  );
+  assert.match(helpSrc, /data-testid="help-privacy-guide"/);
+  assert.match(helpSrc, /DATA_AND_PRIVACY_SECTIONS/);
+  assert.match(helpSrc, /help-privacy-section-/);
+});
+
 
 
 
