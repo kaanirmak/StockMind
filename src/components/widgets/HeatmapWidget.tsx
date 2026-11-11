@@ -2,8 +2,10 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { Holding } from '@/types/portfolio';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
+import { resolveWidgetDataStatus } from '@/lib/widgets/widgetStatus';
 
 type MetricType = 'daily' | 'total';
 
@@ -218,6 +220,7 @@ export interface HeatmapWidgetProps {
   transparent?: boolean;
   height?: number;
   hideFooter?: boolean;
+  forceDemo?: boolean;
   theme?: 'dark' | 'light';
 }
 
@@ -227,10 +230,18 @@ export default function HeatmapWidget({
   transparent = false,
   height = 260,
   hideFooter = false,
+  forceDemo = false,
   theme = 'dark',
 }: HeatmapWidgetProps) {
   const { getSummary, livePrices, fetchPortfoliosAndTransactions } = usePortfolioStore();
+  const { isPrivacyMode } = usePrivacyMode();
   const summary = getSummary();
+  const dataStatus = resolveWidgetDataStatus({
+    forceDemo,
+    hasPersonalData: summary.holdings.length > 0,
+    isPrivacyMode,
+  });
+  const isSample = dataStatus.isDemo;
   const [metric, setMetric] = useState<MetricType>(defaultMetric);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 400, height });
@@ -255,7 +266,7 @@ export default function HeatmapWidget({
     return () => window.removeEventListener('resize', updateSize);
   }, [height]);
 
-  const rawHoldings = summary.holdings.length > 0 ? summary.holdings : SAMPLE_HOLDINGS;
+  const rawHoldings = !isSample ? summary.holdings : SAMPLE_HOLDINGS;
 
   const nodes = useMemo(() => {
     const totalFilteredValue = rawHoldings.reduce((sum, h) => sum + Math.max(1, h.currentValue), 0);
@@ -315,11 +326,51 @@ export default function HeatmapWidget({
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
             </svg>
           </div>
-          <h3 className={`text-xs sm:text-sm font-bold tracking-tight flex items-center gap-1.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+          <h3 className={`text-xs sm:text-sm font-bold tracking-tight flex flex-wrap items-center gap-1.5 ${isLight ? 'text-slate-900' : 'text-white'}`}>
             <span>Isı Haritası</span>
             <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-full ${isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/10 text-white/70'}`}>
               {nodes.length} Varlık
             </span>
+            {isSample ? (
+              <span
+                data-testid="widget-sample-data-badge"
+                title={dataStatus.summaryText}
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isLight
+                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/35'
+                }`}
+              >
+                {dataStatus.dataLabel}
+              </span>
+            ) : (
+              <>
+                <span
+                  data-testid="widget-personal-data-status"
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isLight
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  }`}
+                >
+                  {dataStatus.dataLabel}
+                </span>
+                <span
+                  data-testid="widget-privacy-status"
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isPrivacyMode
+                      ? isLight
+                        ? 'bg-violet-50 text-violet-700 border-violet-200'
+                        : 'bg-accent/20 text-accent border-accent/35'
+                      : isLight
+                      ? 'bg-slate-100 text-slate-600 border-slate-200'
+                      : 'bg-white/10 text-white/75 border-white/15'
+                  }`}
+                >
+                  {dataStatus.privacyLabel}
+                </span>
+              </>
+            )}
           </h3>
         </div>
 

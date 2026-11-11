@@ -8,9 +8,21 @@ import HeatmapWidget from '@/components/widgets/HeatmapWidget';
 import WidgetEmbedModal from '@/components/widgets/WidgetEmbedModal';
 import ApkDownloadModal from '@/components/ui/ApkDownloadModal';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { resolveWidgetDataStatus } from '@/lib/widgets/widgetStatus';
 
 export default function WidgetsHubPage() {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const { getSummary } = usePortfolioStore();
+  const summary = getSummary();
+  const portfolioWidgetStatus = resolveWidgetDataStatus({
+    hasPersonalData: summary.totalValue > 0,
+    isPrivacyMode,
+  });
+  const heatmapWidgetStatus = resolveWidgetDataStatus({
+    hasPersonalData: summary.holdings.length > 0,
+    isPrivacyMode,
+  });
   const [embedModalOpen, setEmbedModalOpen] = useState(false);
   const [selectedWidgetForModal, setSelectedWidgetForModal] = useState<'portfolio' | 'heatmap'>('portfolio');
   const [apkModalOpen, setApkModalOpen] = useState(false);
@@ -129,8 +141,10 @@ export default function WidgetsHubPage() {
           {/* Live Preview Container */}
           <div className="p-2 sm:p-3 rounded-2xl bg-black/30 border border-border/80">
             <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2 px-1 flex items-center justify-between">
-              <span>CANLI ÖNİZLEME</span>
-              <span className="text-emerald-400 flex items-center gap-1">● Aktif</span>
+              <span>{portfolioWidgetStatus.isDemo ? 'ÖRNEK VERİ ÖNİZLEMESİ' : 'KİŞİSEL WİDGET ÖNİZLEMESİ'}</span>
+              <span className={portfolioWidgetStatus.isDemo ? 'text-amber-400' : 'text-emerald-400'}>
+                {portfolioWidgetStatus.isDemo ? '● Örnek Veri' : `● ${portfolioWidgetStatus.dataLabel} (${portfolioWidgetStatus.privacyLabel})`}
+              </span>
             </div>
             <PortfolioStatusWidget standalone initialPeriod="daily" />
           </div>
@@ -202,8 +216,10 @@ export default function WidgetsHubPage() {
           {/* Live Preview Container */}
           <div className="p-2 sm:p-3 rounded-2xl bg-black/30 border border-border/80">
             <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2 px-1 flex items-center justify-between">
-              <span>CANLI ÖNİZLEME</span>
-              <span className="text-teal-400 flex items-center gap-1">● Aktif</span>
+              <span>{heatmapWidgetStatus.isDemo ? 'ÖRNEK VERİ ÖNİZLEMESİ' : 'KİŞİSEL WİDGET ÖNİZLEMESİ'}</span>
+              <span className={heatmapWidgetStatus.isDemo ? 'text-amber-400' : 'text-teal-400'}>
+                {heatmapWidgetStatus.isDemo ? '● Örnek Veri' : `● ${heatmapWidgetStatus.dataLabel} (${heatmapWidgetStatus.privacyLabel})`}
+              </span>
             </div>
             <HeatmapWidget standalone defaultMetric="daily" height={260} />
           </div>

@@ -183,7 +183,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | HSP-01 | P1 | Tutar gizlemeyi uygulama geneline yay | Etkin olduğunda ana ekran, portföy, ısı haritası, rapor ve widget önizlemesinde tutarlar maskelenir. | ◐ |
 | HSP-02 | P1 | Hesap ve misafir veri sınırını doğrula | Hesap değişimi, misafir modu ve çıkış sonrası diğer oturumun portföyü, bildirimleri veya AI geçmişi görünmez. | ◐ |
 | HSP-03 | P1 | Giriş, kayıt ve şifre sıfırlamayı uçtan uca test et | Doğrulama, süresi dolan bağlantı ve başarısız oturum senaryoları kullanıcıya açık durum gösterir. | ◐ |
-| HSP-04 | P1 | Widget örnek verisini belirgin etiketle | Demo widget üzerinde Örnek Veri görünür. Kişisel widget kendi veri ve gizlilik durumunu gösterir. | ☐ |
+| HSP-04 | P1 | Widget örnek verisini belirgin etiketle | Demo widget üzerinde Örnek Veri görünür. Kişisel widget kendi veri ve gizlilik durumunu gösterir. | ◐ |
 | HSP-05 | P1 | Widget paylaşım sınırlarını görünür yap | Gömme önizlemesi hangi verinin paylaşılacağını gösterir. Kişisel değerler için açık seçim gerekir. | ☐ |
 | HSP-06 | P1 | Açılış sayfasındaki ürün vaatlerini doğrula | Varlık sayısı, kapsanan pazar, fiyat gecikmesi, dil ve özellik açıklamaları çalışan kapsamla eşleşir. | ☐ |
 | HSP-07 | P1 | Demo girişini gerçek misafir akışına bağla | Demo düğmesinden örnek veriye kayıt formu doldurmadan ulaşılır. | ☐ |

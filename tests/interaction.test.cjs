@@ -4949,6 +4949,67 @@ test('HSP-03: login, register, password reset and auth callback surface clear ve
   assert.match(resetSrc, /<Suspense[\s\S]*?<ResetPasswordContent\s*\/>/);
 });
 
+test('HSP-04: widgets prominently label sample data and show personal data and privacy state', () => {
+  const widgetStatus = load('src/lib/widgets/widgetStatus.ts');
+
+  // 1. Empty portfolio or forced demo shows explicit "Örnek Veri"
+  const emptyDemo = widgetStatus.resolveWidgetDataStatus({
+    forceDemo: false,
+    hasPersonalData: false,
+    isPrivacyMode: false,
+  });
+  assert.equal(emptyDemo.isDemo, true);
+  assert.equal(emptyDemo.dataLabel, 'Örnek Veri');
+
+  const forcedDemo = widgetStatus.resolveWidgetDataStatus({
+    forceDemo: true,
+    hasPersonalData: true,
+    isPrivacyMode: true,
+  });
+  assert.equal(forcedDemo.isDemo, true);
+  assert.equal(forcedDemo.dataLabel, 'Örnek Veri');
+
+  // 2. Personal widget reports own data and privacy state
+  const personalOpen = widgetStatus.resolveWidgetDataStatus({
+    forceDemo: false,
+    hasPersonalData: true,
+    isPrivacyMode: false,
+  });
+  assert.equal(personalOpen.isDemo, false);
+  assert.equal(personalOpen.dataLabel, 'Kişisel Veri');
+  assert.equal(personalOpen.privacyLabel, 'Tutarlar Açık');
+
+  const personalPrivate = widgetStatus.resolveWidgetDataStatus({
+    forceDemo: false,
+    hasPersonalData: true,
+    isPrivacyMode: true,
+  });
+  assert.equal(personalPrivate.isDemo, false);
+  assert.equal(personalPrivate.dataLabel, 'Kişisel Veri');
+  assert.equal(personalPrivate.privacyLabel, 'Gizli Mod');
+
+  // 3. Query param helper detects demo=1 / mode=demo
+  assert.equal(widgetStatus.isWidgetDemoQuery({ get: (k) => (k === 'mode' ? 'demo' : null) }), true);
+  assert.equal(widgetStatus.isWidgetDemoQuery({ get: (k) => (k === 'demo' ? '1' : null) }), true);
+  assert.equal(widgetStatus.isWidgetDemoQuery({ get: () => null }), false);
+
+  // 4. Component & page wiring
+  const statusWidgetSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/widgets/PortfolioStatusWidget.tsx'), 'utf8');
+  assert.match(statusWidgetSrc, /data-testid="widget-sample-data-badge"/);
+  assert.match(statusWidgetSrc, /data-testid="widget-personal-data-status"/);
+  assert.match(statusWidgetSrc, /data-testid="widget-privacy-status"/);
+
+  const heatmapWidgetSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/widgets/HeatmapWidget.tsx'), 'utf8');
+  assert.match(heatmapWidgetSrc, /data-testid="widget-sample-data-badge"/);
+  assert.match(heatmapWidgetSrc, /data-testid="widget-personal-data-status"/);
+  assert.match(heatmapWidgetSrc, /data-testid="widget-privacy-status"/);
+
+  const hubSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/widgets/page.tsx'), 'utf8');
+  assert.match(hubSrc, /resolveWidgetDataStatus/);
+  assert.match(hubSrc, /ÖRNEK VERİ ÖNİZLEMESİ/);
+});
+
+
 
 
 

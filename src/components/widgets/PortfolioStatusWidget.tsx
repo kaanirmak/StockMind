@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { maskCurrencyValue, maskDisplayValue } from '@/lib/privacy';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
+import { resolveWidgetDataStatus } from '@/lib/widgets/widgetStatus';
 
 export interface PortfolioStatusWidgetProps {
   standalone?: boolean;
@@ -37,11 +38,16 @@ export default function PortfolioStatusWidget({
 }: PortfolioStatusWidgetProps) {
   const { getSummary, livePrices, fetchPortfoliosAndTransactions } = usePortfolioStore();
   const rawSummary = getSummary();
-  const isSample = forceDemo || rawSummary.totalValue === 0;
+  const { isPrivacyMode, setPrivacyMode } = usePrivacyMode();
+  const dataStatus = resolveWidgetDataStatus({
+    forceDemo,
+    hasPersonalData: rawSummary.totalValue > 0,
+    isPrivacyMode,
+  });
+  const isSample = dataStatus.isDemo;
   const summary = isSample ? SAMPLE_SUMMARY : rawSummary;
 
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'total'>(initialPeriod);
-  const { isPrivacyMode, setPrivacyMode } = usePrivacyMode();
 
   useEffect(() => {
     fetchPortfoliosAndTransactions();
@@ -128,15 +134,51 @@ export default function PortfolioStatusWidget({
               alt="StockMind"
               className="h-6 sm:h-7 w-auto object-contain drop-shadow-[0_0_12px_rgba(168,85,247,0.3)]"
             />
-            {/* Live Indicator */}
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-            </span>
-            {isSample && (
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-white/10 text-white/70'}`}>
-                Örnek Portföy
+            {/* Live vs Sample Indicator */}
+            {isSample ? (
+              <span
+                data-testid="widget-sample-data-badge"
+                title={dataStatus.summaryText}
+                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  isLight
+                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/35'
+                }`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                {dataStatus.dataLabel}
               </span>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2" title="Canlı Kişisel Portföy">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                </span>
+                <span
+                  data-testid="widget-personal-data-status"
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isLight
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  }`}
+                >
+                  {dataStatus.dataLabel}
+                </span>
+                <span
+                  data-testid="widget-privacy-status"
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isPrivacyMode
+                      ? isLight
+                        ? 'bg-violet-50 text-violet-700 border-violet-200'
+                        : 'bg-accent/20 text-accent border-accent/35'
+                      : isLight
+                      ? 'bg-slate-100 text-slate-600 border-slate-200'
+                      : 'bg-white/10 text-white/75 border-white/15'
+                  }`}
+                >
+                  {dataStatus.privacyLabel}
+                </span>
+              </div>
             )}
           </div>
 
