@@ -2428,6 +2428,59 @@ test('UX-12 enforces consistent Turkish decimals, currency symbols, signed perce
   }
 });
 
+test('POR-01 primary transaction action uses İşlem Kaydet and opens direct recording form', () => {
+  const {
+    TRANSACTION_RECORD_ACTION_LABEL,
+    TRANSACTION_RECORD_DEFAULT_MODE,
+  } = load('src/lib/portfolio/transactionActionLabel.ts');
+
+  assert.equal(TRANSACTION_RECORD_ACTION_LABEL, 'İşlem Kaydet');
+  assert.equal(TRANSACTION_RECORD_DEFAULT_MODE, 'stock');
+
+  const portfolioSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/portfolio/page.tsx'),
+    'utf8'
+  );
+  assert.match(portfolioSrc, /TRANSACTION_RECORD_ACTION_LABEL/);
+  assert.match(portfolioSrc, /useState<[^>]+>\(\s*TRANSACTION_RECORD_DEFAULT_MODE\s*\)/);
+  assert.doesNotMatch(portfolioSrc, />İşlem Yap</);
+  assert.doesNotMatch(portfolioSrc, />Manuel İşlem Ekle</);
+
+  const quickTxSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/layout/QuickTransaction.tsx'),
+    'utf8'
+  );
+  assert.match(quickTxSrc, /TRANSACTION_RECORD_ACTION_LABEL/);
+  assert.match(quickTxSrc, /initialMode=\{TRANSACTION_RECORD_DEFAULT_MODE\}/);
+
+  const quickActionsSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/dashboard/QuickActions.tsx'),
+    'utf8'
+  );
+  assert.match(quickActionsSrc, /TRANSACTION_RECORD_ACTION_LABEL/);
+
+  const holdingsSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/portfolio/HoldingsTable.tsx'),
+    'utf8'
+  );
+  assert.match(holdingsSrc, /TRANSACTION_RECORD_ACTION_LABEL/);
+
+  const stockDetailSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/stocks/[symbol]/page.tsx'),
+    'utf8'
+  );
+  assert.match(stockDetailSrc, /useState<'broker' \| 'virtual'>\('virtual'\)/);
+  assert.match(stockDetailSrc, /setTradeModalTab\('virtual'\)/);
+  assert.match(stockDetailSrc, /\{TRANSACTION_RECORD_ACTION_LABEL\}/);
+
+  const fundDetailSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/funds/[code]/page.tsx'),
+    'utf8'
+  );
+  assert.match(fundDetailSrc, /\{TRANSACTION_RECORD_ACTION_LABEL\}/);
+});
+
+
 
 
 

@@ -16,6 +16,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { BROKERS, Broker } from '@/lib/data/brokers';
 import { BrokerDirectory } from '@/components/portfolio/BrokerDirectory';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
+import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
 
 export default function StockDetailPage({
   params,
@@ -41,7 +42,7 @@ export default function StockDetailPage({
 
   // Buy/Sell Quick Modal & Broker Redirection
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
-  const [tradeModalTab, setTradeModalTab] = useState<'broker' | 'virtual'>('broker');
+  const [tradeModalTab, setTradeModalTab] = useState<'broker' | 'virtual'>('virtual');
   const [brokerSearchQuery, setBrokerSearchQuery] = useState('');
   const [brokerCategoryFilter, setBrokerCategoryFilter] = useState<'ALL' | 'POPULAR' | 'Dijital / FinTech' | 'Banka İştiraki' | 'Bağımsız Kurum'>('ALL');
   const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
@@ -337,10 +338,11 @@ export default function StockDetailPage({
               size="md"
               onClick={() => {
                 setPriceInput(currentPrice.toString());
+                setTradeModalTab('virtual');
                 setIsTradeModalOpen(true);
               }}
             >
-              İşlem Yap
+              {TRANSACTION_RECORD_ACTION_LABEL}
             </Button>
           )}
         </div>
@@ -573,10 +575,11 @@ export default function StockDetailPage({
               </svg>
             </button>
 
-            {/* İşlem Yap Button */}
+            {/* İşlem Kaydet Button */}
             <button
               onClick={() => {
                 setPriceInput(currentPrice.toString());
+                setTradeModalTab('virtual');
                 setIsTradeModalOpen(true);
               }}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-accent to-purple-600 hover:from-accent/90 hover:to-purple-600/90 text-white font-bold text-xs sm:text-sm tracking-wide shadow-md shadow-accent/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
@@ -584,7 +587,7 @@ export default function StockDetailPage({
               <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              <span>İşlem Yap</span>
+              <span>{TRANSACTION_RECORD_ACTION_LABEL}</span>
             </button>
           </div>
         </div>
@@ -594,7 +597,7 @@ export default function StockDetailPage({
       <Modal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
-        title={`${symbol} — İşlem Yap`}
+        title={`${symbol} — ${TRANSACTION_RECORD_ACTION_LABEL}`}
         description="Güvenli alım-satım için aracı kurumunuzu seçin veya sanal portföye ekleyin."
       >
         <div className="space-y-4">

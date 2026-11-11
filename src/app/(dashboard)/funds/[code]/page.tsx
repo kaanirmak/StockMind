@@ -8,6 +8,7 @@ import { classifyFundPriceStatus } from '@/lib/market/priceStatus';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatDate } from '@/lib/utils/format';
+import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
 
 export default function FundDetailPage({
   params,
@@ -204,7 +205,7 @@ export default function FundDetailPage({
             </Link>
 
             <Button variant="primary" size="sm" onClick={() => setIsTradeModalOpen(true)}>
-              İşlem Yap
+              {TRANSACTION_RECORD_ACTION_LABEL}
             </Button>
           </div>
         </div>
@@ -411,7 +412,7 @@ export default function FundDetailPage({
       <Modal
         isOpen={isTradeModalOpen}
         onClose={() => setIsTradeModalOpen(false)}
-        title={`${code} — TEFAS Fon İşlemi`}
+        title={`${code} — ${TRANSACTION_RECORD_ACTION_LABEL}`}
         description="Portföyünüze fon alım veya satım işlemi ekleyin."
       >
         <form onSubmit={handleTradeSubmit} className="space-y-4">

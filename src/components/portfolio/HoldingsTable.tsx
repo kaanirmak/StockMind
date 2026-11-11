@@ -5,6 +5,7 @@ import { Holding } from '@/types/portfolio';
 import { Button, InstrumentLogo } from '@/components/ui';
 import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
 import { getAssetTypeLabel } from '@/lib/utils/symbol';
+import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
 
 function HoldingPriceFlag({ holding }: { holding: Holding }) {
   if (holding.priceMissing) {
@@ -394,9 +395,9 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                         type="button"
                         onClick={() => (onTrade ? onTrade(h.symbol) : onAddTransaction())}
                         className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent hover:text-white hover:bg-accent px-2 py-1 rounded-lg border border-accent/30 transition-all cursor-pointer whitespace-nowrap active:scale-95"
-                        title={`${h.symbol} ile Midas veya Aracı Kurumda İşlem Yap`}
+                        title={`${h.symbol} için ${TRANSACTION_RECORD_ACTION_LABEL}`}
                       >
-                        <span>⚡ İşlem Yap</span>
+                        <span>{TRANSACTION_RECORD_ACTION_LABEL}</span>
                       </button>
                     </td>
                   </tr>

@@ -19,6 +19,10 @@ import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
 import { getSamplePortfolioSnapshot } from '@/lib/portfolio/samplePortfolio';
 import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
+import {
+  TRANSACTION_RECORD_ACTION_LABEL,
+  TRANSACTION_RECORD_DEFAULT_MODE,
+} from '@/lib/portfolio/transactionActionLabel';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, StateView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
@@ -52,7 +56,9 @@ export default function PortfolioPage() {
   const [clearConfirmed, setClearConfirmed] = useState(false);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
   const [tradeModalSymbol, setTradeModalSymbol] = useState<string | undefined>(undefined);
-  const [tradeModalMode, setTradeModalMode] = useState<'broker' | 'stock' | 'fund' | 'cash'>('broker');
+  const [tradeModalMode, setTradeModalMode] = useState<'broker' | 'stock' | 'fund' | 'cash'>(
+    TRANSACTION_RECORD_DEFAULT_MODE
+  );
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isNewPortModalOpen, setIsNewPortModalOpen] = useState(false);
   const [isDeletePortModalOpen, setIsDeletePortModalOpen] = useState(false);
@@ -357,7 +363,7 @@ export default function PortfolioPage() {
           </div>
 
         <div className="grid grid-cols-2 gap-2 shrink-0">
-          <Button size="sm" onClick={() => { setTradeModalSymbol(undefined); setTradeModalMode('broker'); setIsTradeModalOpen(true); }} leftIcon={<UIIcon name="plus" className="w-4 h-4" />}>İşlem Yap</Button>
+          <Button size="sm" onClick={() => { setTradeModalSymbol(undefined); setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE); setIsTradeModalOpen(true); }} leftIcon={<UIIcon name="plus" className="w-4 h-4" />}>{TRANSACTION_RECORD_ACTION_LABEL}</Button>
           <Button variant="outline" size="sm" onClick={() => setIsExcelModalOpen(true)} leftIcon={<UIIcon name="download" className="w-4 h-4" />}>Excel Yükle</Button>
         </div>
       </div>
@@ -383,7 +389,7 @@ export default function PortfolioPage() {
               onClick={() => {
                 setIsSamplePreview(false);
                 setTradeModalSymbol(undefined);
-                setTradeModalMode('broker');
+                setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE);
                 setIsTradeModalOpen(true);
               }}
             >
@@ -405,7 +411,7 @@ export default function PortfolioPage() {
         <EmptyPortfolioOnboarding
           onAddTransaction={() => {
             setTradeModalSymbol(undefined);
-            setTradeModalMode('broker');
+            setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE);
             setIsTradeModalOpen(true);
           }}
           onImportExcel={() => setIsExcelModalOpen(true)}
@@ -548,7 +554,7 @@ export default function PortfolioPage() {
                   ? undefined
                   : (sym) => {
                       setTradeModalSymbol(sym);
-                      setTradeModalMode('broker');
+                      setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE);
                       setIsTradeModalOpen(true);
                     }
               }
@@ -644,8 +650,16 @@ export default function PortfolioPage() {
                       <Button size="sm" variant="outline" onClick={() => setIsExcelModalOpen(true)}>
                         Excel / CSV İle Yükle
                       </Button>
-                      <Button size="sm" variant="primary" onClick={() => setIsTradeModalOpen(true)}>
-                        Manuel İşlem Ekle
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          setTradeModalSymbol(undefined);
+                          setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE);
+                          setIsTradeModalOpen(true);
+                        }}
+                      >
+                        {TRANSACTION_RECORD_ACTION_LABEL}
                       </Button>
                     </div>
                   )}
@@ -768,8 +782,16 @@ export default function PortfolioPage() {
                                 <Button size="sm" variant="outline" onClick={() => setIsExcelModalOpen(true)}>
                                   Excel / CSV İle Yükle
                                 </Button>
-                                <Button size="sm" variant="primary" onClick={() => setIsTradeModalOpen(true)}>
-                                  Manuel İşlem Ekle
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => {
+                                    setTradeModalSymbol(undefined);
+                                    setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE);
+                                    setIsTradeModalOpen(true);
+                                  }}
+                                >
+                                  {TRANSACTION_RECORD_ACTION_LABEL}
                                 </Button>
                               </div>
                             )}

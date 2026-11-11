@@ -64,7 +64,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| POR-01 | P1 | Portföyün ana eylemini İşlem Kaydet yap | Ana düğme doğrudan kayıt formunu açar. Hızlı işlem ve detay ekranı aynı adlandırmayı kullanır. | ☐ |
+| POR-01 | P1 | Portföyün ana eylemini İşlem Kaydet yap | Ana düğme doğrudan kayıt formunu açar. Hızlı işlem ve detay ekranı aynı adlandırmayı kullanır. | ◐ |
 | POR-02 | P1 | Aracı kurum ve sanal işlem girişlerini ayır | İşlem kaydı, dış aracı kuruma gitme ve sanal bakiye ayrı seçenekler olarak görünür. | ☐ |
 | POR-03 | P1 | Portföy silmeyi yönetim menüsüne taşı | Silme ana eylemlerin yanında görünmez. Onayda silinecek portföy ve etkisi belirtilir. | ☐ |
 | POR-04 | P1 | Hazır aracı kurum ekstre şablonları ekle | Seçilen ilk ekstre biçimleri örnek dosyalarla tanınır ve eşlenen sütunlar önizlemede gösterilir. | ☐ |

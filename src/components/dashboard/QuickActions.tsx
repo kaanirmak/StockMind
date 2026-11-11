@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
 const actions: { label: string; href?: string; icon: IconName }[] = [
-  { label: 'İşlem Ekle', icon: 'plus' },
+  { label: TRANSACTION_RECORD_ACTION_LABEL, icon: 'plus' },
   { label: 'Takip Listesi', href: '/watchlist', icon: 'star' },
   { label: 'Piyasa Nabzı', href: '/piyasalar', icon: 'chart' },
   { label: 'AI Analizi', href: '/ai-assistant', icon: 'sparkles' },
