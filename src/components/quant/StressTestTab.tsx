@@ -21,6 +21,7 @@ import {
   Layers,
 } from '@/components/quant/QuantIcons';
 import {
+  DEFAULT_STRESS_SHOCKS,
   runMonteCarloSimulation,
   getFinancialProfile,
   getQuantCurrency,
@@ -44,6 +45,11 @@ export default function StressTestTab({
   const [volatility, setVolatility] = useState<number>(32); // %32
   const [drift, setDrift] = useState<number>(24); // %24
   const [seed, setSeed] = useState<number>(0);
+  const [fxShockPercent, setFxShockPercent] = useState<number>(DEFAULT_STRESS_SHOCKS.fxShockPercent);
+  const [rateShockBps, setRateShockBps] = useState<number>(DEFAULT_STRESS_SHOCKS.rateShockBps);
+  const [demandShockPercent, setDemandShockPercent] = useState<number>(DEFAULT_STRESS_SHOCKS.demandShockPercent);
+  const [fxExposureInput, setFxExposureInput] = useState<string>('');
+  const [demandBetaInput, setDemandBetaInput] = useState<string>('');
 
   // Active holding in portfolio if user owns this stock
   const activeHolding = useMemo(() => {
@@ -73,10 +79,46 @@ export default function StressTestTab({
   );
   const currentPrice = profile.currentPrice;
 
+  const parsedFxExposure = useMemo(() => {
+    const num = Number(fxExposureInput.replace(',', '.'));
+    return fxExposureInput.trim() !== '' && Number.isFinite(num) ? num / 100 : null;
+  }, [fxExposureInput]);
+
+  const parsedDemandBeta = useMemo(() => {
+    const num = Number(demandBetaInput.replace(',', '.'));
+    return demandBetaInput.trim() !== '' && Number.isFinite(num) ? num : null;
+  }, [demandBetaInput]);
+
   // Run simulation
   const mcResult = useMemo(() => {
-    return runMonteCarloSimulation(currentPrice, volatility / 100, drift / 100);
-  }, [currentPrice, volatility, drift, seed]);
+    return runMonteCarloSimulation(currentPrice, volatility / 100, drift / 100, undefined, {
+      symbol: currentSymbol,
+      livePrice: holdingPrice,
+      profile,
+      shocks: {
+        fxShockPercent,
+        rateShockBps,
+        demandShockPercent,
+      },
+      sensitivities: {
+        fxExposureRatio: parsedFxExposure,
+        demandBeta: parsedDemandBeta,
+      },
+    });
+  }, [
+    currentPrice,
+    volatility,
+    drift,
+    seed,
+    currentSymbol,
+    holdingPrice,
+    profile,
+    fxShockPercent,
+    rateShockBps,
+    demandShockPercent,
+    parsedFxExposure,
+    parsedDemandBeta,
+  ]);
 
   // SVG Chart Dimensions & Scaling
   const chartWidth = 700;
@@ -424,29 +466,135 @@ export default function StressTestTab({
 
       {/* Macro Crisis Stress Test Cards */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-accent" />
-          <h3 className="text-base font-bold text-text-primary">
-            Makroekonomik Kriz Stres Testleri
-          </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-5 h-5 text-accent" />
+            <h3 className="text-base font-bold text-text-primary">
+              Makroekonomik Kriz Stres Testleri
+            </h3>
+          </div>
+          <span className="text-[11px] text-text-muted">
+            Her senaryo seçilen şok değerleri ve açık varsayımlarla hesaplanır
+          </span>
+        </div>
+
+        {/* Shock Parameters & Explicit Sensitivity Inputs */}
+        <div className="glass-card p-4 rounded-2xl border border-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="space-y-1.5">
+            <label htmlFor="stress-fx-shock" className="block text-[11px] font-bold text-text-secondary">
+              Kur Şoku (USD/TRY %)
+            </label>
+            <input
+              id="stress-fx-shock"
+              type="number"
+              min={-50}
+              max={100}
+              step={5}
+              value={fxShockPercent}
+              onChange={(e) => setFxShockPercent(Number(e.target.value) || 0)}
+              className="w-full px-3 py-1.5 rounded-xl bg-bg-input border border-border text-xs font-semibold text-text-primary"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="stress-rate-shock" className="block text-[11px] font-bold text-text-secondary">
+              Faiz Şoku (bps)
+            </label>
+            <input
+              id="stress-rate-shock"
+              type="number"
+              min={-1500}
+              max={2500}
+              step={100}
+              value={rateShockBps}
+              onChange={(e) => setRateShockBps(Number(e.target.value) || 0)}
+              className="w-full px-3 py-1.5 rounded-xl bg-bg-input border border-border text-xs font-semibold text-text-primary"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="stress-demand-shock" className="block text-[11px] font-bold text-text-secondary">
+              Talep Şoku (%)
+            </label>
+            <input
+              id="stress-demand-shock"
+              type="number"
+              min={-60}
+              max={40}
+              step={5}
+              value={demandShockPercent}
+              onChange={(e) => setDemandShockPercent(Number(e.target.value) || 0)}
+              className="w-full px-3 py-1.5 rounded-xl bg-bg-input border border-border text-xs font-semibold text-text-primary"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="stress-fx-exposure" className="block text-[11px] font-bold text-text-secondary">
+              Döviz Gelir Payı (%, Opsiyonel)
+            </label>
+            <input
+              id="stress-fx-exposure"
+              type="number"
+              min={-100}
+              max={150}
+              step={5}
+              placeholder="Örnek varsayım"
+              value={fxExposureInput}
+              onChange={(e) => setFxExposureInput(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-xl bg-bg-input border border-border text-xs font-semibold text-text-primary placeholder:text-text-muted"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="stress-demand-beta" className="block text-[11px] font-bold text-text-secondary">
+              Talep Betası (x, Opsiyonel)
+            </label>
+            <input
+              id="stress-demand-beta"
+              type="number"
+              min={-1}
+              max={2.5}
+              step={0.1}
+              placeholder="Örnek varsayım"
+              value={demandBetaInput}
+              onChange={(e) => setDemandBetaInput(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-xl bg-bg-input border border-border text-xs font-semibold text-text-primary placeholder:text-text-muted"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {mcResult.stressTests.map((st, idx) => (
+          {mcResult.stressTests.map((st) => (
             <div
-              key={idx}
+              key={st.id}
+              data-testid={`stress-card-${st.id}`}
               className="glass-card p-5 rounded-2xl border border-border space-y-3 flex flex-col justify-between"
             >
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="text-sm font-bold text-text-primary leading-tight">
-                    {st.name}
-                  </h4>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-text-primary leading-tight">
+                      {st.name}
+                    </h4>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${
+                        st.isExampleScenario
+                          ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                          : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                      }`}
+                    >
+                      {st.isExampleScenario
+                        ? 'Örnek Senaryo (Eksik Girdi Varsayımı)'
+                        : 'Açık Girdiyle Hesaplandı'}
+                    </span>
+                  </div>
                   <span
                     className={`px-2 py-0.5 rounded-lg text-xs font-black shrink-0 ${
                       st.impactPercent > 0
                         ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
-                        : 'bg-rose-500/15 border border-rose-500/30 text-rose-400'
+                        : st.impactPercent < 0
+                          ? 'bg-rose-500/15 border border-rose-500/30 text-rose-400'
+                          : 'bg-bg-secondary border border-border text-text-secondary'
                     }`}
                   >
                     {st.impactPercent > 0 ? `+${st.impactPercent}%` : `${st.impactPercent}%`}
@@ -457,16 +605,24 @@ export default function StressTestTab({
                   Senaryo: {st.scenario}
                 </p>
 
+                <ul className="space-y-1 rounded-xl bg-bg-secondary/50 border border-border/70 p-2.5 text-[11px] text-text-secondary">
+                  {st.assumptions.map((item, i) => (
+                    <li key={i}>• {item}</li>
+                  ))}
+                </ul>
+
                 <p className="text-xs text-text-secondary leading-relaxed pt-1 border-t border-border">
                   {st.notes}
                 </p>
               </div>
 
               <div className="p-2.5 rounded-xl bg-bg-secondary/60 border border-border text-[11px] text-text-muted">
-                <strong>Korunma Stratejisi:</strong>{' '}
+                <strong>Değerlendirme Notu:</strong>{' '}
                 {st.impactPercent < 0
-                  ? 'Vadeli piyasalarda (VİOP) kısa pozisyon veya nakit ağırlığı artırımı önerilir.'
-                  : 'Döviz pozisyonu korunarak getiri potansiyeli maksimize edilebilir.'}
+                  ? 'Olumsuz şok etkisine karşı nakit tamponu veya kur/faiz riskinden korunma değerlendirilebilir.'
+                  : st.impactPercent > 0
+                    ? 'Tanımlanan şok yönü mevcut duyarlılık varsayımlarına göre pozitif etki üretiyor.'
+                    : 'Mevcut şok ve duyarlılık girdileri nötr net etki üretiyor.'}
               </div>
             </div>
           ))}

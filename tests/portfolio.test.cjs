@@ -320,6 +320,37 @@ test('QNT-02: örnek preset, sentetik ve kaynaklı finansal profiller ayrılır 
   }
 });
 
+test('QNT-03: makro stres testleri sabit sonuç döndürmez, şok ve varsayımlardan hesaplanır ve eksik girdide örnek senaryo olarak işaretlenir', () => {
+  const { calculateMacroStressTests, getFinancialProfile } = loadModule('src/lib/quant/models.ts');
+
+  const defaultTests = calculateMacroStressTests({ symbol: 'THYAO' });
+  assert.equal(defaultTests.length, 3);
+  assert.ok(defaultTests.every((t) => t.isExampleScenario === true), 'Sample profile without sensitivity inputs must be flagged as example scenario');
+  assert.ok(defaultTests.every((t) => Array.isArray(t.assumptions) && t.assumptions.length >= 2), 'Every stress test must expose explicit assumptions');
+
+  const largerShocks = calculateMacroStressTests({
+    symbol: 'THYAO',
+    shocks: { fxShockPercent: 50, rateShockBps: 1000, demandShockPercent: -40 },
+  });
+  assert.notEqual(largerShocks[0].impactPercent, defaultTests[0].impactPercent, 'FX impact must respond to shock size');
+  assert.notEqual(largerShocks[1].impactPercent, defaultTests[1].impactPercent, 'Rate impact must respond to shock size');
+  assert.notEqual(largerShocks[2].impactPercent, defaultTests[2].impactPercent, 'Demand impact must respond to shock size');
+
+  const sourcedProfile = getFinancialProfile('THYAO', 310, {
+    financialPeriod: '2025 Q4',
+    sourceLabel: 'KAP Finansal Tablosu',
+    profile: { netDebt: 40000, marketCap: 420000, ebit: 180000, revenue: 560000 },
+  });
+  const sourcedWithSensitivities = calculateMacroStressTests({
+    symbol: 'THYAO',
+    profile: sourcedProfile,
+    shocks: { fxShockPercent: 25, rateShockBps: -250, demandShockPercent: 10 },
+    sensitivities: { fxExposureRatio: 0.6, demandBeta: 0.9 },
+  });
+  assert.ok(sourcedWithSensitivities.every((t) => t.isExampleScenario === false), 'Sourced profile with explicit sensitivities must not be marked example scenario');
+  assert.ok(sourcedWithSensitivities[1].impactPercent > 0, 'Rate cut shock must produce positive valuation impact');
+});
+
 test('AI-04: calculateDCF bankalar için model uygunluk uyarısı üretir', () => {
   const { calculateDCF } = loadModule('src/lib/quant/models.ts');
   const resGaran = calculateDCF({

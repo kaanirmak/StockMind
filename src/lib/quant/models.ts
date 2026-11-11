@@ -366,6 +366,51 @@ export function evaluateDuPont(symbol: string, livePrice?: number): DuPontResult
 // -------------------------------------------------------------
 // Monte Carlo Simülasyonu & Makro Stres Testleri
 // -------------------------------------------------------------
+export interface StressShockInputs {
+  /** Döviz kuru şoku yüzdesi (örn. +25 => +%25 USD/TRY) */
+  fxShockPercent: number;
+  /** Politika faizi şoku (baz puan, örn. +500 => +500 bps) */
+  rateShockBps: number;
+  /** Talep/gelir daralması veya genişlemesi şoku (yüzde, örn. -20 => -%20 hacim) */
+  demandShockPercent: number;
+}
+
+export interface StressSensitivityInputs {
+  /** Döviz gelir/varlık duyarlılığı oranı (-1 ile +1.5 arası, örn. 0.45 = %45) */
+  fxExposureRatio?: number | null;
+  /** Net Borç / Piyasa Değeri kaldıraç oranı override */
+  debtLeverageRatio?: number | null;
+  /** Talep döngüselliği betası (0.1 ile 2.5 arası, örn. 1.1) */
+  demandBeta?: number | null;
+}
+
+export const DEFAULT_STRESS_SHOCKS: StressShockInputs = {
+  fxShockPercent: 25,
+  rateShockBps: 500,
+  demandShockPercent: -20,
+};
+
+export interface StressTestResult {
+  id: 'fx' | 'rate' | 'demand';
+  name: string;
+  scenario: string;
+  shockLabel: string;
+  impactPercent: number;
+  impactColor: string;
+  assumptions: string[];
+  isExampleScenario: boolean;
+  assumptionSource: 'sourced' | 'user' | 'fallback';
+  notes: string;
+}
+
+export interface MonteCarloStressOptions {
+  symbol?: string;
+  livePrice?: number;
+  profile?: ResolvedFinancialProfile;
+  shocks?: Partial<StressShockInputs>;
+  sensitivities?: StressSensitivityInputs;
+}
+
 export interface MonteCarloResult {
   simulationsCount: number;
   timeHorizonDays: number;
@@ -374,13 +419,177 @@ export interface MonteCarloResult {
   var5Percentile: number; // En Kötü %5 senaryo
   best95Percentile: number; // En İyi %95 senaryo
   sampleTrajectories: number[][]; // 5 çizgi grafiği
-  stressTests: {
-    name: string;
-    scenario: string;
-    impactPercent: number;
-    impactColor: string;
-    notes: string;
-  }[];
+  stressTests: StressTestResult[];
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function estimateDefaultFxExposure(symbol: string, sector: string): number {
+  const cleanSym = symbol.trim().toUpperCase();
+  if (cleanSym === 'GRAM_ALTIN') return 0.95;
+  if (USD_PROFILES.has(cleanSym)) return 0.1; // USD bazlı varlıklarda TRY kuru direkt değil, küresel kur sepeti etkisi sınırlı
+  const s = sector.toLowerCase();
+  if (s.includes('havacılık') || s.includes('savunma') || s.includes('petrol') || s.includes('otomotiv') || s.includes('demir')) {
+    return 0.55;
+  }
+  if (s.includes('holding') || s.includes('bankacılık')) {
+    return 0.25;
+  }
+  return 0.18;
+}
+
+function estimateDefaultDemandBeta(sector: string, volatility: number): number {
+  const s = sector.toLowerCase();
+  let baseBeta = 1.0;
+  if (s.includes('havacılık') || s.includes('otomotiv') || s.includes('demir') || s.includes('cam')) {
+    baseBeta = 1.25;
+  } else if (s.includes('gıda') || s.includes('perakende') || s.includes('telekom')) {
+    baseBeta = 0.65;
+  } else if (s.includes('kıymetli maden')) {
+    baseBeta = -0.25;
+  }
+  const volFactor = clampNumber(volatility / 0.32, 0.7, 1.4);
+  return Number((baseBeta * volFactor).toFixed(2));
+}
+
+/**
+ * Seçilen makro şok parametreleri ve açık şirket/model varsayımlarından
+ * dinamik stres testi sonuçlarını hesaplar. Yeterli şirket girdisi veya
+ * kaynaklı bilanço verisi yoksa sonucu açıkça 'örnek senaryo' olarak işaretler.
+ */
+export function calculateMacroStressTests(options: MonteCarloStressOptions & { volatility?: number }): StressTestResult[] {
+  const symbol = (options.symbol || 'DEFAULT').trim().toUpperCase();
+  const profile = options.profile ?? getFinancialProfile(symbol, options.livePrice);
+  const volatility = Number.isFinite(options.volatility) ? options.volatility! : 0.32;
+  const shocks: StressShockInputs = {
+    fxShockPercent:
+      options.shocks?.fxShockPercent !== undefined && Number.isFinite(options.shocks.fxShockPercent)
+        ? options.shocks.fxShockPercent
+        : DEFAULT_STRESS_SHOCKS.fxShockPercent,
+    rateShockBps:
+      options.shocks?.rateShockBps !== undefined && Number.isFinite(options.shocks.rateShockBps)
+        ? options.shocks.rateShockBps
+        : DEFAULT_STRESS_SHOCKS.rateShockBps,
+    demandShockPercent:
+      options.shocks?.demandShockPercent !== undefined && Number.isFinite(options.shocks.demandShockPercent)
+        ? options.shocks.demandShockPercent
+        : DEFAULT_STRESS_SHOCKS.demandShockPercent,
+  };
+
+  const sensitivities = options.sensitivities ?? {};
+  const isProfileSample = profile.profileMeta.isSample;
+  const derivedLeverage = profile.marketCap > 0 ? profile.netDebt / profile.marketCap : 0;
+
+  // 1. Döviz Kuru Şoku
+  const hasUserFx =
+    typeof sensitivities.fxExposureRatio === 'number' && Number.isFinite(sensitivities.fxExposureRatio);
+  const fxExposure = hasUserFx
+    ? clampNumber(sensitivities.fxExposureRatio!, -1, 1.5)
+    : estimateDefaultFxExposure(symbol, profile.sector);
+  const fxSource: StressTestResult['assumptionSource'] = hasUserFx ? 'user' : 'fallback';
+  const fxLeverageForDebt =
+    typeof sensitivities.debtLeverageRatio === 'number' && Number.isFinite(sensitivities.debtLeverageRatio)
+      ? clampNumber(sensitivities.debtLeverageRatio, -0.5, 3)
+      : derivedLeverage;
+  const fxIsExample = fxSource === 'fallback' || isProfileSample;
+  const fxPassThrough = fxExposure * 0.72;
+  const fxDebtDrag = Math.max(0, fxLeverageForDebt) * (USD_PROFILES.has(symbol) || symbol === 'GRAM_ALTIN' ? 0 : 0.14);
+  const fxImpact = Number(
+    (shocks.fxShockPercent * fxPassThrough - Math.abs(shocks.fxShockPercent) * fxDebtDrag * (shocks.fxShockPercent >= 0 ? 1 : -0.4)).toFixed(1)
+  );
+  const fxSign = shocks.fxShockPercent >= 0 ? `+${shocks.fxShockPercent}` : `${shocks.fxShockPercent}`;
+
+  // 2. Politika Faizi Şoku
+  const hasUserLev =
+    typeof sensitivities.debtLeverageRatio === 'number' && Number.isFinite(sensitivities.debtLeverageRatio);
+  const leverage = hasUserLev ? clampNumber(sensitivities.debtLeverageRatio!, -0.5, 3) : derivedLeverage;
+  const rateSource: StressTestResult['assumptionSource'] = hasUserLev
+    ? 'user'
+    : !isProfileSample && profile.marketCap > 0
+      ? 'sourced'
+      : 'fallback';
+  const rateIsExample = rateSource === 'fallback';
+  const ratePctPoints = shocks.rateShockBps / 100;
+  const waccSpread = Math.max(4, profile.wacc - profile.terminalGrowthRate);
+  const equityDurationSensitivity = clampNumber((100 / waccSpread) * 0.12, 0.5, 2.2);
+  const debtServiceSensitivity = Math.max(-0.2, leverage * 0.75);
+  const rateImpact = Number((-(ratePctPoints) * (equityDurationSensitivity + debtServiceSensitivity)).toFixed(1));
+  const rateSign = shocks.rateShockBps >= 0 ? `+${shocks.rateShockBps}` : `${shocks.rateShockBps}`;
+
+  // 3. Talep / Makro Büyüme Şoku
+  const hasUserDemand =
+    typeof sensitivities.demandBeta === 'number' && Number.isFinite(sensitivities.demandBeta);
+  const demandBeta = hasUserDemand
+    ? clampNumber(sensitivities.demandBeta!, -1, 2.5)
+    : estimateDefaultDemandBeta(profile.sector, volatility);
+  const demandSource: StressTestResult['assumptionSource'] = hasUserDemand ? 'user' : 'fallback';
+  const demandIsExample = demandSource === 'fallback' || isProfileSample;
+  const ebitMargin = profile.revenue > 0 ? clampNumber(profile.ebit / profile.revenue, 0.04, 0.65) : 0.18;
+  const operatingLeverageFactor = Number(clampNumber(0.55 + (1 - ebitMargin) * 0.5, 0.55, 1.45).toFixed(2));
+  const demandImpact = Number((shocks.demandShockPercent * demandBeta * operatingLeverageFactor * 0.65).toFixed(1));
+  const demandSign = shocks.demandShockPercent >= 0 ? `+${shocks.demandShockPercent}` : `${shocks.demandShockPercent}`;
+
+  return [
+    {
+      id: 'fx',
+      name: `Döviz Kuru Şoku (${fxSign}% USD/TRY)`,
+      scenario: `Döviz kurunda ${fxSign}% ani hareket durumunda`,
+      shockLabel: `Şok: ${fxSign}% kur değişimi`,
+      impactPercent: fxImpact,
+      impactColor: fxImpact >= 0 ? palette.success : palette.danger,
+      isExampleScenario: fxIsExample,
+      assumptionSource: fxSource,
+      assumptions: [
+        `Kur şoku: ${fxSign}%`,
+        `Net döviz gelir duyarlılığı (${hasUserFx ? 'kullanıcı girdisi' : 'sektör varsayımı'}): %${Math.round(fxExposure * 100)}`,
+        `Borçluluk kur sürtünmesi (Net Borç/PD): ${fxLeverageForDebt.toFixed(2)}x`,
+      ],
+      notes:
+        fxImpact >= 0
+          ? 'Döviz bazlı gelir veya varlık koruması varsayımı altında kur artışının net etkiyi yukarı taşıması beklenir.'
+          : 'Kur şokunun iç maliyet baskısı veya borç yükü üzerinden değerlemeyi baskılaması öngörülür.',
+    },
+    {
+      id: 'rate',
+      name: `Faiz Şoku (${rateSign} bps)`,
+      scenario: `Politika / iskonto faizinde ${rateSign} baz puan değişim`,
+      shockLabel: `Şok: ${rateSign} bps`,
+      impactPercent: rateImpact,
+      impactColor: rateImpact >= 0 ? palette.success : palette.danger,
+      isExampleScenario: rateIsExample,
+      assumptionSource: rateSource,
+      assumptions: [
+        `Faiz şoku: ${rateSign} bps (${ratePctPoints >= 0 ? '+' : ''}${ratePctPoints.toFixed(1)} puan)`,
+        `Net Borç / Piyasa Değeri (${hasUserLev ? 'kullanıcı girdisi' : isProfileSample ? 'örnek profil' : 'kaynaklı bilanço'}): ${leverage.toFixed(2)}x`,
+        `AOMM − Terminal büyüme farkı: %${waccSpread.toFixed(1)}`,
+      ],
+      notes:
+        rateImpact < 0
+          ? 'İskonto oranı artışı ve net borç finansman maliyeti değerleme çarpanını aşağı çeker.'
+          : 'Faiz indirimi veya net nakit pozisyonu sayesinde finansman yükü hafifleyerek pozitif alan açar.',
+    },
+    {
+      id: 'demand',
+      name: `Talep & Hacim Şoku (${demandSign}%)`,
+      scenario: `Ekonomik talep hacminde ${demandSign}% değişim senaryosu`,
+      shockLabel: `Şok: ${demandSign}% talep`,
+      impactPercent: demandImpact,
+      impactColor: demandImpact >= 0 ? palette.success : palette.danger,
+      isExampleScenario: demandIsExample,
+      assumptionSource: demandSource,
+      assumptions: [
+        `Talep şoku: ${demandSign}%`,
+        `Talep betası (${hasUserDemand ? 'kullanıcı girdisi' : 'sektör/oynaklık varsayımı'}): ${demandBeta.toFixed(2)}x`,
+        `FVÖK marjı / faaliyet kaldıracı çarpanı: ${operatingLeverageFactor.toFixed(2)}x`,
+      ],
+      notes:
+        demandImpact < 0
+          ? 'Talep daralması faaliyet kaldıracı oranında kâr marjını ve serbest nakit akışını daraltır.'
+          : 'Talep genişlemesi veya güvenli liman ters korelasyonu faaliyet kârını destekler.',
+    },
+  ];
 }
 
 function gaussianRandom(): number {
@@ -394,7 +603,8 @@ export function runMonteCarloSimulation(
   currentPrice: number,
   volatility = 0.32,
   drift = 0.22,
-  requestedSimulations = MONTE_CARLO_SIMULATIONS
+  requestedSimulations = MONTE_CARLO_SIMULATIONS,
+  stressOptions: MonteCarloStressOptions = {}
 ): MonteCarloResult {
   const days = 252; // 1 yıl
   const numSimulations =
@@ -437,6 +647,12 @@ export function runMonteCarloSimulation(
     sampleTrajectories.push(trajectory);
   }
 
+  const stressTests = calculateMacroStressTests({
+    ...stressOptions,
+    livePrice: stressOptions.livePrice ?? currentPrice,
+    volatility,
+  });
+
   return {
     simulationsCount: numSimulations,
     timeHorizonDays: days,
@@ -445,29 +661,7 @@ export function runMonteCarloSimulation(
     var5Percentile: var5,
     best95Percentile: best95,
     sampleTrajectories,
-    stressTests: [
-      {
-        name: 'Dolar Kuru Şoku (+%25 USD/TRY)',
-        scenario: 'Döviz kurunda ani %25 artış durumunda',
-        impactPercent: +18.5,
-        impactColor: palette.success,
-        notes: 'Şirketin döviz bazlı ihracat gelirleri yüksek olduğundan kârlılık pozitif etkilenir.',
-      },
-      {
-        name: 'Merkez Bankası Faiz Şoku (+500 bps)',
-        scenario: 'Politika faizinin 500 baz puan artırılması',
-        impactPercent: -7.2,
-        impactColor: palette.danger,
-        notes: 'Kısa vadeli borçlanma maliyetleri yükselir, iç talepte yavaşlama beklenir.',
-      },
-      {
-        name: 'Küresel Resesyon & Talep Daralması',
-        scenario: 'Küresel ekonomide %20 hacim daralması',
-        impactPercent: -12.8,
-        impactColor: palette.danger,
-        notes: 'Faaliyet kâr marjında daralma ve navlun/hammadde talebinde düşüş öngörülür.',
-      },
-    ],
+    stressTests,
   };
 }
 
