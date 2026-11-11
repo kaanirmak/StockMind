@@ -124,7 +124,7 @@ export interface MarketOverviewItem {
   value: number | null;
   change: number | null;
   currency: 'TRY' | 'USD' | 'USDT';
-  unit?: 'points';
+  unit?: 'points' | 'TL/gram';
   flag: string;
   observation: MarketPriceObservation | null;
   status: 'available' | 'last-known' | 'unavailable';

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const cards = [
   { symbol: 'XU100', name: 'BIST 100', currency: 'TRY', unit: 'points', flag: '🇹🇷', group: 'indices', ticker: 'XU100' },
-  { symbol: 'GA', name: 'Gram Altın', currency: 'TRY', flag: '🪙', group: 'commodity', ticker: 'XAUTRYG' },
+  { symbol: 'GA', name: 'Gram Altın', currency: 'TRY', unit: 'TL/gram', flag: '🪙', group: 'commodity', ticker: 'XAUTRYG' },
   { symbol: 'USDTRY', name: 'Dolar / TL', currency: 'TRY', flag: '💵', group: 'forex', ticker: 'USDTRY' },
   { symbol: 'EURTRY', name: 'Euro / TL', currency: 'TRY', flag: '💶', group: 'forex', ticker: 'EURTRY' },
   { symbol: 'BTC', name: 'Bitcoin', currency: 'USDT', flag: '₿', group: 'crypto', ticker: 'BTCUSDT' },

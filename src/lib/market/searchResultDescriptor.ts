@@ -1,3 +1,5 @@
+import { classifyAssetType } from './assetClassification';
+
 export interface SearchResultMetaInput {
   symbol?: string | null;
   code?: string | null;
@@ -34,18 +36,14 @@ export function describeSearchResult(input: SearchResultMetaInput): SearchResult
     exchange = rawSym.endsWith('.IS') ? 'BIST' : 'ABD';
   }
 
-  let assetTypeLabel = 'Hisse';
-  if (isFund) {
-    assetTypeLabel = 'Fon';
-  } else if (exchange === 'CRYPTO') {
-    assetTypeLabel = 'Kripto';
-  } else if (exchange === 'COMMODITY') {
-    assetTypeLabel = 'Emtia';
-  } else if (exchange === 'FOREX') {
-    assetTypeLabel = 'Döviz';
-  } else if (exchange === 'INDEX' || input.isIndex) {
-    assetTypeLabel = 'Endeks';
-  }
+  const { label: assetTypeLabel } = classifyAssetType({
+    symbol,
+    code: input.code,
+    exchange,
+    assetType: input.assetType,
+    kind: input.kind,
+    isIndex: input.isIndex,
+  });
 
   let currency = (input.currency || '').trim().toUpperCase();
   if (!currency) {

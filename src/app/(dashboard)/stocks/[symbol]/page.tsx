@@ -12,6 +12,12 @@ import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
 import { UpcomingEventsCard } from '@/components/stocks/UpcomingEventsCard';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
 import { classifyStockPriceStatus } from '@/lib/market/priceStatus';
+import {
+  classifyAssetType,
+  formatAssetUnitPrice,
+  isIndexSymbol,
+  resolveAssetDisplayUnit,
+} from '@/lib/market/assetClassification';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { BROKERS, Broker } from '@/lib/data/brokers';
@@ -69,9 +75,21 @@ export default function StockDetailPage({
   const isIndexAsset =
     stock?.isIndex ||
     stock?.exchange === 'INDEX' ||
-    ['XU100', 'XU030', 'XU050', 'XBANK', 'XUSIN', 'XUHIZ', 'XHOLD', 'XKMYA', 'XULAS', 'XUTEK', 'XELKT', 'XGIDA', 'XTCRT', 'XGMYO', 'XBLSM', 'XMADN', 'XSGRT', 'XTRZM', 'SPX', 'NDX', 'DJI', 'RUT', 'DXY', 'VIX', 'DAX', 'FTSE', 'CAC40', 'STOXX50', 'N225', 'HSI', 'KOSPI', 'AORD', 'BVSP'].includes(symbol);
+    isIndexSymbol(symbol);
   const isCommodityAsset = stock?.exchange === 'COMMODITY';
   const isForexAsset = stock?.exchange === 'FOREX';
+  const assetClassification = classifyAssetType({
+    symbol,
+    exchange: stock?.exchange,
+    isIndex: isIndexAsset,
+  });
+  const displayUnit = resolveAssetDisplayUnit({
+    symbol,
+    exchange: stock?.exchange,
+    currency: stock?.currency,
+    unit: stock?.unit,
+    isIndex: isIndexAsset,
+  });
 
   const currSymbol = isIndexAsset ? '' : (stock?.currency === 'TRY' ? '₺' : stock?.currency === 'EUR' ? '€' : '$');
   const priceStatus = classifyStockPriceStatus(stock);
@@ -257,6 +275,13 @@ export default function StockDetailPage({
               {stock?.name || symbol}
             </h1>
             <span
+              data-testid="asset-type-badge"
+              className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-border bg-bg-secondary text-text-secondary"
+            >
+              {assetClassification.label}
+              {displayUnit === 'puan' || displayUnit === 'TL/gram' ? ` · ${displayUnit}` : ''}
+            </span>
+            <span
               className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 ${
                 marketStatus.isOpen
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
@@ -278,11 +303,15 @@ export default function StockDetailPage({
               <span className="text-2xl sm:text-3xl font-bold text-text-muted">Fiyat alınamadı</span>
             ) : (
               <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
-                {isIndexAsset ? (
-                  <>
-                    {currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    <span className="text-base sm:text-lg font-bold text-text-muted ml-2 font-sans">Puan</span>
-                  </>
+                {displayUnit === 'puan' || displayUnit === 'TL/gram' ? (
+                  formatAssetUnitPrice({
+                    value: currentPrice,
+                    symbol,
+                    exchange: stock?.exchange,
+                    currency: stock?.currency,
+                    unit: displayUnit,
+                    isIndex: isIndexAsset,
+                  })
                 ) : (
                   <>
                     {currSymbol}
@@ -302,9 +331,9 @@ export default function StockDetailPage({
                 {isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
               </span>
             )}
-            {isCommodityAsset && stock?.unit && (
+            {isCommodityAsset && displayUnit && displayUnit !== 'TL/gram' && (
               <span className="text-xs sm:text-sm font-semibold text-text-muted font-sans ml-1">
-                ({stock.unit})
+                ({displayUnit})
               </span>
             )}
           </div>

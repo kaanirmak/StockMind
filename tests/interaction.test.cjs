@@ -3688,6 +3688,50 @@ test('ALR-09: device and notification channel manager lists active channels and 
   assert.match(settingsSource, /buildActiveChannelSummary/);
 });
 
+test('VER-08: asset types (Hisse, ETF, Fon, Endeks, Döviz, Emtia) and units (puan, TL/gram) are labeled consistently', () => {
+  const assetMod = load('src/lib/market/assetClassification.ts');
+  const { describeSearchResult } = load('src/lib/market/searchResultDescriptor.ts');
+
+  assert.equal(assetMod.classifyAssetType({ symbol: 'THYAO', exchange: 'BIST' }).label, 'Hisse');
+  assert.equal(assetMod.classifyAssetType({ symbol: 'QQQ', exchange: 'NASDAQ' }).label, 'ETF');
+  assert.equal(assetMod.classifyAssetType({ symbol: 'GLDTR', exchange: 'BIST' }).label, 'ETF');
+  assert.equal(assetMod.classifyAssetType({ code: 'TI2', exchange: 'TEFAS', assetType: 'fund' }).label, 'Fon');
+  assert.equal(assetMod.classifyAssetType({ symbol: 'XU100', exchange: 'INDEX', isIndex: true }).label, 'Endeks');
+  assert.equal(assetMod.classifyAssetType({ symbol: 'USDTRY', exchange: 'FOREX' }).label, 'Döviz');
+  assert.equal(assetMod.classifyAssetType({ symbol: 'XAUTRYG', exchange: 'COMMODITY' }).label, 'Emtia');
+
+  assert.equal(describeSearchResult({ symbol: 'SPY', name: 'SPDR S&P 500 ETF', exchange: 'NYSE', currency: 'USD' }).assetTypeLabel, 'ETF');
+
+  const xuFormatted = assetMod.formatAssetUnitPrice({
+    value: 9850.25,
+    symbol: 'XU100',
+    exchange: 'INDEX',
+    currency: 'TRY',
+    unit: 'points',
+    isIndex: true,
+  });
+  assert.match(xuFormatted, /puan$/);
+  assert.doesNotMatch(xuFormatted, /₺/);
+
+  const goldFormatted = assetMod.formatAssetUnitPrice({
+    value: 3125.4,
+    symbol: 'GA',
+    exchange: 'COMMODITY',
+    currency: 'TRY',
+    unit: 'TL/gram',
+  });
+  assert.match(goldFormatted, /TL\/gram$/);
+  assert.doesNotMatch(goldFormatted, /₺/);
+
+  const overviewSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/markets/overview/route.ts'), 'utf8');
+  assert.match(overviewSrc, /symbol:\s*'GA'[\s\S]*?unit:\s*'TL\/gram'/);
+  assert.match(overviewSrc, /symbol:\s*'XU100'[\s\S]*?unit:\s*'points'/);
+
+  const detailSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/stocks/[symbol]/page.tsx'), 'utf8');
+  assert.match(detailSrc, /asset-type-badge/);
+  assert.match(detailSrc, /formatAssetUnitPrice/);
+});
+
 
 
 

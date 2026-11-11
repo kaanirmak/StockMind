@@ -14,6 +14,10 @@ import { classifyFundPriceStatus, classifyStockPriceStatus } from '@/lib/market/
 import { MARKET_CATALOG, MOBILE_PRIMARY_MARKETS, type MarketId } from '@/lib/market/marketSelector';
 import { describeSearchResult } from '@/lib/market/searchResultDescriptor';
 import {
+  formatAssetUnitPrice,
+  resolveAssetDisplayUnit,
+} from '@/lib/market/assetClassification';
+import {
   MARKET_FILTER_STORAGE_KEY,
   buildMarketSearchParams,
   resolveMarketStateWithPersistence,
@@ -936,20 +940,32 @@ function PiyasalarContent() {
                                 );
                               }
                               const validP = stock.price as number;
-                              if (activeMarket === 'INDEX' || stock.isIndex) {
+                              const resolvedUnit = resolveAssetDisplayUnit({
+                                symbol: stock.symbol,
+                                exchange: stock.exchange,
+                                currency: stock.currency,
+                                unit: stock.unit,
+                                isIndex: activeMarket === 'INDEX' || stock.isIndex,
+                              });
+                              if (resolvedUnit === 'puan') {
                                 return (
                                   <div className="flex flex-col items-end gap-0.5">
-                                    <span>{validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    <span className="text-[10px] text-text-muted font-normal font-sans">Puan</span>
+                                    <span>{formatAssetUnitPrice({ value: validP, symbol: stock.symbol, exchange: stock.exchange, currency: stock.currency, unit: 'points', isIndex: true })}</span>
                                     <PriceStatusBadge statusInfo={statusInfo} />
                                   </div>
                                 );
                               }
-                              if (activeMarket === 'COMMODITY') {
+                              if (activeMarket === 'COMMODITY' || resolvedUnit === 'TL/gram') {
                                 return (
                                   <div className="flex flex-col items-end gap-0.5">
-                                    <span>{curr}{validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    {stock.unit && <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>}
+                                    <span>
+                                      {resolvedUnit === 'TL/gram'
+                                        ? formatAssetUnitPrice({ value: validP, symbol: stock.symbol, exchange: stock.exchange, currency: stock.currency, unit: 'TL/gram' })
+                                        : `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                    </span>
+                                    {stock.unit && resolvedUnit !== 'TL/gram' && (
+                                      <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>
+                                    )}
                                     <PriceStatusBadge statusInfo={statusInfo} />
                                   </div>
                                 );

@@ -1,5 +1,13 @@
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { POPULAR_ALIASES, normalizeText } from '@/lib/utils/search';
+import {
+  US_ETFS,
+  BIST_ETFS,
+  isEtfSymbol,
+  classifyAssetType,
+} from '@/lib/market/assetClassification';
+
+export { US_ETFS, BIST_ETFS, isEtfSymbol };
 
 const tefasList: any[] = Array.isArray(TEFAS_DIRECTORY)
   ? TEFAS_DIRECTORY
@@ -7,22 +15,6 @@ const tefasList: any[] = Array.isArray(TEFAS_DIRECTORY)
   ? (TEFAS_DIRECTORY as any).default
   : [];
 const TEFAS_SET = new Set(tefasList.map((f) => String(f.code || '').toUpperCase()));
-
-// US and Global ETFs (Traded on NASDAQ / NYSE / CBOE / etc.)
-export const US_ETFS = new Set([
-  'QQQ', 'TQQQ', 'SQQQ', 'SPY', 'VOO', 'IVV', 'VTI', 'DIA', 'IWM', 'RSP', 'VT',
-  'XLK', 'XLE', 'XLF', 'XLV', 'XLI', 'XLY', 'XLP', 'XLU', 'XLB', 'XLRE', 'XLC',
-  'SOXX', 'SMH', 'SOXL', 'SOXS', 'VGT', 'ARKK', 'ARKG', 'ARKW', 'BOTZ', 'CIBR',
-  'IGV', 'SKYY', 'SCHD', 'JEPI', 'JEPQ', 'VYM', 'HDV', 'DGRO', 'TLT', 'IEF',
-  'SHY', 'BND', 'AGG', 'GLD', 'SLV', 'IAU', 'USO', 'UNG', 'BITO', 'IBIT',
-  'FBTC', 'ETHE', 'FETH', 'VXUS', 'VEA', 'VWO', 'EEM', 'FXI', 'INDA', 'EWJ',
-  'EWG', 'EWZ', 'UPRO', 'SPXU', 'SSO', 'SDS', 'QLD', 'PSQ', 'TNA', 'TZA'
-]);
-
-// BIST Borsa Yatırım Fonları (BYF / BIST ETFs)
-export const BIST_ETFS = new Set([
-  'GLDTR', 'GMSTR', 'ZGOLD', 'USDTR', 'EURTR', 'FNBTR', 'IST30', 'ZPBDL', 'ZPLIB', 'KZLGY', 'SLVTR'
-]);
 
 // Popular US Stocks (NASDAQ & NYSE)
 export const US_STOCKS = new Set([
@@ -35,15 +27,6 @@ export const US_STOCKS = new Set([
   'KLAC', 'AMAT', 'INTU', 'NOW', 'SNPS', 'CDNS', 'MRVL', 'ORCL', 'IBM', 'BRK.B',
   'BRK.A', 'CAT', 'GE', 'DE', 'RTX', 'LMT', 'HON', 'MMM', 'UPS', 'FDX'
 ]);
-
-export function isEtfSymbol(symbol: string): boolean {
-  const s = String(symbol || '')
-    .replace(/^(BIST|NASDAQ|NYSE|US|TEFAS|FON|IST):/, '')
-    .replace(/\.(IS|E|TI|BIST)$/i, '')
-    .toUpperCase()
-    .trim();
-  return US_ETFS.has(s) || BIST_ETFS.has(s);
-}
 
 export function isUsSymbol(symbol: string): boolean {
   const s = String(symbol || '')
@@ -109,19 +92,37 @@ export function getAssetTypeLabel(item: {
     };
   }
 
-  if (isUs) {
+  const { kind } = classifyAssetType({
+    symbol: s,
+    assetType: item.assetType,
+    exchange: item.exchange,
+  });
+
+  if (kind === 'index') {
     return {
-      typeLabel: 'Hisse',
-      badgeLabel: 'ABD Hisse',
-      badgeColor: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
-      badgeIcon: '🌐',
-      exchangeLabel: item.exchange && item.exchange !== 'BIST' ? item.exchange : 'NASDAQ',
+      typeLabel: 'Endeks',
+      badgeLabel: 'Endeks',
+      badgeColor: 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300',
+      badgeIcon: '📊',
+      exchangeLabel: 'Endeks',
       isEtf: false,
-      isUs: true,
+      isUs: false,
     };
   }
 
-  if (item.exchange === 'CRYPTO') {
+  if (kind === 'forex') {
+    return {
+      typeLabel: 'Döviz',
+      badgeLabel: 'Döviz',
+      badgeColor: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300',
+      badgeIcon: '💱',
+      exchangeLabel: 'Döviz',
+      isEtf: false,
+      isUs: false,
+    };
+  }
+
+  if (kind === 'crypto') {
     return {
       typeLabel: 'Kripto',
       badgeLabel: 'Kripto',
@@ -133,7 +134,7 @@ export function getAssetTypeLabel(item: {
     };
   }
 
-  if (item.exchange === 'COMMODITY') {
+  if (kind === 'commodity') {
     return {
       typeLabel: 'Emtia',
       badgeLabel: 'Emtia',
@@ -142,6 +143,18 @@ export function getAssetTypeLabel(item: {
       exchangeLabel: 'Emtia',
       isEtf: false,
       isUs: false,
+    };
+  }
+
+  if (isUs) {
+    return {
+      typeLabel: 'Hisse',
+      badgeLabel: 'ABD Hisse',
+      badgeColor: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
+      badgeIcon: '🌐',
+      exchangeLabel: item.exchange && item.exchange !== 'BIST' ? item.exchange : 'NASDAQ',
+      isEtf: false,
+      isUs: true,
     };
   }
 
