@@ -11,6 +11,11 @@ import {
   downloadCsvTemplate,
   ParsedRowResult,
 } from '@/lib/portfolio/excelParser';
+import {
+  BROKER_STATEMENT_TEMPLATES,
+  downloadBrokerTemplateCsv,
+  StatementTemplateMatch,
+} from '@/lib/portfolio/brokerStatementTemplates';
 
 export interface ExcelImportModalProps {
   isOpen: boolean;
@@ -29,6 +34,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [validRows, setValidRows] = useState<ParsedRowResult[]>([]);
   const [invalidRows, setInvalidRows] = useState<ParsedRowResult[]>([]);
+  const [templateMatch, setTemplateMatch] = useState<StatementTemplateMatch | null>(null);
   const [activeTab, setActiveTab] = useState<'valid' | 'invalid'>('valid');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +64,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
     setFile(null);
     setValidRows([]);
     setInvalidRows([]);
+    setTemplateMatch(null);
     setIsParsing(false);
     setIsSubmitting(false);
     setActiveTab('valid');
@@ -90,6 +97,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
       const result = await parseExcelTransactions(selectedFile);
       setValidRows(result.validRows);
       setInvalidRows(result.invalidRows);
+      setTemplateMatch(result.templateMatch);
 
       if (result.validRows.length > 0) {
         showToast({
@@ -322,6 +330,34 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                 </Button>
               </div>
             </div>
+
+            {/* Built-in Broker Statement Presets */}
+            <div className="p-3.5 rounded-xl bg-bg-secondary/70 border border-border/80 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <h5 className="text-xs font-semibold text-text-primary">
+                  Hazır Aracı Kurum Ekstre Şablonları
+                </h5>
+                <span className="text-[11px] text-text-muted">
+                  Örnek ekstre biçimlerini indirin veya doğrudan yükleyin
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {BROKER_STATEMENT_TEMPLATES.filter((tpl) => tpl.id !== 'stockmind').map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => downloadBrokerTemplateCsv(tpl.id)}
+                    className="p-2.5 rounded-lg bg-bg-card hover:bg-bg-tertiary border border-border text-left transition-colors cursor-pointer flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-text-primary truncate">{tpl.name}</p>
+                      <p className="text-[10px] text-text-muted truncate">{tpl.description}</p>
+                    </div>
+                    <span className="text-[11px] font-semibold text-accent shrink-0">Örnek CSV</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -371,6 +407,44 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                 </Button>
               </div>
             </div>
+
+            {/* Recognized Template & Mapped Columns Preview */}
+            {templateMatch && (
+              <div
+                data-testid="statement-template-preview"
+                className="p-3 rounded-xl bg-bg-secondary/80 border border-border/80 space-y-2"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="accent" size="sm">
+                      Tanınan Biçim: {templateMatch.templateName}
+                    </Badge>
+                    <span className="text-[11px] text-text-muted">
+                      {templateMatch.confidence === 'exact'
+                        ? 'Tam şablon eşleşmesi'
+                        : templateMatch.confidence === 'partial'
+                        ? 'Kısmi şablon eşleşmesi'
+                        : 'Otomatik sütun eşleme'}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-text-muted">
+                    {templateMatch.mappedColumns.length} sütun eşlendi
+                  </span>
+                </div>
+                {templateMatch.mappedColumns.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {templateMatch.mappedColumns.map((col) => (
+                      <span
+                        key={`${col.sourceColumn}-${col.targetField}`}
+                        className="px-2 py-0.5 rounded-md text-[11px] bg-bg-card border border-border text-text-secondary"
+                      >
+                        <strong className="text-text-primary">{col.sourceColumn}</strong> → {col.targetLabel}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Tabs for Valid vs Invalid */}
             {invalidRows.length > 0 && (

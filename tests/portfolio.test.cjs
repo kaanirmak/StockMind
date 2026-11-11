@@ -15,8 +15,14 @@ function loadModule(relPath) {
   vm.runInNewContext(source, {
     exports,
     module: { exports },
+    TextDecoder,
+    TextEncoder,
+    Uint8Array,
+    ArrayBuffer,
+    File: typeof File !== 'undefined' ? File : undefined,
     console: { warn() {}, error() {} },
     require(name) {
+      if (name === 'xlsx') return require('xlsx');
       if (name === 'next/cache') return { revalidateTag: () => {}, revalidatePath: () => {}, unstable_cache: (fn) => fn };
       if (name === '@/lib/data/stocks') return { POPULAR_STOCKS: [] };
       if (name === '@/lib/data/funds') return { TEFAS_FUNDS: [] };
@@ -1245,5 +1251,43 @@ test('ALR-02: TEFAS fund alert triggers on valid valuation and defers cleanly on
   assert.match(workerSource, /quote\.optString\("lastSyncAt",\s*null\)/);
   assert.match(bridgeSource, /public String getDeferredAlerts\(\)/);
 });
+
+test('POR-04: built-in broker statement presets are recognized, parsed, and mapped in preview', async () => {
+  const { buildBrokerTemplateCsv, BROKER_STATEMENT_TEMPLATES } = loadModule(
+    'src/lib/portfolio/brokerStatementTemplates.ts'
+  );
+  const { parseExcelTransactions } = loadModule('src/lib/portfolio/excelParser.ts');
+
+  const presetIds = ['midas', 'isbank', 'garanti', 'tefas'];
+  assert.ok(BROKER_STATEMENT_TEMPLATES.length >= 5);
+
+  for (const id of presetIds) {
+    const sample = buildBrokerTemplateCsv(id);
+    assert.ok(sample && sample.content.length > 0, `Expected sample CSV for ${id}`);
+
+    const buffer = new TextEncoder().encode(sample.content).buffer;
+    const parsed = await parseExcelTransactions(buffer);
+
+    assert.equal(parsed.invalidRows.length, 0, `${id} preset rows should parse cleanly without errors`);
+    assert.ok(parsed.validRows.length >= 2, `${id} preset should parse multiple valid rows`);
+    assert.equal(parsed.templateMatch.templateId, id);
+    assert.equal(parsed.templateMatch.confidence, 'exact');
+
+    const mappedTargets = Array.from(parsed.templateMatch.mappedColumns).map((m) => m.targetField);
+    assert.ok(mappedTargets.includes('symbol'), `${id} should map symbol column`);
+    assert.ok(mappedTargets.includes('quantity'), `${id} should map quantity column`);
+    assert.ok(mappedTargets.includes('price'), `${id} should map price column`);
+    assert.ok(mappedTargets.includes('date'), `${id} should map date column`);
+  }
+
+  const modalSrc = fs.readFileSync(
+    path.join(root, 'src/components/portfolio/ExcelImportModal.tsx'),
+    'utf8'
+  );
+  assert.match(modalSrc, /BROKER_STATEMENT_TEMPLATES/);
+  assert.match(modalSrc, /data-testid="statement-template-preview"/);
+  assert.match(modalSrc, /Tanınan Biçim:/);
+});
+
 
 

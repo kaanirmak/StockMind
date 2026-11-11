@@ -2,6 +2,10 @@ import * as XLSX from 'xlsx';
 import { TransactionFormData, AssetType, TransactionType } from '@/types/portfolio';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { cleanSymbol } from '@/lib/utils/symbol';
+import {
+  detectStatementTemplate,
+  StatementTemplateMatch,
+} from '@/lib/portfolio/brokerStatementTemplates';
 
 export interface ParsedRowResult {
   rowNumber: number;
@@ -15,6 +19,8 @@ export interface ExcelParseResponse {
   totalRows: number;
   validRows: ParsedRowResult[];
   invalidRows: ParsedRowResult[];
+  detectedHeaders: string[];
+  templateMatch: StatementTemplateMatch;
 }
 
 const TEFAS_CODES = new Set(
@@ -398,11 +404,20 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     const worksheet = workbook.Sheets[firstSheetName];
 
     if (!worksheet) {
-      return { totalRows: 0, validRows: [], invalidRows: [] };
+      return {
+        totalRows: 0,
+        validRows: [],
+        invalidRows: [],
+        detectedHeaders: [],
+        templateMatch: detectStatementTemplate([]),
+      };
     }
 
     rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: true });
   }
+
+  const detectedHeaders = rawRows.length > 0 ? Object.keys(rawRows[0] || {}) : [];
+  const templateMatch = detectStatementTemplate(detectedHeaders);
 
   const validRows: ParsedRowResult[] = [];
   const invalidRows: ParsedRowResult[] = [];
@@ -415,9 +430,9 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     // Priority: Explicit stock/fund ticker columns first
     let rawSymbol = findHeaderValue(
       row,
-      ['hissekodusembol', 'hissekodu', 'sembol', 'symbol', 'ticker', 'menkulkiymetkodu', 'paykodu', 'fonkodu', 'varlikkodu', 'kiymetkodu', 'hissekodd'],
-      ['hissekod', 'fonkod', 'sembol', 'symbol', 'ticker', 'menkulkiymetkod', 'paykod'],
-      ['hesap', 'musteri', 'sube', 'takas', 'emir', 'islem', 'kurum', 'banka', 'referans', 'dekont', 'isin', 'adi', 'tanimi', 'unvan', 'doviz', 'fiyat', 'tutar']
+      ['hissekodusembol', 'hissekodu', 'hissesembolu', 'sembol', 'sembolu', 'symbol', 'ticker', 'menkulkiymetkodu', 'paykodu', 'fonkodu', 'varlikkodu', 'kiymetkodu', 'hissekodd'],
+      ['hissekod', 'hissesembol', 'fonkod', 'sembol', 'symbol', 'ticker', 'menkulkiymetkod', 'paykod'],
+      ['hesap', 'musteri', 'sube', 'takas', 'emirno', 'emirtarih', 'islem', 'kurum', 'banka', 'referans', 'dekont', 'isin', 'adi', 'tanimi', 'unvan', 'doviz', 'fiyat', 'tutar']
     );
 
     // If no ticker column, fallback to ISIN code
@@ -449,9 +464,9 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     // 2. Transaction Type / İşlem Türü
     const rawType = findHeaderValue(
       row,
-      ['islemturu', 'islemtipi', 'islemcesidi', 'hareketturu', 'harekettipi', 'alissatis', 'alimsatim', 'islem', 'action', 'side', 'type'],
-      ['islemtur', 'islemtip', 'harekettur', 'harekettip', 'alissat', 'alimsat'],
-      ['doviz', 'hesap', 'varlik', 'emir', 'piyasa', 'fiyat', 'miktar', 'tutar', 'komisyon']
+      ['islemturu', 'islemtipi', 'islemcesidi', 'emirtipi', 'emirturu', 'hareketturu', 'harekettipi', 'alissatis', 'alimsatim', 'islem', 'action', 'side', 'type'],
+      ['islemtur', 'islemtip', 'emirtip', 'harekettur', 'harekettip', 'alissat', 'alimsat'],
+      ['doviz', 'hesap', 'varlik', 'emirno', 'emirnumara', 'emirtarih', 'piyasa', 'fiyat', 'miktar', 'tutar', 'komisyon']
     );
     const transactionType = parseTransactionType(rawType);
 
@@ -488,8 +503,8 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     // Exclude 'toplam', 'tutar', 'hacim', 'adet', 'miktar'
     const rawPrice = findHeaderValue(
       row,
-      ['birimfiyat', 'fiyat', 'maliyet', 'ortalamamaliyet', 'alisfiyati', 'satisfiyati', 'islemfiyati', 'unitprice', 'price', 'cost'],
-      ['birimfiyat', 'alisfiyat', 'satisfiyat', 'islemfiyat', 'fiyat', 'maliyet', 'unitprice', 'cost'],
+      ['birimfiyat', 'birimpayfiyati', 'payfiyati', 'fiyat', 'maliyet', 'ortalamamaliyet', 'alisfiyati', 'satisfiyati', 'islemfiyati', 'unitprice', 'price', 'cost'],
+      ['birimfiyat', 'birimpayfiyat', 'payfiyat', 'alisfiyat', 'satisfiyat', 'islemfiyat', 'fiyat', 'maliyet', 'unitprice', 'cost'],
       ['toplam', 'tutar', 'hacim', 'adet', 'miktar', 'lot', 'payadedi', 'komisyon', 'bakiye']
     );
     let price = Math.abs(parseCleanNumber(rawPrice));
@@ -616,6 +631,8 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     totalRows: rawRows.length,
     validRows,
     invalidRows,
+    detectedHeaders,
+    templateMatch,
   };
 }
 
