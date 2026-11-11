@@ -19,7 +19,8 @@ import { useTheme } from '@/components/theme/ThemeProvider';
 import {
   loadPushPreferences,
   savePushPreferences,
-  sendPushNotification,
+  sendPushNotificationWithResult,
+  loadLastPushDeliveryDiagnostic,
   playNotificationSound,
   hasNotificationPermission,
   requestNotificationPermission,
@@ -27,6 +28,7 @@ import {
   requestBatteryOptimizationExemption,
   isAndroidApp,
   PushNotificationPreferences,
+  PushDeliveryDiagnostic,
   DEFAULT_PUSH_PREFERENCES,
 } from '@/lib/notifications/pushNotification';
 
@@ -90,6 +92,7 @@ export default function SettingsPage() {
   const [isPermitted, setIsPermitted] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
+  const [lastPushDiagnostic, setLastPushDiagnostic] = useState<PushDeliveryDiagnostic | null>(null);
 
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -133,6 +136,7 @@ export default function SettingsPage() {
     document.addEventListener('visibilitychange', refreshPermission);
     const isAnd = isAndroidApp();
     setIsAndroid(isAnd);
+    setLastPushDiagnostic(loadLastPushDeliveryDiagnostic());
     if (isAnd && typeof window !== 'undefined') {
       const bridge = (window as any).StockMindAndroid;
       if (bridge) {
@@ -191,19 +195,31 @@ export default function SettingsPage() {
 
   const handleSendTestPush = () => {
     setIsSendingTestPush(true);
-    const sent = sendPushNotification(
+    const diagnostic = sendPushNotificationWithResult(
       'StockMind test bildirimi',
       'Bu bildirim cihazınızın bildirim ayarlarını kontrol etmek için gönderildi.',
       '/settings',
       true
     );
+    setLastPushDiagnostic(diagnostic);
+    setIsPermitted(diagnostic.permissionState === 'granted');
     setIsSendingTestPush(false);
+
+    if (diagnostic.permissionState !== 'granted') {
+      showToast({
+        type: 'warning',
+        title: 'Bildirim İzni Kapalı',
+        message: diagnostic.reason,
+      });
+      return;
+    }
+
     showToast({
-      type: sent ? 'success' : 'info',
-      title: sent ? 'Test bildirimi gönderildi' : 'Cihaz bildirimi gösterilemedi',
-      message: sent
-        ? 'Cihazınızın bildirim çubuğunu kontrol edin.'
-        : 'Bildirim tercihinizi ve cihazın StockMind bildirim iznini kontrol edin.',
+      type: diagnostic.delivered ? 'success' : 'danger',
+      title: diagnostic.delivered
+        ? 'Kanal Test Bildirimi Gönderildi'
+        : 'İzin Açık Ancak Kanal Teslimatı Başarısız',
+      message: diagnostic.reason,
     });
   };
 
@@ -1117,6 +1133,35 @@ export default function SettingsPage() {
                Pil Kısıtlamasını Kaldır
             </Button>
           )}
+        </div>
+
+        {/* Separated Permission & Channel Delivery Diagnostic (ALR-03) */}
+        <div
+          data-testid="push-delivery-diagnostic"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-bg-tertiary/70 border border-border/60 text-xs"
+        >
+          <div className="space-y-1">
+            <span className="text-text-muted font-medium">Bildirim İzni Durumu</span>
+            <p className="font-semibold text-text-primary">
+              {isPermitted ? 'Açık (İzin Verildi)' : 'Kapalı (İzin Verilmedi)'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <span className="text-text-muted font-medium">Son Kanal Test Sonucu</span>
+            {lastPushDiagnostic ? (
+              <p className="font-semibold text-text-primary">
+                {lastPushDiagnostic.channelOutcome === 'permission-denied'
+                  ? 'İzin kapalı olduğu için kanala gönderilmedi'
+                  : lastPushDiagnostic.channelOutcome === 'delivered'
+                    ? `Teslim edildi (${lastPushDiagnostic.channel === 'android' ? 'Android' : 'Web'} kanalı)`
+                    : lastPushDiagnostic.channelOutcome === 'disabled'
+                      ? 'Uygulama push ayarı kapalı'
+                      : `Teslim edilemedi (${lastPushDiagnostic.channel === 'android' ? 'Android' : 'Web'} kanal hatası)`}
+              </p>
+            ) : (
+              <p className="text-text-muted">Henüz kanal testi yapılmadı</p>
+            )}
+          </div>
         </div>
 
         {/* Footer Actions */}

@@ -94,6 +94,76 @@ test('Android test notifications report denied permission and can be retried aft
   assert.equal(sends, 1);
 });
 
+test('ALR-03: notification permission state and channel delivery outcome are tracked separately', () => {
+  const data = new Map();
+  let permitted = false;
+  let nativeDeliveryResult = true;
+  let nativeCalls = 0;
+
+  const {
+    getNotificationPermissionState,
+    sendPushNotificationWithResult,
+    loadLastPushDeliveryDiagnostic,
+  } = load('src/lib/notifications/pushNotification.ts', {
+    Event,
+    localStorage: {
+      getItem: (key) => (data.has(key) ? data.get(key) : null),
+      setItem: (key, value) => data.set(key, String(value)),
+    },
+    window: {
+      dispatchEvent() {},
+      StockMindAndroid: {
+        hasNotificationPermission: () => permitted,
+        sendNativeNotification: () => {
+          nativeCalls++;
+          return nativeDeliveryResult;
+        },
+      },
+    },
+  });
+
+  // 1. Permission OFF: test explicitly reports denied permission without attempting channel send
+  assert.equal(getNotificationPermissionState(), 'denied');
+  const deniedTest = sendPushNotificationWithResult('Test', 'İzin kapalı testi', '/settings', true);
+  assert.equal(deniedTest.permissionState, 'denied');
+  assert.equal(deniedTest.channel, 'none');
+  assert.equal(deniedTest.channelOutcome, 'permission-denied');
+  assert.equal(deniedTest.delivered, false);
+  assert.equal(nativeCalls, 0);
+  assert.equal(loadLastPushDeliveryDiagnostic()?.channelOutcome, 'permission-denied');
+
+  // 2. Permission ON + Android channel succeeds: permission and delivered outcome stored separately
+  permitted = true;
+  nativeDeliveryResult = true;
+  assert.equal(getNotificationPermissionState(), 'granted');
+  const deliveredTest = sendPushNotificationWithResult('Test', 'Kanal açık testi', '/settings', true);
+  assert.equal(deliveredTest.permissionState, 'granted');
+  assert.equal(deliveredTest.channel, 'android');
+  assert.equal(deliveredTest.channelOutcome, 'delivered');
+  assert.equal(deliveredTest.delivered, true);
+  assert.equal(nativeCalls, 1);
+  assert.equal(loadLastPushDeliveryDiagnostic()?.channelOutcome, 'delivered');
+
+  // 3. Permission ON + Android channel fails: permission stays 'granted' while outcome records 'failed'
+  nativeDeliveryResult = false;
+  const failedChannelTest = sendPushNotificationWithResult('Test', 'Kanal hatası testi', '/settings', true);
+  assert.equal(failedChannelTest.permissionState, 'granted');
+  assert.equal(failedChannelTest.channel, 'android');
+  assert.equal(failedChannelTest.channelOutcome, 'failed');
+  assert.equal(failedChannelTest.delivered, false);
+  assert.equal(nativeCalls, 2);
+  const persistedFailure = loadLastPushDeliveryDiagnostic();
+  assert.equal(persistedFailure?.permissionState, 'granted');
+  assert.equal(persistedFailure?.channelOutcome, 'failed');
+
+  // Verify settings UI displays separated permission status and channel delivery result
+  const settingsSource = fs.readFileSync(path.join(__dirname, '..', 'src/app/(dashboard)/settings/page.tsx'), 'utf8');
+  assert.match(settingsSource, /sendPushNotificationWithResult/);
+  assert.match(settingsSource, /data-testid="push-delivery-diagnostic"/);
+  assert.match(settingsSource, /Bildirim İzni Durumu/);
+  assert.match(settingsSource, /Son Kanal Test Sonucu/);
+});
+
 test('Losses have an explicit minus sign so meaning does not depend on color', () => {
   const { getPnLSign } = load('src/lib/utils/format.ts');
   assert.equal(getPnLSign(-12.4), '-');
