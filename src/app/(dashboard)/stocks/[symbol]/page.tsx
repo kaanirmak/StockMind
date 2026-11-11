@@ -9,6 +9,7 @@ import { useStockDetail, useStockHistory, useStockIndicators } from '@/hooks/use
 import { CandlestickChart } from '@/components/stocks/CandlestickChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
 import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
+import { UpcomingEventsCard } from '@/components/stocks/UpcomingEventsCard';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
 import { classifyStockPriceStatus } from '@/lib/market/priceStatus';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
@@ -546,6 +547,12 @@ export default function StockDetailPage({
           </span>
         </div>
       </div>
+
+      {/* Verified Upcoming Corporate Events (Earnings, Dividends, Official Disclosures) */}
+      <UpcomingEventsCard
+        symbol={symbol}
+        isNonEquity={isIndexAsset || isCommodityAsset || isForexAsset || stock?.exchange === 'CRYPTO'}
+      />
 
       {/* Mobile Sticky Bottom Action Bar (Docked right above MobileNav) */}
       <div

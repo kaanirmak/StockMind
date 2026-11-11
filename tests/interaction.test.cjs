@@ -2760,6 +2760,76 @@ test('PIY-04 exposes chart timeframe, price unit, last candle time and missing-d
   assert.match(chartSrc, /buildChartDataCoverageReport/);
 });
 
+test('PIY-05 lists only verified upcoming corporate events with date and source', () => {
+  const {
+    resolveEquityYahooTicker,
+    normalizeUpcomingEvents,
+    buildUpcomingEventsReport,
+  } = load('src/lib/market/upcomingEvents.ts');
+
+  assert.equal(resolveEquityYahooTicker('THYAO', 'BIST'), 'THYAO.IS');
+  assert.equal(resolveEquityYahooTicker('AAPL', 'NASDAQ'), 'AAPL');
+
+  const nowMs = Date.parse('2026-05-01T10:00:00Z');
+  const futureEarningsTs = Math.floor(Date.parse('2026-05-20T00:00:00Z') / 1000);
+  const pastDivTs = Math.floor(Date.parse('2026-04-01T00:00:00Z') / 1000);
+  const futurePayTs = Math.floor(Date.parse('2026-06-15T00:00:00Z') / 1000);
+
+  const report = {
+    ...buildUpcomingEventsReport({
+      symbol: 'THYAO',
+      nowMs,
+      yahooCalendar: {
+        earnings: { earningsDate: [{ raw: futureEarningsTs }] },
+        exDividendDate: { raw: pastDivTs }, // Past date must be ignored
+        dividendDate: { raw: futurePayTs },
+      },
+      verifiedDisclosures: [
+        {
+          title: 'Olağan Genel Kurul Toplantısı',
+          date: '2026-05-12',
+          source: 'KAP',
+          sourceUrl: 'https://www.kap.org.tr/tr/Bildirim/12345',
+          verified: true,
+        },
+        {
+          title: 'Söylenti Temettü Tarihi',
+          date: '2026-05-18',
+          source: '',
+          verified: false, // Must be rejected
+        },
+      ],
+    }),
+  };
+
+  const events = Array.from(report.events, (e) => ({ ...e }));
+  assert.equal(report.status, 'ok');
+  assert.equal(events.length, 3);
+  assert.deepEqual(events.map((e) => e.eventDate), ['2026-05-12', '2026-05-20', '2026-06-15']);
+  assert.equal(events[0].source, 'KAP');
+  assert.equal(events[1].type, 'earnings');
+  assert.equal(events[1].source, 'Yahoo Finance');
+  assert.equal(events[2].type, 'dividend');
+
+  const emptyReport = {
+    ...buildUpcomingEventsReport({ symbol: 'ASELS', nowMs, yahooCalendar: null }),
+  };
+  assert.equal(emptyReport.status, 'empty');
+  assert.equal(emptyReport.events.length, 0);
+
+  const unavailableReport = {
+    ...buildUpcomingEventsReport({ symbol: 'ASELS', nowMs, providerFailed: true }),
+  };
+  assert.equal(unavailableReport.status, 'unavailable');
+  assert.equal(unavailableReport.events.length, 0);
+
+  const stockDetailSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/stocks/[symbol]/page.tsx'),
+    'utf8'
+  );
+  assert.match(stockDetailSrc, /UpcomingEventsCard/);
+});
+
 
 
 
