@@ -108,7 +108,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | ALR-05 | P1 | Tüm Alarmlar ekranı oluştur | Aktif ve duraklatılmış kurallar listelenir. Kullanıcı düzenleyebilir ve duraklatabilir. | ◐ |
 | ALR-06 | P1 | Alarmın son kontrolünü ve tetiklenmesini göster | Her kuralda son kontrol zamanı, görülen fiyat ve varsa son tetikleme görünür. | ◐ |
 | ALR-07 | P1 | Fiyat eşiği değerlendirmesini sunucuya taşı | Uygulama kapalıyken sunucu kuralları değerlendirir. Aynı eşik olayı bir defa kaydedilir. | ◐ |
-| ALR-08 | P1 | Bildirim kutusunu hesaba bağla | Okunma, arşiv ve tercihler cihazlar arasında eşitlenir. Hesap değişiminde eski hesabın kayıtları görünmez. | ☐ |
+| ALR-08 | P1 | Bildirim kutusunu hesaba bağla | Okunma, arşiv ve tercihler cihazlar arasında eşitlenir. Hesap değişiminde eski hesabın kayıtları görünmez. | ◐ |
 | ALR-09 | P1 | Cihaz ve bildirim kanalı yönetimi ekle | Kullanıcı bağlı cihazları, izinleri ve etkin kanalları görebilir. Geçersiz cihaz kaydı otomatik ayıklanır. | ☐ |
 | ALR-10 | P2 | Web Push kanalını ekle | Desteklenen tarayıcı ve ana ekrana kurulan iOS web uygulamasında izin, test ve bildirim bağlantısı doğrulanır. | ☐ |
 | ALR-11 | P2 | Portföy hareketi bildirimleri ekle | Kullanıcı eşik ve sıklığı seçebilir. Tetikleme doğrulanmış portföy verisine dayanır ve tekrarlar sınırlandırılır. | ☐ |

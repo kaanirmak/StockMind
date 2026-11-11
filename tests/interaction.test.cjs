@@ -3428,6 +3428,174 @@ test('ALR-07: server alert evaluator runs headlessly, skips paused/stale rules, 
   assert.match(cronRouteSource, /evaluateServerPriceAlerts/);
 });
 
+test('ALR-08: account-bound notification inbox and preferences isolate accounts and merge cross-device state', () => {
+  const storageMap = new Map();
+  const mockStorage = {
+    getItem(key) {
+      return storageMap.has(key) ? storageMap.get(key) : null;
+    },
+    setItem(key, value) {
+      storageMap.set(key, String(value));
+    },
+    removeItem(key) {
+      storageMap.delete(key);
+    },
+  };
+
+  const prevWindow = global.window;
+  const prevLocalStorage = global.localStorage;
+  const events = [];
+  const prevEvent = global.Event;
+  global.localStorage = mockStorage;
+  global.Event = class Event {
+    constructor(type) {
+      this.type = type;
+    }
+  };
+  global.window = {
+    dispatchEvent(event) {
+      events.push(event?.type || 'unknown');
+      return true;
+    },
+  };
+
+  try {
+    const loadWithAlias = createAliasedLoader();
+    const vmGlobals = {
+      localStorage: mockStorage,
+      window: global.window,
+      Event: global.Event,
+    };
+    const inboxMod = loadWithAlias('src/lib/notifications/inbox.ts', {}, vmGlobals);
+    const inboxSyncMod = loadWithAlias(
+      'src/lib/notifications/inboxSync.ts',
+      { './inbox': inboxMod },
+      vmGlobals,
+    );
+    const pushMod = loadWithAlias(
+      'src/lib/notifications/pushNotification.ts',
+      { './inbox': inboxMod, './inboxSync': inboxSyncMod },
+      vmGlobals,
+    );
+
+    inboxMod.setActiveNotificationUser('user-a', mockStorage);
+    inboxMod.saveInbox(
+      [
+        {
+          id: 'notif-a-1',
+          title: 'THYAO Hedef Fiyat',
+          description: 'THYAO 320 TL seviyesine ulaştı.',
+          time: '10:00',
+          read: false,
+          category: 'market',
+          link: '/alerts',
+          updatedAt: '2026-11-11T10:00:00.000Z',
+        },
+      ],
+      undefined,
+      mockStorage,
+    );
+    pushMod.savePushPreferences(
+      {
+        enabled: true,
+        inAppEnabled: true,
+        priceAlerts: false,
+        dailyReport: true,
+        portfolioMoves: false,
+        marketNews: true,
+      },
+      undefined,
+      { skipRemote: true },
+    );
+
+    assert.equal(inboxMod.readInbox(undefined, mockStorage).length, 1);
+    assert.equal(pushMod.loadPushPreferences().marketNews, true);
+    assert.equal(pushMod.loadPushPreferences().priceAlerts, false);
+
+    // Switching to account B must completely hide account A's inbox and preferences
+    inboxMod.setActiveNotificationUser('user-b', mockStorage);
+    assert.equal(inboxMod.readInbox(undefined, mockStorage).length, 0);
+    assert.equal(pushMod.loadPushPreferences().marketNews, false);
+    assert.equal(pushMod.loadPushPreferences().priceAlerts, true);
+
+    // Signing out clears active user context back to guest
+    inboxMod.setActiveNotificationUser(null, mockStorage);
+    assert.equal(inboxMod.readInbox(undefined, mockStorage).length, 0);
+    assert.equal(events.includes('stockmind:inbox'), true);
+    assert.equal(events.includes('stockmind:push-prefs'), true);
+
+    // Cross-device merge keeps read/archived states monotonic
+    const merged = inboxSyncMod.mergeAccountInboxItems(
+      [
+        {
+          id: 'n1',
+          title: 'Alarm 1',
+          description: 'Cihaz 1 okudu ve arşivledi',
+          time: '10:05',
+          read: true,
+          archived: true,
+          category: 'market',
+          updatedAt: '2026-11-11T10:05:00.000Z',
+        },
+        {
+          id: 'n2',
+          title: 'Alarm 2',
+          description: 'Cihaz 1 henüz okumadı',
+          time: '10:06',
+          read: false,
+          category: 'market',
+          updatedAt: '2026-11-11T10:06:00.000Z',
+        },
+      ],
+      [
+        {
+          id: 'n1',
+          title: 'Alarm 1',
+          description: 'Cihaz 2 eski önbellek',
+          time: '10:01',
+          read: false,
+          category: 'market',
+          updatedAt: '2026-11-11T10:01:00.000Z',
+        },
+        {
+          id: 'n2',
+          title: 'Alarm 2',
+          description: 'Cihaz 2 okudu',
+          time: '10:07',
+          read: true,
+          category: 'market',
+          updatedAt: '2026-11-11T10:07:00.000Z',
+        },
+      ],
+    );
+
+    const n1 = merged.find((item) => item.id === 'n1');
+    const n2 = merged.find((item) => item.id === 'n2');
+    assert.equal(n1.read, true);
+    assert.equal(n1.archived, true);
+    assert.equal(n2.read, true);
+
+    const syncRouteSource = fs.readFileSync(
+      path.join(process.cwd(), 'src/app/api/notifications/sync/route.ts'),
+      'utf8',
+    );
+    assert.match(syncRouteSource, /supabase\.auth\.getUser/);
+    assert.match(syncRouteSource, /user_notification_states/);
+    assert.match(syncRouteSource, /status:\s*401/);
+
+    const authHookSource = fs.readFileSync(
+      path.join(process.cwd(), 'src/hooks/useAuth.ts'),
+      'utf8',
+    );
+    assert.match(authHookSource, /setActiveNotificationUser/);
+    assert.match(authHookSource, /syncAccountNotificationState/);
+  } finally {
+    global.window = prevWindow;
+    global.localStorage = prevLocalStorage;
+    global.Event = prevEvent;
+  }
+});
+
 
 
 

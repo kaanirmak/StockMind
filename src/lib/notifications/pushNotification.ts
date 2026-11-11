@@ -1,4 +1,13 @@
-import { readInbox, saveInbox } from './inbox';
+import {
+  getActiveNotificationUserId,
+  readInbox,
+  saveInbox,
+} from './inbox';
+import {
+  pushNotificationStateToServer,
+  pullNotificationStateFromServer,
+  sanitizePushPreferences,
+} from './inboxSync';
 /**
  * StockMind Push & Native Phone Notification Service
  * Manages mobile push notifications via StockMind Android Bridge and Web Notifications API.
@@ -24,6 +33,14 @@ export const DEFAULT_PUSH_PREFERENCES: PushNotificationPreferences = {
 
 const STORAGE_KEY = 'stockmind_push_preferences';
 const LAST_DELIVERY_KEY = 'stockmind_push_delivery_status';
+
+export function getPushPreferencesStorageKey(userId?: string | null): string {
+  const normalized = typeof userId === 'string' ? userId.trim() : '';
+  if (normalized && normalized !== 'guest') {
+    return `${STORAGE_KEY}_user_${normalized}`;
+  }
+  return STORAGE_KEY;
+}
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
 export type NotificationDeliveryChannel = 'android' | 'web' | 'none';
@@ -328,7 +345,9 @@ export function sendPushNotificationWithResult(
   let saved = false;
   if (prefs.inAppEnabled) {
     try {
-      const list = readInbox();
+      const activeUserId = getActiveNotificationUserId();
+      const list = readInbox(activeUserId);
+      const nowIso = new Date().toISOString();
       list.unshift({
         id: 'push-' + Date.now(),
         title,
@@ -337,8 +356,12 @@ export function sendPushNotificationWithResult(
         read: false,
         category: 'market',
         link: route,
+        updatedAt: nowIso,
       });
-      saved = saveInbox(list);
+      saved = saveInbox(list, activeUserId);
+      if (saved && activeUserId) {
+        void pushNotificationStateToServer({ userId: activeUserId, inbox: list });
+      }
     } catch (err) {
       console.warn('Could not save to local notification store', err);
     }
@@ -378,21 +401,25 @@ export function sendPushNotification(title: string, message: string, route: stri
 /**
  * Load push notification preferences from local storage and native bridge
  */
-export function loadPushPreferences(): PushNotificationPreferences {
+export function loadPushPreferences(userId?: string | null): PushNotificationPreferences {
   if (typeof window === 'undefined') return DEFAULT_PUSH_PREFERENCES;
 
   try {
-    const bridge = (window as any).StockMindAndroid;
-    if (bridge && typeof bridge.getPushSettings === 'function') {
-      const rawNative = bridge.getPushSettings();
-      if (rawNative && rawNative !== '{}') {
-        return { ...DEFAULT_PUSH_PREFERENCES, ...JSON.parse(rawNative) };
-      }
+    const resolvedUserId = userId !== undefined ? userId : getActiveNotificationUserId();
+    const key = getPushPreferencesStorageKey(resolvedUserId);
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      return sanitizePushPreferences(JSON.parse(saved), DEFAULT_PUSH_PREFERENCES);
     }
 
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return { ...DEFAULT_PUSH_PREFERENCES, ...JSON.parse(saved) };
+    if (!resolvedUserId) {
+      const bridge = (window as any).StockMindAndroid;
+      if (bridge && typeof bridge.getPushSettings === 'function') {
+        const rawNative = bridge.getPushSettings();
+        if (rawNative && rawNative !== '{}') {
+          return sanitizePushPreferences(JSON.parse(rawNative), DEFAULT_PUSH_PREFERENCES);
+        }
+      }
     }
   } catch (e) {
     console.warn('Error reading push preferences:', e);
@@ -404,18 +431,41 @@ export function loadPushPreferences(): PushNotificationPreferences {
 /**
  * Save push notification preferences
  */
-export function savePushPreferences(prefs: PushNotificationPreferences): void {
+export function savePushPreferences(
+  prefs: PushNotificationPreferences,
+  userId?: string | null,
+  options?: { skipRemote?: boolean },
+): void {
   if (typeof window === 'undefined') return;
 
   try {
-    const jsonStr = JSON.stringify(prefs);
-    localStorage.setItem(STORAGE_KEY, jsonStr);
+    const resolvedUserId = userId !== undefined ? userId : getActiveNotificationUserId();
+    const sanitized = sanitizePushPreferences(prefs, DEFAULT_PUSH_PREFERENCES);
+    const jsonStr = JSON.stringify(sanitized);
+    localStorage.setItem(getPushPreferencesStorageKey(resolvedUserId), jsonStr);
 
     const bridge = (window as any).StockMindAndroid;
     if (bridge && typeof bridge.savePushSettings === 'function') {
       bridge.savePushSettings(jsonStr);
     }
+
+    if (typeof window.dispatchEvent === 'function' && typeof Event !== 'undefined') {
+      window.dispatchEvent(new Event('stockmind:push-prefs'));
+    }
+
+    if (!options?.skipRemote && resolvedUserId) {
+      void pushNotificationStateToServer({ userId: resolvedUserId, preferences: sanitized });
+    }
   } catch (e) {
     console.warn('Error saving push preferences:', e);
+  }
+}
+
+export async function syncAccountNotificationState(userId: string): Promise<void> {
+  if (!userId || userId === 'guest') return;
+  const synced = await pullNotificationStateFromServer(userId);
+  if (!synced) return;
+  if (synced.preferences) {
+    savePushPreferences(synced.preferences, userId, { skipRemote: true });
   }
 }

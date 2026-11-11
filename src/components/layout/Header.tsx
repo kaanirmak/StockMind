@@ -2,7 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { readInbox, saveInbox } from '@/lib/notifications/inbox';
+import {
+  getActiveNotificationUserId,
+  readInbox,
+  saveInbox,
+} from '@/lib/notifications/inbox';
+import { pushNotificationStateToServer } from '@/lib/notifications/inboxSync';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -94,15 +99,24 @@ export default function Header() {
     return () => { window.removeEventListener('storage', reload); window.removeEventListener('stockmind:inbox', reload); };
   }, []);
 
-  const saveNotifications = (items: NotificationItem[]) => { setNotifications(items); saveInbox(items); };
+  const saveNotifications = (items: NotificationItem[]) => {
+    const activeUserId = getActiveNotificationUserId();
+    setNotifications(items);
+    saveInbox(items, activeUserId);
+    if (activeUserId) {
+      void pushNotificationStateToServer({ userId: activeUserId, inbox: items });
+    }
+  };
 
   const markAllAsRead = () => {
-    const updated = notifications.map((n) => ({ ...n, read: true }));
+    const updatedAt = new Date().toISOString();
+    const updated = notifications.map((n) => ({ ...n, read: true, updatedAt }));
     saveNotifications(updated);
   };
 
   const clearAllNotifications = () => {
-    saveNotifications(notifications.map((n) => ({ ...n, read: true, archived: true })));
+    const updatedAt = new Date().toISOString();
+    saveNotifications(notifications.map((n) => ({ ...n, read: true, archived: true, updatedAt })));
   };
 
   const deleteNotification = (id: string, e: React.MouseEvent) => {
@@ -111,7 +125,10 @@ export default function Header() {
   };
 
   const handleNotificationClick = (item: NotificationItem) => {
-    const updated = notifications.map((n) => (n.id === item.id ? { ...n, read: true } : n));
+    const updatedAt = new Date().toISOString();
+    const updated = notifications.map((n) =>
+      n.id === item.id ? { ...n, read: true, updatedAt } : n,
+    );
     saveNotifications(updated);
     setShowNotifications(false);
     if (item.link) {

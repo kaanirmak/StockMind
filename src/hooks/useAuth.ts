@@ -7,6 +7,8 @@ import type { User } from '@supabase/supabase-js';
 import type { UserProfile } from '@/types';
 import { hasProAccess } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
+import { setActiveNotificationUser } from '@/lib/notifications/inbox';
+import { syncAccountNotificationState } from '@/lib/notifications/pushNotification';
 
 export function useAuth() {
   const supabase = createClient();
@@ -225,9 +227,12 @@ export function useAuth() {
             }
             await fetchProfile(currentUser.id, currentUser);
             useWatchlistStore.getState().loadUserWatchlist(currentUser.id);
+            setActiveNotificationUser(currentUser.id);
+            void syncAccountNotificationState(currentUser.id);
           } else {
             loadGuestProfile();
             useWatchlistStore.getState().loadUserWatchlist(null);
+            setActiveNotificationUser(null);
           }
           usePortfolioStore.getState().fetchPortfoliosAndTransactions();
         }
@@ -254,6 +259,7 @@ export function useAuth() {
             usePortfolioStore.getState().resetStore();
             useWatchlistStore.getState().resetWatchlist();
             useAuthStore.getState().clearUser();
+            setActiveNotificationUser(null);
           }
 
           setUser(authUser);
@@ -265,9 +271,12 @@ export function useAuth() {
             }
             await fetchProfile(authUser.id, authUser);
             useWatchlistStore.getState().loadUserWatchlist(authUser.id);
+            setActiveNotificationUser(authUser.id);
+            void syncAccountNotificationState(authUser.id);
           } else {
             loadGuestProfile();
             useWatchlistStore.getState().loadUserWatchlist(null);
+            setActiveNotificationUser(null);
           }
           usePortfolioStore.getState().fetchPortfoliosAndTransactions();
           setLoading(false);
@@ -293,6 +302,7 @@ export function useAuth() {
     useAuthStore.getState().clearUser();
     usePortfolioStore.getState().resetStore();
     useWatchlistStore.getState().resetWatchlist();
+    setActiveNotificationUser(null);
     window.location.href = '/login';
   };
 

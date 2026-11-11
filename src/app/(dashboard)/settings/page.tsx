@@ -128,11 +128,14 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    setPushSettings(loadPushPreferences());
+    const refreshPushPrefs = () => setPushSettings(loadPushPreferences());
+    refreshPushPrefs();
     setIsPermitted(hasNotificationPermission());
     const refreshPermission = () => setIsPermitted(hasNotificationPermission());
     window.addEventListener('focus', refreshPermission);
     window.addEventListener('stockmind:notification-permission', refreshPermission);
+    window.addEventListener('stockmind:push-prefs', refreshPushPrefs);
+    window.addEventListener('storage', refreshPushPrefs);
     document.addEventListener('visibilitychange', refreshPermission);
     const isAnd = isAndroidApp();
     setIsAndroid(isAnd);
@@ -162,6 +165,8 @@ export default function SettingsPage() {
     return () => {
       window.removeEventListener('focus', refreshPermission);
       window.removeEventListener('stockmind:notification-permission', refreshPermission);
+      window.removeEventListener('stockmind:push-prefs', refreshPushPrefs);
+      window.removeEventListener('storage', refreshPushPrefs);
       document.removeEventListener('visibilitychange', refreshPermission);
     };
   }, []);
