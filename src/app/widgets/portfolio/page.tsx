@@ -4,6 +4,7 @@ import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import PortfolioStatusWidget from '@/components/widgets/PortfolioStatusWidget';
 import { isWidgetDemoQuery } from '@/lib/widgets/widgetStatus';
+import { isWidgetPrivacyQuery } from '@/lib/widgets/widgetSharePolicy';
 
 function PortfolioWidgetInner() {
   const searchParams = useSearchParams();
@@ -12,6 +13,7 @@ function PortfolioWidgetInner() {
   const initialPeriod = periodParam === 'monthly' ? 'monthly' : periodParam === 'total' ? 'total' : 'daily';
   const isTransparent = searchParams.get('bg') === 'transparent' || theme === 'transparent';
   const forceDemo = isWidgetDemoQuery(searchParams);
+  const forcePrivacy = isWidgetPrivacyQuery(searchParams);
 
   return (
     <div
@@ -25,6 +27,7 @@ function PortfolioWidgetInner() {
           initialPeriod={initialPeriod}
           transparent={isTransparent}
           forceDemo={forceDemo}
+          forcePrivacy={forcePrivacy}
           theme={theme === 'light' ? 'light' : 'dark'}
         />
       </div>

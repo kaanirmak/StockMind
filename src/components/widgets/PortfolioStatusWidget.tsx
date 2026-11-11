@@ -14,6 +14,7 @@ export interface PortfolioStatusWidgetProps {
   transparent?: boolean;
   hideFooter?: boolean;
   forceDemo?: boolean;
+  forcePrivacy?: boolean;
   theme?: 'dark' | 'light';
 }
 
@@ -34,11 +35,13 @@ export default function PortfolioStatusWidget({
   transparent = false,
   hideFooter = false,
   forceDemo = false,
+  forcePrivacy = false,
   theme = 'dark',
 }: PortfolioStatusWidgetProps) {
   const { getSummary, livePrices, fetchPortfoliosAndTransactions } = usePortfolioStore();
   const rawSummary = getSummary();
-  const { isPrivacyMode, setPrivacyMode } = usePrivacyMode();
+  const { isPrivacyMode: storedPrivacyMode, setPrivacyMode } = usePrivacyMode();
+  const isPrivacyMode = Boolean(forcePrivacy) || storedPrivacyMode;
   const dataStatus = resolveWidgetDataStatus({
     forceDemo,
     hasPersonalData: rawSummary.totalValue > 0,

@@ -3,6 +3,7 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
 import React, { useState, useEffect } from 'react';
+import { buildWidgetShareDescriptor, type WidgetShareMode } from '@/lib/widgets/widgetSharePolicy';
 
 interface WidgetEmbedModalProps {
   isOpen: boolean;
@@ -18,6 +19,9 @@ export default function WidgetEmbedModal({
   const [selectedWidget, setSelectedWidget] = useState<'portfolio' | 'heatmap'>(initialWidget);
   const [theme, setTheme] = useState<'dark' | 'light' | 'transparent'>('dark');
   const [sizePreset, setSizePreset] = useState<'compact' | 'medium' | 'responsive'>('compact');
+  const [shareMode, setShareMode] = useState<WidgetShareMode>('demo');
+  const [personalConsent, setPersonalConsent] = useState(false);
+  const [hideAmounts, setHideAmounts] = useState(true);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [origin, setOrigin] = useState('');
@@ -32,13 +36,24 @@ export default function WidgetEmbedModal({
     setSelectedWidget(initialWidget);
   }, [initialWidget]);
 
+  useEffect(() => {
+    if (isOpen) {
+      setShareMode('demo');
+      setPersonalConsent(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const widgetPath = selectedWidget === 'portfolio' ? '/widgets/portfolio' : '/widgets/heatmap';
-  const queryParams = new URLSearchParams();
-  if (theme !== 'dark') queryParams.set('theme', theme);
-
-  const fullWidgetUrl = `${origin}${widgetPath}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  const descriptor = buildWidgetShareDescriptor({
+    widget: selectedWidget,
+    theme,
+    shareMode,
+    personalConsent,
+    hideAmounts,
+    origin,
+  });
+  const fullWidgetUrl = descriptor.url;
 
   const dimensions =
     sizePreset === 'compact'
@@ -50,6 +65,7 @@ export default function WidgetEmbedModal({
   const iframeCode = `<iframe src="${fullWidgetUrl}" width="${dimensions.width}" height="${dimensions.height}" frameborder="0" style="border-radius: 24px; overflow: hidden;" title="StockMind Widget"></iframe>`;
 
   const handleCopyCode = async () => {
+    if (!descriptor.canExport) return;
     try {
       await navigator.clipboard.writeText(iframeCode);
       setCopiedCode(true);
@@ -58,6 +74,7 @@ export default function WidgetEmbedModal({
   };
 
   const handleCopyUrl = async () => {
+    if (!descriptor.canExport) return;
     try {
       await navigator.clipboard.writeText(fullWidgetUrl);
       setCopiedUrl(true);
@@ -66,6 +83,7 @@ export default function WidgetEmbedModal({
   };
 
   const handleOpenDesktopWindow = () => {
+    if (!descriptor.canExport) return;
     const w = parseInt(dimensions.width, 10) || 400;
     const h = parseInt(dimensions.height, 10) || 320;
     window.open(
@@ -199,6 +217,115 @@ export default function WidgetEmbedModal({
             </div>
           </div>
 
+          {/* Data Sharing Scope & Explicit Consent */}
+          <div className="space-y-3 p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+            <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">
+              Veri Paylaşım Sınırı
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                data-testid="widget-share-mode-demo"
+                onClick={() => {
+                  setShareMode('demo');
+                  setPersonalConsent(false);
+                }}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  shareMode === 'demo'
+                    ? 'bg-amber-500/15 border-amber-400/50 text-white'
+                    : 'bg-white/[0.02] border-white/10 text-text-muted hover:text-white'
+                }`}
+              >
+                <div className="font-bold text-xs">Örnek Veri (Güvenli Mod)</div>
+                <p className="text-[10px] text-text-muted mt-1">
+                  Kişisel tutar içermez; harici Notion/web gömmeleri için önerilir.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                data-testid="widget-share-mode-personal"
+                onClick={() => setShareMode('personal')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  shareMode === 'personal'
+                    ? 'bg-emerald-500/15 border-emerald-400/50 text-white'
+                    : 'bg-white/[0.02] border-white/10 text-text-muted hover:text-white'
+                }`}
+              >
+                <div className="font-bold text-xs">Kişisel Değerler</div>
+                <p className="text-[10px] text-text-muted mt-1">
+                  Yalnızca oturum açtığınız kendi tarayıcınızda kişisel değerleri gösterir.
+                </p>
+              </button>
+            </div>
+
+            {shareMode === 'personal' && (
+              <div className="space-y-2.5 pt-2 border-t border-white/10">
+                <label className="flex items-start gap-2.5 text-xs text-white/90 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    data-testid="widget-personal-consent-checkbox"
+                    checked={personalConsent}
+                    onChange={(e) => setPersonalConsent(e.target.checked)}
+                    className="mt-0.5 accent-accent cursor-pointer"
+                  />
+                  <span>
+                    Kişisel portföy değerlerimin bu widget penceresinde yalnızca aktif tarayıcı oturumumla görünmesini açıkça onaylıyorum.
+                  </span>
+                </label>
+
+                {selectedWidget === 'portfolio' && (
+                  <label className="flex items-center gap-2.5 text-xs text-text-secondary cursor-pointer">
+                    <input
+                      type="checkbox"
+                      data-testid="widget-hide-amounts-checkbox"
+                      checked={hideAmounts}
+                      onChange={(e) => setHideAmounts(e.target.checked)}
+                      className="accent-accent cursor-pointer"
+                    />
+                    <span>Parasal tutarları gizle (yalnızca yüzde ve maskelenmiş tutar göster)</span>
+                  </label>
+                )}
+              </div>
+            )}
+
+            {/* Boundary Preview Card */}
+            <div
+              data-testid="widget-share-boundary-preview"
+              className={`p-3 rounded-xl border text-xs space-y-2 ${
+                descriptor.requiresConsentConfirmation
+                  ? 'bg-rose-500/10 border-rose-400/30 text-rose-200'
+                  : 'bg-black/30 border-white/10 text-text-secondary'
+              }`}
+            >
+              <div className="font-bold text-white flex items-center justify-between gap-2">
+                <span>{descriptor.headline}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+                  {descriptor.effectiveMode === 'personal' ? 'Kişisel' : 'Örnek'}
+                </span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-text-muted">{descriptor.boundaryNote}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                <div>
+                  <div className="font-semibold text-emerald-300 mb-1">Gösterilen Veri</div>
+                  <ul className="space-y-0.5 list-disc list-inside text-text-secondary">
+                    {descriptor.sharedFields.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="font-semibold text-amber-300 mb-1">Paylaşım Dışı</div>
+                  <ul className="space-y-0.5 list-disc list-inside text-text-muted">
+                    {descriptor.neverShared.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Desktop Mini-Window Launcher */}
           <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-600/15 via-accent/15 to-emerald-500/15 border border-accent/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
@@ -213,7 +340,8 @@ export default function WidgetEmbedModal({
             <button
               type="button"
               onClick={handleOpenDesktopWindow}
-              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-accent/25 transition-all cursor-pointer shrink-0"
+              disabled={!descriptor.canExport}
+              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-accent/25 transition-all cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <span> Pencereyi Aç</span>
             </button>
@@ -228,13 +356,16 @@ export default function WidgetEmbedModal({
               <button
                 type="button"
                 onClick={handleCopyCode}
-                className="text-accent hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                disabled={!descriptor.canExport}
+                className="text-accent hover:underline font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {copiedCode ? '✓ Kopyalandı!' : 'Kodu Kopyala'}
               </button>
             </div>
             <pre className="p-3 rounded-xl bg-black/50 border border-white/10 text-[11px] text-emerald-400 font-mono overflow-x-auto whitespace-pre-wrap select-all">
-              {iframeCode}
+              {descriptor.requiresConsentConfirmation
+                ? 'Kişisel değer paylaşım kodunu oluşturmak için yukarıdaki açık onay kutusunu işaretleyin.'
+                : iframeCode}
             </pre>
           </div>
 
@@ -247,7 +378,8 @@ export default function WidgetEmbedModal({
               <button
                 type="button"
                 onClick={handleCopyUrl}
-                className="text-accent hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                disabled={!descriptor.canExport}
+                className="text-accent hover:underline font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {copiedUrl ? '✓ Kopyalandı!' : 'Bağlantıyı Kopyala'}
               </button>
@@ -256,18 +388,18 @@ export default function WidgetEmbedModal({
               type="text"
               readOnly
               aria-label="Widget yerleştirme URL bağlantısı"
-              value={fullWidgetUrl}
+              value={descriptor.requiresConsentConfirmation ? 'Önce yukarıdaki açık onayı işaretleyin' : fullWidgetUrl}
               className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-text-secondary font-mono select-all focus:outline-none"
             />
             <p className="text-[11px] text-text-muted">
-               <strong>Notion Kullanıcıları:</strong> Sayfada <code className="text-accent">/embed</code> yazıp bu linki yapıştırarak doğrudan etkileşimli widget ekleyebilirsiniz.
+               <strong>Notion / Web Kullanıcıları:</strong> Harici ortamlara gömerken yalnızca <code className="text-accent">Örnek Veri</code> bağlantısı kişisel bilgi içermez; kişisel değerler yalnızca oturumunuzun açık olduğu tarayıcıda görüntülenir.
             </p>
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-4 bg-white/[0.02] border-t border-white/10 flex items-center justify-between text-xs text-text-muted">
-          <span>Veriler otomatik senkronize edilir</span>
+          <span>{descriptor.effectiveMode === 'personal' ? 'Oturuma bağlı kişisel mod' : 'Örnek veri modu (kişisel veri dışa aktarılmaz)'}</span>
           <button
             onClick={onClose}
             className="text-white hover:underline font-medium cursor-pointer"

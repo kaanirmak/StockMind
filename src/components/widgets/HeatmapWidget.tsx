@@ -221,6 +221,7 @@ export interface HeatmapWidgetProps {
   height?: number;
   hideFooter?: boolean;
   forceDemo?: boolean;
+  forcePrivacy?: boolean;
   theme?: 'dark' | 'light';
 }
 
@@ -231,10 +232,12 @@ export default function HeatmapWidget({
   height = 260,
   hideFooter = false,
   forceDemo = false,
+  forcePrivacy = false,
   theme = 'dark',
 }: HeatmapWidgetProps) {
   const { getSummary, livePrices, fetchPortfoliosAndTransactions } = usePortfolioStore();
-  const { isPrivacyMode } = usePrivacyMode();
+  const { isPrivacyMode: storedPrivacyMode } = usePrivacyMode();
+  const isPrivacyMode = Boolean(forcePrivacy) || storedPrivacyMode;
   const summary = getSummary();
   const dataStatus = resolveWidgetDataStatus({
     forceDemo,

@@ -5009,6 +5009,80 @@ test('HSP-04: widgets prominently label sample data and show personal data and p
   assert.match(hubSrc, /ÖRNEK VERİ ÖNİZLEMESİ/);
 });
 
+test('HSP-05: widget embed preview discloses shared data boundaries and requires explicit personal opt-in', () => {
+  const policy = load('src/lib/widgets/widgetSharePolicy.ts');
+
+  // 1. Default demo mode generates safe demo URL & discloses sample data only
+  const demoDesc = policy.buildWidgetShareDescriptor({
+    widget: 'portfolio',
+    theme: 'dark',
+    shareMode: 'demo',
+    personalConsent: false,
+    hideAmounts: true,
+    origin: 'https://stockmind.app',
+  });
+  assert.equal(demoDesc.effectiveMode, 'demo');
+  assert.equal(demoDesc.requiresConsentConfirmation, false);
+  assert.equal(demoDesc.canExport, true);
+  assert.equal(demoDesc.url, 'https://stockmind.app/widgets/portfolio?mode=demo');
+  assert.ok(demoDesc.sharedFields.some((f) => /örnek/i.test(f)));
+  assert.ok(demoDesc.neverShared.some((f) => /API anahtarları/i.test(f)));
+
+  // 2. Selecting personal values WITHOUT consent blocks export & prevents leaking personal URL
+  const blockedPersonal = policy.buildWidgetShareDescriptor({
+    widget: 'portfolio',
+    theme: 'light',
+    shareMode: 'personal',
+    personalConsent: false,
+    hideAmounts: true,
+    origin: 'https://stockmind.app',
+  });
+  assert.equal(blockedPersonal.requiresConsentConfirmation, true);
+  assert.equal(blockedPersonal.canExport, false);
+  assert.equal(blockedPersonal.effectiveMode, 'demo');
+  assert.match(blockedPersonal.url, /mode=demo/);
+
+  // 3. Explicit consent unlocks personal session-scoped embed + respects hideAmounts privacy flag
+  const consentedPrivate = policy.buildWidgetShareDescriptor({
+    widget: 'portfolio',
+    theme: 'transparent',
+    shareMode: 'personal',
+    personalConsent: true,
+    hideAmounts: true,
+    origin: 'https://stockmind.app',
+  });
+  assert.equal(consentedPrivate.requiresConsentConfirmation, false);
+  assert.equal(consentedPrivate.canExport, true);
+  assert.equal(consentedPrivate.effectiveMode, 'personal');
+  assert.equal(
+    consentedPrivate.url,
+    'https://stockmind.app/widgets/portfolio?theme=transparent&mode=personal&privacy=1'
+  );
+  assert.ok(consentedPrivate.sharedFields.some((f) => /gizlenir/i.test(f)));
+
+  const consentedHeatmap = policy.buildWidgetShareDescriptor({
+    widget: 'heatmap',
+    theme: 'dark',
+    shareMode: 'personal',
+    personalConsent: true,
+    hideAmounts: false,
+    origin: 'https://stockmind.app',
+  });
+  assert.equal(consentedHeatmap.url, 'https://stockmind.app/widgets/heatmap?mode=personal');
+  assert.ok(consentedHeatmap.sharedFields.some((f) => /parasal tutar gösterilmez/i.test(f)));
+
+  // 4. Privacy query parser & UI wiring
+  assert.equal(policy.isWidgetPrivacyQuery({ get: (k) => (k === 'privacy' ? '1' : null) }), true);
+  assert.equal(policy.isWidgetPrivacyQuery({ get: () => null }), false);
+
+  const modalSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/widgets/WidgetEmbedModal.tsx'), 'utf8');
+  assert.match(modalSrc, /data-testid="widget-share-mode-demo"/);
+  assert.match(modalSrc, /data-testid="widget-share-mode-personal"/);
+  assert.match(modalSrc, /data-testid="widget-personal-consent-checkbox"/);
+  assert.match(modalSrc, /data-testid="widget-share-boundary-preview"/);
+});
+
+
 
 
 

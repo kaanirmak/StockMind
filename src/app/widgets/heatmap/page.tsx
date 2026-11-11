@@ -4,6 +4,7 @@ import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import HeatmapWidget from '@/components/widgets/HeatmapWidget';
 import { isWidgetDemoQuery } from '@/lib/widgets/widgetStatus';
+import { isWidgetPrivacyQuery } from '@/lib/widgets/widgetSharePolicy';
 
 function HeatmapWidgetInner() {
   const searchParams = useSearchParams();
@@ -12,6 +13,7 @@ function HeatmapWidgetInner() {
   const defaultMetric = metricParam === 'total' ? 'total' : 'daily';
   const isTransparent = searchParams.get('bg') === 'transparent' || theme === 'transparent';
   const forceDemo = isWidgetDemoQuery(searchParams);
+  const forcePrivacy = isWidgetPrivacyQuery(searchParams);
 
   return (
     <div
@@ -26,6 +28,7 @@ function HeatmapWidgetInner() {
           defaultMetric={defaultMetric}
           transparent={isTransparent}
           forceDemo={forceDemo}
+          forcePrivacy={forcePrivacy}
           height={320}
         />
       </div>
