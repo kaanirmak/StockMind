@@ -4188,6 +4188,103 @@ test('FON-07: fund list filters combinatorially by category, risk, management fe
   assert.match(fundsRoute, /filterFundsCombinatorially/);
 });
 
+test('AIP-02: AI portföy alanlarını soru türüne göre azaltır; tam tutarlar ve maliyetler yalnız ilgili analizlerde gider', async () => {
+  const {
+    buildPortfolioContextPayload,
+    classifyPortfolioQuestionScope,
+    getPortfolioFieldsForScope,
+  } = load('src/lib/ai/portfolioContext.ts');
+  const { buildLiveAIContext } = load('src/lib/ai/market-context.ts', {
+    require: () => ({
+      getAllStocksLive: () => [],
+      getStockBySymbolLive: async () => null,
+    }),
+  });
+
+  const sampleSummary = {
+    totalValue: 250000,
+    totalCost: 200000,
+    totalPnL: 50000,
+    totalPnLPercent: 25,
+    dailyPnL: 2500,
+    dailyPnLPercent: 1.01,
+    holdings: [
+      {
+        symbol: 'THYAO',
+        name: 'Türk Hava Yolları',
+        assetType: 'HISSE',
+        totalQuantity: 500,
+        averageCost: 250,
+        currentPrice: 300,
+        currentValue: 150000,
+        pnl: 25000,
+        pnlPercent: 20,
+        weight: 60,
+      },
+      {
+        symbol: 'ASELS',
+        name: 'Aselsan',
+        assetType: 'HISSE',
+        totalQuantity: 1000,
+        averageCost: 75,
+        currentPrice: 100,
+        currentValue: 100000,
+        pnl: 25000,
+        pnlPercent: 33.33,
+        weight: 40,
+      },
+    ],
+  };
+
+  assert.equal(classifyPortfolioQuestionScope('Sektör dağılımım dengeli mi?'), 'allocation_weights');
+  assert.equal(classifyPortfolioQuestionScope('Yıllık getiri performansım nasıl?'), 'performance_returns');
+  assert.equal(classifyPortfolioQuestionScope('Ortalama maliyet düşürmek için kaç lot almalıyım?'), 'full_financials');
+  assert.ok(getPortfolioFieldsForScope('allocation_weights').every((f) => !f.scopes.includes('full_financials') || f.key !== 'holdingsMetrics'));
+
+  const allocationOnly = buildPortfolioContextPayload(sampleSummary, true, {
+    prompt: 'Portföyümdeki sektör çeşitlendirmesi dengeli mi?',
+  });
+  assert.equal(allocationOnly.scope, 'allocation_weights');
+  assert.equal(allocationOnly.totalValue, undefined);
+  assert.equal(allocationOnly.totalCost, undefined);
+  assert.equal(allocationOnly.totalProfitLoss, undefined);
+  assert.equal(allocationOnly.holdings[0].symbol, 'THYAO');
+  assert.equal(allocationOnly.holdings[0].weight, 60);
+  assert.equal(allocationOnly.holdings[0].shares, undefined);
+  assert.equal(allocationOnly.holdings[0].averageCost, undefined);
+  assert.equal(allocationOnly.holdings[0].totalValue, undefined);
+
+  const returnsOnly = buildPortfolioContextPayload(sampleSummary, true, {
+    prompt: 'Günlük ve toplam getiri oranlarımı kıyasla',
+  });
+  assert.equal(returnsOnly.scope, 'performance_returns');
+  assert.equal(returnsOnly.totalValue, undefined);
+  assert.equal(returnsOnly.totalCost, undefined);
+  assert.equal(returnsOnly.totalProfitLossPercent, 25);
+  assert.equal(returnsOnly.holdings[0].profitLossPercent, 20);
+  assert.equal(returnsOnly.holdings[0].averageCost, undefined);
+
+  const fullFinancials = buildPortfolioContextPayload(sampleSummary, true, {
+    prompt: 'THYAO ortalama maliyet ve toplam değer tutarım ne durumda?',
+  });
+  assert.equal(fullFinancials.scope, 'full_financials');
+  assert.equal(fullFinancials.totalValue, 250000);
+  assert.equal(fullFinancials.totalCost, 200000);
+  assert.equal(fullFinancials.holdings[0].shares, 500);
+  assert.equal(fullFinancials.holdings[0].averageCost, 250);
+
+  const minimizedContext = await buildLiveAIContext('Dağılımımı yorumla', allocationOnly);
+  assert.match(minimizedContext, /tam tutarlar ve maliyetler gizlilik amacıyla gönderilmedi/i);
+  assert.doesNotMatch(minimizedContext, /Toplam Portföy Değeri|Ort\. Maliyet/);
+
+  const routeSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/ai/chat/route.ts'), 'utf8');
+  assert.match(routeSrc, /allocation_weights/);
+
+  const pageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  assert.match(pageSrc, /portfolio-scope-select/);
+  assert.match(pageSrc, /classifyPortfolioQuestionScope/);
+});
+
 
 
 

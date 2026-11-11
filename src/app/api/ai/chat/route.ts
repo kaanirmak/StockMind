@@ -15,6 +15,12 @@ function parsePortfolio(value: unknown): PortfolioContextPayload | undefined {
   if (value === undefined || value === null) return undefined;
   if (!isRecord(value)) throw new ApiError(400, 'Geçersiz portföy bilgisi.');
   const result: PortfolioContextPayload = {};
+  if (value.scope !== undefined) {
+    if (value.scope !== 'allocation_weights' && value.scope !== 'performance_returns' && value.scope !== 'full_financials') {
+      throw new ApiError(400, 'Geçersiz portföy kapsamı.');
+    }
+    result.scope = value.scope;
+  }
   const numericFields = ['totalValue', 'totalCost', 'totalProfitLoss', 'totalProfitLossPercent', 'dailyProfitLoss', 'dailyProfitLossPercent'] as const;
   for (const field of numericFields) {
     if (value[field] !== undefined) {
@@ -28,22 +34,28 @@ function parsePortfolio(value: unknown): PortfolioContextPayload | undefined {
       if (!isRecord(holding) || typeof holding.symbol !== 'string' || !/^[A-Za-z0-9_.:=^/-]{1,40}$/.test(holding.symbol)) {
         throw new ApiError(400, 'Geçersiz varlık.');
       }
-      const numbers: Record<string, number> = {};
+      const numbers: Record<string, number | undefined> = {};
       for (const field of ['shares', 'averageCost', 'currentPrice', 'totalValue', 'profitLoss', 'profitLossPercent', 'weight']) {
         const amount = holding[field];
         if (amount !== undefined && (typeof amount !== 'number' || !Number.isFinite(amount))) throw new ApiError(400, 'Geçersiz varlık tutarı.');
-        if (typeof amount === 'number') numbers[field] = amount;
-      }
-      for (const field of ['shares', 'averageCost', 'currentPrice', 'totalValue']) {
-        if (numbers[field] === undefined || numbers[field] < 0) throw new ApiError(400, 'Eksik veya negatif varlık tutarı.');
+        if (typeof amount === 'number') {
+          if (['shares', 'averageCost', 'currentPrice', 'totalValue'].includes(field) && amount < 0) {
+            throw new ApiError(400, 'Eksik veya negatif varlık tutarı.');
+          }
+          numbers[field] = amount;
+        }
       }
       return {
         symbol: holding.symbol,
         name: optionalText(holding.name, 160),
         assetType: optionalText(holding.assetType, 20),
-        shares: numbers.shares, averageCost: numbers.averageCost,
-        currentPrice: numbers.currentPrice, totalValue: numbers.totalValue,
-        profitLoss: numbers.profitLoss, profitLossPercent: numbers.profitLossPercent, weight: numbers.weight,
+        shares: numbers.shares,
+        averageCost: numbers.averageCost,
+        currentPrice: numbers.currentPrice,
+        totalValue: numbers.totalValue,
+        profitLoss: numbers.profitLoss,
+        profitLossPercent: numbers.profitLossPercent,
+        weight: numbers.weight,
       };
     });
   }

@@ -1,7 +1,14 @@
 'use client';
 import { prepareChatHistory } from '@/lib/ai/chatHistory';
 import { chatErrorMessage } from '@/lib/ai/chatErrors';
-import { PORTFOLIO_CONTEXT_FIELDS, buildPortfolioContextPayload } from '@/lib/ai/portfolioContext';
+import {
+  PORTFOLIO_CONTEXT_FIELDS,
+  PORTFOLIO_SCOPE_LABELS,
+  buildPortfolioContextPayload,
+  classifyPortfolioQuestionScope,
+  getPortfolioFieldsForScope,
+  type PortfolioFieldScopePreference,
+} from '@/lib/ai/portfolioContext';
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
@@ -81,7 +88,16 @@ function AIAssistantContent() {
   const [modelSearchQuery, setModelSearchQuery] = useState('');
   const [recentModels, setRecentModels] = useState<string[]>([]);
   const [includePortfolioContext, setIncludePortfolioContext] = useState(false);
+  const [portfolioContextScope, setPortfolioContextScope] = useState<PortfolioFieldScopePreference>('auto');
   const [showPortfolioFieldsInfo, setShowPortfolioFieldsInfo] = useState(false);
+  const effectivePortfolioScope = React.useMemo(
+    () => classifyPortfolioQuestionScope(input || 'dağılım', portfolioContextScope),
+    [input, portfolioContextScope]
+  );
+  const effectivePortfolioFields = React.useMemo(
+    () => getPortfolioFieldsForScope(effectivePortfolioScope),
+    [effectivePortfolioScope]
+  );
 
   const portfolioTransactions = usePortfolioStore((s) => s.transactions);
   const activePortfolioId = usePortfolioStore((s) => s.activePortfolioId);
@@ -363,12 +379,16 @@ function AIAssistantContent() {
     setLoading(true);
     followLatest();
 
-    // Extract current portfolio state ONLY when the user explicitly opted in
+    // Extract current portfolio state ONLY when the user explicitly opted in,
+    // minimized to the fields required by the question type (AIP-02).
     let portfolioPayload: ReturnType<typeof buildPortfolioContextPayload> = undefined;
     try {
       if (shouldIncludePortfolio) {
         const summary = usePortfolioStore.getState().getSummary();
-        portfolioPayload = buildPortfolioContextPayload(summary, true);
+        portfolioPayload = buildPortfolioContextPayload(summary, true, {
+          prompt: cleanText,
+          scope: portfolioContextScope,
+        });
       }
     } catch (_) {}
 
@@ -763,17 +783,36 @@ function AIAssistantContent() {
         {(showPortfolioFieldsInfo || includePortfolioContext) && (
           <div
             data-testid="portfolio-context-fields"
-            className="rounded-xl border border-border/80 bg-bg-secondary/70 px-3 py-2 text-[11px] text-text-secondary space-y-1"
+            className="rounded-xl border border-border/80 bg-bg-secondary/70 px-3 py-2 text-[11px] text-text-secondary space-y-1.5"
           >
-            <p className="font-semibold text-text-primary">
-              {includePortfolioContext
-                ? 'AI analizine gönderilen portföy alanları:'
-                : 'Portföy analize eklendiğinde gönderilecek alanlar:'}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-text-primary">
+                {includePortfolioContext
+                  ? `AI analizine gönderilecek kapsam: ${PORTFOLIO_SCOPE_LABELS[effectivePortfolioScope]}`
+                  : `Portföy eklenirse kapsam: ${PORTFOLIO_SCOPE_LABELS[effectivePortfolioScope]}`}
+              </p>
+              <select
+                aria-label="Portföy veri kapsamı"
+                data-testid="portfolio-scope-select"
+                value={portfolioContextScope}
+                onChange={(e) => setPortfolioContextScope(e.target.value as PortfolioFieldScopePreference)}
+                className="rounded-lg border border-border bg-bg-primary px-2 py-0.5 text-[10px] font-medium text-text-primary"
+              >
+                <option value="auto">Otomatik (Soru Türüne Göre Azalt)</option>
+                <option value="allocation_weights">Yalnız Dağılım &amp; Ağırlık</option>
+                <option value="performance_returns">Dağılım &amp; Getiri (%)</option>
+                <option value="full_financials">Tam Tutar &amp; Maliyetler</option>
+              </select>
+            </div>
             <ul className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-text-muted">
-              {PORTFOLIO_CONTEXT_FIELDS.map((field) => (
-                <li key={field.key}>• {field.label}</li>
-              ))}
+              {PORTFOLIO_CONTEXT_FIELDS.map((field) => {
+                const included = effectivePortfolioFields.some((f) => f.key === field.key);
+                return (
+                  <li key={field.key} className={included ? 'text-text-secondary font-medium' : 'line-through opacity-55'}>
+                    {included ? '✓' : '×'} {field.label}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

@@ -13,6 +13,7 @@ export interface MacroRates {
 }
 
 export interface PortfolioContextPayload {
+  scope?: 'allocation_weights' | 'performance_returns' | 'full_financials';
   totalValue?: number;
   totalCost?: number;
   totalProfitLoss?: number;
@@ -23,10 +24,10 @@ export interface PortfolioContextPayload {
     symbol: string;
     name?: string;
     assetType?: string;
-    shares: number;
-    averageCost: number;
-    currentPrice: number;
-    totalValue: number;
+    shares?: number;
+    averageCost?: number;
+    currentPrice?: number;
+    totalValue?: number;
     profitLoss?: number;
     profitLossPercent?: number;
     weight?: number;
@@ -164,28 +165,61 @@ export async function buildLiveAIContext(
     });
   }
 
-  // 3. User's Portfolio Context
-  if (portfolioPayload && (portfolioPayload.totalValue || (portfolioPayload.holdings && portfolioPayload.holdings.length > 0))) {
+  // 3. User's Portfolio Context (minimized by question scope per AIP-02)
+  if (portfolioPayload && (portfolioPayload.totalValue !== undefined || (portfolioPayload.holdings && portfolioPayload.holdings.length > 0))) {
+    const scopeLabel =
+      portfolioPayload.scope === 'allocation_weights'
+        ? 'Yalnız varlık dağılımı ve ağırlıklar (tam tutarlar ve maliyetler gizlilik amacıyla gönderilmedi)'
+        : portfolioPayload.scope === 'performance_returns'
+          ? 'Varlık dağılımı ve yüzde getiriler (tam TL/USD tutarları ve maliyetler gönderilmedi)'
+          : 'Tam tutarlar ve maliyet analizi';
+
     lines.push('');
     lines.push('**[KULLANICININ STOCKMIND PORTFÖY VERİLERİ (GÜNCEL)]:**');
-    lines.push(`- Toplam Portföy Değeri: ₺${(portfolioPayload.totalValue || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`);
-    lines.push(`- Toplam Maliyet: ₺${(portfolioPayload.totalCost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`);
-    const plSign = (portfolioPayload.totalProfitLoss || 0) >= 0 ? '+' : '';
-    lines.push(
-      `- Toplam Kâr/Zarar: ${plSign}₺${(portfolioPayload.totalProfitLoss || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} (%${plSign}${(portfolioPayload.totalProfitLossPercent || 0).toFixed(2)})`
-    );
-    if (portfolioPayload.dailyProfitLoss !== undefined) {
-      const dSign = portfolioPayload.dailyProfitLoss >= 0 ? '+' : '';
-      lines.push(`- Günlük Kâr/Zarar: ${dSign}₺${portfolioPayload.dailyProfitLoss.toFixed(2)} (%${dSign}${(portfolioPayload.dailyProfitLossPercent || 0).toFixed(2)})`);
+    lines.push(`- Paylaşım Kapsamı: ${scopeLabel}`);
+
+    if (typeof portfolioPayload.totalValue === 'number') {
+      lines.push(`- Toplam Portföy Değeri: ₺${portfolioPayload.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`);
+    }
+    if (typeof portfolioPayload.totalCost === 'number') {
+      lines.push(`- Toplam Maliyet: ₺${portfolioPayload.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`);
+    }
+    if (typeof portfolioPayload.totalProfitLoss === 'number' || typeof portfolioPayload.totalProfitLossPercent === 'number') {
+      const plPct = portfolioPayload.totalProfitLossPercent ?? 0;
+      const plSign = (portfolioPayload.totalProfitLoss ?? plPct) >= 0 ? '+' : '';
+      if (typeof portfolioPayload.totalProfitLoss === 'number') {
+        lines.push(
+          `- Toplam Kâr/Zarar: ${plSign}₺${portfolioPayload.totalProfitLoss.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} (%${plSign}${plPct.toFixed(2)})`
+        );
+      } else {
+        lines.push(`- Toplam Getiri Oranı: %${plSign}${plPct.toFixed(2)}`);
+      }
+    }
+    if (typeof portfolioPayload.dailyProfitLoss === 'number' || typeof portfolioPayload.dailyProfitLossPercent === 'number') {
+      const dPct = portfolioPayload.dailyProfitLossPercent ?? 0;
+      const dSign = (portfolioPayload.dailyProfitLoss ?? dPct) >= 0 ? '+' : '';
+      if (typeof portfolioPayload.dailyProfitLoss === 'number') {
+        lines.push(`- Günlük Kâr/Zarar: ${dSign}₺${portfolioPayload.dailyProfitLoss.toFixed(2)} (%${dSign}${dPct.toFixed(2)})`);
+      } else {
+        lines.push(`- Günlük Getiri Oranı: %${dSign}${dPct.toFixed(2)}`);
+      }
     }
 
     if (portfolioPayload.holdings && portfolioPayload.holdings.length > 0) {
       lines.push('Varlıklar (Pozisyonlar):');
       portfolioPayload.holdings.forEach((h) => {
-        const hSign = (h.profitLossPercent || 0) >= 0 ? '+' : '';
-        lines.push(
-          `  * ${h.symbol} (${h.name || h.symbol}): ${h.shares} Adet | Ort. Maliyet: ₺${h.averageCost.toFixed(2)} | Güncel Fiyat: ₺${h.currentPrice.toFixed(2)} | Toplam Değer: ₺${h.totalValue.toLocaleString('tr-TR')} | Kâr/Zarar: ${hSign}%${(h.profitLossPercent || 0).toFixed(2)} | Ağırlık: %${(h.weight || 0).toFixed(1)}`
-        );
+        const parts: string[] = [];
+        if (h.assetType) parts.push(`Tür: ${h.assetType}`);
+        if (typeof h.weight === 'number') parts.push(`Ağırlık: %${h.weight.toFixed(1)}`);
+        if (typeof h.shares === 'number') parts.push(`${h.shares} Adet`);
+        if (typeof h.averageCost === 'number') parts.push(`Ort. Maliyet: ₺${h.averageCost.toFixed(2)}`);
+        if (typeof h.currentPrice === 'number') parts.push(`Güncel Fiyat: ₺${h.currentPrice.toFixed(2)}`);
+        if (typeof h.totalValue === 'number') parts.push(`Toplam Değer: ₺${h.totalValue.toLocaleString('tr-TR')}`);
+        if (typeof h.profitLossPercent === 'number') {
+          const hSign = h.profitLossPercent >= 0 ? '+' : '';
+          parts.push(`Kâr/Zarar: ${hSign}%${h.profitLossPercent.toFixed(2)}`);
+        }
+        lines.push(`  * ${h.symbol} (${h.name || h.symbol}): ${parts.join(' | ')}`);
       });
     }
   }

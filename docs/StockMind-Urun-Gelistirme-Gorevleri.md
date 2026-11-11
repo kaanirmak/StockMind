@@ -150,7 +150,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
 | AIP-01 | P0 | Portföy bağlamını açık seçime bağla | Genel soruda portföy alanları gönderilmez. Kullanıcı portföyü analize ekleyebilir ve hangi alanların kullanılacağını görür. | ◐ |
-| AIP-02 | P1 | AI’ya giden portföy alanlarını azalt | Soru türüne göre gerekli alanlar seçilir. Tam tutarlar veya maliyetler yalnız ilgili analizlerde kullanılır. | ☐ |
+| AIP-02 | P1 | AI’ya giden portföy alanlarını azalt | Soru türüne göre gerekli alanlar seçilir. Tam tutarlar veya maliyetler yalnız ilgili analizlerde kullanılır. | ◐ |
 | AIP-03 | P1 | Yanıtta veri kaynağı, zaman ve kapsamı göster | Sağlayıcıdan gelen veriler ve genel model yorumu ayrı işaretlenir. Eksik veri açıkça belirtilir. | ☐ |
 | AIP-04 | P1 | AI hata ve yeniden deneme akışını sadeleştir | Ağ kesintisi, kota, model hatası ve kullanıcı iptali ayrı anlaşılır mesajlar üretir. | ☐ |
 | AIP-05 | P1 | Model, kota ve maliyet görünürlüğünü iyileştir | Model seçimi, kalan kota, yenilenme zamanı ve kişisel anahtar seçimi aynı yerden anlaşılır. | ☐ |
