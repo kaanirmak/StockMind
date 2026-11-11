@@ -23,6 +23,7 @@ import {
   loadLastPushDeliveryDiagnostic,
   playNotificationSound,
   hasNotificationPermission,
+  getNotificationPermissionState,
   requestNotificationPermission,
   isBatteryOptimizationIgnored,
   requestBatteryOptimizationExemption,
@@ -31,6 +32,12 @@ import {
   PushDeliveryDiagnostic,
   DEFAULT_PUSH_PREFERENCES,
 } from '@/lib/notifications/pushNotification';
+import {
+  buildActiveChannelSummary,
+  fetchAndSyncNotificationDevices,
+  removeNotificationDevice,
+  type NotificationDeviceRecord,
+} from '@/lib/notifications/devices';
 
 const AVATAR_PRESETS: Array<{ label: string; icon: string; colors: [string, string] }> = [
   { label: 'Boğa (Bull)', icon: '🐂', colors: [palette.color059669, palette.success] },
@@ -93,6 +100,9 @@ export default function SettingsPage() {
   const [isAndroid, setIsAndroid] = useState(false);
   const [isSendingTestPush, setIsSendingTestPush] = useState(false);
   const [lastPushDiagnostic, setLastPushDiagnostic] = useState<PushDeliveryDiagnostic | null>(null);
+  const [connectedDevices, setConnectedDevices] = useState<NotificationDeviceRecord[]>([]);
+  const [prunedDevicesCount, setPrunedDevicesCount] = useState(0);
+  const [loadingDevices, setLoadingDevices] = useState(false);
 
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -171,9 +181,46 @@ export default function SettingsPage() {
     };
   }, []);
 
+  const syncNotificationDevices = React.useCallback(
+    async (registerCurrent: boolean) => {
+      if (!user?.id) {
+        setConnectedDevices([]);
+        setPrunedDevicesCount(0);
+        return;
+      }
+      setLoadingDevices(true);
+      try {
+        const result = await fetchAndSyncNotificationDevices({
+          userId: user.id,
+          permissionState: getNotificationPermissionState(),
+          prefs: pushSettings,
+          isAndroid,
+          emailEnabled: dailyReportEnabled,
+          registerCurrent,
+        });
+        setConnectedDevices(result.devices);
+        if (result.prunedCount > 0) {
+          setPrunedDevicesCount(result.prunedCount);
+        }
+      } finally {
+        setLoadingDevices(false);
+      }
+    },
+    [user?.id, pushSettings, isAndroid, dailyReportEnabled],
+  );
+
+  useEffect(() => {
+    if (settingsSection === 'notifications' && user?.id) {
+      void syncNotificationDevices(true);
+    }
+  }, [settingsSection, user?.id, syncNotificationDevices]);
+
   const handleRequestPushPermission = async () => {
     const granted = await requestNotificationPermission();
     setIsPermitted(hasNotificationPermission() || granted);
+    if (user?.id) {
+      void syncNotificationDevices(true);
+    }
     if (granted) {
       showToast({
         type: 'success',
@@ -191,6 +238,9 @@ export default function SettingsPage() {
 
   const handleSavePushSettings = () => {
     savePushPreferences(pushSettings);
+    if (user?.id) {
+      void syncNotificationDevices(true);
+    }
     showToast({
       type: 'success',
       title: 'Mobil Bildirim Ayarları Kaydedildi',
@@ -1165,6 +1215,148 @@ export default function SettingsPage() {
               </p>
             ) : (
               <p className="text-text-muted">Henüz kanal testi yapılmadı</p>
+            )}
+          </div>
+        </div>
+
+        {/* Connected Devices & Active Channels (ALR-09) */}
+        <div
+          data-testid="notification-device-management"
+          className="p-4 rounded-xl bg-bg-tertiary/50 border border-border/60 space-y-4 text-xs"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-bold text-text-primary">
+                Bağlı Cihazlar, İzinler ve Etkin Kanallar
+              </h4>
+              <p className="text-text-muted mt-0.5">
+                Hesabınızda etkin olan bildirim kanallarını ve bağlı oturumları görüntüleyin. Geçersiz veya süresi dolmuş cihaz kayıtları otomatik olarak ayıklanır.
+              </p>
+            </div>
+            {user?.id && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void syncNotificationDevices(true)}
+                disabled={loadingDevices}
+                className="shrink-0"
+              >
+                {loadingDevices ? 'Senkronize Ediliyor...' : 'Cihazları Yenile'}
+              </Button>
+            )}
+          </div>
+
+          {prunedDevicesCount > 0 && (
+            <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300">
+              {prunedDevicesCount} geçersiz veya süresi dolmuş cihaz kaydı hesabınızdan otomatik olarak ayıklandı.
+            </div>
+          )}
+
+          {/* Active Channel Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {buildActiveChannelSummary({
+              permissionState: getNotificationPermissionState(),
+              prefs: pushSettings,
+              isAndroid,
+              emailEnabled: dailyReportEnabled,
+              devices: connectedDevices,
+            }).map((ch) => (
+              <div
+                key={ch.id}
+                className="p-3 rounded-lg bg-bg-secondary/70 border border-border/50 space-y-1"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-text-primary">{ch.label}</span>
+                  <Badge variant={ch.active ? 'success' : 'default'} size="sm">
+                    {ch.permissionLabel}
+                  </Badge>
+                </div>
+                <p className="text-text-muted leading-relaxed">{ch.reason}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Registered Devices List */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-text-secondary">Kayıtlı Cihazlar</span>
+              <span className="text-text-muted">{connectedDevices.length} aktif cihaz</span>
+            </div>
+            {!user?.id ? (
+              <p className="p-3 rounded-lg bg-bg-secondary/50 border border-border/40 text-text-muted">
+                Cihaz listesi ve çoklu cihaz eşitlemesi yalnızca giriş yapılmış hesaplarda tutulur.
+              </p>
+            ) : connectedDevices.length === 0 ? (
+              <p className="p-3 rounded-lg bg-bg-secondary/50 border border-border/40 text-text-muted">
+                {loadingDevices ? 'Bağlı cihazlar yükleniyor...' : 'Henüz kayıtlı aktif cihaz yok.'}
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {connectedDevices.map((dev) => (
+                  <div
+                    key={dev.id}
+                    className="p-3 rounded-lg bg-bg-secondary/60 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-text-primary truncate">
+                          {dev.deviceLabel}
+                        </span>
+                        <Badge variant={dev.platform === 'android' ? 'success' : 'purple'} size="sm">
+                          {dev.platform === 'android' ? 'Android' : dev.platform === 'pwa' ? 'PWA' : 'Web'}
+                        </Badge>
+                        <Badge
+                          variant={dev.permissionState === 'granted' ? 'success' : 'warning'}
+                          size="sm"
+                        >
+                          {dev.permissionState === 'granted'
+                            ? 'İzin Açık'
+                            : dev.permissionState === 'denied'
+                              ? 'İzin Kapalı'
+                              : 'İzin Bekliyor'}
+                        </Badge>
+                      </div>
+                      <p className="text-text-muted">
+                        Kanallar:{' '}
+                        {[
+                          dev.channels.inApp ? 'Uygulama İçi' : null,
+                          dev.channels.push ? 'Push' : null,
+                          dev.channels.email ? 'E-posta' : null,
+                        ]
+                          .filter(Boolean)
+                          .join(', ') || 'Salt okuma'}{' '}
+                        · Son görülme:{' '}
+                        {new Date(dev.lastSeenAt).toLocaleString('tr-TR', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const ok = await removeNotificationDevice(dev.id);
+                        if (ok) {
+                          setConnectedDevices((prev) => prev.filter((item) => item.id !== dev.id));
+                          showToast({
+                            type: 'info',
+                            title: 'Cihaz Kaldırıldı',
+                            message: `${dev.deviceLabel} cihaz kaydı hesaptan kaldırıldı.`,
+                          });
+                        }
+                      }}
+                      className="text-red-400 border-red-500/30 hover:bg-red-500/10 shrink-0 self-start sm:self-center"
+                    >
+                      Cihazı Kaldır
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

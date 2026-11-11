@@ -3596,6 +3596,98 @@ test('ALR-08: account-bound notification inbox and preferences isolate accounts 
   }
 });
 
+test('ALR-09: device and notification channel manager lists active channels and prunes invalid devices automatically', () => {
+  const devicesMod = load('src/lib/notifications/devices.ts');
+  const nowMs = Date.parse('2026-11-11T12:00:00.000Z');
+
+  const sampleDevices = [
+    {
+      id: 'dev-valid-android',
+      deviceKey: 'android-pixel-9',
+      deviceLabel: 'StockMind Android Uygulama',
+      platform: 'android',
+      channel: 'android',
+      permissionState: 'granted',
+      pushToken: 'fcm-live-token-123',
+      channels: { inApp: true, push: true, email: true },
+      status: 'active',
+      lastSeenAt: '2026-11-11T11:30:00.000Z',
+    },
+    {
+      id: 'dev-gone-410',
+      deviceKey: 'chrome-old-mac',
+      deviceLabel: 'Chrome (macOS)',
+      platform: 'web',
+      channel: 'web',
+      permissionState: 'granted',
+      pushToken: 'webpush-expired',
+      channels: { inApp: true, push: true, email: false },
+      status: 'active',
+      invalidReason: 'HTTP 410 Gone NotRegistered',
+      lastSeenAt: '2026-11-11T11:00:00.000Z',
+    },
+    {
+      id: 'dev-stale',
+      deviceKey: 'safari-iphone-60d',
+      deviceLabel: 'Safari (iOS)',
+      platform: 'web',
+      channel: 'web',
+      permissionState: 'granted',
+      channels: { inApp: true, push: false, email: false },
+      status: 'active',
+      lastSeenAt: '2026-08-01T10:00:00.000Z',
+    },
+    {
+      id: 'dev-denied-no-fallback',
+      deviceKey: 'revoked-browser',
+      deviceLabel: 'Edge (Windows)',
+      platform: 'web',
+      channel: 'web',
+      permissionState: 'denied',
+      channels: { inApp: false, push: false, email: false },
+      status: 'active',
+      lastSeenAt: '2026-11-11T10:00:00.000Z',
+    },
+  ];
+
+  const { activeDevices, prunedDevices } = devicesMod.partitionAndPruneDevices(sampleDevices, nowMs);
+  assert.equal(activeDevices.length, 1);
+  assert.equal(activeDevices[0].id, 'dev-valid-android');
+  assert.equal(prunedDevices.length, 3);
+  assert.equal(devicesMod.isInvalidPushErrorCode('410'), true);
+  assert.equal(devicesMod.isInvalidPushErrorCode('NotRegistered'), true);
+
+  const summary = devicesMod.buildActiveChannelSummary({
+    permissionState: 'granted',
+    prefs: { enabled: true, inAppEnabled: true, priceAlerts: true, dailyReport: true },
+    isAndroid: false,
+    emailEnabled: true,
+    devices: activeDevices,
+  });
+
+  const androidChannel = summary.find((item) => item.id === 'android-push');
+  const webChannel = summary.find((item) => item.id === 'web-push');
+  const emailChannel = summary.find((item) => item.id === 'email');
+  assert.equal(androidChannel.active, true);
+  assert.equal(webChannel.active, true);
+  assert.equal(emailChannel.active, true);
+
+  const routeSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/api/notifications/devices/route.ts'),
+    'utf8',
+  );
+  assert.match(routeSource, /partitionAndPruneDevices/);
+  assert.match(routeSource, /supabase\.auth\.getUser/);
+  assert.match(routeSource, /status:\s*401/);
+
+  const settingsSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/(dashboard)/settings/page.tsx'),
+    'utf8',
+  );
+  assert.match(settingsSource, /notification-device-management/);
+  assert.match(settingsSource, /buildActiveChannelSummary/);
+});
+
 
 
 
