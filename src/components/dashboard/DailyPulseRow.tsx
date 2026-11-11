@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { InstrumentLogo } from '@/components/ui';
+import { InstrumentLogo, StateView } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { formatCurrency, formatPercent, getPnLColor, getPnLSign } from '@/lib/utils/format';
 import {
@@ -173,21 +173,33 @@ export default function DailyPulseRow() {
           </div>
 
           {eventLoading && !topEvent ? (
-            <p className="text-xs text-text-muted py-3">Önemli gelişmeler taranıyor...</p>
+            <StateView
+              compact
+              kind="loading"
+              title="Önemli gelişmeler taranıyor"
+              description="Portföy ve piyasa haber akışı kontrol ediliyor."
+              className="!border-0 !bg-transparent !shadow-none !p-2"
+            />
           ) : eventError || !topEvent ? (
-            <div className="py-2 space-y-1.5">
-              <p className="text-xs text-text-muted">
-                {eventError
+            <StateView
+              compact
+              kind={eventError ? 'error' : 'empty'}
+              title={eventError ? 'Haber akışı alınamadı' : 'Öne çıkan önemli olay yok'}
+              description={
+                eventError
                   ? 'Piyasa haber akışına şu anda ulaşılamıyor.'
-                  : 'Şu anda öne çıkan önemli bir gelişme bulunamadı.'}
-              </p>
-              <Link
-                href="/news"
-                className="inline-flex text-xs font-medium text-accent hover:underline"
-              >
-                Haber akışını aç &rarr;
-              </Link>
-            </div>
+                  : 'Bağlı kaynaklarda bugün için öne çıkan başlık bulunamadı.'
+              }
+              action={
+                <Link
+                  href="/news"
+                  className="inline-flex text-xs font-medium text-accent hover:underline"
+                >
+                  Haber akışını aç &rarr;
+                </Link>
+              }
+              className="!border-0 !bg-transparent !shadow-none !p-2"
+            />
           ) : (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-1.5">

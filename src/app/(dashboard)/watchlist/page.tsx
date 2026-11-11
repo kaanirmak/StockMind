@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ReorderHandle } from '@/components/watchlist/ReorderHandle';
 import { Icon } from '@/components/ui/Icon';
 import { useWatchlistStore, WatchlistItem } from '@/store/useWatchlistStore';
-import { Badge, Button, Input, Modal, useToast, InstrumentLogo } from '@/components/ui';
+import { Badge, Button, Input, Modal, useToast, InstrumentLogo, StateView } from '@/components/ui';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { POPULAR_FUNDS } from '@/lib/constants/funds';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
@@ -118,10 +118,17 @@ export default function WatchlistPage() {
       {/* Watchlist Mobile Compact Card View (md:hidden) */}
       <div className="md:hidden space-y-2.5">
         {items.length === 0 ? (
-          <div className="glass-card p-8 text-center text-text-muted space-y-3">
-            <p className="text-sm font-medium text-text-secondary">İzleme listenizde henüz varlık bulunmuyor.</p>
-            <p className="text-xs">Takip etmek istediğiniz hisse veya fonları ekleyebilirsiniz.</p>
-          </div>
+          <StateView
+            kind="empty"
+            compact
+            title="Takip listeniz henüz boş"
+            description="İzlemek istediğiniz hisse veya fonları ekleyip fiyat alarmı kurabilirsiniz."
+            action={
+              <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
+                + Varlık Ekle
+              </Button>
+            }
+          />
         ) : (
           items.map((item) => {
             const isPositive = item.changePercent >= 0;
@@ -306,12 +313,18 @@ export default function WatchlistPage() {
             <tbody className="divide-y divide-border/40">
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-text-muted">
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium text-text-secondary">İzleme listenizde henüz varlık bulunmuyor.</p>
-                      <p className="text-xs">Yukarıdaki &quot;Varlık Ekle&quot; butonuna basarak takip etmek istediğiniz hisse veya fonları ekleyebilirsiniz.</p>
-
-                    </div>
+                  <td colSpan={6} className="p-4">
+                    <StateView
+                      kind="empty"
+                      compact
+                      title="Takip listeniz henüz boş"
+                      description="Takip etmek istediğiniz hisse veya TEFAS fonlarını ekleyerek fiyat hareketlerini ve alarmları tek listeden yönetin."
+                      action={
+                        <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
+                          + Varlık Ekle
+                        </Button>
+                      }
+                    />
                   </td>
                 </tr>
               ) : (

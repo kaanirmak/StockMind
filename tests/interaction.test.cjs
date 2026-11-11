@@ -2357,6 +2357,42 @@ test('UX-10 keyboard and screen-reader flows cover menus, filters, modals, back 
   assert.match(toastSrc, /aria-label="Bildirimi kapat"/);
 });
 
+test('UX-11 unifies loading, error, and empty states with status label, reason, and next action across core screens', () => {
+  const { resolveUnifiedStateMeta, STATE_STATUS_LABELS } = load('src/lib/ui/stateDescriptor.ts');
+  assert.equal(STATE_STATUS_LABELS.loading, 'Yükleniyor');
+  assert.equal(STATE_STATUS_LABELS.empty, 'Veri Yok');
+  assert.equal(STATE_STATUS_LABELS.error, 'Bağlantı / Veri Hatası');
+
+  assert.deepEqual(
+    { ...resolveUnifiedStateMeta('loading') },
+    { role: 'status', ariaLive: 'polite', ariaBusy: true, statusLabel: 'Yükleniyor' }
+  );
+  assert.deepEqual(
+    { ...resolveUnifiedStateMeta('error', 'Özel Hata') },
+    { role: 'alert', ariaLive: 'assertive', ariaBusy: false, statusLabel: 'Özel Hata' }
+  );
+
+  const stateViewSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/ui/StateView.tsx'),
+    'utf8'
+  );
+  assert.match(stateViewSrc, /resolveUnifiedStateMeta/);
+  assert.match(stateViewSrc, /meta\.statusLabel/);
+  assert.match(stateViewSrc, /data-state-kind=\{kind\}/);
+
+  const screenPaths = [
+    'src/app/(dashboard)/news/page.tsx',
+    'src/app/(dashboard)/watchlist/page.tsx',
+    'src/app/(dashboard)/piyasalar/page.tsx',
+    'src/app/(dashboard)/portfolio/page.tsx',
+    'src/components/dashboard/DailyPulseRow.tsx',
+  ];
+  for (const relPath of screenPaths) {
+    const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    assert.match(src, /<StateView/, `Expected unified StateView usage in ${relPath}`);
+  }
+});
+
 
 
 

@@ -4,7 +4,7 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { Badge, Input, Button } from '@/components/ui';
+import { Badge, Input, Button, StateView } from '@/components/ui';
 import type { NewsArticle } from '@/app/api/news/route';
 import { calculatePortfolioHoldings } from '@/lib/portfolio/calculations';
 import { mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
@@ -265,7 +265,23 @@ export default function NewsPage() {
         )}
       </div>
 
-      {newsError && <div role="alert" className="glass-card p-4 space-y-2"><p className="text-sm text-danger">{newsError}</p>{news.length > 0 && <p className="text-xs text-text-muted">Son yüklenen haberler gösteriliyor.</p>}<Button variant="secondary" size="sm" onClick={() => fetchNews(true)} disabled={isRefreshing}>Tekrar Dene</Button></div>}
+      {newsError && (
+        <StateView
+          kind="error"
+          compact
+          title="Haber akışı yüklenemedi"
+          description={
+            news.length > 0
+              ? `${newsError} Son yüklenen haberler aşağıda gösteriliyor.`
+              : newsError
+          }
+          action={
+            <Button variant="secondary" size="sm" onClick={() => fetchNews(true)} disabled={isRefreshing}>
+              Tekrar Dene
+            </Button>
+          }
+        />
+      )}
       {newsWarning && <p role="status" className="text-xs text-warning">{newsWarning}</p>}
 
       {selectedCategory === 'KAP' && !loading && (
@@ -278,37 +294,52 @@ export default function NewsPage() {
 
       {/* Portfolio Empty State */}
       {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length === 0 && !loading ? (
-        <div className="glass-card p-12 text-center space-y-4">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl">
-
-          </div>
-          <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="text-lg font-bold text-text-primary">Portföyünüzde Henüz Varlık Bulunmuyor</h3>
-            <p className="text-xs text-text-muted leading-relaxed">
-              Varlık eklediğinizde bağlı haber kaynaklarındaki ilgili başlıkları burada görebilirsiniz.
-            </p>
-          </div>
-          <div className="pt-2">
+        <StateView
+          kind="empty"
+          statusLabel="Portföy Boş"
+          title="Portföyünüzde henüz varlık bulunmuyor"
+          description="Varlık eklediğinizde bağlı haber kaynaklarındaki ilgili başlıkları burada görebilirsiniz."
+          action={
             <Link href="/portfolio">
               <Button variant="primary" size="md">
                 + Portföye Varlık Ekle
               </Button>
             </Link>
-          </div>
-        </div>
+          }
+        />
       ) : loading ? (
-        <div className="glass-card p-12 text-center text-text-muted space-y-3">
-          <div className="w-8 h-8 mx-auto border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium">Haber kaynakları yükleniyor...</p>
-        </div>
+        <StateView
+          kind="loading"
+          title="Haber kaynakları yükleniyor"
+          description="Bağlı finansal RSS ve piyasa bültenleri taranıyor."
+        />
       ) : selectedCategory === 'KAP' || (newsError && news.length === 0) ? null : filteredNews.length === 0 ? (
-        <div className="glass-card p-12 text-center text-text-muted space-y-2">
-          <svg className="w-10 h-10 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-          </svg>
-          <p className="text-sm font-semibold text-text-primary">{selectedCategory === 'PORTFOLIO' && !searchQuery && selectedSymbolFilter === 'ALL' ? 'Bağlı kaynaklarda portföy varlıklarınızla eşleşen haber bulunamadı.' : 'Aradığınız kriterlere uygun haber bulunamadı.'}</p>
-          <p className="text-xs">{selectedCategory === 'PORTFOLIO' ? 'Investing.com BİST, şirket ve borsa haberleri; TRT Haber ekonomi ve ECB bültenleri taranıyor. Şirket ve fon haberlerinin tamamı bu kaynaklarda yer almayabilir.' : 'Farklı bir arama terimi deneyebilir veya kategoriyi değiştirebilirsiniz.'}</p>
-        </div>
+        <StateView
+          kind="empty"
+          title={
+            selectedCategory === 'PORTFOLIO' && !searchQuery && selectedSymbolFilter === 'ALL'
+              ? 'Bağlı kaynaklarda portföy varlıklarınızla eşleşen haber bulunamadı'
+              : 'Aradığınız kriterlere uygun haber bulunamadı'
+          }
+          description={
+            selectedCategory === 'PORTFOLIO'
+              ? 'Investing.com BİST, şirket ve borsa haberleri; TRT Haber ekonomi ve ECB bültenleri taranıyor.'
+              : 'Farklı bir arama terimi deneyebilir veya aktif filtreleri temizleyebilirsiniz.'
+          }
+          action={
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedSymbolFilter('ALL');
+                setSelectedCategory('ALL');
+              }}
+            >
+              Filtreleri Temizle
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredNews.map(({ article: item, matchedSymbols, event }, idx) => {

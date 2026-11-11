@@ -739,10 +739,24 @@ function PiyasalarContent() {
           ) : stocksError ? (
             <StateView kind="error" title="Fiyatlar yüklenemedi" description={stocksError} action={<Button onClick={() => void refetchStocks()}>Tekrar Dene</Button>} />
           ) : sortedStocks.length === 0 ? (
-            <div className="glass-card p-12 text-center text-text-muted space-y-2">
-              <svg className="w-12 h-12 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <p className="text-base font-medium text-text-secondary">Kriterlere uygun varlık bulunamadı.</p>
-            </div>
+            <StateView
+              kind="empty"
+              title="Kriterlere uygun varlık bulunamadı"
+              description="Aktif arama veya sektör filtresiyle eşleşen hisse bulunmuyor."
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setStockSearch('');
+                    setSelectedSector('ALL');
+                    setWatchlistOnly(false);
+                  }}
+                >
+                  Filtreleri Temizle
+                </Button>
+              }
+            />
           ) : viewMode === 'table' ? (
             /* Stocks Table with Lazy Load */
             <div className="glass-card overflow-hidden">
@@ -1022,10 +1036,24 @@ function PiyasalarContent() {
           ) : fundsError ? (
             <StateView kind="error" title="Fonlar yüklenemedi" description={fundsError} action={<Button onClick={() => void refetchFunds()}>Tekrar Dene</Button>} />
           ) : sortedFunds.length === 0 ? (
-            <div className="glass-card p-12 text-center text-text-muted space-y-2">
-              <svg className="w-12 h-12 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <p className="text-base font-medium text-text-secondary">Kriterlere uygun TEFAS fonu bulunamadı.</p>
-            </div>
+            <StateView
+              kind="empty"
+              title="Kriterlere uygun TEFAS fonu bulunamadı"
+              description="Seçili fon kategorisi veya arama terimiyle eşleşen fon yok."
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setFundSearch('');
+                    setSelectedCategory('ALL');
+                    setWatchlistOnly(false);
+                  }}
+                >
+                  Filtreleri Temizle
+                </Button>
+              }
+            />
           ) : viewMode === 'table' ? (
             /* Funds Table */
             <div className="glass-card overflow-hidden">

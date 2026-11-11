@@ -185,19 +185,15 @@ export default function PortfolioPage() {
         role="status"
         aria-label="Oturum ve portföy yükleniyor"
         data-testid="portfolio-loading-state"
-        className="space-y-6 animate-pulse pb-12"
+        className="space-y-6 pb-12"
       >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="h-8 w-48 bg-bg-card rounded-lg border border-border" />
-            <div className="h-4 w-72 bg-bg-card rounded border border-border" />
-          </div>
-          <div className="flex gap-3">
-            <div className="h-10 w-28 bg-bg-card rounded-xl border border-border" />
-            <div className="h-10 w-28 bg-bg-card rounded-xl border border-border" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StateView
+          kind="loading"
+          compact
+          title="Portföy verileri yükleniyor"
+          description="Hesap oturumu, pozisyonlar ve güncel piyasa değerleri hazırlanıyor."
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-pulse">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-28 rounded-2xl bg-bg-card border border-border" />
           ))}
