@@ -68,7 +68,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | POR-02 | P1 | Aracı kurum ve sanal işlem girişlerini ayır | İşlem kaydı, dış aracı kuruma gitme ve sanal bakiye ayrı seçenekler olarak görünür. | ◐ |
 | POR-03 | P1 | Portföy silmeyi yönetim menüsüne taşı | Silme ana eylemlerin yanında görünmez. Onayda silinecek portföy ve etkisi belirtilir. | ◐ |
 | POR-04 | P1 | Hazır aracı kurum ekstre şablonları ekle | Seçilen ilk ekstre biçimleri örnek dosyalarla tanınır ve eşlenen sütunlar önizlemede gösterilir. | ◐ |
-| POR-05 | P1 | Dosya aktarım önizlemesini güçlendir | Geçerli, hatalı ve mükerrer satır sayıları görünür. Hatalı satırın nedeni kullanıcıya bildirilir. | ☐ |
+| POR-05 | P1 | Dosya aktarım önizlemesini güçlendir | Geçerli, hatalı ve mükerrer satır sayıları görünür. Hatalı satırın nedeni kullanıcıya bildirilir. | ◐ |
 | POR-06 | P1 | Excel/CSV aktarma ve geri yüklemeyi uçtan uca doğrula | Aynı örnek veri dışa aktarılıp tekrar içe alındığında tutarlar ve tarihler korunur. | ☐ |
 | POR-07 | P1 | Günlük getiriyi varlık katkısına ayır | En büyük artı ve eksi katkılar TL ve yüzde puanla listelenir. Toplam katkı günlük portföy sonucuyla uzlaşır. | ☐ |
 | POR-08 | P1 | Kâr, temettü, komisyon ve kur etkisini ayır | Aynı seçili dönemde gerçekleşmiş kâr, açık pozisyon sonucu, nakit olayları, ücret ve kur etkisi görülebilir. | ☐ |

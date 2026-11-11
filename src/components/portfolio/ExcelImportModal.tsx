@@ -16,6 +16,7 @@ import {
   downloadBrokerTemplateCsv,
   StatementTemplateMatch,
 } from '@/lib/portfolio/brokerStatementTemplates';
+import { summarizeImportPreview } from '@/lib/portfolio/importPreview';
 
 export interface ExcelImportModalProps {
   isOpen: boolean;
@@ -45,20 +46,17 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
     return transactions.filter((t) => t.portfolioId === activePortfolioId);
   }, [transactions, activePortfolioId]);
 
-  const duplicateIndices = useMemo(() => {
-    const dupes = new Set<number>();
-    validRows.forEach((r, idx) => {
-      const isDupe = existingTxs.some((ex) =>
-        ex.symbol.toUpperCase() === r.data.symbol.toUpperCase() &&
-        ex.transactionType === r.data.transactionType &&
-        Math.abs(Number(ex.quantity) - Number(r.data.quantity)) < 0.0001 &&
-        Math.abs(Number(ex.price) - Number(r.data.price)) < 0.0001 &&
-        ex.transactionDate === r.data.transactionDate
-      );
-      if (isDupe) dupes.add(idx);
-    });
-    return dupes;
-  }, [validRows, existingTxs]);
+  const previewSummary = useMemo(
+    () =>
+      summarizeImportPreview({
+        validRows,
+        invalidRows,
+        existingTransactions: existingTxs,
+      }),
+    [validRows, invalidRows, existingTxs]
+  );
+
+  const duplicateIndices = previewSummary.duplicateIndices;
 
   const resetState = () => {
     setFile(null);
@@ -100,6 +98,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
       setTemplateMatch(result.templateMatch);
 
       if (result.validRows.length > 0) {
+        setActiveTab('valid');
         showToast({
           type: 'success',
           title: 'Dosya Ayrıştırıldı',
@@ -108,10 +107,16 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
           }`,
         });
       } else {
+        if (result.invalidRows.length > 0) {
+          setActiveTab('invalid');
+        }
+        const firstReason = result.invalidRows[0]?.errors?.join(', ');
         showToast({
           type: 'warning',
           title: 'Geçerli İşlem Bulunamadı',
-          message: 'Yüklenen dosyada içe aktarılacak uygun sütun veya satır tespit edilemedi.',
+          message: firstReason
+            ? `${result.invalidRows.length} hatalı satır tespit edildi. İlk neden: ${firstReason}`
+            : 'Yüklenen dosyada içe aktarılacak uygun sütun veya satır tespit edilemedi.',
         });
       }
     } catch (err: any) {
@@ -388,15 +393,16 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap" data-testid="import-preview-counts">
                 <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  ✓ {validRows.length} Geçerli
+                  Geçerli: {previewSummary.validCount}
                 </span>
-                {invalidRows.length > 0 && (
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                     {invalidRows.length} Hatalı
-                  </span>
-                )}
+                <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                  Hatalı: {previewSummary.invalidCount}
+                </span>
+                <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  Mükerrer: {previewSummary.duplicateCount}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -407,6 +413,33 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                 </Button>
               </div>
             </div>
+
+            {previewSummary.invalidCount > 0 && (
+              <div
+                data-testid="import-invalid-reasons-banner"
+                className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+              >
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-rose-300">
+                    {previewSummary.invalidCount} hatalı satır içe aktarılmayacak
+                  </p>
+                  <p className="text-[11px] text-text-secondary">
+                    {previewSummary.errorSummaries.slice(0, 2).map((s) => s.reasonText).join(' · ')}
+                  </p>
+                </div>
+                {activeTab !== 'invalid' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setActiveTab('invalid')}
+                    className="shrink-0 text-xs"
+                  >
+                    Hata Nedenlerini Gör ({previewSummary.invalidCount})
+                  </Button>
+                )}
+              </div>
+            )}
 
             {/* Recognized Template & Mapped Columns Preview */}
             {templateMatch && (
@@ -509,11 +542,18 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                               <td className="py-2 px-3 font-bold text-text-primary">
                                 <div className="flex items-center gap-1.5">
                                   <span>{row.data.symbol}</span>
-                                  {isDupe && (
-                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30" title="Bu işlem portföyünüzdeki mevcut bir kayıtla eşleşiyor">
-                                      Mükerrer
-                                    </span>
-                                  )}
+                                   {isDupe && (
+                                     <span
+                                       className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                       title={
+                                         previewSummary.duplicateReasons.get(idx) === 'in_file'
+                                           ? 'Bu işlem aynı dosya içinde birden fazla kez yer alıyor'
+                                           : 'Bu işlem portföyünüzdeki mevcut bir kayıtla eşleşiyor'
+                                       }
+                                     >
+                                       {previewSummary.duplicateReasons.get(idx) === 'in_file' ? 'Dosya İçi Mükerrer' : 'Mükerrer'}
+                                     </span>
+                                   )}
                                 </div>
                               </td>
                               <td className="py-2 px-3">

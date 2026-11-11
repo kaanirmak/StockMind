@@ -1289,5 +1289,59 @@ test('POR-04: built-in broker statement presets are recognized, parsed, and mapp
   assert.match(modalSrc, /Tanınan Biçim:/);
 });
 
+test('POR-05: import preview reports valid, invalid, duplicate counts and exact row error reasons', async () => {
+  const { parseExcelTransactions } = loadModule('src/lib/portfolio/excelParser.ts');
+  const { summarizeImportPreview } = loadModule('src/lib/portfolio/importPreview.ts');
+
+  const mixedCsv = [
+    'Tarih;Hisse Kodu (Sembol);İşlem Türü;Döviz Türü;Döviz Kuru (USD/TRY);Miktar (Adet);Birim Fiyat;Toplam Tutar',
+    '2026-04-01;THYAO;Alış;TRY;1,00;10;290,00;2.900,00',
+    '2026-04-02;ASELS;Alış;TRY;1,00;5;72,50;362,50',
+    '2026-04-02;ASELS;Alış;TRY;1,00;5;72,50;362,50',
+    '2026-04-03;;Alış;TRY;1,00;10;100,00;1.000,00',
+    '2026-04-04;SISE;Alış;TRY;1,00;0;45,00;0',
+  ].join('\n');
+
+  const parsed = await parseExcelTransactions(new TextEncoder().encode(mixedCsv).buffer);
+  const summary = {
+    ...summarizeImportPreview({
+      validRows: parsed.validRows,
+      invalidRows: parsed.invalidRows,
+      existingTransactions: [
+        {
+          symbol: 'THYAO',
+          transactionType: 'buy',
+          quantity: 10,
+          price: 290,
+          transactionDate: '2026-04-01',
+        },
+      ],
+    }),
+  };
+
+  assert.equal(summary.validCount, 3);
+  assert.equal(summary.invalidCount, 2);
+  assert.equal(summary.duplicateCount, 2); // 1 portfolio match (THYAO) + 1 intra-file duplicate (ASELS)
+  assert.equal(summary.netNewCount, 1);
+
+  assert.equal(summary.duplicateReasons.get(0), 'portfolio');
+  assert.equal(summary.duplicateReasons.get(2), 'in_file');
+
+  const errorReasons = Array.from(summary.errorSummaries).map((e) => e.reasonText);
+  assert.match(errorReasons[0], /Satır 5:.*Hisse Kodu \(Sembol\) eksik/);
+  assert.match(errorReasons[1], /Satır 6:.*miktar\/adet/);
+
+  const modalSrc = fs.readFileSync(
+    path.join(root, 'src/components/portfolio/ExcelImportModal.tsx'),
+    'utf8'
+  );
+  assert.match(modalSrc, /data-testid="import-preview-counts"/);
+  assert.match(modalSrc, /Geçerli: \{previewSummary\.validCount\}/);
+  assert.match(modalSrc, /Hatalı: \{previewSummary\.invalidCount\}/);
+  assert.match(modalSrc, /Mükerrer: \{previewSummary\.duplicateCount\}/);
+  assert.match(modalSrc, /data-testid="import-invalid-reasons-banner"/);
+});
+
+
 
 
