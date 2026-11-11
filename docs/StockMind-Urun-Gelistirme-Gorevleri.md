@@ -163,7 +163,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| QNT-01 | P0 | Monte Carlo koşu sayısını motordan göster | Tüm ekran ve tanıtım metinlerindeki sayı çalıştırılan örnek sayısıyla aynıdır. | ☐ |
+| QNT-01 | P0 | Monte Carlo koşu sayısını motordan göster | Tüm ekran ve tanıtım metinlerindeki sayı çalıştırılan örnek sayısıyla aynıdır. | ◐ |
 | QNT-02 | P0 | Örnek profil ile kaynaklı finansal profili ayır | Kullanıcı her analizde profil türünü ve varsa finansal veri dönemini ekranın başında görür. | ☐ |
 | QNT-03 | P0 | Sabit stres sonuçlarını kaldır | Her sonuç seçilen şok ve açık varsayımlardan hesaplanır. Girdi yoksa örnek senaryo olarak işaretlenir. | ☐ |
 | QNT-04 | P1 | Komite analizini kullanıcı eylemine bağla | Ekrana girilince analiz çağrısı başlamaz. Analiz düğmesi, iptal ve yeniden deneme net görünür. | ☐ |

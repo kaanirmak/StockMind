@@ -1,5 +1,6 @@
 import { palette } from '@/theme/palette';
 import { escapeHtml } from '@/lib/utils/html';
+import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
 import nodemailer from 'nodemailer';
 
 export interface EmailPayload {
@@ -402,7 +403,7 @@ export async function sendProApprovedUserEmail(params: { to: string; userName: s
       <div class="feature-list">
         <div class="feature-item">✨ <strong>Yatırım Komitesi:</strong> 4 uzman AI ajanının konsensüs ve çoklu analiz motoru</div>
         <div class="feature-item">✨ <strong>Gelişmiş AI Modelleri:</strong> GPT-4o, Claude 3.5 Sonnet ve premium modeller</div>
-        <div class="feature-item">✨ <strong>Otomatik DCF & Monte Carlo:</strong> 1.000 simülasyonlu risk ve adil değerleme</div>
+        <div class="feature-item">✨ <strong>Otomatik DCF & Monte Carlo:</strong> ${MONTE_CARLO_SIMULATIONS.toLocaleString('tr-TR')} simülasyonlu risk ve adil değerleme</div>
         <div class="feature-item">✨ <strong>Öncelikli Piyasa Analizi:</strong> Günlük 18:30 VIP kapanış bülteni ve limitsiz takip</div>
       </div>
 

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui';
 import { ProRequestModal } from './ProRequestModal';
+import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
 
 interface ProPlanCardProps {
   isPro?: boolean;
@@ -133,7 +134,9 @@ export function ProPlanCard({
                   {effectivePro ? '✓ Açık' : '🔒 Pro'}
                 </span>
               </div>
-              <p className="text-[11px] text-text-muted">10.000 koşulu GBM simülasyonu ve VaR analizi.</p>
+              <p className="text-[11px] text-text-muted">
+                {MONTE_CARLO_SIMULATIONS.toLocaleString('tr-TR')} koşulu GBM simülasyonu ve VaR analizi.
+              </p>
             </div>
 
             <div className="p-2.5 rounded-xl bg-bg-secondary/40 border border-border/50 space-y-1">

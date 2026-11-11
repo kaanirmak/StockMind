@@ -257,6 +257,33 @@ test('AI-03: runMonteCarloSimulation gerçek Geometrik Brown Hareketi ve ampirik
   assert.equal(sim.sampleTrajectories[0].length, 21, 'Trajectory must have 21 points (initial + 20 steps)');
 });
 
+test('QNT-01: Monte Carlo koşu sayısı tek kaynaktan gelir ve arayüz metinleri motorla uyumludur', () => {
+  const { MONTE_CARLO_SIMULATIONS, runMonteCarloSimulation } = loadModule('src/lib/quant/models.ts');
+  const constants = loadModule('src/lib/quant/constants.ts');
+  assert.equal(MONTE_CARLO_SIMULATIONS, constants.MONTE_CARLO_SIMULATIONS);
+  const defaultSim = runMonteCarloSimulation(100, 0.30, 0.20);
+  assert.equal(defaultSim.simulationsCount, MONTE_CARLO_SIMULATIONS);
+
+  const customSim = runMonteCarloSimulation(100, 0.30, 0.20, 500);
+  assert.equal(customSim.simulationsCount, 500, 'Custom simulation count must match engine parameter');
+
+  const consumerFiles = [
+    'src/components/quant/StressTestTab.tsx',
+    'src/app/(dashboard)/quant-lab/page.tsx',
+    'src/components/pro/ProPlanCard.tsx',
+    'src/components/pro/ProRequestModal.tsx',
+    'src/lib/email/service.ts',
+  ];
+  for (const relPath of consumerFiles) {
+    const src = fs.readFileSync(path.join(process.cwd(), relPath), 'utf8');
+    assert.ok(!/10\.000\s*simülasyon|10\.000\s*fiyat|10\.000\s*kez/i.test(src), `${relPath} must not hardcode 10.000 Monte Carlo claim`);
+    assert.ok(
+      src.includes('MONTE_CARLO_SIMULATIONS') || src.includes('simulationsCount'),
+      `${relPath} must derive simulation count from engine constant or result`
+    );
+  }
+});
+
 test('AI-04: calculateDCF bankalar için model uygunluk uyarısı üretir', () => {
   const { calculateDCF } = loadModule('src/lib/quant/models.ts');
   const resGaran = calculateDCF({

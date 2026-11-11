@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button, useToast } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
+import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
 
 interface ProRequestModalProps {
   isOpen: boolean;
@@ -86,7 +87,9 @@ export function ProRequestModal({
           </div>
           <div className="flex items-start gap-2 text-text-secondary">
             <span className="text-emerald-400 font-bold shrink-0">✓</span>
-            <span><strong>Otomatik DCF & Monte Carlo:</strong> 1.000 simülasyonlu risk ve adil değerleme analizi</span>
+            <span>
+              <strong>Otomatik DCF & Monte Carlo:</strong> {MONTE_CARLO_SIMULATIONS.toLocaleString('tr-TR')} simülasyonlu risk ve adil değerleme analizi
+            </span>
           </div>
           <div className="flex items-start gap-2 text-text-secondary">
             <span className="text-emerald-400 font-bold shrink-0">✓</span>

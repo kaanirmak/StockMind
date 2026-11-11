@@ -21,6 +21,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
 import { Button } from '@/components/ui/Button';
 import { hasProAccess } from '@/lib/ai/modelCatalog';
+import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
+
+const FORMATTED_SIMULATION_COUNT = MONTE_CARLO_SIMULATIONS.toLocaleString('tr-TR');
 
 type QuantTabId = 'committee' | 'dcf' | 'health' | 'stress';
 
@@ -63,8 +66,8 @@ const TABS: TabItem[] = [
     label: 'Monte Carlo & Stres Testi',
     shortLabel: 'Monte Carlo',
     icon: Shuffle,
-    badge: '10.000 Koşu',
-    description: '10.000 Olasılıksal getiri simülasyonu ve makro kriz şok testleri',
+    badge: `${FORMATTED_SIMULATION_COUNT} Koşu`,
+    description: `${FORMATTED_SIMULATION_COUNT} Olasılıksal getiri simülasyonu ve makro kriz şok testleri`,
   },
 ];
 
@@ -124,7 +127,7 @@ export default function QuantLabPage() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-text-muted max-w-2xl leading-relaxed">
-                Kurumsal seviye değerleme modelleri, 4 efsane fon yöneticisi personasıyla çoklu-AI simülasyonu, otomatik DCF ve 10.000 koşulu Monte Carlo stres testleri.
+                Kurumsal seviye değerleme modelleri, 4 efsane fon yöneticisi personasıyla çoklu-AI simülasyonu, otomatik DCF ve {FORMATTED_SIMULATION_COUNT} koşulu Monte Carlo stres testleri.
               </p>
             </div>
 
@@ -250,7 +253,7 @@ export default function QuantLabPage() {
                       {tab.id === 'committee' && 'Warren Buffett, Peter Lynch, Jim Simons, Michael Burry'}
                       {tab.id === 'dcf' && 'Dinamik WACC, 5Y FCF, 2D Duyarlılık Matrisi'}
                       {tab.id === 'health' && 'Piotroski F-Score (0-9), Altman Z, 3 Kademeli DuPont'}
-                      {tab.id === 'stress' && '10.000 Koşulu GBM Simülasyonu, %95 VaR, Kur & Faiz Şoku'}
+                      {tab.id === 'stress' && `${FORMATTED_SIMULATION_COUNT} Koşulu GBM Simülasyonu, %95 VaR, Kur & Faiz Şoku`}
                     </span>
                   </div>
                 </div>
@@ -293,7 +296,7 @@ export default function QuantLabPage() {
                 <span className="transition-transform group-open:rotate-180 text-[10px]">▼</span>
               </summary>
               <p className="text-xs text-text-muted mt-2 max-w-2xl leading-relaxed p-2.5 bg-bg-secondary/70 rounded-xl border border-border/50">
-                İleri seviye temel ve kantitatif değerleme modelleri: 4 efsane yatırımcı personasıyla çoklu AI komitesi simülasyonu, 5 yıllık DCF adil değerleme motoru, Piotroski & Altman finansal sağlık skorları ve 10.000 koşulu Monte Carlo stres testleri.
+                İleri seviye temel ve kantitatif değerleme modelleri: 4 efsane yatırımcı personasıyla çoklu AI komitesi simülasyonu, 5 yıllık DCF adil değerleme motoru, Piotroski & Altman finansal sağlık skorları ve {FORMATTED_SIMULATION_COUNT} koşulu Monte Carlo stres testleri.
               </p>
             </details>
           </div>

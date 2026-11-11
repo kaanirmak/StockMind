@@ -121,7 +121,7 @@ export default function StressTestTab({
               </h2>
             </div>
             <p className="text-xs text-text-muted mt-1">
-              10.000 İstatistiki simülasyon (Geometrik Brownian Hareketi) ile 1 yıllık olasılık dağılımını ve makroekonomik kriz şoklarına karşı direnci test edin.
+              {mcResult.simulationsCount.toLocaleString('tr-TR')} İstatistiki simülasyon (Geometrik Brownian Hareketi) ile 1 yıllık olasılık dağılımını ve makroekonomik kriz şoklarına karşı direnci test edin.
             </p>
           </div>
 
@@ -192,7 +192,7 @@ export default function StressTestTab({
             </span>
           </div>
           <p className="text-[11px] text-text-muted">
-            10.000 koşunun en olumsuz %5&apos;lik dilimindeki alt taban fiyat seviyesi (Stop-loss referansı).
+            {mcResult.simulationsCount.toLocaleString('tr-TR')} koşunun en olumsuz %5&apos;lik dilimindeki alt taban fiyat seviyesi (Stop-loss referansı).
           </p>
         </div>
 
@@ -298,7 +298,7 @@ export default function StressTestTab({
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-accent" />
             <h3 className="text-sm sm:text-base font-bold text-text-primary">
-              1 Yıllık Olasılıksal Fiyat Patikaları (10.000 Simülasyondan Örnek 5 Yol)
+              1 Yıllık Olasılıksal Fiyat Patikaları ({mcResult.simulationsCount.toLocaleString('tr-TR')} Simülasyondan Örnek {mcResult.sampleTrajectories.length} Yol)
             </h3>
           </div>
           <span className="text-xs text-text-muted font-mono font-medium">

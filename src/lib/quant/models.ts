@@ -1,4 +1,7 @@
 import { palette } from '@/theme/palette';
+import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
+
+export { MONTE_CARLO_SIMULATIONS };
 // StockMind Quant Lab - İleri Seviye Temel & Kantitatif Değerleme Modelleri
 
 const USD_PROFILES = new Set(['AAPL', 'NVDA', 'QQQ']);
@@ -387,12 +390,20 @@ function gaussianRandom(): number {
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
-export function runMonteCarloSimulation(currentPrice: number, volatility = 0.32, drift = 0.22): MonteCarloResult {
+export function runMonteCarloSimulation(
+  currentPrice: number,
+  volatility = 0.32,
+  drift = 0.22,
+  requestedSimulations = MONTE_CARLO_SIMULATIONS
+): MonteCarloResult {
   const days = 252; // 1 yıl
-  const numSimulations = 1000;
+  const numSimulations =
+    Number.isFinite(requestedSimulations) && requestedSimulations >= 100
+      ? Math.round(requestedSimulations)
+      : MONTE_CARLO_SIMULATIONS;
   const terminalPrices: number[] = new Array(numSimulations);
 
-  // 1,000 genuine Geometric Brownian Motion terminal price simulations
+  // Genuine Geometric Brownian Motion terminal price simulations
   // S_T = S_0 * exp((drift - 0.5 * sigma^2) * T + sigma * sqrt(T) * Z)
   const driftTerm = (drift - 0.5 * volatility * volatility) * 1.0;
   const volTerm = volatility * Math.sqrt(1.0);
