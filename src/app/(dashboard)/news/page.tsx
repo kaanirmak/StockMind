@@ -568,7 +568,7 @@ export default function NewsPage() {
           title="Haber kaynakları yükleniyor"
           description="Bağlı finansal RSS ve piyasa bültenleri taranıyor."
         />
-      ) : selectedCategory === 'KAP' || (newsError && news.length === 0) ? null : filteredNews.length === 0 ? (
+      ) : (selectedCategory === 'KAP' && news.length === 0) || (newsError && news.length === 0) ? null : filteredNews.length === 0 ? (
         <StateView
           kind="empty"
           title={
@@ -632,6 +632,7 @@ export default function NewsPage() {
             return (
               <div
                 key={item.id || `news-card-${idx}`}
+                data-testid={item.category === 'KAP' ? 'kap-disclosure-card' : undefined}
                 className={`glass-card p-3.5 sm:p-4 rounded-2xl transition-all duration-200 flex flex-col justify-between space-y-2.5 hover:border-accent/40 ${
                   isPortfolioRelated ? 'border-emerald-500/40 bg-emerald-500/[0.02]' : ''
                 }`}
@@ -640,7 +641,9 @@ export default function NewsPage() {
                   {/* Single Clean Row: Source, Card Type, Date, and Tone Badge */}
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                      <span className="font-semibold text-accent truncate text-[11px] sm:text-xs">{item.source}</span>
+                      <span className="font-semibold text-accent truncate text-[11px] sm:text-xs">
+                        {item.sourceId ? `${item.sourceId} • ` : ''}{item.source}
+                      </span>
                       <Badge
                         variant={cardKind.badgeVariant}
                         size="sm"
@@ -648,6 +651,11 @@ export default function NewsPage() {
                       >
                         {cardKind.label}
                       </Badge>
+                      {item.companyName && (
+                        <span className="text-[11px] font-semibold text-text-primary truncate max-w-[180px]">
+                          {item.companyName}{item.symbol ? ` (${item.symbol})` : ''}
+                        </span>
+                      )}
                       <span className="text-text-muted text-[10px]">•</span>
                       <span className="text-[11px] text-text-muted whitespace-nowrap">
                         {new Date(item.publishedAt).toLocaleDateString('tr-TR', {
@@ -762,9 +770,9 @@ export default function NewsPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] font-medium text-text-muted hover:text-text-primary transition-colors flex items-center gap-0.5"
-                      title="Haberi Kaynağında Aç"
+                      title={item.category === 'KAP' ? 'Orijinal KAP Belgesini Aç' : 'Haberi Kaynağında Aç'}
                     >
-                      <span>Kaynak</span>
+                      <span>{item.category === 'KAP' ? 'Orijinal Belge' : 'Kaynak'}</span>
                       <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>

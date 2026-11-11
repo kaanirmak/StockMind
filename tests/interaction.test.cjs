@@ -246,7 +246,7 @@ test('RSS escaped descriptions become readable text without HTML markup', () => 
 function newsRoute(fetch, snapshot = []) {
   const text = load('src/lib/news/rssText.ts');
   return load('src/app/api/news/route.ts', {
-    require: name => name === 'next/server' ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } } : name === 'crypto' ? { default: require('node:crypto') } : name === '@/lib/news/symbolMatch' ? load('src/lib/news/symbolMatch.ts') : name === '@/lib/news/sentiment' ? load('src/lib/news/sentiment.ts') : name === '@/lib/news/feeds' ? load('src/lib/news/feeds.ts') : name === '@/lib/news/sourceCoverage' ? load('src/lib/news/sourceCoverage.ts') : name === '@/lib/ops/providerHealth' ? load('src/lib/ops/providerHealth.ts') : name === '@/lib/news/snapshot' ? { fetchNewsSnapshot: async () => snapshot } : text,
+    require: name => name === 'next/server' ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } } : name === 'crypto' ? { default: require('node:crypto') } : name === '@/lib/news/symbolMatch' ? load('src/lib/news/symbolMatch.ts') : name === '@/lib/news/sentiment' ? load('src/lib/news/sentiment.ts') : name === '@/lib/news/feeds' ? load('src/lib/news/feeds.ts') : name === '@/lib/news/kapFeed' ? load('src/lib/news/kapFeed.ts', { URL, AbortSignal, fetch }) : name === '@/lib/news/sourceCoverage' ? load('src/lib/news/sourceCoverage.ts') : name === '@/lib/ops/providerHealth' ? load('src/lib/ops/providerHealth.ts') : name === '@/lib/news/snapshot' ? { fetchNewsSnapshot: async () => snapshot } : text,
     fetch, AbortSignal, URL,
     console: { error() {} },
   });
@@ -6789,6 +6789,108 @@ test('HBR-08: KAP data access terms, scope, delay and display rules are document
   assert.match(newsPageSrc, /kap-terms-notice/);
   assert.match(newsPageSrc, /KAP_ACCESS_TERMS/);
 });
+
+test('HBR-09: in-app KAP disclosure stream validates official source ID, timestamp, company and kap.org.tr link', async () => {
+  const kapMod = load('src/lib/news/kapFeed.ts', { URL, AbortSignal });
+
+  const parsed = kapMod.parseKapDisclosuresPayload({
+    items: [
+      {
+        disclosureId: '1402190',
+        companyName: 'Türk Hava Yolları A.O.',
+        symbol: 'THYAO.IS',
+        disclosureType: 'Özel Durum Açıklaması',
+        title: 'Yönetim Kurulu Temettü Teklifi',
+        summary: 'Genel kurula nakit kâr payı dağıtım teklifi sunulmasına karar verildi.',
+        publishedAt: '2026-11-11T15:30:00Z',
+        documentUrl: 'https://www.kap.org.tr/tr/Bildirim/1402190',
+      },
+      {
+        disclosureId: '999999',
+        companyName: 'Sahte Kaynak',
+        symbol: 'ASELS',
+        title: 'Yayıncı makalesi KAP olamaz',
+        publishedAt: '2026-11-11T16:00:00Z',
+        documentUrl: 'https://tr.investing.com/news/fake-kap',
+      },
+    ],
+  });
+
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].sourceId, 'KAP-1402190');
+  assert.equal(parsed[0].companyName, 'Türk Hava Yolları A.O.');
+  assert.equal(parsed[0].symbol, 'THYAO');
+  assert.equal(parsed[0].documentUrl, 'https://www.kap.org.tr/tr/Bildirim/1402190');
+  assert.equal(parsed[0].publishedAt, '2026-11-11T15:30:00.000Z');
+
+  // Configured feed filters by requested symbol and returns validated cards through /api/news
+  const routeMod = load('src/app/api/news/route.ts', {
+    process: { env: { KAP_FEED_URL: 'https://internal.kap.example/disclosures.json' } },
+    require: (name) =>
+      name === 'next/server'
+        ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } }
+        : name === 'crypto'
+        ? { default: require('node:crypto') }
+        : name === '@/lib/news/kapFeed'
+        ? load('src/lib/news/kapFeed.ts', {
+            URL,
+            AbortSignal,
+            process: { env: { KAP_FEED_URL: 'https://internal.kap.example/disclosures.json' } },
+            fetch: async () => ({
+              ok: true,
+              json: async () => ({
+                items: [
+                  {
+                    disclosureId: '1402190',
+                    companyName: 'Türk Hava Yolları A.O.',
+                    symbol: 'THYAO',
+                    title: 'Yönetim Kurulu Kararı',
+                    publishedAt: '2026-11-11T15:30:00Z',
+                    documentUrl: 'https://www.kap.org.tr/tr/Bildirim/1402190',
+                  },
+                  {
+                    disclosureId: '1402191',
+                    companyName: 'Aselsan Elektronik A.Ş.',
+                    symbol: 'ASELS',
+                    title: 'Yeni Sözleşme İmzalanması',
+                    publishedAt: '2026-11-11T16:15:00Z',
+                    documentUrl: 'https://www.kap.org.tr/tr/Bildirim/1402191',
+                  },
+                ],
+              }),
+            }),
+          })
+        : name === '@/lib/news/sentiment'
+        ? load('src/lib/news/sentiment.ts')
+        : name === '@/lib/news/feeds'
+        ? load('src/lib/news/feeds.ts')
+        : name === '@/lib/news/symbolMatch'
+        ? load('src/lib/news/symbolMatch.ts')
+        : name === '@/lib/news/sourceCoverage'
+        ? load('src/lib/news/sourceCoverage.ts')
+        : name === '@/lib/ops/providerHealth'
+        ? load('src/lib/ops/providerHealth.ts')
+        : name === '@/lib/news/snapshot'
+        ? { fetchNewsSnapshot: async () => [] }
+        : load('src/lib/news/rssText.ts'),
+    URL,
+    AbortSignal,
+    console: { error() {} },
+  });
+
+  const apiRes = await routeMod.GET(new Request('https://example.com/api/news?category=KAP&symbol=ASELS'));
+  assert.equal(apiRes.status, 200);
+  assert.equal(apiRes.body.kapConfigured, true);
+  assert.equal(apiRes.body.count, 1);
+  assert.equal(apiRes.body.data[0].sourceId, 'KAP-1402191');
+  assert.equal(apiRes.body.data[0].companyName, 'Aselsan Elektronik A.Ş.');
+  assert.equal(apiRes.body.data[0].url, 'https://www.kap.org.tr/tr/Bildirim/1402191');
+
+  const newsPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  assert.match(newsPageSrc, /kap-disclosure-card/);
+  assert.match(newsPageSrc, /Orijinal Belge/);
+});
+
 
 
 

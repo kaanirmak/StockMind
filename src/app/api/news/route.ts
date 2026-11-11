@@ -5,6 +5,7 @@ import { rssPlainText } from '@/lib/news/rssText';
 import { fetchNewsSnapshot } from '@/lib/news/snapshot';
 import { analyzeNewsSentiment } from '@/lib/news/sentiment';
 import { NEWS_FEEDS, feedCategory, type NewsFeed } from '@/lib/news/feeds';
+import { fetchOfficialKapDisclosures, toKapNewsArticle } from '@/lib/news/kapFeed';
 import {
   buildNewsSourceCoverageReport,
   classifyNewsFeedError,
@@ -25,6 +26,11 @@ export interface NewsArticle {
   relatedSymbols?: string[];
   feedId?: string;
   sentimentReason?: string;
+  sourceId?: string;
+  disclosureId?: string;
+  companyName?: string;
+  symbol?: string;
+  disclosureType?: string;
 }
 
 const DEFAULT_SYMBOLS_TO_TRACK = [
@@ -136,7 +142,26 @@ export async function GET(request: Request) {
       : [];
 
     if (category === 'KAP') {
-      return NextResponse.json({ success: true, count: 0, data: [], warning: 'Resmî KAP bildirim kaynağı henüz bağlı değil.' });
+      const kapFeed = await fetchOfficialKapDisclosures({
+        symbol,
+        symbols: portfolioSymbols.length > 0 ? portfolioSymbols : undefined,
+      });
+      const kapCards = kapFeed.items.map((item) => {
+        const base = toKapNewsArticle(item);
+        const analysis = analyzeNewsSentiment(base.title, base.summary);
+        return {
+          ...base,
+          sentiment: analysis.sentiment,
+          sentimentReason: analysis.reason,
+        };
+      });
+      return NextResponse.json({
+        success: true,
+        count: kapCards.length,
+        kapConfigured: kapFeed.configured,
+        warning: kapFeed.warning,
+        data: kapCards,
+      });
     }
     if (category === 'PORTFOLIO' && portfolioSymbols.length === 0) {
       return NextResponse.json({ success: true, count: 0, data: [] });
