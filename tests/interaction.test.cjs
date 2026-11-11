@@ -6233,6 +6233,125 @@ test('PIY-09: TEFAS filter sets persist category, risk, management fee and retur
   assert.match(piySrc, /saveTefasFilterPreset/);
 });
 
+test('PIY-10: screener column selection, sort persistence, and filtered CSV export work for stocks and funds', () => {
+  const {
+    STOCK_TABLE_COLUMNS,
+    FUND_TABLE_COLUMNS,
+    DEFAULT_STOCK_COLUMNS,
+    SCREENER_TABLE_PREFS_STORAGE_KEY,
+    toggleColumnSelection,
+    readScreenerTablePrefs,
+    writeScreenerTablePrefs,
+    buildStockScreenerCsv,
+    buildFundScreenerCsv,
+  } = load('src/lib/market/screenerTable.ts');
+
+  // Locked column 'symbol' cannot be removed
+  const unchanged = toggleColumnSelection(DEFAULT_STOCK_COLUMNS, 'symbol', ['symbol'], STOCK_TABLE_COLUMNS);
+  assert.deepEqual(Array.from(unchanged), Array.from(DEFAULT_STOCK_COLUMNS));
+
+  // Adding peRatio and removing market follows canonical column ordering
+  const addedPe = toggleColumnSelection(DEFAULT_STOCK_COLUMNS, 'peRatio', ['symbol'], STOCK_TABLE_COLUMNS);
+  assert.ok(addedPe.includes('peRatio'));
+  const customized = toggleColumnSelection(addedPe, 'market', ['symbol'], STOCK_TABLE_COLUMNS);
+  assert.ok(!customized.includes('market'));
+  assert.equal(customized[0], 'symbol');
+
+  const store = new Map();
+  const mockStorage = {
+    getItem(k) { return store.has(k) ? store.get(k) : null; },
+    setItem(k, v) { store.set(k, v); },
+    removeItem(k) { store.delete(k); },
+  };
+
+  writeScreenerTablePrefs(
+    {
+      stockColumns: customized,
+      fundColumns: ['code', 'price', 'managementFee'],
+      stockSortBy: 'price',
+      stockSortOrder: 'asc',
+      fundSortBy: 'dailyReturn',
+      fundSortOrder: 'desc',
+    },
+    mockStorage,
+  );
+  assert.ok(store.has(SCREENER_TABLE_PREFS_STORAGE_KEY));
+
+  const restored = readScreenerTablePrefs(mockStorage);
+  assert.deepEqual(Array.from(restored.stockColumns), Array.from(customized));
+  assert.deepEqual(Array.from(restored.fundColumns), ['code', 'price', 'managementFee']);
+  assert.equal(restored.stockSortBy, 'price');
+  assert.equal(restored.stockSortOrder, 'asc');
+  assert.equal(restored.fundSortBy, 'dailyReturn');
+
+  const stockCsv = buildStockScreenerCsv({
+    stocks: [
+      {
+        symbol: 'THYAO.IS',
+        name: 'Türk Hava Yolları',
+        exchange: 'BIST',
+        sector: 'Ulaştırma',
+        currency: 'TRY',
+        price: 312.5,
+        changePercent: 2.15,
+        volume: 1200000,
+        marketCap: 430000000000,
+        peRatio: 6.4,
+        dividendYield: 1.2,
+      },
+    ],
+    columns: ['symbol', 'price', 'peRatio'],
+    market: 'BIST',
+    filterSummary: 'P/E: <10',
+    sortBy: 'price',
+    sortOrder: 'asc',
+    now: new Date('2026-11-11T15:00:00.000Z'),
+  });
+  assert.match(stockCsv, /^\uFEFFTarayıcı Türü,Hisse \/ Piyasa \(BIST\)/);
+  assert.match(stockCsv, /Aktif Filtreler,P\/E: <10/);
+  assert.match(stockCsv, /Sıralama,price \(asc\)/);
+  assert.match(stockCsv, /Tarih,2026-11-11/);
+  assert.match(stockCsv, /Sembol \/ Ad,Fiyat,F\/K Oranı/);
+  assert.match(stockCsv, /THYAO\.IS \(Türk Hava Yolları\),312\.5000,6\.40/);
+  assert.ok(!stockCsv.includes('Temettü (%)'));
+
+  const fundCsv = buildFundScreenerCsv({
+    funds: [
+      {
+        code: 'TI2',
+        name: 'İş Portföy Hisse Fonu',
+        category: 'Hisse Senedi Fonları',
+        price: 12.3456,
+        dailyReturn: 1.12,
+        monthlyReturn: 4.5,
+        yearlyReturn: 42.1,
+        riskValue: 6,
+        managementFee: 1.9,
+      },
+    ],
+    columns: ['code', 'price', 'managementFee'],
+    returnPeriod: 'yearlyReturn',
+    returnPeriodLabel: '1 Yıl',
+    filterSummary: 'Risk: Yüksek',
+    sortBy: 'dailyReturn',
+    sortOrder: 'desc',
+    now: new Date('2026-11-11T15:00:00.000Z'),
+  });
+  assert.match(fundCsv, /^\uFEFFTarayıcı Türü,TEFAS Yatırım Fonları/);
+  assert.match(fundCsv, /Aktif Filtreler,Risk: Yüksek/);
+  assert.match(fundCsv, /Sıralama,dailyReturn \(desc\)/);
+  assert.match(fundCsv, /Fon Kodu \/ Ad,Birim Fiyat \(TRY\),Yönetim Ücreti \(%\)/);
+  assert.match(fundCsv, /TI2 \(İş Portföy Hisse Fonu\),12\.3456,1\.90/);
+  assert.ok(!fundCsv.includes('Risk (1-7)'));
+  assert.ok(FUND_TABLE_COLUMNS.some((c) => c.id === 'managementFee'));
+
+  const piySrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/piyasalar/page.tsx'), 'utf8');
+  assert.match(piySrc, /stock-column-picker/);
+  assert.match(piySrc, /stock-csv-export/);
+  assert.match(piySrc, /fund-column-picker/);
+  assert.match(piySrc, /fund-csv-export/);
+});
+
 
 
 

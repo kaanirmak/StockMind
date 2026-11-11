@@ -63,6 +63,19 @@ import {
   type StockPriceChangeFilter,
   type StockScreenerCriteria,
 } from '@/lib/market/stockScreener';
+import {
+  DEFAULT_FUND_COLUMNS,
+  DEFAULT_STOCK_COLUMNS,
+  FUND_TABLE_COLUMNS,
+  STOCK_TABLE_COLUMNS,
+  buildFundScreenerCsv,
+  buildStockScreenerCsv,
+  readScreenerTablePrefs,
+  toggleColumnSelection,
+  writeScreenerTablePrefs,
+  type FundColumnId,
+  type StockColumnId,
+} from '@/lib/market/screenerTable';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatDate, formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -141,6 +154,11 @@ function PiyasalarContent() {
   const [savedTefasPresets, setSavedTefasPresets] = useState<SavedTefasFilterPreset[]>([]);
   const [activeTefasPresetId, setActiveTefasPresetId] = useState<string | null>(null);
   const [tefasPresetNameInput, setTefasPresetNameInput] = useState<string>('');
+  const [stockColumns, setStockColumns] = useState<StockColumnId[]>(DEFAULT_STOCK_COLUMNS);
+  const [fundColumns, setFundColumns] = useState<FundColumnId[]>(DEFAULT_FUND_COLUMNS);
+  const [showStockColumnMenu, setShowStockColumnMenu] = useState<boolean>(false);
+  const [showFundColumnMenu, setShowFundColumnMenu] = useState<boolean>(false);
+  const hasHydratedTablePrefsRef = useRef<boolean>(false);
 
   // Shared view mode
   const [watchlistOnly, setWatchlistOnly] = useState<boolean>(initialResolved.watchlistOnly);
@@ -241,11 +259,36 @@ function PiyasalarContent() {
     setFundPage(1);
   };
 
-  // Load saved BIST screeners & TEFAS filter presets from storage once on mount
+  // Load saved BIST screeners, TEFAS filter presets, and table column/sort preferences on mount
   useEffect(() => {
+    if (hasHydratedTablePrefsRef.current) return;
     setSavedBistScreeners(readSavedBistScreeners());
     setSavedTefasPresets(readSavedTefasFilterPresets());
-  }, []);
+    const tablePrefs = readScreenerTablePrefs();
+    setStockColumns(tablePrefs.stockColumns);
+    setFundColumns(tablePrefs.fundColumns);
+    if (!searchParams.get('sort') && tablePrefs.stockSortBy) {
+      setStockSortBy(tablePrefs.stockSortBy);
+      if (tablePrefs.stockSortOrder) setStockSortOrder(tablePrefs.stockSortOrder);
+    }
+    if (!searchParams.get('sort') && tablePrefs.fundSortBy) {
+      setFundSortBy(tablePrefs.fundSortBy);
+      if (tablePrefs.fundSortOrder) setFundSortOrder(tablePrefs.fundSortOrder);
+    }
+    hasHydratedTablePrefsRef.current = true;
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!hasHydratedTablePrefsRef.current) return;
+    writeScreenerTablePrefs({
+      stockColumns,
+      fundColumns,
+      stockSortBy,
+      stockSortOrder,
+      fundSortBy,
+      fundSortOrder,
+    });
+  }, [stockColumns, fundColumns, stockSortBy, stockSortOrder, fundSortBy, fundSortOrder]);
 
   const handleSaveTefasPreset = () => {
     const result = saveTefasFilterPreset({
@@ -541,6 +584,73 @@ function PiyasalarContent() {
   const selectedReturnPeriodMeta =
     FUND_RETURN_PERIOD_OPTIONS.find((opt) => opt.id === fundReturnPeriod) ??
     FUND_RETURN_PERIOD_OPTIONS[5];
+
+  const triggerCsvDownload = (csvContent: string, filename: string, label: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast({ type: 'success', title: 'CSV Dışa Aktarıldı', message: label });
+  };
+
+  const handleExportStocksCsv = () => {
+    if (sortedStocks.length === 0) return;
+    const filterParts: string[] = [];
+    if (selectedSector !== 'ALL') filterParts.push(`Sektör:${selectedSector}`);
+    if (stockSearch.trim()) filterParts.push(`Arama:${stockSearch.trim()}`);
+    if (watchlistOnly) filterParts.push('Takip Listesi');
+    if (activeMarket === 'BIST') {
+      if (bistScreener.peBand !== 'ALL') filterParts.push(`F/K:${bistScreener.peBand}`);
+      if (bistScreener.dividendTier !== 'ALL') filterParts.push(`Temettü:${bistScreener.dividendTier}`);
+      if (bistScreener.marketCapTier !== 'ALL') filterParts.push(`PiyasaDeğeri:${bistScreener.marketCapTier}`);
+      if (bistScreener.priceChange !== 'ALL') filterParts.push(`Değişim:${bistScreener.priceChange}`);
+    }
+    const content = buildStockScreenerCsv({
+      stocks: sortedStocks,
+      columns: stockColumns,
+      market: activeMarket,
+      filterSummary: filterParts.join(' · ') || 'Yok',
+      sortBy: stockSortBy,
+      sortOrder: stockSortOrder,
+    });
+    const todayIso = new Date().toISOString().slice(0, 10);
+    triggerCsvDownload(
+      content,
+      `stockmind-${activeMarket.toLowerCase()}-${todayIso}.csv`,
+      `${sortedStocks.length} kayıt, ${stockColumns.length} seçili sütun ile aktarıldı.`
+    );
+  };
+
+  const handleExportFundsCsv = () => {
+    if (sortedFunds.length === 0) return;
+    const filterParts: string[] = [];
+    if (selectedCategory !== 'ALL') filterParts.push(`Kategori:${selectedCategory}`);
+    if (fundRiskRange !== 'ALL') filterParts.push(`Risk:${fundRiskRange}`);
+    if (fundFeeTier !== 'ALL') filterParts.push(`Ücret:${fundFeeTier}`);
+    if (fundReturnThreshold !== 'ALL') filterParts.push(`Getiri:${fundReturnThreshold}`);
+    if (fundSearch.trim()) filterParts.push(`Arama:${fundSearch.trim()}`);
+    if (watchlistOnly) filterParts.push('Takip Listesi');
+    const content = buildFundScreenerCsv({
+      funds: sortedFunds,
+      columns: fundColumns,
+      returnPeriod: fundReturnPeriod,
+      returnPeriodLabel: selectedReturnPeriodMeta.shortLabel,
+      filterSummary: filterParts.join(' · ') || 'Yok',
+      sortBy: fundSortBy,
+      sortOrder: fundSortOrder,
+    });
+    const todayIso = new Date().toISOString().slice(0, 10);
+    triggerCsvDownload(
+      content,
+      `stockmind-tefas-${todayIso}.csv`,
+      `${sortedFunds.length} TEFAS fonu, ${fundColumns.length} seçili sütun ile aktarıldı.`
+    );
+  };
   const resetFundFilters = () => {
     setFundSearch('');
     setSelectedCategory('ALL');
@@ -934,9 +1044,73 @@ function PiyasalarContent() {
       {isStocksMarket && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
-            <button type="button" aria-pressed={watchlistOnly} onClick={() => setWatchlistOnly(!watchlistOnly)} className={`px-3 rounded-xl border ${watchlistOnly ? 'bg-accent/15 border-accent text-accent' : 'border-border'}`}>Takip Ettiklerim</button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" aria-pressed={watchlistOnly} onClick={() => setWatchlistOnly(!watchlistOnly)} className={`px-3 py-1 rounded-xl border ${watchlistOnly ? 'bg-accent/15 border-accent text-accent' : 'border-border'}`}>Takip Ettiklerim</button>
+              <button
+                type="button"
+                aria-expanded={showStockColumnMenu}
+                onClick={() => setShowStockColumnMenu((prev) => !prev)}
+                className={`px-3 py-1 rounded-xl border transition-colors cursor-pointer ${showStockColumnMenu ? 'bg-accent/15 border-accent text-accent font-medium' : 'border-border hover:text-text-primary'}`}
+              >
+                Sütunlar ({stockColumns.length}/{STOCK_TABLE_COLUMNS.length})
+              </button>
+              <button
+                type="button"
+                data-testid="stock-csv-export"
+                onClick={handleExportStocksCsv}
+                disabled={sortedStocks.length === 0}
+                className="px-3 py-1 rounded-xl border border-border hover:border-accent/50 hover:text-text-primary disabled:opacity-50 transition-colors cursor-pointer"
+              >
+                CSV İndir ({sortedStocks.length})
+              </button>
+            </div>
             <span className="hidden sm:inline">{stocksUpdatedAt ? `Son kontrol: ${stocksUpdatedAt.toLocaleTimeString('tr-TR')}` : 'Fiyatlar yükleniyor'}</span>
           </div>
+          {showStockColumnMenu && (
+            <div
+              data-testid="stock-column-picker"
+              className="glass-card p-2.5 flex flex-wrap items-center gap-1.5 !bg-bg-card"
+            >
+              <span className="text-[11px] font-medium text-text-muted mr-1">Görünür Sütunlar:</span>
+              {STOCK_TABLE_COLUMNS.map((col) => {
+                const active = stockColumns.includes(col.id);
+                return (
+                  <button
+                    key={col.id}
+                    type="button"
+                    aria-pressed={active}
+                    disabled={col.locked}
+                    onClick={() =>
+                      setStockColumns((prev) =>
+                        toggleColumnSelection(
+                          prev,
+                          col.id,
+                          ['symbol'],
+                          STOCK_TABLE_COLUMNS,
+                        ),
+                      )
+                    }
+                    className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${
+                      col.locked ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+                    } ${
+                      active
+                        ? 'bg-accent/15 border-accent text-accent font-semibold'
+                        : 'bg-bg-tertiary/60 border-border text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    {col.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setStockColumns(DEFAULT_STOCK_COLUMNS)}
+                className="ml-auto text-[11px] font-medium text-accent hover:underline cursor-pointer"
+              >
+                Varsayılana Dön
+              </button>
+            </div>
+          )}
           {/* Filters Bar */}
           <div className="glass-card p-2 sm:p-3 space-y-2 !bg-bg-card">
             <div className="flex items-center gap-2">
@@ -1303,24 +1477,43 @@ function PiyasalarContent() {
                   <thead className="bg-bg-secondary/80 text-text-muted text-[11px] sm:text-xs uppercase tracking-wider border-b border-border/80">
                     <tr>
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold">Sembol</th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold hidden sm:table-cell">Piyasa</th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('price')}>
-                        {activeMarket === 'INDEX' ? 'Puan / Değer' : 'Fiyat'} {stockSortBy === 'price' && (stockSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('changePercent')}>
-                        Değişim {stockSortBy === 'changePercent' && (stockSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden md:table-cell" onClick={() => toggleStockSort('volume')}>
-                        Hacim {stockSortBy === 'volume' && (stockSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden lg:table-cell" onClick={() => toggleStockSort('marketCap')}>
-                        {activeMarket === 'INDEX' ? 'Endeks Büyüklüğü' : 'Piyasa Değeri'} {stockSortBy === 'marketCap' && (stockSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
+                      {stockColumns.includes('market') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold hidden sm:table-cell">Piyasa</th>
+                      )}
+                      {stockColumns.includes('sector') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold hidden md:table-cell">Sektör</th>
+                      )}
+                      {stockColumns.includes('price') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('price')}>
+                          {activeMarket === 'INDEX' ? 'Puan / Değer' : 'Fiyat'} {stockSortBy === 'price' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {stockColumns.includes('changePercent') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleStockSort('changePercent')}>
+                          Değişim {stockSortBy === 'changePercent' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {stockColumns.includes('volume') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden md:table-cell" onClick={() => toggleStockSort('volume')}>
+                          Hacim {stockSortBy === 'volume' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {stockColumns.includes('marketCap') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden lg:table-cell" onClick={() => toggleStockSort('marketCap')}>
+                          {activeMarket === 'INDEX' ? 'Endeks Büyüklüğü' : 'Piyasa Değeri'} {stockSortBy === 'marketCap' && (stockSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {stockColumns.includes('peRatio') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right hidden lg:table-cell">F/K</th>
+                      )}
+                      {stockColumns.includes('dividendYield') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right hidden lg:table-cell">Temettü %</th>
+                      )}
                       <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-center">İşlem</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    <WindowedRows columns={8}>{visibleStocks.map((stock) => {
+                    <WindowedRows columns={stockColumns.length + 1}>{visibleStocks.map((stock) => {
                       const isPositive = (stock.changePercent || 0) >= 0;
                       const curr = (stock.currency as string) === 'TRY' ? '₺' : (stock.currency as string) === 'EUR' ? '€' : '$';
                       const badgeVariant = getBadgeVariant(stock.exchange);
@@ -1340,83 +1533,112 @@ function PiyasalarContent() {
                               </div>
                             </Link>
                           </td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <Badge variant={badgeVariant as any} size="sm">{desc.exchange}</Badge>
-                              <span className="text-[11px] text-text-muted">{desc.assetTypeLabel} • {desc.currency}</span>
-                            </div>
-                          </td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
-                            {(() => {
-                              const statusInfo = classifyStockPriceStatus(stock);
-                              if (statusInfo.status === 'missing') {
-                                return (
-                                  <div className="flex flex-col items-end gap-0.5 font-sans">
-                                    <span className="text-xs font-medium text-text-muted">Fiyat yok</span>
-                                    <PriceStatusBadge statusInfo={statusInfo} />
-                                  </div>
-                                );
-                              }
-                              const validP = stock.price as number;
-                              const resolvedUnit = resolveAssetDisplayUnit({
-                                symbol: stock.symbol,
-                                exchange: stock.exchange,
-                                currency: stock.currency,
-                                unit: stock.unit,
-                                isIndex: activeMarket === 'INDEX' || stock.isIndex,
-                              });
-                              if (resolvedUnit === 'puan') {
-                                return (
-                                  <div className="flex flex-col items-end gap-0.5">
-                                    <span>{formatAssetUnitPrice({ value: validP, symbol: stock.symbol, exchange: stock.exchange, currency: stock.currency, unit: 'points', isIndex: true })}</span>
-                                    <PriceStatusBadge statusInfo={statusInfo} />
-                                  </div>
-                                );
-                              }
-                              if (activeMarket === 'COMMODITY' || resolvedUnit === 'TL/gram') {
+                          {stockColumns.includes('market') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Badge variant={badgeVariant as any} size="sm">{desc.exchange}</Badge>
+                                <span className="text-[11px] text-text-muted">{desc.assetTypeLabel} • {desc.currency}</span>
+                              </div>
+                            </td>
+                          )}
+                          {stockColumns.includes('sector') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs text-text-secondary hidden md:table-cell">
+                              {stock.sector || '—'}
+                            </td>
+                          )}
+                          {stockColumns.includes('price') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
+                              {(() => {
+                                const statusInfo = classifyStockPriceStatus(stock);
+                                if (statusInfo.status === 'missing') {
+                                  return (
+                                    <div className="flex flex-col items-end gap-0.5 font-sans">
+                                      <span className="text-xs font-medium text-text-muted">Fiyat yok</span>
+                                      <PriceStatusBadge statusInfo={statusInfo} />
+                                    </div>
+                                  );
+                                }
+                                const validP = stock.price as number;
+                                const resolvedUnit = resolveAssetDisplayUnit({
+                                  symbol: stock.symbol,
+                                  exchange: stock.exchange,
+                                  currency: stock.currency,
+                                  unit: stock.unit,
+                                  isIndex: activeMarket === 'INDEX' || stock.isIndex,
+                                });
+                                if (resolvedUnit === 'puan') {
+                                  return (
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span>{formatAssetUnitPrice({ value: validP, symbol: stock.symbol, exchange: stock.exchange, currency: stock.currency, unit: 'points', isIndex: true })}</span>
+                                      <PriceStatusBadge statusInfo={statusInfo} />
+                                    </div>
+                                  );
+                                }
+                                if (activeMarket === 'COMMODITY' || resolvedUnit === 'TL/gram') {
+                                  return (
+                                    <div className="flex flex-col items-end gap-0.5">
+                                      <span>
+                                        {resolvedUnit === 'TL/gram'
+                                          ? formatAssetUnitPrice({ value: validP, symbol: stock.symbol, exchange: stock.exchange, currency: stock.currency, unit: 'TL/gram' })
+                                          : `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                      </span>
+                                      {stock.unit && resolvedUnit !== 'TL/gram' && (
+                                        <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>
+                                      )}
+                                      <PriceStatusBadge statusInfo={statusInfo} />
+                                    </div>
+                                  );
+                                }
                                 return (
                                   <div className="flex flex-col items-end gap-0.5">
                                     <span>
-                                      {resolvedUnit === 'TL/gram'
-                                        ? formatAssetUnitPrice({ value: validP, symbol: stock.symbol, exchange: stock.exchange, currency: stock.currency, unit: 'TL/gram' })
-                                        : `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                      {curr}{validP < 1 ? (validP < 0.001 ? validP.toFixed(6) : validP.toFixed(4)) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}
                                     </span>
-                                    {stock.unit && resolvedUnit !== 'TL/gram' && (
-                                      <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>
-                                    )}
                                     <PriceStatusBadge statusInfo={statusInfo} />
                                   </div>
                                 );
-                              }
-                              return (
-                                <div className="flex flex-col items-end gap-0.5">
-                                  <span>
-                                    {curr}{validP < 1 ? (validP < 0.001 ? validP.toFixed(6) : validP.toFixed(4)) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}
-                                  </span>
-                                  <PriceStatusBadge statusInfo={statusInfo} />
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-right font-mono whitespace-nowrap">
-                            <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg ${isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
-                              {isPositive ? '+' : ''}{stock.changePercent?.toFixed(2)}%
-                            </span>
-                          </td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden md:table-cell">
-                            {stock.volume ? (stock.volume > 1e6 ? `${(stock.volume / 1e6).toFixed(1)}M` : `${(stock.volume / 1e3).toFixed(0)}K`) : '-'}
-                          </td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden lg:table-cell">
-                            {stock.marketCap
-                              ? stock.marketCap >= 1e12
-                                ? `${curr}${(stock.marketCap / 1e12).toFixed(2)} Tr`
-                                : stock.marketCap >= 1e9
-                                ? `${curr}${(stock.marketCap / 1e9).toFixed(1)} Mr`
-                                : stock.marketCap >= 1e6
-                                ? `${curr}${(stock.marketCap / 1e6).toFixed(0)} M`
-                                : '-'
-                              : '-'}
-                          </td>
+                              })()}
+                            </td>
+                          )}
+                          {stockColumns.includes('changePercent') && (
+                            <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-right font-mono whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg ${isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
+                                {isPositive ? '+' : ''}{stock.changePercent?.toFixed(2)}%
+                              </span>
+                            </td>
+                          )}
+                          {stockColumns.includes('volume') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden md:table-cell">
+                              {stock.volume ? (stock.volume > 1e6 ? `${(stock.volume / 1e6).toFixed(1)}M` : `${(stock.volume / 1e3).toFixed(0)}K`) : '-'}
+                            </td>
+                          )}
+                          {stockColumns.includes('marketCap') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden lg:table-cell">
+                              {stock.marketCap
+                                ? stock.marketCap >= 1e12
+                                  ? `${curr}${(stock.marketCap / 1e12).toFixed(2)} Tr`
+                                  : stock.marketCap >= 1e9
+                                  ? `${curr}${(stock.marketCap / 1e9).toFixed(1)} Mr`
+                                  : stock.marketCap >= 1e6
+                                  ? `${curr}${(stock.marketCap / 1e6).toFixed(0)} M`
+                                  : '-'
+                                : '-'}
+                            </td>
+                          )}
+                          {stockColumns.includes('peRatio') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden lg:table-cell">
+                              {typeof stock.peRatio === 'number' && Number.isFinite(stock.peRatio) && stock.peRatio > 0
+                                ? stock.peRatio.toFixed(1)
+                                : '—'}
+                            </td>
+                          )}
+                          {stockColumns.includes('dividendYield') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-text-secondary text-xs hidden lg:table-cell">
+                              {typeof stock.dividendYield === 'number' && Number.isFinite(stock.dividendYield)
+                                ? `%${stock.dividendYield.toFixed(2)}`
+                                : '—'}
+                            </td>
+                          )}
                           <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button
@@ -1758,6 +1980,74 @@ function PiyasalarContent() {
                 </Button>
               </div>
             </div>
+
+            {/* TEFAS Column Picker & CSV Export (PIY-10) */}
+            <div className="pt-2 border-t border-border/40 flex flex-wrap items-center justify-between gap-2 text-xs text-text-muted">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  aria-expanded={showFundColumnMenu}
+                  onClick={() => setShowFundColumnMenu((prev) => !prev)}
+                  className={`px-3 py-1 rounded-xl border transition-colors cursor-pointer ${showFundColumnMenu ? 'bg-accent/15 border-accent text-accent font-medium' : 'border-border hover:text-text-primary'}`}
+                >
+                  Sütunlar ({fundColumns.length}/{FUND_TABLE_COLUMNS.length})
+                </button>
+                <button
+                  type="button"
+                  data-testid="fund-csv-export"
+                  onClick={handleExportFundsCsv}
+                  disabled={sortedFunds.length === 0}
+                  className="px-3 py-1 rounded-xl border border-border hover:border-accent/50 hover:text-text-primary disabled:opacity-50 transition-colors cursor-pointer"
+                >
+                  CSV İndir ({sortedFunds.length})
+                </button>
+              </div>
+              {showFundColumnMenu && (
+                <div
+                  data-testid="fund-column-picker"
+                  className="w-full pt-2 flex flex-wrap items-center gap-1.5"
+                >
+                  <span className="text-[11px] font-medium text-text-muted mr-1">Görünür Sütunlar:</span>
+                  {FUND_TABLE_COLUMNS.map((col) => {
+                    const active = fundColumns.includes(col.id);
+                    return (
+                      <button
+                        key={col.id}
+                        type="button"
+                        aria-pressed={active}
+                        disabled={col.locked}
+                        onClick={() =>
+                          setFundColumns((prev) =>
+                            toggleColumnSelection(
+                              prev,
+                              col.id,
+                              ['code'],
+                              FUND_TABLE_COLUMNS,
+                            ),
+                          )
+                        }
+                        className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${
+                          col.locked ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
+                        } ${
+                          active
+                            ? 'bg-accent/15 border-accent text-accent font-semibold'
+                            : 'bg-bg-tertiary/60 border-border text-text-muted hover:text-text-primary'
+                        }`}
+                      >
+                        {col.label}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setFundColumns(DEFAULT_FUND_COLUMNS)}
+                    className="ml-auto text-[11px] font-medium text-accent hover:underline cursor-pointer"
+                  >
+                    Varsayılana Dön
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Funds Content */}
@@ -1788,40 +2078,56 @@ function PiyasalarContent() {
                   <thead className="bg-bg-secondary/80 text-text-muted text-[11px] sm:text-xs uppercase tracking-wider border-b border-border/80">
                     <tr>
                       <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold">Fon Kodu</th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('price')}>
-                        Fiyat {fundSortBy === 'price' && (fundSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('dailyReturn')}>
-                        Günlük {fundSortBy === 'dailyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden sm:table-cell" onClick={() => toggleFundSort('monthlyReturn')}>
-                        1 Ay {fundSortBy === 'monthlyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th
-                        className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary"
-                        onClick={() => {
-                          const sortKey =
-                            fundReturnPeriod === 'dailyReturn' ||
-                            fundReturnPeriod === 'monthlyReturn' ||
-                            fundReturnPeriod === 'return3m' ||
-                            fundReturnPeriod === 'yearlyReturn' ||
-                            fundReturnPeriod === 'return3y' ||
-                            fundReturnPeriod === 'return5y'
-                              ? fundReturnPeriod
-                              : 'yearlyReturn';
-                          toggleFundSort(sortKey);
-                        }}
-                      >
-                        {selectedReturnPeriodMeta.shortLabel} {fundSortBy === fundReturnPeriod && (fundSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-center hidden md:table-cell cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('riskValue')}>
-                        Risk / Ücret {fundSortBy === 'riskValue' && (fundSortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
+                      {fundColumns.includes('price') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('price')}>
+                          Fiyat {fundSortBy === 'price' && (fundSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {fundColumns.includes('dailyReturn') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('dailyReturn')}>
+                          Günlük {fundSortBy === 'dailyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {fundColumns.includes('monthlyReturn') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary hidden sm:table-cell" onClick={() => toggleFundSort('monthlyReturn')}>
+                          1 Ay {fundSortBy === 'monthlyReturn' && (fundSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {fundColumns.includes('periodReturn') && (
+                        <th
+                          className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right cursor-pointer hover:text-text-primary"
+                          onClick={() => {
+                            const sortKey =
+                              fundReturnPeriod === 'dailyReturn' ||
+                              fundReturnPeriod === 'monthlyReturn' ||
+                              fundReturnPeriod === 'return3m' ||
+                              fundReturnPeriod === 'yearlyReturn' ||
+                              fundReturnPeriod === 'return3y' ||
+                              fundReturnPeriod === 'return5y'
+                                ? fundReturnPeriod
+                                : 'yearlyReturn';
+                            toggleFundSort(sortKey);
+                          }}
+                        >
+                          {selectedReturnPeriodMeta.shortLabel} {fundSortBy === fundReturnPeriod && (fundSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {fundColumns.includes('riskValue') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-center hidden md:table-cell cursor-pointer hover:text-text-primary" onClick={() => toggleFundSort('riskValue')}>
+                          Risk / Ücret {fundSortBy === 'riskValue' && (fundSortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
+                      )}
+                      {fundColumns.includes('managementFee') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold text-right hidden lg:table-cell">Yönetim Ücreti</th>
+                      )}
+                      {fundColumns.includes('category') && (
+                        <th className="py-2.5 sm:py-3 px-2 sm:px-4 font-semibold hidden lg:table-cell">Kategori</th>
+                      )}
                       <th className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-center">İşlem</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    <WindowedRows columns={8}>{visibleFunds.map((fund) => {
+                    <WindowedRows columns={fundColumns.length + 1}>{visibleFunds.map((fund) => {
                       const dailyPos = (fund.dailyReturn || 0) >= 0;
                       const periodRet = getFundPeriodReturn(fund, fundReturnPeriod);
                       const periodPos = (periodRet ?? 0) >= 0;
@@ -1840,42 +2146,62 @@ function PiyasalarContent() {
                               </div>
                             </Link>
                           </td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
-                            <div className="flex flex-col items-end gap-0.5">
-                              <span>{fund.price == null ? 'Fiyat yok' : `₺${fund.price.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`}</span>
-                              <PriceStatusBadge statusInfo={classifyFundPriceStatus(fund)} />
-                              {fund.price != null && (
-                                <span className="font-sans text-[10px] font-normal text-text-muted">
-                                  {fund.navDate ? <time dateTime={fund.navDate} title="TEFAS değerleme tarihi">{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time> : 'Tarih bilinmiyor'}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono whitespace-nowrap">
-                            <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-lg ${dailyPos ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
-                              {fund.price == null ? '—' : `${dailyPos ? '+' : ''}${fund.dailyReturn.toFixed(2)}%`}
-                            </span>
-                          </td>
-                          <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs hidden sm:table-cell font-semibold ${(fund.monthlyReturn || 0) >= 0 ? 'text-success' : 'text-danger'}`}>
-                            {fund.price == null ? '—' : `${fund.monthlyReturn >= 0 ? '+' : ''}${fund.monthlyReturn.toFixed(2)}%`}
-                          </td>
-                          <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs font-bold ${periodPos ? 'text-success' : 'text-danger'}`}>
-                            {periodRet == null ? '—' : `${periodPos ? '+' : ''}${periodRet.toFixed(2)}%`}
-                          </td>
-                          <td className="py-2 sm:py-3 px-2 sm:px-4 text-center hidden md:table-cell">
-                            <div className="flex flex-col items-center gap-0.5">
-                              {fund.riskValue ? (
-                                <Badge variant={fund.riskValue <= 2 ? 'success' : fund.riskValue <= 4 ? 'warning' : 'danger'} size="sm">
-                                  Risk {fund.riskValue}/7
-                                </Badge>
-                              ) : (
-                                <span className="text-[11px] text-text-muted">Risk yok</span>
-                              )}
-                              <span className="text-[10px] font-mono text-text-muted">
-                                {fund.managementFee != null ? `%${fund.managementFee.toFixed(2)} ücret` : 'Ücret yok'}
+                          {fundColumns.includes('price') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span>{fund.price == null ? 'Fiyat yok' : `₺${fund.price.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`}</span>
+                                <PriceStatusBadge statusInfo={classifyFundPriceStatus(fund)} />
+                                {fund.price != null && (
+                                  <span className="font-sans text-[10px] font-normal text-text-muted">
+                                    {fund.navDate ? <time dateTime={fund.navDate} title="TEFAS değerleme tarihi">{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time> : 'Tarih bilinmiyor'}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          )}
+                          {fundColumns.includes('dailyReturn') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-lg ${dailyPos ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
+                                {fund.price == null ? '—' : `${dailyPos ? '+' : ''}${fund.dailyReturn.toFixed(2)}%`}
                               </span>
-                            </div>
-                          </td>
+                            </td>
+                          )}
+                          {fundColumns.includes('monthlyReturn') && (
+                            <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs hidden sm:table-cell font-semibold ${(fund.monthlyReturn || 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                              {fund.price == null ? '—' : `${fund.monthlyReturn >= 0 ? '+' : ''}${fund.monthlyReturn.toFixed(2)}%`}
+                            </td>
+                          )}
+                          {fundColumns.includes('periodReturn') && (
+                            <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs font-bold ${periodPos ? 'text-success' : 'text-danger'}`}>
+                              {periodRet == null ? '—' : `${periodPos ? '+' : ''}${periodRet.toFixed(2)}%`}
+                            </td>
+                          )}
+                          {fundColumns.includes('riskValue') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center hidden md:table-cell">
+                              <div className="flex flex-col items-center gap-0.5">
+                                {fund.riskValue ? (
+                                  <Badge variant={fund.riskValue <= 2 ? 'success' : fund.riskValue <= 4 ? 'warning' : 'danger'} size="sm">
+                                    Risk {fund.riskValue}/7
+                                  </Badge>
+                                ) : (
+                                  <span className="text-[11px] text-text-muted">Risk yok</span>
+                                )}
+                                <span className="text-[10px] font-mono text-text-muted">
+                                  {fund.managementFee != null ? `%${fund.managementFee.toFixed(2)} ücret` : 'Ücret yok'}
+                                </span>
+                              </div>
+                            </td>
+                          )}
+                          {fundColumns.includes('managementFee') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono text-xs text-text-secondary hidden lg:table-cell">
+                              {fund.managementFee != null ? `%${fund.managementFee.toFixed(2)}` : '—'}
+                            </td>
+                          )}
+                          {fundColumns.includes('category') && (
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs text-text-secondary hidden lg:table-cell">
+                              {fund.category || '—'}
+                            </td>
+                          )}
                           <td className="py-2 sm:py-3 px-1.5 sm:px-4 text-center">
                             <div className="flex items-center justify-center gap-1">
                               <button

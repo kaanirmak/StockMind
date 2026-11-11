@@ -94,7 +94,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | PIY-07 | P2 | Finansal oran geçmişi ekle | Temel oranların dönem serisi ve kullanılan hesaplama yöntemi görünür. | ◐ |
 | PIY-08 | P2 | BIST için kaydedilebilir tarayıcı oluştur | Kullanıcı temel ve fiyat filtrelerini kaydedebilir, adlandırabilir ve tekrar açabilir. | ◐ |
 | PIY-09 | P2 | TEFAS için kaydedilebilir filtre seti ekle | Fon kategorisi, risk, ücret ve getiri koşulları kaydedilebilir. | ◐ |
-| PIY-10 | P2 | Tarayıcı sütunlarını ve CSV aktarımını ekle | Sütun seçimi ile sıralama kaydedilir. CSV, seçili filtre ve sütunlarla dışa aktarılır. | ☐ |
+| PIY-10 | P2 | Tarayıcı sütunlarını ve CSV aktarımını ekle | Sütun seçimi ile sıralama kaydedilir. CSV, seçili filtre ve sütunlarla dışa aktarılır. | ◐ |
 | PIY-11 | P3 | Gösterge bazlı ve liste bazlı alarmları değerlendir | Veri kaynağı, eşik davranışı ve arka plan maliyeti doğrulanır. İlk kural örnek veride tekrarlanabilir çalışır. | ☐ |
 
 ## 6. Alarmlar, bildirimler ve cihazlar
