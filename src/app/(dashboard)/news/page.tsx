@@ -5,9 +5,10 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { Badge, Input, Button } from '@/components/ui';
-import { NewsArticle } from '@/app/api/news/route';
+import type { NewsArticle } from '@/app/api/news/route';
 import { calculatePortfolioHoldings } from '@/lib/portfolio/calculations';
-import { mentionsNewsSymbol } from '@/lib/news/symbolMatch';
+import { mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
+import { rankNews } from '@/lib/news/relevance';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function NewsPage() {
@@ -25,6 +26,7 @@ export default function NewsPage() {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [sortOrder, setSortOrder] = useState<'important' | 'recent'>('important');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedSymbolFilter, setSelectedSymbolFilter] = useState<string>('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -35,11 +37,10 @@ export default function NewsPage() {
 
   // Extract unique portfolio symbols
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
-  const activeTransactions = transactions.filter((t) => t.portfolioId === activePortfolio?.id);
-
   const portfolioSymbols = useMemo(() => {
-    return calculatePortfolioHoldings(activeTransactions).filter(holding => holding.totalQuantity > 0).map(holding => holding.symbol.toUpperCase().trim());
-  }, [activeTransactions]);
+    const activeTransactions = transactions.filter(t => t.portfolioId === activePortfolio?.id);
+    return [...new Set(calculatePortfolioHoldings(activeTransactions).filter(holding => holding.totalQuantity > 0).map(holding => holding.symbol.toUpperCase().trim()))];
+  }, [activePortfolio?.id, transactions]);
 
   const fetchNews = async (isManualRefresh = false) => {
     requestRef.current?.abort();
@@ -49,7 +50,10 @@ export default function NewsPage() {
     setNewsError(''); setNewsWarning('');
     try {
       if (isManualRefresh) setIsRefreshing(true);
-      else setLoading(true);
+      else {
+        setNews([]);
+        setLoading(true);
+      }
 
       const params = new URLSearchParams();
       if (selectedCategory !== 'ALL') {
@@ -78,11 +82,14 @@ export default function NewsPage() {
   useEffect(() => {
     fetchNews();
     setSelectedSymbolFilter('ALL');
-    return () => requestRef.current?.abort();
+    return () => {
+      requestRef.current?.abort();
+      requestRef.current = null;
+    };
   }, [selectedCategory, portfolioSymbols.join(',')]);
 
   const filteredNews = useMemo(() => {
-    return news.filter((item) => {
+    const matches = news.filter((item) => {
       // Filter by specific symbol chip if selected
       if (selectedSymbolFilter !== 'ALL') {
         const sym = selectedSymbolFilter.toUpperCase();
@@ -94,15 +101,16 @@ export default function NewsPage() {
 
       // Filter by search text query
       if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase().trim();
+      const q = normalizeNewsText(searchQuery.trim());
       return (
-        item.title.toLowerCase().includes(q) ||
-        item.summary.toLowerCase().includes(q) ||
-        item.source.toLowerCase().includes(q) ||
-        item.relatedSymbols?.some((s) => s.toLowerCase().includes(q))
+        normalizeNewsText(item.title).includes(q) ||
+        normalizeNewsText(item.summary).includes(q) ||
+        normalizeNewsText(item.source).includes(q) ||
+        item.relatedSymbols?.some(symbol => normalizeNewsText(symbol).includes(q))
       );
     });
-  }, [news, searchQuery, selectedSymbolFilter]);
+    return rankNews(matches, portfolioSymbols, sortOrder === 'important');
+  }, [news, searchQuery, selectedSymbolFilter, portfolioSymbols, sortOrder]);
 
   const categories = [
     { id: 'ALL', label: 'Tüm Haberler' },
@@ -204,6 +212,18 @@ export default function NewsPage() {
             </select>
           )}
 
+        {selectedCategory !== 'KAP' && (
+          <select
+            aria-label="Haber sıralaması"
+            value={sortOrder}
+            onChange={event => setSortOrder(event.target.value === 'recent' ? 'recent' : 'important')}
+            className="min-h-9 rounded-xl border border-border bg-bg-secondary px-3 text-xs text-text-primary"
+          >
+            <option value="important">Öne çıkanlar</option>
+            <option value="recent">En yeni</option>
+          </select>
+        )}
+
         {/* Portfolio symbols quick filter chips */}
         {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length > 0 && (
           <div className="pt-2 border-t border-border/40 flex items-center gap-2 overflow-x-auto">
@@ -246,6 +266,14 @@ export default function NewsPage() {
       {newsError && <div role="alert" className="glass-card p-4 space-y-2"><p className="text-sm text-danger">{newsError}</p>{news.length > 0 && <p className="text-xs text-text-muted">Son yüklenen haberler gösteriliyor.</p>}<Button variant="secondary" size="sm" onClick={() => fetchNews(true)} disabled={isRefreshing}>Tekrar Dene</Button></div>}
       {newsWarning && <p role="status" className="text-xs text-warning">{newsWarning}</p>}
 
+      {selectedCategory === 'KAP' && !loading && (
+        <p className="text-sm">
+          <a className="font-semibold text-accent underline" href="https://www.kap.org.tr/" target="_blank" rel="noopener noreferrer">
+            Resmî KAP bildirimlerini aç
+          </a>
+        </p>
+      )}
+
       {/* Portfolio Empty State */}
       {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length === 0 && !loading ? (
         <div className="glass-card p-12 text-center space-y-4">
@@ -255,7 +283,7 @@ export default function NewsPage() {
           <div className="space-y-1 max-w-md mx-auto">
             <h3 className="text-lg font-bold text-text-primary">Portföyünüzde Henüz Varlık Bulunmuyor</h3>
             <p className="text-xs text-text-muted leading-relaxed">
-              Portföyünüze hisse senedi veya yatırım fonu eklediğinizde, sahip olduğunuz varlıklara ait tüm KAP bildirimleri ve piyasa haberleri otomatik olarak burada toplanacaktır.
+              Varlık eklediğinizde bağlı haber kaynaklarındaki ilgili başlıkları burada görebilirsiniz.
             </p>
           </div>
           <div className="pt-2">
@@ -269,9 +297,9 @@ export default function NewsPage() {
       ) : loading ? (
         <div className="glass-card p-12 text-center text-text-muted space-y-3">
           <div className="w-8 h-8 mx-auto border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium">Canlı haberler ve KAP bildirimleri yükleniyor...</p>
+          <p className="text-sm font-medium">Haber kaynakları yükleniyor...</p>
         </div>
-      ) : newsError && news.length === 0 ? null : filteredNews.length === 0 ? (
+      ) : selectedCategory === 'KAP' || (newsError && news.length === 0) ? null : filteredNews.length === 0 ? (
         <div className="glass-card p-12 text-center text-text-muted space-y-2">
           <svg className="w-10 h-10 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
@@ -281,7 +309,7 @@ export default function NewsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredNews.map((item, idx) => {
+          {filteredNews.map(({ article: item, matchedSymbols, event }, idx) => {
             const sentimentBadge =
               item.sentiment === 'positive' ? (
                 <Badge variant="success" size="sm">
@@ -298,8 +326,7 @@ export default function NewsPage() {
               );
 
             // Identify if this news relates to any of the user's portfolio holdings
-            const matchedPortfolioSymbols = portfolioSymbols.filter(symbol => mentionsNewsSymbol(`${item.title} ${item.summary}`, symbol));
-            const isPortfolioRelated = matchedPortfolioSymbols.length > 0;
+            const isPortfolioRelated = matchedSymbols.length > 0;
 
             const isDuplicateSummary =
               !item.summary ||
@@ -333,10 +360,12 @@ export default function NewsPage() {
                         </span>
                       )}
                     </div>
-                    <div className="shrink-0" title={item.sentimentReason}>
+                    <div className="shrink-0" title={`Haberin metin tonu. ${item.sentimentReason ?? ''}`}>
                       {sentimentBadge}
                     </div>
                   </div>
+
+                  {event && <Badge variant="info" size="sm">{event}</Badge>}
 
                   {/* Title */}
                   <a
@@ -395,9 +424,9 @@ export default function NewsPage() {
 
                     <Link
                       href={`/ai-assistant?prompt=${encodeURIComponent(
-                        isPortfolioRelated
-                          ? `Portföyümdeki (${matchedPortfolioSymbols.join(', ')}) varlıklarım açısından şu haberi analiz et: "${item.title}"`
-                          : `Şu haberi piyasa açısından analiz et: "${item.title}"`
+                        `Şu haberin olası piyasa etkisini ve belirsizliklerini açıkla.${
+                          isPortfolioRelated ? ` İlgilendiğim varlıklar: ${matchedSymbols.join(', ')}.` : ''
+                        }\nKaynak: ${item.source}\nBaşlık: ${item.title}\nÖzet: ${item.summary.slice(0, 500)}`
                       )}`}
                       className="text-[11px] font-semibold text-accent hover:underline flex items-center gap-0.5"
                     >

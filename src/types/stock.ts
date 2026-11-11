@@ -111,6 +111,25 @@ export interface TechnicalIndicator {
   params: Record<string, number>;
 }
 
+export interface MarketPriceObservation {
+  source: string;
+  asOf: string | null;
+  fetchedAt: string;
+  changePercent: number | null;
+}
+
+export interface MarketOverviewItem {
+  symbol: string;
+  name: string;
+  value: number | null;
+  change: number | null;
+  currency: 'TRY' | 'USD' | 'USDT';
+  unit?: 'points';
+  flag: string;
+  observation: MarketPriceObservation | null;
+  status: 'available' | 'last-known' | 'unavailable';
+}
+
 export interface StockMarketInfo {
   symbol: string;
   name: string;
@@ -136,4 +155,5 @@ export interface StockMarketInfo {
   high52w?: number;
   low52w?: number;
   timestamp?: string;
+  observation?: MarketPriceObservation;
 }

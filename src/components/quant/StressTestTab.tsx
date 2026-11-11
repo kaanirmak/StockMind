@@ -22,6 +22,7 @@ import {
 import {
   runMonteCarloSimulation,
   getFinancialProfile,
+  getQuantCurrency,
   PRESET_FINANCIAL_PROFILES,
 } from '@/lib/quant/models';
 import { Holding } from '@/types/portfolio';
@@ -62,11 +63,10 @@ export default function StressTestTab({
     onSelectSymbol?.(cleanSym);
   };
 
-  const preset = useMemo(() => {
-    return getFinancialProfile(currentSymbol, activeHolding?.currentPrice);
-  }, [currentSymbol, activeHolding?.currentPrice]);
-
-  const currentPrice = activeHolding?.currentPrice || preset.currentPrice;
+  const nativeCurrency = getQuantCurrency(currentSymbol, activeHolding?.originalCurrency);
+  const currencySign = nativeCurrency === 'USD' ? '$' : '₺';
+  const holdingPrice = activeHolding?.originalPrice ?? activeHolding?.currentPrice;
+  const currentPrice = getFinancialProfile(currentSymbol, holdingPrice).currentPrice;
 
   // Run simulation
   const mcResult = useMemo(() => {
@@ -154,19 +154,19 @@ export default function StressTestTab({
                 <span className="font-bold text-text-primary ml-1.5">{activeHolding.totalQuantity} Lot</span>
                 <span className="text-text-muted mx-1.5">•</span>
                 <span className="text-text-secondary">Pozisyon Tutarı:</span>
-                <span className="font-bold text-text-primary ml-1">₺{(activeHolding.currentValue || (currentPrice * activeHolding.totalQuantity)).toLocaleString('tr-TR')}</span>
+                <span className="font-bold text-text-primary ml-1">{currencySign}{(currentPrice * activeHolding.totalQuantity).toLocaleString('tr-TR')}</span>
               </div>
             </div>
 
             <div className="flex items-center gap-3 text-[11px]">
               <div className="flex items-center gap-1 text-rose-400">
                 <span className="text-text-muted">1 Yıl En Kötü (%5):</span>
-                <span className="font-bold">₺{(mcResult.var5Percentile * activeHolding.totalQuantity).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</span>
+                <span className="font-bold">{currencySign}{(mcResult.var5Percentile * activeHolding.totalQuantity).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</span>
               </div>
               <span className="text-border">|</span>
               <div className="flex items-center gap-1 text-emerald-400">
                 <span className="text-text-muted">1 Yıl Medyan:</span>
-                <span className="font-bold">₺{(mcResult.medianPrice * activeHolding.totalQuantity).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</span>
+                <span className="font-bold">{currencySign}{(mcResult.medianPrice * activeHolding.totalQuantity).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</span>
               </div>
             </div>
           </div>
@@ -185,7 +185,7 @@ export default function StressTestTab({
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-black text-text-primary">
-              ₺{mcResult.var5Percentile.toFixed(2)}
+              {currencySign}{mcResult.var5Percentile.toFixed(2)}
             </span>
             <span className="text-xs font-bold text-rose-400">
               (%{(((mcResult.var5Percentile - currentPrice) / currentPrice) * 100).toFixed(1)})
@@ -206,7 +206,7 @@ export default function StressTestTab({
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-black text-text-primary">
-              ₺{mcResult.medianPrice.toFixed(2)}
+              {currencySign}{mcResult.medianPrice.toFixed(2)}
             </span>
             <span className="text-xs font-bold text-emerald-400">
               (+%{(((mcResult.medianPrice - currentPrice) / currentPrice) * 100).toFixed(1)})
@@ -227,7 +227,7 @@ export default function StressTestTab({
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-black text-text-primary">
-              ₺{mcResult.best95Percentile.toFixed(2)}
+              {currencySign}{mcResult.best95Percentile.toFixed(2)}
             </span>
             <span className="text-xs font-bold text-emerald-400">
               (+%{(((mcResult.best95Percentile - currentPrice) / currentPrice) * 100).toFixed(1)})
@@ -302,7 +302,7 @@ export default function StressTestTab({
             </h3>
           </div>
           <span className="text-xs text-text-muted font-mono font-medium">
-            Başlangıç: ₺{currentPrice.toFixed(2)}
+            Başlangıç: {currencySign}{currentPrice.toFixed(2)}
           </span>
         </div>
 
@@ -352,7 +352,7 @@ export default function StressTestTab({
               fill={palette.color94a3b8}
               fontWeight="bold"
             >
-              ₺{currentPrice.toFixed(0)}
+              {currencySign}{currentPrice.toFixed(0)}
             </text>
 
             {/* 5 Trajectory Curves */}

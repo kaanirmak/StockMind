@@ -27,7 +27,7 @@ export interface TefasFundInfo {
   name: string;
   category: FundCategory;
   founder: string;
-  price: number;
+  price: number | null;
   dailyReturn: number;
   monthlyReturn: number;
   return3m: number;
@@ -45,7 +45,14 @@ export interface TefasFundInfo {
     percentage: number;
   }[];
   kapLink?: string;
+  navDate?: string | null;
   lastSyncAt?: string;
+}
+
+function readStoredFundPrice(value: unknown, lastSyncAt: unknown): number | null {
+  const price = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
+  return Number.isFinite(price) && price > 0 && typeof lastSyncAt === 'string' &&
+    Number.isFinite(Date.parse(lastSyncAt)) ? price : null;
 }
 
 /**
@@ -58,7 +65,7 @@ export const TEFAS_FUNDS: TefasFundInfo[] = (
   name: item.name,
   category: item.category,
   founder: item.founder,
-  price: 1.0,
+  price: null,
   dailyReturn: 0,
   monthlyReturn: 0,
   return3m: 0,
@@ -135,7 +142,7 @@ export async function getFundsFromDatabase(filter?: {
     name: row.name,
     category: row.category as FundCategory,
     founder: row.founder,
-    price: Number(row.price),
+    price: readStoredFundPrice(row.price, row.last_sync_at),
     dailyReturn: Number(row.daily_return || 0),
     monthlyReturn: Number(row.monthly_return || 0),
     return3m: Number(row.return_3m || 0),
@@ -150,6 +157,7 @@ export async function getFundsFromDatabase(filter?: {
     managementFee: Number(row.management_fee || 2),
     assetAllocation: row.asset_allocation || [],
     kapLink: row.kap_link,
+    navDate: row.nav_date ?? null,
     lastSyncAt: row.last_sync_at,
   }));
 
@@ -199,7 +207,7 @@ export async function getFundByCodeFromDatabase(code: string): Promise<TefasFund
     name: data.name,
     category: data.category as FundCategory,
     founder: data.founder,
-    price: Number(data.price),
+    price: readStoredFundPrice(data.price, data.last_sync_at),
     dailyReturn: Number(data.daily_return || 0),
     monthlyReturn: Number(data.monthly_return || 0),
     return3m: Number(data.return_3m || 0),
@@ -214,6 +222,7 @@ export async function getFundByCodeFromDatabase(code: string): Promise<TefasFund
     managementFee: Number(data.management_fee || 2),
     assetAllocation: data.asset_allocation || [],
     kapLink: data.kap_link,
+    navDate: data.nav_date ?? null,
     lastSyncAt: data.last_sync_at,
   };
   } catch (err) {
@@ -238,7 +247,7 @@ export function getFundByCode(code: string): TefasFundInfo | null {
     name: dirEntry.name,
     category: dirEntry.category,
     founder: dirEntry.founder,
-    price: 1.0,
+    price: null,
     dailyReturn: 0,
     monthlyReturn: 0,
     return3m: 0,

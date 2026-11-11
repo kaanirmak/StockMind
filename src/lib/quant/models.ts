@@ -1,6 +1,12 @@
 import { palette } from '@/theme/palette';
 // StockMind Quant Lab - İleri Seviye Temel & Kantitatif Değerleme Modelleri
 
+const USD_PROFILES = new Set(['AAPL', 'NVDA', 'QQQ']);
+
+export function getQuantCurrency(symbol: string, holdingCurrency?: string): 'TRY' | 'USD' {
+  return holdingCurrency === 'USD' || USD_PROFILES.has(symbol.toUpperCase()) ? 'USD' : 'TRY';
+}
+
 export interface DCFParams {
   symbol: string;
   currentPrice: number;
@@ -70,7 +76,8 @@ export function calculateDCF(params: DCFParams): DCFResult {
 
   const enterpriseValue = sumPVScheduled + pvTerminalValue;
   const equityValue = enterpriseValue - params.netDebt;
-  const fairValuePerShare = Math.max(0.1, equityValue / Math.max(1, params.sharesOutstanding));
+  const sharesOutstanding = params.sharesOutstanding > 0 ? params.sharesOutstanding : 1;
+  const fairValuePerShare = Math.max(0, equityValue / sharesOutstanding);
 
   const diff = ((fairValuePerShare - params.currentPrice) / params.currentPrice) * 100;
   const isUndervalued = diff > 0;
@@ -100,7 +107,7 @@ export function calculateDCF(params: DCFParams): DCFResult {
       const simTV = (simFCF * (1 + simTg)) / (simW - simTg);
       const simPVTV = simTV / Math.pow(1 + simW, 5);
       const simEqVal = simSumPV + simPVTV - params.netDebt;
-      return Number((simEqVal / params.sharesOutstanding).toFixed(2));
+      return Number(Math.max(0, simEqVal / sharesOutstanding).toFixed(2));
     });
   });
 

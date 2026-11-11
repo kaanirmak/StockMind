@@ -19,6 +19,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * Background worker that runs periodically even when the app is completely closed.
@@ -47,8 +48,8 @@ public class StockPriceWorker extends Worker {
             JSONObject settings = new JSONObject(pushSettingsJson);
 
             boolean enabled = settings.optBoolean("enabled", true);
-            if (!enabled) {
-                Log.d(TAG, "Push notifications are disabled by user in settings");
+            if (!enabled || !NotificationHelper.canNotify(context)) {
+                Log.d(TAG, "Push notifications are disabled or permission is unavailable");
                 return Result.success();
             }
 
@@ -64,7 +65,7 @@ public class StockPriceWorker extends Worker {
             }
             serverUrl = serverUrl.replaceAll("/$", "");
 
-            // 1. Check daily market close report (between 18:10 and 19:30 on weekdays)
+            // 1. Check daily market close report (after 18:30 on weekdays)
             if (dailyReport) {
                 checkDailyReport(context);
             }
@@ -85,25 +86,24 @@ public class StockPriceWorker extends Worker {
     }
 
     private void checkDailyReport(Context context) {
-        Calendar cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Europe/Istanbul"));
         int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
         // Weekdays: Monday to Friday
         if (dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY) {
             int hour = cal.get(Calendar.HOUR_OF_DAY);
             int minute = cal.get(Calendar.MINUTE);
-            // Between 18:10 and 19:30
-            if ((hour == 18 && minute >= 10) || hour == 19) {
+            // Start with the first background check after the bulletin time.
+            if ((hour == 18 && minute >= 30) || hour == 19) {
                 SharedPreferences alertPrefs = context.getSharedPreferences("StockMindAlertsPrefs", Context.MODE_PRIVATE);
                 String todayKey = "daily_report_" + cal.get(Calendar.YEAR) + "_" + cal.get(Calendar.DAY_OF_YEAR);
                 boolean alreadySent = alertPrefs.getBoolean(todayKey, false);
-                if (!alreadySent) {
-                    alertPrefs.edit().putBoolean(todayKey, true).apply();
-                    NotificationHelper.showNotification(
+                if (!alreadySent && NotificationHelper.showNotification(
                             context,
                             "📊 BIST Günlük Kapanış Bülteni",
                             "Borsa İstanbul seansı kapandı. Günlük portföy ve takip listenizdeki hisse değişimlerini inceleyin.",
                             "/dashboard"
-                    );
+                    )) {
+                    alertPrefs.edit().putBoolean(todayKey, true).apply();
                 }
             }
         }
@@ -120,28 +120,16 @@ public class StockPriceWorker extends Worker {
             JSONArray items = new JSONArray(watchlistRaw);
             if (items.length() == 0) return;
 
-            // Fetch live stocks from /api/stocks
-            String apiUrl = serverUrl + "/api/stocks";
-            String jsonResponse = fetchJson(apiUrl);
-            if (jsonResponse == null || jsonResponse.isEmpty()) {
-                Log.w(TAG, "Empty response from " + apiUrl);
-                return;
+            boolean checkFunds = false;
+            boolean checkStocks = false;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.getJSONObject(i);
+                if (item.optDouble("targetPrice", 0) <= 0 && item.optDouble("alertPercent", 0) <= 0) continue;
+                if ("fund".equals(item.optString("assetType"))) checkFunds = true;
+                else checkStocks = true;
             }
-
-            JSONObject respObj = new JSONObject(jsonResponse);
-            JSONArray dataArr = respObj.optJSONArray("data");
-            if (dataArr == null) return;
-
-            // Map symbols to latest prices
-            Map<String, Double> livePrices = new HashMap<>();
-            for (int i = 0; i < dataArr.length(); i++) {
-                JSONObject s = dataArr.getJSONObject(i);
-                String sym = s.optString("symbol", "").toUpperCase(Locale.ROOT);
-                double price = s.optDouble("price", 0.0);
-                if (!sym.isEmpty() && price > 0) {
-                    livePrices.put(sym, price);
-                }
-            }
+            Map<String, Double> stockPrices = checkStocks ? fetchPrices(serverUrl, false) : new HashMap<>();
+            Map<String, Double> fundPrices = checkFunds ? fetchPrices(serverUrl, true) : new HashMap<>();
 
             // Check alerts against watchlist items
             for (int i = 0; i < items.length(); i++) {
@@ -155,11 +143,10 @@ public class StockPriceWorker extends Worker {
                 double alertBase = item.optDouble("alertBasePrice", basePrice);
                 if (alertBase <= 0) alertBase = basePrice;
 
-                if (!livePrices.containsKey(sym)) {
-                    continue;
-                }
-
-                double livePrice = livePrices.get(sym);
+                boolean isFund = "fund".equals(item.optString("assetType"));
+                Double quote = (isFund ? fundPrices : stockPrices).get(sym);
+                if (quote == null) continue;
+                double livePrice = quote;
                 boolean reached = false;
                 String notifTitle = "🎯 Hedef Fiyat Uyarısı: " + sym;
                 String notifBody = "";
@@ -191,7 +178,7 @@ public class StockPriceWorker extends Worker {
                         notifBody = name + " (" + sym + ") %" + alertPercent + " gerileyerek " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + " oldu!";
                     }
                 } else if (targetPrice > 0) {
-                    if (targetPrice >= basePrice) {
+                    if (targetPrice >= alertBase) {
                         if (livePrice >= targetPrice) reached = true;
                     } else {
                         if (livePrice <= targetPrice) reached = true;
@@ -200,22 +187,41 @@ public class StockPriceWorker extends Worker {
                     notifBody = name + " (" + sym + ") hedeflediğiniz " + String.format(Locale.getDefault(), "%.2f ₺", targetPrice) + " seviyesine ulaştı! (Güncel: " + String.format(Locale.getDefault(), "%.2f ₺", livePrice) + ")";
                 }
 
-                String alertSentKey = "alert_sent_" + sym + "_" + (long) (livePrice * 10) + "_" + alertType;
-                boolean sent = alertPrefs.getBoolean(alertSentKey, false);
-
-                if (reached && !sent) {
-                    alertPrefs.edit().putBoolean(alertSentKey, true).apply();
-                    NotificationHelper.showNotification(
-                            context,
-                            notifTitle,
-                            notifBody,
-                            "/watchlist"
-                    );
+                String alertSentKey = "alert_last_" + item.optString("id", sym) + "_" + alertType;
+                String alertConfig = targetPrice + ":" + alertPercent + ":" + alertBase;
+                String previousConfig = alertPrefs.getString(alertSentKey, "");
+                if (!reached) {
+                    if (!previousConfig.isEmpty()) alertPrefs.edit().remove(alertSentKey).apply();
+                    continue;
+                }
+                if (!alertConfig.equals(previousConfig) && NotificationHelper.showNotification(
+                        context, notifTitle, notifBody, "/watchlist")) {
+                    alertPrefs.edit().putString(alertSentKey, alertConfig).apply();
                 }
             }
         } catch (Throwable t) {
             Log.e(TAG, "Error checking watchlist alerts in background worker", t);
         }
+    }
+
+    private Map<String, Double> fetchPrices(String serverUrl, boolean funds) {
+        Map<String, Double> prices = new HashMap<>();
+        String response = fetchJson(serverUrl + (funds ? "/api/funds" : "/api/stocks?liveOnly=true"));
+        if (response == null) return prices;
+        try {
+            JSONArray quotes = new JSONObject(response).optJSONArray("data");
+            if (quotes == null) return prices;
+            for (int i = 0; i < quotes.length(); i++) {
+                JSONObject quote = quotes.optJSONObject(i);
+                if (quote == null || (funds && quote.isNull("lastSyncAt"))) continue;
+                String symbol = quote.optString(funds ? "code" : "symbol").toUpperCase(Locale.ROOT);
+                double price = quote.optDouble("price", 0);
+                if (!symbol.isEmpty() && Double.isFinite(price) && price > 0) prices.put(symbol, price);
+            }
+        } catch (org.json.JSONException error) {
+            Log.w(TAG, "Invalid price response", error);
+        }
+        return prices;
     }
 
     private String fetchJson(String urlString) {
@@ -284,14 +290,13 @@ public class StockPriceWorker extends Worker {
                 String updateNotifiedKey = "update_notif_sent_" + remoteVersionCode;
                 boolean alreadyNotified = alertPrefs.getBoolean(updateNotifiedKey, false);
 
-                if (!alreadyNotified) {
-                    alertPrefs.edit().putBoolean(updateNotifiedKey, true).apply();
-                    NotificationHelper.showNotification(
+                if (!alreadyNotified && NotificationHelper.showNotification(
                             context,
                             "🚀 Yeni StockMind Güncellemesi Mevcut (v" + remoteVersionName + ")",
                             "StockMind'ın yeni sürümü hazır! Performans ve kapalıyken fiyat alarmlarını almak için hemen güncelleyin.",
                             "/settings"
-                    );
+                    )) {
+                    alertPrefs.edit().putBoolean(updateNotifiedKey, true).apply();
                 }
             }
 
@@ -307,9 +312,9 @@ public class StockPriceWorker extends Worker {
                     if (!bId.isEmpty() && !bMsg.isEmpty()) {
                         SharedPreferences alertPrefs = context.getSharedPreferences("StockMindAlertsPrefs", Context.MODE_PRIVATE);
                         String bcNotifiedKey = "broadcast_sent_" + bId;
-                        if (!alertPrefs.getBoolean(bcNotifiedKey, false)) {
+                        if (!alertPrefs.getBoolean(bcNotifiedKey, false) &&
+                                NotificationHelper.showNotification(context, bTitle, bMsg, bRoute)) {
                             alertPrefs.edit().putBoolean(bcNotifiedKey, true).apply();
-                            NotificationHelper.showNotification(context, bTitle, bMsg, bRoute);
                         }
                     }
                 }

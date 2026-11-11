@@ -20,6 +20,7 @@ function loadModule(relPath) {
       if (name === 'next/cache') return { revalidateTag: () => {}, revalidatePath: () => {}, unstable_cache: (fn) => fn };
       if (name === '@/lib/data/stocks') return { POPULAR_STOCKS: [] };
       if (name === '@/lib/data/funds') return { TEFAS_FUNDS: [] };
+      if (name === '@/lib/data/tefas-prices.mjs') return require('../src/lib/data/tefas-prices.mjs');
       if (name === 'zustand') return { create: (fn) => (typeof fn === 'function' ? fn(() => {}, () => ({})) : {}) };
       if (name === '@supabase/supabase-js') return { createClient: () => ({ from: () => ({ select: () => ({}) }) }) };
       if (name === '@/lib/data/tefas_funds_directory.json' || name === './tefas_funds_directory.json') {

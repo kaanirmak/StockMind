@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.webkit.JavascriptInterface;
 
-import androidx.core.app.NotificationManagerCompat;
 
 public class StockMindBridge {
 
@@ -42,9 +41,8 @@ public class StockMindBridge {
     }
 
     @JavascriptInterface
-    public void sendNativeNotification(String title, String message, String route) {
-        if (context == null) return;
-        NotificationHelper.showNotification(context, title, message, route);
+    public boolean sendNativeNotification(String title, String message, String route) {
+        return NotificationHelper.showNotification(context, title, message, route);
     }
 
     @JavascriptInterface
@@ -63,11 +61,7 @@ public class StockMindBridge {
 
     @JavascriptInterface
     public boolean hasNotificationPermission() {
-        if (context == null) return false;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
-        }
-        return NotificationManagerCompat.from(context).areNotificationsEnabled();
+        return NotificationHelper.canNotify(context);
     }
 
     @JavascriptInterface
