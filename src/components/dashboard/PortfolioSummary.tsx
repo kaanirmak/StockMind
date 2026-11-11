@@ -3,7 +3,7 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useAuth } from '@/hooks/useAuth';
 import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
@@ -14,7 +14,6 @@ import { type PerformancePeriod as MetricView } from '@/lib/portfolio/periodPerf
 import { PartialValuationBadge, PartialValuationBanner } from '@/components/portfolio/PartialValuationBanner';
 
 export default function PortfolioSummary() {
-  const router = useRouter();
   const { getSummary, livePrices, loading, hasLoaded, transactions, isSampleMode } = usePortfolioStore();
   const { loading: authLoading } = useAuth();
   const summary = getSummary();
@@ -40,8 +39,7 @@ export default function PortfolioSummary() {
     } catch {}
   }, []);
 
-  const togglePrivacyMode = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const togglePrivacyMode = () => {
     const next = !isPrivacyMode;
     setIsPrivacyMode(next);
     try {
@@ -84,16 +82,10 @@ export default function PortfolioSummary() {
   const currentPeriodObj = periods.find((p) => p.key === period) || periods[0];
 
   // Cycle to next period on click
-  const handleCyclePeriod = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCyclePeriod = () => {
     const currentIndex = periods.findIndex((p) => p.key === period);
     const nextIndex = (currentIndex + 1) % periods.length;
     setPeriod(periods[nextIndex].key);
-  };
-
-  // Navigate to portfolio page on card click
-  const handleCardClick = () => {
-    router.push('/portfolio');
   };
 
   const periodData = usePortfolioPerformance(period);
@@ -240,26 +232,17 @@ export default function PortfolioSummary() {
   }
 
   return (
-    <div>
+    <section aria-label="Portföy özeti" data-testid="portfolio-summary-card">
       {/* ═══════════════════════════════════════════════════════
           HERO CARD — Glassmorphic Purple + Green/Red Blend
           (Kârdayken Yeşil-Mor, Zarardayken Kırmızı-Mor)
-          Tıklandığında Portföy Sayfasına Gider
+          Bağımsız erişilebilir kontroller: Gizlilik, Dönem ve Portföy Bağlantısı
           ═══════════════════════════════════════════════════════ */}
       <div
-        onClick={handleCardClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-            e.preventDefault();
-            handleCardClick();
-          }
-        }}
-        className={`group relative overflow-hidden rounded-3xl border backdrop-blur-xl cursor-pointer transition-all duration-300 hover:scale-[1.008] active:scale-[0.995] select-none ${
+        className={`relative overflow-hidden rounded-3xl border backdrop-blur-xl transition-all duration-300 ${
           isPositive
-            ? 'border-emerald-500/25 shadow-[0_12px_45px_rgba(16,185,129,0.14),0_0_80px_rgba(147,51,234,0.1)] hover:border-emerald-500/40 hover:shadow-[0_16px_50px_rgba(16,185,129,0.2),0_0_90px_rgba(147,51,234,0.15)]'
-            : 'border-rose-500/25 shadow-[0_12px_45px_rgba(244,63,94,0.14),0_0_80px_rgba(147,51,234,0.1)] hover:border-rose-500/40 hover:shadow-[0_16px_50px_rgba(244,63,94,0.2),0_0_90px_rgba(147,51,234,0.15)]'
+            ? 'border-emerald-500/25 shadow-[0_12px_45px_rgba(16,185,129,0.14),0_0_80px_rgba(147,51,234,0.1)]'
+            : 'border-rose-500/25 shadow-[0_12px_45px_rgba(244,63,94,0.14),0_0_80px_rgba(147,51,234,0.1)]'
         }`}
       >
         {/* Dynamic gradient background */}
@@ -310,13 +293,16 @@ export default function PortfolioSummary() {
               </span>
             </div>
 
-            {/* Right side: Period button + Privacy Eye + Subtle Link hint */}
+            {/* Right side: Independent Privacy Toggle + Period Selector + Portfolio Link */}
             <div className="flex items-center gap-2">
               {/* Privacy Mode Eye Toggle */}
               <button
                 type="button"
                 onClick={togglePrivacyMode}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/15 border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer shadow-sm active:scale-90"
+                aria-label={isPrivacyMode ? 'Tutarları göster' : 'Gizlilik modu (tutarları gizle)'}
+                aria-pressed={isPrivacyMode}
+                data-testid="portfolio-privacy-toggle"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/15 border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all cursor-pointer shadow-sm active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                 title={isPrivacyMode ? 'Tutarları Göster' : 'Gizlilik Modu (Tutarları Gizle)'}
               >
                 {isPrivacyMode ? (
@@ -335,7 +321,9 @@ export default function PortfolioSummary() {
               <button
                 type="button"
                 onClick={handleCyclePeriod}
-                className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-sm active:scale-95 border ${
+                aria-label={`Getiri dönemi: ${currentPeriodObj.label}. Dönemi değiştirmek için tıklayın`}
+                data-testid="portfolio-period-toggle"
+                className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-sm active:scale-95 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 ${
                   isPositive
                     ? 'bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30'
                     : 'bg-rose-500/10 hover:bg-rose-500/25 border-rose-500/30'
@@ -346,12 +334,18 @@ export default function PortfolioSummary() {
                 <span>{currentPeriodObj.label}</span>
               </button>
 
-              {/* Portföy Sayfasına Gitme Oku */}
-              <div className="w-7 h-7 rounded-full bg-white/[0.06] border border-white/10 flex items-center justify-center text-white/40 group-hover:text-white group-hover:bg-white/10 group-hover:translate-x-0.5 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              {/* Portföy Sayfasına Bağımsız Bağlantı */}
+              <Link
+                href="/portfolio"
+                aria-label="Portföy detayına git"
+                data-testid="portfolio-summary-link"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/[0.06] hover:bg-white/15 border border-white/10 flex items-center justify-center text-white/70 hover:text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                title="Detaylı Portföy"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
-              </div>
+              </Link>
             </div>
           </div>
 
@@ -368,18 +362,13 @@ export default function PortfolioSummary() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push('/portfolio');
-                  }}
-                  className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
+                <Link
+                  href="/portfolio"
+                  className="px-4 py-2 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-bold transition-all shadow-md active:scale-95 inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
                 >
                   <span>+</span>
                   <span>İlk İşlemini Ekle</span>
-                </button>
-
+                </Link>
               </div>
             </div>
           ) : (
@@ -450,10 +439,12 @@ export default function PortfolioSummary() {
                   ) : null}
                 </div>
 
-                {/* Subtle visual link hint */}
-                <span className="text-[11px] text-white/35 group-hover:text-white/70 transition-colors hidden sm:inline">
+                <Link
+                  href="/portfolio"
+                  className="text-[11px] text-white/60 hover:text-white transition-colors hidden sm:inline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 rounded px-1"
+                >
                   Detaylı Portföy →
-                </span>
+                </Link>
               </div>
 
               {summary.cash?.configured && summary.cash.hasDeficit && <p role="alert" className="mt-2 p-2 rounded-xl bg-warning/15 text-white text-xs">Nakit açığı var; geçmiş para girişlerini kontrol edin.</p>}
@@ -468,6 +459,6 @@ export default function PortfolioSummary() {
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

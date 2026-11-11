@@ -2174,6 +2174,26 @@ test('UX-05 prevents 0 balance flash while auth or portfolio is loading and sepa
   assert.match(portfolioPageSrc, /data-testid="portfolio-loading-state"/);
 });
 
+test('UX-06 portfolio summary card separates link, period selector, and privacy toggle into independent keyboard controls', () => {
+  const summarySrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/dashboard/PortfolioSummary.tsx'),
+    'utf8'
+  );
+
+  // Outer card is a non-interactive landmark section, never a nested role="button" wrapper
+  assert.doesNotMatch(summarySrc, /role="button"/);
+  assert.doesNotMatch(summarySrc, /tabIndex=\{0\}/);
+  assert.match(summarySrc, /<section aria-label="Portföy özeti" data-testid="portfolio-summary-card">/);
+
+  // Three independent controls with explicit ARIA attributes and keyboard focus rings
+  assert.match(summarySrc, /data-testid="portfolio-privacy-toggle"/);
+  assert.match(summarySrc, /aria-pressed=\{isPrivacyMode\}/);
+  assert.match(summarySrc, /data-testid="portfolio-period-toggle"/);
+  assert.match(summarySrc, /aria-label=\{`Getiri dönemi:/);
+  assert.match(summarySrc, /<Link[\s\S]*?href="\/portfolio"[\s\S]*?data-testid="portfolio-summary-link"/);
+});
+
+
 
 
 
