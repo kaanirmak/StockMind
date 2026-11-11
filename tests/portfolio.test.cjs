@@ -2413,6 +2413,119 @@ test('POR-15: documents read-only priority brokers, terms, cost, strict read-onl
   assert.match(docSrc, /revoke_token/);
 });
 
+test('POR-16: read-only Midas statement sync rejects write scopes and prevents duplicate transactions on repeat/overlapping syncs', () => {
+  const syncMod = loadModule('src/lib/portfolio/brokerSyncPrototype.ts');
+
+  // 1. Rejects any trading/transfer permission before importing
+  const rejected = syncMod.syncReadOnlyBrokerStatement({
+    brokerId: 'midas',
+    portfolioId: 'p-1',
+    requestedScopes: ['positions:read', 'transactions:read', 'orders:write'],
+    entries: [
+      {
+        externalRef: 'MD-101',
+        symbol: 'THYAO',
+        transactionType: 'buy',
+        currency: 'TRY',
+        quantity: 100,
+        price: 310,
+        executedAt: '2026-11-10T10:15:00Z',
+      },
+    ],
+    existingTransactions: [],
+  });
+  assert.equal(rejected.status, 'rejected_scope');
+  assert.equal(rejected.importedTransactions.length, 0);
+  assert.deepEqual(Array.from(rejected.rejectedScopes), ['orders:write']);
+
+  // 2. First read-only sync imports distinct fills cleanly (including 2 same-day fills with unique externalRefs)
+  const firstEntries = [
+    {
+      externalRef: 'MD-101',
+      symbol: 'THYAO',
+      transactionType: 'buy',
+      currency: 'TRY',
+      quantity: 100,
+      price: 310,
+      commission: 4.5,
+      executedAt: '2026-11-10T10:15:00Z',
+    },
+    {
+      externalRef: 'MD-102',
+      symbol: 'THYAO',
+      transactionType: 'buy',
+      currency: 'TRY',
+      quantity: 100,
+      price: 310,
+      commission: 4.5,
+      executedAt: '2026-11-10T14:20:00Z',
+    },
+    {
+      externalRef: 'MD-103',
+      symbol: 'AAPL',
+      transactionType: 'buy',
+      currency: 'USD',
+      exchangeRate: 40,
+      quantity: 5,
+      price: 230,
+      executedAt: '2026-11-11T16:05:00Z',
+    },
+  ];
+  const firstRun = syncMod.syncReadOnlyBrokerStatement({
+    brokerId: 'midas',
+    portfolioId: 'p-1',
+    requestedScopes: ['positions:read', 'transactions:read', 'balances:read'],
+    entries: firstEntries,
+    existingTransactions: [],
+  });
+  assert.equal(firstRun.status, 'synced');
+  assert.equal(firstRun.importedTransactions.length, 3);
+  assert.equal(firstRun.skippedDuplicateCount, 0);
+
+  // Convert imported records to persisted existingTransactions shape
+  const persisted = Array.from(firstRun.importedTransactions, (tx, idx) => ({
+    ...tx,
+    id: `tx-${idx + 1}`,
+    portfolioId: 'p-1',
+  }));
+
+  // 3. Repeat overlapping sync containing MD-102, MD-103 + one new MD-104 imports ONLY MD-104 (zero duplicates)
+  const secondRun = syncMod.syncReadOnlyBrokerStatement({
+    brokerId: 'midas',
+    portfolioId: 'p-1',
+    requestedScopes: ['positions:read', 'transactions:read'],
+    entries: [
+      firstEntries[1],
+      firstEntries[2],
+      {
+        externalRef: 'MD-104',
+        symbol: 'GARAN',
+        transactionType: 'dividend',
+        currency: 'TRY',
+        quantity: 1,
+        price: 1200,
+        executedAt: '2026-11-12T09:00:00Z',
+      },
+    ],
+    existingTransactions: persisted,
+  });
+  assert.equal(secondRun.status, 'synced');
+  assert.equal(secondRun.importedTransactions.length, 1);
+  assert.equal(secondRun.importedTransactions[0].symbol, 'GARAN');
+  assert.equal(secondRun.skippedDuplicateCount, 2);
+  assert.equal(secondRun.duplicateReasons[0].reason, 'external_ref');
+
+  // 4. Detach cleanup removes broker-imported records if requested
+  const detached = syncMod.detachReadOnlyBrokerSync({
+    brokerId: 'midas',
+    transactions: [...persisted, { id: 'manual-1', notes: 'Manuel giriş' }],
+    mode: 'delete_imported',
+  });
+  assert.equal(detached.purgedSyncRefCount, 3);
+  assert.deepEqual(Array.from(detached.deletedTransactionIds), ['tx-1', 'tx-2', 'tx-3']);
+  assert.deepEqual(Array.from(detached.remainingTransactionIds), ['manual-1']);
+});
+
 
 
 
