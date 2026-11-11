@@ -5173,6 +5173,65 @@ test('HSP-07: demo CTA and guest login connect directly to guest sample flow wit
   assert.match(dashboardSrc, /setSampleMode\(true\)/);
 });
 
+test('OPS-05: alert and watchlist checks use symbol-scoped quote queries instead of loading the full market list', () => {
+  const symQuery = load('src/lib/market/symbolQuery.ts');
+
+  // 1. Parse, normalize & deduplicate comma-separated symbols
+  assert.deepEqual([...symQuery.parseSymbolListParam('thyao, AAPL, thyao,  msft , ;drop')], ['THYAO', 'AAPL', 'MSFT', 'DROP']);
+  assert.deepEqual([...symQuery.parseSymbolListParam('')], []);
+
+  // 2. Empty symbols never trigger unscoped market requests
+  assert.equal(symQuery.buildScopedQuotesUrl('stock', []), null);
+  assert.equal(symQuery.buildScopedQuotesUrl('fund', []), null);
+
+  // 3. Sorted canonical URLs for cache deduplication
+  assert.equal(
+    symQuery.buildScopedQuotesUrl('stock', ['msft', 'THYAO', 'AAPL'], { liveOnly: true }),
+    '/api/stocks?liveOnly=true&symbols=AAPL%2CMSFT%2CTHYAO'
+  );
+  assert.equal(
+    symQuery.buildScopedQuotesUrl('fund', ['TCD', 'ti2']),
+    '/api/funds?symbols=TCD%2CTI2'
+  );
+
+  // 4. Split mixed watchlist/alert items into separate symbol-scoped stock & fund queries
+  const reqs = symQuery.buildScopedQuoteRequests(
+    [
+      { symbol: 'GARAN', assetType: 'stock' },
+      { symbol: 'TI2', assetType: 'fund' },
+      { symbol: 'AAPL', assetType: 'stock' },
+    ],
+    { liveOnly: true }
+  );
+  assert.equal(reqs.length, 2);
+  assert.equal(reqs[0].kind, 'stock');
+  assert.deepEqual([...reqs[0].symbols], ['AAPL', 'GARAN']);
+  assert.equal(reqs[1].kind, 'fund');
+  assert.deepEqual([...reqs[1].symbols], ['TI2']);
+
+  // 5. All watchers & alert pages removed unscoped market calls and server routes accept symbols
+  const watcherSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/watchlist/WatchlistAlertWatcher.tsx'), 'utf8');
+  assert.match(watcherSrc, /buildScopedQuoteRequests/);
+  assert.doesNotMatch(watcherSrc, /'\/api\/stocks\?liveOnly=true'/);
+  assert.doesNotMatch(watcherSrc, /'\/api\/funds'/);
+
+  const quotesSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/watchlist/WatchlistQuotes.tsx'), 'utf8');
+  assert.match(quotesSrc, /buildScopedQuoteRequests/);
+  assert.doesNotMatch(quotesSrc, /'\/api\/stocks'/);
+  assert.doesNotMatch(quotesSrc, /'\/api\/funds'/);
+
+  const alertsPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/alerts/page.tsx'), 'utf8');
+  assert.match(alertsPageSrc, /buildScopedQuotesUrl/);
+  assert.doesNotMatch(alertsPageSrc, /'\/api\/stocks\?liveOnly=true'/);
+  assert.doesNotMatch(alertsPageSrc, /'\/api\/funds'/);
+
+  const stocksRouteSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/stocks/route.ts'), 'utf8');
+  assert.match(stocksRouteSrc, /parseSymbolListParam/);
+  const fundsRouteSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/funds/route.ts'), 'utf8');
+  assert.match(fundsRouteSrc, /parseSymbolListParam/);
+});
+
+
 
 
 

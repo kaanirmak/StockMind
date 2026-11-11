@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useWatchlistStore, isPriceAlertTriggered } from '@/store/useWatchlistStore';
 import { sendPushNotification, loadPushPreferences } from '@/lib/notifications/pushNotification';
 import { marketJson } from '@/lib/api/clientCache';
+import { buildScopedQuoteRequests } from '@/lib/market/symbolQuery';
 import {
   buildAlertAssetRoute,
   evaluateAlertPriceFreshness,
@@ -69,17 +70,19 @@ export function WatchlistAlertWatcher() {
 
       isCheckingRef.current = true;
       try {
-        const types = Array.from(new Set(activeAlertItems.map(item => item.assetType)));
-        const results = await Promise.allSettled(types.map(type =>
-          marketJson<{ data: QuotePayload[] }>(type === 'fund' ? '/api/funds' : '/api/stocks?liveOnly=true', 60_000)
-        ));
+        const requests = buildScopedQuoteRequests(activeAlertItems, { liveOnly: true });
+        if (requests.length === 0) return;
+
+        const results = await Promise.allSettled(
+          requests.map((req) => marketJson<{ data: QuotePayload[] }>(req.url, 60_000))
+        );
         const current = useWatchlistStore.getState();
         if (!active || current.currentUserId !== currentUserId) return;
 
         const quoteMap = new Map<string, AlertPriceQuote>();
         results.forEach((result, index) => {
           if (result.status !== 'fulfilled' || !Array.isArray(result.value.data)) return;
-          const type = types[index];
+          const type = requests[index].kind;
           for (const quote of result.value.data) {
             const symbol = type === 'fund' ? quote.code : quote.symbol;
             if (symbol) {

@@ -8,6 +8,7 @@ import {
   type FundReturnThreshold,
   type FundRiskRange,
 } from '@/lib/market/fundFilters';
+import { parseSymbolListParam } from '@/lib/market/symbolQuery';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || undefined;
     const search = searchParams.get('search') || undefined;
+    const requestedSymbols = parseSymbolListParam(searchParams.get('symbols'));
     const minRisk = searchParams.get('minRisk') ? Number(searchParams.get('minRisk')) : undefined;
     const maxRisk = searchParams.get('maxRisk') ? Number(searchParams.get('maxRisk')) : undefined;
     const riskRange = (searchParams.get('riskRange') as FundRiskRange) || undefined;
@@ -52,8 +54,13 @@ export async function GET(request: Request) {
 
     let funds = Array.from(fundMap.values());
 
-    // If searching, enrich top candidates with live TEFAS API
-    if (search && search.trim().length > 0 && funds.length > 0) {
+    if (requestedSymbols.length > 0) {
+      const allowed = new Set(requestedSymbols);
+      funds = funds.filter((f) => allowed.has(String(f.code || '').toUpperCase()));
+    }
+
+    // If searching or fetching a small symbol-scoped watch/alert list, enrich candidates with live TEFAS API
+    if (((search && search.trim().length > 0) || (requestedSymbols.length > 0 && funds.length <= 20)) && funds.length > 0) {
       const topCandidates = funds.slice(0, 8);
       const liveUpdates = await Promise.all(
         topCandidates.map(async (f) => {

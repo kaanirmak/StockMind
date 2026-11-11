@@ -12,6 +12,7 @@ import {
 } from '@/components/ui';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 import { marketJson } from '@/lib/api/clientCache';
+import { buildScopedQuotesUrl } from '@/lib/market/symbolQuery';
 import { formatAlertPrice } from '@/lib/market/alertForm';
 import {
   describeAlertRule,
@@ -83,15 +84,17 @@ export default function AllAlertsPage() {
   useEffect(() => {
     if (allRules.length === 0) return;
     let active = true;
-    const hasStocks = allRules.some((r) => r.assetType !== 'fund');
-    const hasFunds = allRules.some((r) => r.assetType === 'fund');
+    const stockSymbols = allRules.filter((r) => r.assetType !== 'fund').map((r) => r.symbol);
+    const fundSymbols = allRules.filter((r) => r.assetType === 'fund').map((r) => r.symbol);
+    const stockUrl = buildScopedQuotesUrl('stock', stockSymbols, { liveOnly: true });
+    const fundUrl = buildScopedQuotesUrl('fund', fundSymbols);
 
     const loadQuotes = async () => {
       const next: Record<string, LiveQuoteEntry> = {};
-      if (hasStocks) {
+      if (stockUrl) {
         try {
           const res = await marketJson<{ data?: Array<{ symbol?: string; price?: number; changePercent?: number; currency?: string }> }>(
-            '/api/stocks?liveOnly=true',
+            stockUrl,
             30_000,
           );
           for (const row of res.data || []) {
@@ -107,10 +110,10 @@ export default function AllAlertsPage() {
           // Non-fatal; existing item quote remains fallback
         }
       }
-      if (hasFunds) {
+      if (fundUrl) {
         try {
           const res = await marketJson<{ data?: Array<{ code?: string; symbol?: string; price?: number | null; dailyReturn?: number }> }>(
-            '/api/funds',
+            fundUrl,
             60_000,
           );
           for (const row of res.data || []) {

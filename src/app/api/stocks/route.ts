@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllStocksLive } from '@/lib/data/stocks';
+import { parseSymbolListParam } from '@/lib/market/symbolQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,8 +10,16 @@ export async function GET(request: Request) {
     const exchange = searchParams.get('exchange') || undefined;
     const sector = searchParams.get('sector') || undefined;
     const search = searchParams.get('search') || undefined;
+    const symbolsParam = searchParams.get('symbols');
+    const symbols = symbolsParam ? parseSymbolListParam(symbolsParam) : undefined;
 
-    const stocks = await getAllStocksLive({ exchange, sector, search, liveOnly: searchParams.get('liveOnly') === 'true' });
+    const stocks = await getAllStocksLive({
+      exchange,
+      sector,
+      search,
+      liveOnly: searchParams.get('liveOnly') === 'true',
+      symbols: symbols && symbols.length > 0 ? symbols : undefined,
+    });
 
     return NextResponse.json(
       {

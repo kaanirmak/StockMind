@@ -1893,7 +1893,35 @@ export async function getAllStocksLive(filter?: {
   sector?: string;
   search?: string;
   liveOnly?: boolean;
+  symbols?: string[];
 }): Promise<(StockMarketInfo & StockQuote)[]> {
+  // Fast symbol-scoped lookup for active alerts & watchlists: avoids full-market scan overhead
+  if (filter?.symbols && filter.symbols.length > 0) {
+    const requested = Array.from(
+      new Set(
+        filter.symbols
+          .map((s) => cleanSymbol(String(s || '')).symbol.toUpperCase())
+          .filter(Boolean)
+      )
+    ).slice(0, 100);
+
+    const results = await Promise.allSettled(
+      requested.map((symbol) => fetchSpecificSymbolLive(symbol, false))
+    );
+
+    const matched: (StockMarketInfo & StockQuote)[] = [];
+    for (const res of results) {
+      if (res.status !== 'fulfilled' || !res.value) continue;
+      const item = res.value as StockMarketInfo & StockQuote;
+      if (filter.liveOnly && !(typeof item.price === 'number' && item.price > 0)) {
+        continue;
+      }
+      matched.push(item);
+    }
+
+    return matched;
+  }
+
   const exUpper = filter?.exchange?.toUpperCase();
 
   // If specific alternative market requested, fetch and return directly
