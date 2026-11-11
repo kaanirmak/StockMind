@@ -14,6 +14,7 @@
     "build:apk:release": "test -n \"$KEYSTORE_PATH\" && test -n \"$KEYSTORE_PASSWORD\" && test -n \"$KEY_ALIAS\" && test -n \"$KEY_PASSWORD\" && export JAVA_HOME=\"${JAVA_HOME:-$(if [ -d '/Applications/Android Studio.app/Contents/jbr/Contents/Home' ]; then echo '/Applications/Android Studio.app/Contents/jbr/Contents/Home'; else echo '/opt/homebrew/opt/openjdk@21'; fi)}\" && export PATH=\"$JAVA_HOME/bin:$PATH\" && cd android && ./gradlew assembleRelease && cp app/build/outputs/apk/release/app-release.apk ../StockMind.apk && cp app/build/outputs/apk/release/app-release.apk ../public/StockMind.apk",
     "lint": "eslint",
     "lint:budget": "node scripts/check-lint-warnings.mjs",
+    "perf:api-load": "node scripts/run-api-load-test.mjs",
     "typecheck": "tsc --noEmit",
     "test:security": "node --test tests/security.test.cjs",
     "test:portfolio": "node --test tests/portfolio.test.cjs",

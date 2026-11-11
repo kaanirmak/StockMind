@@ -7750,6 +7750,57 @@ test('OPS-13: tracks ESLint warning budget in CI and keeps high-impact hook/bug/
   assert.equal(a11yFail.passed, false);
 });
 
+test('OPS-14: measures typical & heavy concurrency latency, error rate, and provider call amplification on market & portfolio APIs', async () => {
+  const loadMod = load('src/lib/ops/apiLoadTest.ts', { setTimeout, clearTimeout, performance });
+  const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+  assert.equal(pkg.scripts['perf:api-load'], 'node scripts/run-api-load-test.mjs');
+
+  const stats = loadMod.summarizeLatencies([10, 20, 30, 40, 100]);
+  assert.equal(stats.min, 10);
+  assert.equal(stats.p50, 30);
+  assert.ok(stats.p95 >= 40 && stats.p95 <= 100);
+  assert.equal(stats.max, 100);
+
+  const report = await loadMod.runApiLoadTestSuite({
+    createExecutorForProfile: () =>
+      loadMod.createInstrumentedCoalescingExecutor({
+        ttlMs: 30_000,
+        baseProviderLatencyMs: 2,
+      }),
+  });
+
+  assert.equal(report.overallPassed, true);
+  assert.equal(report.profiles.length, 2);
+
+  const typical = report.profiles.find((p) => p.profile.name === 'typical');
+  const heavy = report.profiles.find((p) => p.profile.name === 'heavy');
+  assert.ok(typical && heavy);
+  assert.equal(typical.errorRate, 0);
+  assert.equal(heavy.errorRate, 0);
+  assert.ok(heavy.totalRequests > typical.totalRequests);
+  // Single-flight coalescing keeps upstream calls bounded at 1 per unique target path
+  assert.equal(heavy.totalProviderCalls, loadMod.MARKET_AND_PORTFOLIO_TARGETS.length);
+  assert.ok(heavy.dedupSavingsRatio > 0.9);
+  assert.ok(heavy.byTarget.some((t) => t.category === 'market'));
+  assert.ok(heavy.byTarget.some((t) => t.category === 'portfolio'));
+
+  // Failure injection must report error rate & SLA violation
+  const failingReport = await loadMod.runLoadProfile({
+    profile: { ...loadMod.DEFAULT_LOAD_PROFILES.typical, maxErrorRate: 0.01 },
+    targets: loadMod.MARKET_AND_PORTFOLIO_TARGETS.slice(0, 2),
+    executeTarget: async () => ({
+      ok: false,
+      status: 503,
+      durationMs: 12,
+      providerCalls: 1,
+      error: 'HTTP 503',
+    }),
+  });
+  assert.equal(failingReport.errorRate, 1);
+  assert.equal(failingReport.slaPassed, false);
+  assert.ok(failingReport.slaViolations.length >= 1);
+});
+
 
 
 
