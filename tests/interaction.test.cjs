@@ -7592,6 +7592,65 @@ test('QNT-11: scenario comparison displays bear, base, and bull inputs and outpu
   assert.match(dcfSrc, /İyimser Senaryo/);
 });
 
+test('QNT-12: AI investment committee output separates market data, financials, assumptions, and missing-data vs sample status', () => {
+  const committeeMod = load('src/lib/ai/investment-committee.ts');
+
+  const simReport = committeeMod.generateAnalyticalCommittee('THYAO', {
+    symbol: 'THYAO',
+    price: 312.5,
+    changePercent: 1.8,
+    currency: 'TRY',
+    exchange: 'BIST',
+    sector: 'Havacılık',
+    pe: 7.4,
+    source: 'Yahoo Finance',
+  });
+
+  assert.ok(simReport.evidence);
+  assert.equal(simReport.evidence.isSampleOrSimulation, true);
+  assert.match(simReport.evidence.dataBasisBadge, /Simülasyon/i);
+  assert.ok(Array.from(simReport.evidence.marketData).some((m) => /312\.50 TRY/.test(m.value)));
+  assert.ok(Array.from(simReport.evidence.financialData).some((f) => /7\.40x/.test(f.value)));
+  assert.ok(Array.from(simReport.evidence.assumptions).length >= 2);
+  assert.ok(Array.from(simReport.evidence.missingData).some((d) => /OpenRouter/i.test(d)));
+
+  // Live LLM + verified price packet distinguishes verified mode from missing data
+  const liveEvidence = committeeMod.buildCommitteeEvidencePacket({
+    symbol: 'NVDA',
+    isLiveLLM: true,
+    stockQuote: {
+      symbol: 'NVDA',
+      price: 138.4,
+      changePercent: -0.6,
+      currency: 'USD',
+      exchange: 'NASDAQ',
+      pe: 42.1,
+      pb: 35.2,
+      source: 'Yahoo Finance',
+    },
+  });
+  assert.equal(liveEvidence.isSampleOrSimulation, false);
+  assert.equal(liveEvidence.dataBasisBadge, 'Doğrulanmış Piyasa Verisi + Canlı AI');
+
+  // Missing quote marks missing data transparently
+  const missingEvidence = committeeMod.buildCommitteeEvidencePacket({
+    symbol: 'XXXX',
+    isLiveLLM: true,
+    stockQuote: null,
+  });
+  assert.equal(missingEvidence.isSampleOrSimulation, true);
+  assert.match(missingEvidence.dataBasisBadge, /Veri Eksik/);
+  assert.ok(Array.from(missingEvidence.missingData).some((d) => /kotasyonu bulunamadı/i.test(d)));
+
+  const committeeTabSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/quant/InvestmentCommitteeTab.tsx'),
+    'utf8'
+  );
+  assert.match(committeeTabSrc, /data-testid="committee-evidence-panel"/);
+  assert.match(committeeTabSrc, /data-testid="committee-evidence-basis"/);
+  assert.match(committeeTabSrc, /buildCommitteeEvidencePacket/);
+});
+
 
 
 

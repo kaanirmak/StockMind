@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from '@/components/quant/QuantIcons';
 import {
+  buildCommitteeEvidencePacket,
   type CommitteeReport,
 } from '@/lib/ai/investment-committee';
 import { getFinancialProfile } from '@/lib/quant/models';
@@ -564,7 +565,7 @@ export default function InvestmentCommitteeTab({
                       saveAnalysisReport(
                         buildSavedReportFromCommittee({
                           report,
-                          assumptions: [
+                          assumptions: report.evidence?.assumptions ?? [
                             'Seçili sembol için sunucudan alınan son kotasyon kullanıldı.',
                           ],
                         }),
@@ -616,6 +617,125 @@ export default function InvestmentCommitteeTab({
               </div>
             </div>
           </div>
+
+          {/* Evidence, Market vs Financial Data, Assumptions & Missing Data vs Sample Framing (QNT-12) */}
+          {(() => {
+            const evidence =
+              report.evidence ??
+              buildCommitteeEvidencePacket({
+                symbol: report.symbol,
+                isLiveLLM: report.isLiveLLM,
+              });
+            return (
+              <div
+                data-testid="committee-evidence-panel"
+                className="glass-card p-5 rounded-2xl border border-border space-y-4 text-xs"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/70">
+                  <div className="space-y-0.5">
+                    <h4 className="text-sm font-bold text-text-primary">
+                      Komite Kararının Dayandığı Kanıtlar, Varsayımlar ve Veri Kapsamı
+                    </h4>
+                    <p className="text-[11px] text-text-muted">
+                      Kullanılan doğrulanmış veriler ile model varsayımları ve eksik girdiler ayrı gösterilir.
+                    </p>
+                  </div>
+                  <span
+                    data-testid="committee-evidence-basis"
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold border ${
+                      evidence.isSampleOrSimulation
+                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                        : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                    }`}
+                  >
+                    {evidence.dataBasisBadge}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Piyasa Verileri */}
+                  <div className="p-3.5 rounded-xl bg-bg-secondary/45 border border-border/70 space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-text-primary block">
+                      Kullanılan Piyasa Verileri
+                    </span>
+                    {evidence.marketData.length > 0 ? (
+                      <ul className="space-y-1">
+                        {evidence.marketData.map((m, idx) => (
+                          <li key={idx} className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="text-text-secondary">{m.label}:</span>
+                            <span className="font-mono font-bold text-text-primary">
+                              {m.value}{' '}
+                              <span className="font-normal text-text-muted">({m.source})</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-amber-400">
+                        Doğrulanmış canlı piyasa kotasyonu bulunamadı.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Finansal Veriler */}
+                  <div className="p-3.5 rounded-xl bg-bg-secondary/45 border border-border/70 space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-text-primary block">
+                      Kullanılan Finansal Veriler
+                    </span>
+                    {evidence.financialData.length > 0 ? (
+                      <ul className="space-y-1">
+                        {evidence.financialData.map((f, idx) => (
+                          <li key={idx} className="flex items-center justify-between gap-2 text-[11px]">
+                            <span className="text-text-secondary">{f.label}:</span>
+                            <span className="font-mono font-bold text-text-primary">
+                              {f.value}{' '}
+                              <span className="font-normal text-text-muted">({f.source})</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-text-muted">
+                        Bu komite çağrısında ayrıntılı bilanço/nakit akış verisi yer almıyor.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Varsayımlar */}
+                  <div className="p-3.5 rounded-xl bg-bg-secondary/40 border border-border/70 space-y-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-text-secondary block">
+                      Model &amp; Analiz Varsayımları
+                    </span>
+                    <ul className="list-disc pl-4 space-y-1 text-[11px] text-text-secondary">
+                      {evidence.assumptions.map((a, idx) => (
+                        <li key={idx}>{a}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Eksik Veri vs Örnek Ayrımı */}
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 block">
+                      Eksik Veriler &amp; Örnek / Simülasyon Ayrımı
+                    </span>
+                    {evidence.missingData.length > 0 ? (
+                      <ul className="list-disc pl-4 space-y-1 text-[11px] text-amber-200/90">
+                        {evidence.missingData.map((d, idx) => (
+                          <li key={idx}>{d}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-emerald-300">
+                        Tüm temel piyasa ve canlı AI girdileri eksiksiz doğrulandı.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 4 Agent Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

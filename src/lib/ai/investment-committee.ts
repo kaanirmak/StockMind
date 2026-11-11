@@ -18,6 +18,21 @@ export interface CommitteeAgent {
   keyArguments: string[];
 }
 
+export interface CommitteeEvidenceItem {
+  label: string;
+  value: string;
+  source: string;
+}
+
+export interface CommitteeEvidencePacket {
+  isSampleOrSimulation: boolean;
+  dataBasisBadge: string;
+  marketData: CommitteeEvidenceItem[];
+  financialData: CommitteeEvidenceItem[];
+  assumptions: string[];
+  missingData: string[];
+}
+
 export interface CommitteeReport {
   symbol: string;
   companyName: string;
@@ -27,6 +42,127 @@ export interface CommitteeReport {
   agents: CommitteeAgent[];
   generatedAt: string;
   isLiveLLM: boolean;
+  evidence?: CommitteeEvidencePacket;
+}
+
+export function buildCommitteeEvidencePacket(params: {
+  symbol: string;
+  stockQuote?: any;
+  isLiveLLM: boolean;
+}): CommitteeEvidencePacket {
+  const quote = params.stockQuote ?? null;
+  const marketData: CommitteeEvidenceItem[] = [];
+  const financialData: CommitteeEvidenceItem[] = [];
+  const assumptions: string[] = [];
+  const missingData: string[] = [];
+
+  const price =
+    typeof quote?.price === 'number' && Number.isFinite(quote.price) && quote.price > 0
+      ? quote.price
+      : null;
+  const currency = typeof quote?.currency === 'string' && quote.currency ? quote.currency : 'TRY';
+  const quoteSource =
+    typeof quote?.source === 'string' && quote.source.trim()
+      ? quote.source.trim()
+      : 'Sunucu Piyasa Kotasyonu';
+
+  if (price !== null) {
+    marketData.push({
+      label: 'Son Piyasa Fiyatı',
+      value: `${price.toFixed(2)} ${currency}`,
+      source: quoteSource,
+    });
+  } else {
+    missingData.push(`${params.symbol} için canlı piyasa kotasyonu bulunamadı`);
+  }
+
+  if (typeof quote?.changePercent === 'number' && Number.isFinite(quote.changePercent)) {
+    marketData.push({
+      label: 'Günlük Değişim',
+      value: `${quote.changePercent >= 0 ? '+' : ''}%${quote.changePercent.toFixed(2)}`,
+      source: quoteSource,
+    });
+  } else {
+    missingData.push('Günlük fiyat değişimi yüzdesi mevcut değil');
+  }
+
+  if (typeof quote?.exchange === 'string' && quote.exchange) {
+    marketData.push({
+      label: 'Borsa / Pazar',
+      value: quote.exchange,
+      source: quoteSource,
+    });
+  }
+
+  if (typeof quote?.sector === 'string' && quote.sector) {
+    financialData.push({
+      label: 'Sektör Sınıflandırması',
+      value: quote.sector,
+      source: quoteSource,
+    });
+  }
+
+  if (typeof quote?.pe === 'number' && Number.isFinite(quote.pe) && quote.pe > 0) {
+    financialData.push({
+      label: 'F/K Oranı',
+      value: `${quote.pe.toFixed(2)}x`,
+      source: quoteSource,
+    });
+  }
+  if (typeof quote?.pb === 'number' && Number.isFinite(quote.pb) && quote.pb > 0) {
+    financialData.push({
+      label: 'PD/DD Oranı',
+      value: `${quote.pb.toFixed(2)}x`,
+      source: quoteSource,
+    });
+  }
+  if (typeof quote?.marketCap === 'number' && Number.isFinite(quote.marketCap) && quote.marketCap > 0) {
+    financialData.push({
+      label: 'Piyasa Değeri',
+      value: `${(quote.marketCap / 1e9).toFixed(2)} Mr ${currency}`,
+      source: quoteSource,
+    });
+  }
+
+  if (financialData.length <= 1) {
+    missingData.push(
+      'Bilanço ve gelir tablosu kalemleri (FCF, net borç, marjlar) bu özet çağrıda doğrulanmadı'
+    );
+  }
+
+  if (!params.isLiveLLM) {
+    missingData.push(
+      'Canlı OpenRouter LLM bağlantısı aktif değil — çıktı kural tabanlı örnek/analitik simülasyon motorundan üretildi'
+    );
+    assumptions.push(
+      '4 yatırım ekolü (Buffett, Lynch, Simons, Burry) sektör profili ve mevcut fiyat üzerinden önceden tanımlı kural setiyle puanlandı.'
+    );
+  } else {
+    assumptions.push(
+      'Komite ajanları yalnızca sunucudan doğrulanan piyasa verilerini ve model değerlendirme çerçevesini baz alır.'
+    );
+  }
+
+  assumptions.push(
+    'Makro faiz, kur hassasiyeti ve hedef çarpan yorumları varsayım niteliğindedir; yatırım tavsiyesi değildir.'
+  );
+
+  const isSampleOrSimulation = !params.isLiveLLM || price === null;
+  const dataBasisBadge =
+    params.isLiveLLM && price !== null
+      ? 'Doğrulanmış Piyasa Verisi + Canlı AI'
+      : price !== null
+      ? 'Kısmi Piyasa Verisi • Örnek/Analitik Simülasyon'
+      : 'Veri Eksik • Örnek Çıktı';
+
+  return {
+    isSampleOrSimulation,
+    dataBasisBadge,
+    marketData,
+    financialData,
+    assumptions,
+    missingData,
+  };
 }
 
 export const COMMITTEE_AGENTS_CONFIG = [
@@ -211,6 +347,11 @@ KRİTİK TALİMATLAR:
         agents,
         generatedAt: new Date().toISOString(),
         isLiveLLM: true,
+        evidence: buildCommitteeEvidencePacket({
+          symbol,
+          stockQuote,
+          isLiveLLM: true,
+        }),
       };
     } catch (err: any) {
       lastError = err;
@@ -271,6 +412,18 @@ export function parseCommitteeResponse(rawText: string): Pick<CommitteeReport, '
 }
 
 export function generateAnalyticalCommittee(symbol: string, stockQuote?: any): CommitteeReport {
+  const report = buildAnalyticalCommitteeBody(symbol, stockQuote);
+  return {
+    ...report,
+    evidence: buildCommitteeEvidencePacket({
+      symbol: report.symbol,
+      stockQuote,
+      isLiveLLM: false,
+    }),
+  };
+}
+
+function buildAnalyticalCommitteeBody(symbol: string, stockQuote?: any): CommitteeReport {
   const price = typeof stockQuote?.price === 'number' && Number.isFinite(stockQuote.price) && stockQuote.price > 0 ? stockQuote.price : 100;
   const name = stockQuote?.name || `${symbol} Ortaklığı`;
   const now = new Date().toISOString();

@@ -174,7 +174,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | QNT-09 | P2 | Tekrarlanabilir Monte Carlo senaryoları ekle | Vade, oynaklık, drift, koşu sayısı ve rastgelelik tohumu kaydedilir. Aynı girdiler aynı sonucu üretir. | ◐ |
 | QNT-10 | P2 | Portföy bazında stres testi ekle | Seçilen kur, faiz veya piyasa şoku portföy pozisyonlarına uygulanır. Varsayımlar ve katkılar gösterilir. | ◐ |
 | QNT-11 | P2 | Senaryoları yan yana karşılaştır | Kullanıcı baz, iyimser ve olumsuz senaryonun girdi ve sonuçlarını aynı tabloda görebilir. | ◐ |
-| QNT-12 | P2 | AI komite çıktısını kanıta bağla | Kullanılan finansal ve piyasa verileri ile varsayımlar ayrı gösterilir. Veri eksikliği örnek sonuçla açıkça ayrılır. | ☐ |
+| QNT-12 | P2 | AI komite çıktısını kanıta bağla | Kullanılan finansal ve piyasa verileri ile varsayımlar ayrı gösterilir. Veri eksikliği örnek sonuçla açıkça ayrılır. | ◐ |
 
 ## 11. Hesap, gizlilik, tanıtım ve widget
 
