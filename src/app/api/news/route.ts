@@ -1,4 +1,4 @@
-import { mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
+import { matchNewsAssetIdentity, mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { rssPlainText } from '@/lib/news/rssText';
@@ -145,7 +145,9 @@ export async function GET(request: Request) {
     const relevant = (article: NewsArticle) => {
       if (category === 'PORTFOLIO') {
         const text = `${article.title} ${article.summary}`;
-        return portfolioSymbols.some(sym => mentionsNewsSymbol(text, sym));
+        return portfolioSymbols.some(
+          sym => matchNewsAssetIdentity(text, sym, { category: article.category, source: article.source }).matched
+        );
       }
       return !category || category === 'ALL' || article.category === category;
     };
@@ -216,7 +218,9 @@ export async function GET(request: Request) {
 
     const seenUrls = new Set<string>();
     const uniqueNews = allNews.filter((n) => {
-      if (symbol && !mentionsNewsSymbol(`${n.title} ${n.summary}`, symbol)) return false;
+      if (symbol && !matchNewsAssetIdentity(`${n.title} ${n.summary}`, symbol, { category: n.category, source: n.source }).matched) {
+        return false;
+      }
       if (seenIds.has(n.id)) return false;
       const normTitle = normalizeNewsText(n.title).replace(/[^a-z0-9]/g, '');
       const canonicalUrl = n.url.split('#', 1)[0].replace(/\/$/, '');
@@ -237,8 +241,22 @@ export async function GET(request: Request) {
       sourceCoverage,
       warning: stale ? 'Canlı kaynaklara ulaşılamadı; son başarılı haberler gösteriliyor.' : failedFeeds > 0 ? 'Bazı haber kaynakları yanıt vermedi; ulaşılabilen haberler gösteriliyor.' : undefined,
       data: uniqueNews.map(article => {
+        const text = `${article.title} ${article.summary}`;
         const analysis = analyzeNewsSentiment(article.title, article.summary);
-        return { ...article, relatedSymbols: trackedSymbols.filter(symbol => mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)), sentiment: analysis.sentiment, sentimentReason: analysis.reason };
+        const matchedIds = Array.from(
+          new Set(
+            trackedSymbols
+              .map((sym) => matchNewsAssetIdentity(text, sym, { category: article.category, source: article.source }))
+              .filter((res) => res.matched)
+              .map((res) => res.symbol)
+          )
+        );
+        return {
+          ...article,
+          relatedSymbols: matchedIds,
+          sentiment: analysis.sentiment,
+          sentimentReason: analysis.reason,
+        };
       }),
     });
   } catch (error) {

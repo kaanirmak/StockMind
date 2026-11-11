@@ -2830,6 +2830,46 @@ test('PIY-05 lists only verified upcoming corporate events with date and source'
   assert.match(stockDetailSrc, /UpcomingEventsCard/);
 });
 
+test('HBR-04 matches news by asset identity, company aliases, and exchange without false positives', () => {
+  const { matchNewsAssetIdentity } = load('src/lib/news/symbolMatch.ts');
+
+  // 1. Company aliases (built-in and dynamic identity name)
+  const aselsMatch = { ...matchNewsAssetIdentity('ASELSAN yeni savunma anlaşması imzaladı', { symbol: 'ASELS', exchange: 'BIST' }) };
+  assert.equal(aselsMatch.matched, true);
+  assert.equal(aselsMatch.matchedBy, 'company_alias');
+
+  const customAliasMatch = {
+    ...matchNewsAssetIdentity('Mavi Giyim mağaza sayısını artırdı', {
+      symbol: 'MAVI',
+      exchange: 'BIST',
+      name: 'Mavi Giyim Sanayi A.Ş.',
+    }),
+  };
+  assert.equal(customAliasMatch.matched, true);
+  assert.equal(customAliasMatch.matchedBy, 'company_alias');
+
+  // 2. Same symbol across different exchanges must stay separated
+  const nasdaqOnlyText = 'NASDAQ:BIMAS veya NASDAQ:LOGO Wall Street kapanışında yükseldi';
+  assert.equal(matchNewsAssetIdentity(nasdaqOnlyText, { symbol: 'LOGO', exchange: 'BIST' }).matched, false);
+  assert.equal(matchNewsAssetIdentity(nasdaqOnlyText, { symbol: 'LOGO', exchange: 'NASDAQ' }).matched, true);
+
+  assert.equal(
+    matchNewsAssetIdentity('Borsa İstanbul BIST seansında ARCLK ve ABC hareketlendi', { symbol: 'ABC', exchange: 'NASDAQ' }, { category: 'BIST' }).matched,
+    false
+  );
+  assert.equal(
+    matchNewsAssetIdentity('Borsa İstanbul BIST seansında ARCLK ve ABC hareketlendi', { symbol: 'ABC', exchange: 'BIST' }, { category: 'BIST' }).matched,
+    true
+  );
+
+  // 3. Ordinary prose / month / adjective false positives rejected unless explicit cashtag/alias
+  assert.equal(matchNewsAssetIdentity('YENİ LOGO VE MAVİ RENKLİ KAMPANYA DUYURULDU', { symbol: 'LOGO', exchange: 'BIST' }).matched, false);
+  assert.equal(matchNewsAssetIdentity('YENİ LOGO VE MAVİ RENKLİ KAMPANYA DUYURULDU', { symbol: 'MAVI', exchange: 'BIST' }).matched, false);
+  assert.equal(matchNewsAssetIdentity('EKİM VE KASIM AYLARINDA ENFLASYON BEKLENTİSİ', { symbol: 'EKIM', exchange: 'BIST' }).matched, false);
+  assert.equal(matchNewsAssetIdentity('GOLD WATCH RETAILERS REPORT HOLIDAY SALES', { symbol: 'GOLD', exchange: 'NYSE' }).matched, false);
+  assert.equal(matchNewsAssetIdentity('$LOGO bilançosu beklentileri aştı', { symbol: 'LOGO', exchange: 'BIST' }).matched, true);
+});
+
 
 
 

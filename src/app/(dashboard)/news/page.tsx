@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Badge, Input, Button, StateView } from '@/components/ui';
 import type { NewsArticle } from '@/app/api/news/route';
 import { calculatePortfolioHoldings } from '@/lib/portfolio/calculations';
-import { mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
+import { matchNewsAssetIdentity, mentionsNewsSymbol, normalizeNewsText, type NewsAssetIdentity } from '@/lib/news/symbolMatch';
 import { rankNews } from '@/lib/news/relevance';
 import { mapNewsFetchErrorToTurkish, parseNewsApiResponse } from '@/lib/news/responseParser';
 import {
@@ -46,12 +46,33 @@ export default function NewsPage() {
     fetchPortfoliosAndTransactions();
   }, [fetchPortfoliosAndTransactions]);
 
-  // Extract unique portfolio symbols
+  // Extract unique portfolio asset identities (symbol + exchange)
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
-  const portfolioSymbols = useMemo(() => {
+  const portfolioIdentities = useMemo<NewsAssetIdentity[]>(() => {
     const activeTransactions = transactions.filter(t => t.portfolioId === activePortfolio?.id);
-    return [...new Set(calculatePortfolioHoldings(activeTransactions).filter(holding => holding.totalQuantity > 0).map(holding => holding.symbol.toUpperCase().trim()))];
+    const bySym = new Map<string, NewsAssetIdentity>();
+    for (const holding of calculatePortfolioHoldings(activeTransactions)) {
+      if (holding.totalQuantity <= 0) continue;
+      const sym = holding.symbol.toUpperCase().trim();
+      if (!sym || bySym.has(sym)) continue;
+      const matchingTx = activeTransactions.find((t) => t.symbol.toUpperCase().trim() === sym && t.exchange);
+      bySym.set(sym, {
+        symbol: sym,
+        exchange: matchingTx?.exchange || (holding.assetType === 'fund' ? 'TEFAS' : undefined),
+      });
+    }
+    return Array.from(bySym.values());
   }, [activePortfolio?.id, transactions]);
+
+  const portfolioSymbols = useMemo(
+    () => portfolioIdentities.map((id) => id.symbol),
+    [portfolioIdentities]
+  );
+
+  const portfolioQuerySymbols = useMemo(
+    () => portfolioIdentities.map((id) => (id.exchange ? `${id.exchange}:${id.symbol}` : id.symbol)),
+    [portfolioIdentities]
+  );
 
   const fetchNews = async (isManualRefresh = false) => {
     requestRef.current?.abort();
@@ -71,8 +92,8 @@ export default function NewsPage() {
         params.append('category', selectedCategory);
       }
 
-      if (selectedCategory === 'PORTFOLIO' && portfolioSymbols.length > 0) {
-        params.append('symbols', portfolioSymbols.join(','));
+      if (selectedCategory === 'PORTFOLIO' && portfolioQuerySymbols.length > 0) {
+        params.append('symbols', portfolioQuerySymbols.join(','));
       }
 
       const res = await fetch(`/api/news?${params.toString()}`, { signal: controller.signal });
@@ -153,9 +174,10 @@ export default function NewsPage() {
       // Filter by specific symbol chip if selected
       if (selectedSymbolFilter !== 'ALL') {
         const sym = selectedSymbolFilter.toUpperCase();
+        const identity = portfolioIdentities.find((p) => p.symbol === sym) || sym;
         const hasSym =
           item.relatedSymbols?.includes(sym) ||
-          mentionsNewsSymbol(`${item.title} ${item.summary}`, sym);
+          matchNewsAssetIdentity(`${item.title} ${item.summary}`, identity, { category: item.category, source: item.source }).matched;
         if (!hasSym) return false;
       }
 
