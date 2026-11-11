@@ -481,6 +481,64 @@ test('EPO-04: aynı bülten günü ve alıcı için yeniden deneme veya tekrar t
   assert.equal(/force:\s*true/.test(triggerSrc), false, 'trigger-cron must not hardcode force: true');
 });
 
+test('EPO-05: admin stats ve operasyon ekranı bekleyen, kabul edilen, başarısız ve yeniden denenecek sayaçlarını ayrı gösterir', async () => {
+  const queueRows = [
+    { recipient_email: 'p@example.test', status: 'pending', attempt_count: 0 },
+    { recipient_email: 'a1@example.test', status: 'accepted', attempt_count: 1 },
+    { recipient_email: 'a2@example.test', status: 'accepted', attempt_count: 1 },
+    { recipient_email: 'f@example.test', status: 'failed', attempt_count: 3 },
+    { recipient_email: 'r@example.test', status: 'retry_scheduled', attempt_count: 1 },
+  ];
+  const load = loader({
+    '@/lib/admin/desktopGuard': { requireDesktopAdmin: async () => ({ id: 'admin-id' }) },
+    '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user: { id: 'admin-id' } } }) } }) },
+    '@supabase/supabase-js': {},
+    '@/lib/data/tefas_funds_directory.json': [],
+    '@/lib/email/service': {
+      getEmailTransportDiagnostics: () => ({
+        mode: 'gmail',
+        gmailOnly: true,
+        configured: true,
+        senderAddress: 'kaanrmak7@gmail.com',
+        expectedGmailSender: 'kaanrmak7@gmail.com',
+        senderMatchesExpectedGmail: true,
+      }),
+    },
+    '@/lib/supabase/admin': {
+      createAdminClient: () => ({
+        auth: { admin: { listUsers: async () => ({ data: { users: [] }, error: null }) } },
+        from: (table) => {
+          if (table === 'email_delivery_queue') {
+            return {
+              select: () => ({
+                eq: () => ({
+                  order: () => ({ limit: async () => ({ data: queueRows, error: null }) }),
+                }),
+              }),
+            };
+          }
+          return { select: async () => ({ count: 0, error: null }) };
+        },
+      }),
+    },
+  });
+
+  const statsRoute = load('src/app/api/admin/stats/route.ts');
+  const res = await statsRoute.GET(new Request('http://localhost:3000/api/admin/stats'));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.stats.emailQueueSummary.available, true);
+  assert.equal(body.stats.emailQueueSummary.pending, 1);
+  assert.equal(body.stats.emailQueueSummary.accepted, 2);
+  assert.equal(body.stats.emailQueueSummary.failed, 1);
+  assert.equal(body.stats.emailQueueSummary.retryScheduled, 1);
+
+  const adminSrc = fs.readFileSync(path.join(root, 'src/app/admin/page.tsx'), 'utf8');
+  for (const marker of ['counter-pending', 'counter-accepted', 'counter-failed', 'counter-retry-scheduled']) {
+    assert.ok(adminSrc.includes(marker), `Admin UI must display separate counter ${marker}`);
+  }
+});
+
 test('Daily bulletin shows supplied market prices and omits sample portfolio values', () => {
   const load = loader({ nodemailer: {}, '@supabase/supabase-js': {} });
   const { generateStockMindEmailHtml } = load('src/lib/email/service.ts');

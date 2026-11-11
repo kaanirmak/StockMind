@@ -21,6 +21,22 @@ interface AdminStats {
     expectedGmailSender: string;
     senderMatchesExpectedGmail: boolean;
   };
+  emailQueueSummary?: {
+    pending: number;
+    accepted: number;
+    failed: number;
+    retryScheduled: number;
+    total: number;
+    bulletinDate: string;
+    available: boolean;
+    recentItems?: Array<{
+      recipient_email: string;
+      status: string;
+      attempt_count: number;
+      last_error?: string | null;
+      updated_at?: string;
+    }>;
+  };
   systemTime: string;
   adminEmail: string;
 }
@@ -1051,6 +1067,71 @@ export default function AdminConsolePage() {
                   {isTriggeringCron === 'purge-sessions' ? 'Temizleniyor...' : '▶️ Temizliği Başlat'}
                 </button>
               </div>
+            </div>
+
+            {/* E-posta Teslimat Kuyruğu & Durum Sayaçları */}
+            <div data-testid="email-delivery-counters" className="rounded-2xl border border-white/10 bg-[#070b16] p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-white">E-posta Gönderim Kuyruğu Sonuçları</h4>
+                  <p className="text-[11px] text-slate-400">
+                    Bülten tarihi: {stats?.emailQueueSummary?.bulletinDate || 'Bugün'} · Kalıcı durum sayaçları
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fetchOverviewData}
+                  className="rounded-lg border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-semibold text-slate-300 hover:bg-white/10 transition cursor-pointer"
+                >
+                  Sayaçları Yenile
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-3">
+                  <p className="text-[11px] text-slate-400 font-semibold">Bekleyen</p>
+                  <p data-testid="counter-pending" className="text-xl font-black text-slate-200 mt-0.5">
+                    {stats?.emailQueueSummary?.pending ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+                  <p className="text-[11px] text-emerald-300 font-semibold">Kabul Edilen</p>
+                  <p data-testid="counter-accepted" className="text-xl font-black text-emerald-400 mt-0.5">
+                    {stats?.emailQueueSummary?.accepted ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3">
+                  <p className="text-[11px] text-rose-300 font-semibold">Başarısız</p>
+                  <p data-testid="counter-failed" className="text-xl font-black text-rose-400 mt-0.5">
+                    {stats?.emailQueueSummary?.failed ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+                  <p className="text-[11px] text-amber-300 font-semibold">Yeniden Denenecek</p>
+                  <p data-testid="counter-retry-scheduled" className="text-xl font-black text-amber-400 mt-0.5">
+                    {stats?.emailQueueSummary?.retryScheduled ?? 0}
+                  </p>
+                </div>
+              </div>
+
+              {stats?.emailQueueSummary && !stats.emailQueueSummary.available && (
+                <p className="text-[11px] text-amber-400/90">
+                  Kalıcı kuyruk tablosu henüz etkinleştirilmedi veya bugün için kayıt bulunmuyor.
+                </p>
+              )}
+
+              {stats?.emailQueueSummary?.recentItems && stats.emailQueueSummary.recentItems.length > 0 && (
+                <div className="space-y-1.5 pt-2 border-t border-white/10 max-h-40 overflow-y-auto text-[11px]">
+                  {stats.emailQueueSummary.recentItems.slice(0, 8).map((item) => (
+                    <div key={item.recipient_email} className="flex items-center justify-between gap-2 text-slate-300">
+                      <span className="font-mono truncate">{item.recipient_email}</span>
+                      <span className="shrink-0 text-slate-400">
+                        {item.status} ({item.attempt_count} deneme)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Terminal Live Output Console */}
