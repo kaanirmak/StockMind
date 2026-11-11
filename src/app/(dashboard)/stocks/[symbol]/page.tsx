@@ -12,6 +12,7 @@ import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
 import { UpcomingEventsCard } from '@/components/stocks/UpcomingEventsCard';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
 import { classifyStockPriceStatus } from '@/lib/market/priceStatus';
+import { getMarketSessionStatus } from '@/lib/market/marketSession';
 import {
   classifyAssetType,
   formatAssetUnitPrice,
@@ -143,21 +144,12 @@ export default function StockDetailPage({
     fetchLivePrices();
   };
 
-  const marketStatus = (() => {
-    if (stock?.exchange === 'CRYPTO') return { isOpen: true, label: 'Piyasa açık' };
-    const now = new Date();
-    const day = now.getDay();
-    if (day === 0 || day === 6) return { isOpen: false, label: 'Piyasa kapalı' };
-    const utcHours = now.getUTCHours();
-    const utcMinutes = now.getUTCMinutes();
-    const trMinutes = (utcHours + 3) * 60 + utcMinutes;
-    if (stock?.exchange === 'NASDAQ' || stock?.exchange === 'NYSE') {
-      const isOpen = trMinutes >= 990 && trMinutes <= 1380;
-      return { isOpen, label: isOpen ? 'Piyasa açık' : 'Piyasa kapalı' };
-    }
-    const isOpen = trMinutes >= 600 && trMinutes <= 1090;
-    return { isOpen, label: isOpen ? 'Piyasa açık' : 'Piyasa kapalı' };
-  })();
+  const marketStatus = getMarketSessionStatus({
+    exchange: stock?.exchange || 'BIST',
+    asOf: stock?.observation?.asOf ?? stock?.timestamp ?? null,
+    fetchedAt: stock?.observation?.fetchedAt ?? null,
+    now: new Date(),
+  });
 
   const handleShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -282,18 +274,27 @@ export default function StockDetailPage({
               {displayUnit === 'puan' || displayUnit === 'TL/gram' ? ` · ${displayUnit}` : ''}
             </span>
             <span
+              data-testid="market-session-status"
+              title={marketStatus.reason}
               className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 ${
                 marketStatus.isOpen
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  : 'bg-bg-tertiary text-text-muted border-border'
+                  : marketStatus.state === 'holiday'
+                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/25'
+                    : 'bg-bg-tertiary text-text-muted border-border'
               }`}
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
-                  marketStatus.isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-text-muted'
+                  marketStatus.isOpen
+                    ? 'bg-emerald-400 animate-pulse'
+                    : marketStatus.state === 'holiday'
+                      ? 'bg-amber-400'
+                      : 'bg-text-muted'
                 }`}
               />
               {marketStatus.label}
+              {!marketStatus.isOpen && marketStatus.lastCloseText ? ` · ${marketStatus.lastCloseText}` : ''}
             </span>
           </div>
 

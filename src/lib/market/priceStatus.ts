@@ -1,4 +1,5 @@
 import type { MarketPriceObservation } from '@/types/stock';
+import { getMarketSessionStatus } from './marketSession';
 
 export type PriceStatusKind = 'current' | 'delayed' | 'last-close' | 'stale' | 'missing';
 
@@ -52,24 +53,7 @@ function getIstanbulDayString(date: Date): string {
 }
 
 export function isMarketSessionOpen(exchange?: string | null, now: Date = new Date()): boolean {
-  const ex = (exchange || 'BIST').toUpperCase();
-  if (ex === 'CRYPTO') return true;
-
-  if (ex === 'NASDAQ' || ex === 'NYSE' || ex === 'US') {
-    const { weekday, minutes } = getZonedClockParts(now, 'America/New_York');
-    if (weekday === 'Sat' || weekday === 'Sun') return false;
-    return minutes >= 9 * 60 + 30 && minutes <= 16 * 60;
-  }
-
-  if (ex === 'FOREX' || ex === 'COMMODITY' || ex === 'INDEX') {
-    const { weekday } = getZonedClockParts(now, 'UTC');
-    return weekday !== 'Sat' && weekday !== 'Sun';
-  }
-
-  // BIST equity default
-  const { weekday, minutes } = getZonedClockParts(now, 'Europe/Istanbul');
-  if (weekday === 'Sat' || weekday === 'Sun') return false;
-  return minutes >= 10 * 60 && minutes <= 18 * 60 + 10;
+  return getMarketSessionStatus({ exchange, now }).isOpen;
 }
 
 export function classifyPriceStatus(input: PriceStatusInput): PriceStatusInfo {
@@ -198,9 +182,14 @@ export function classifyPriceStatus(input: PriceStatusInput): PriceStatusInfo {
 
   const ageMs = Math.max(0, nowMs - refMs);
   const fetchAgeMs = Number.isFinite(fetchedMs) ? Math.max(0, nowMs - fetchedMs) : ageMs;
-  const sessionOpen = isMarketSessionOpen(ex || 'BIST', now);
+  const sessionInfo = getMarketSessionStatus({
+    exchange: ex || 'BIST',
+    now,
+    asOf,
+    fetchedAt,
+  });
 
-  if (!sessionOpen) {
+  if (!sessionInfo.isOpen) {
     if (ageMs <= NINETY_SIX_HOURS_MS && fetchAgeMs <= TWENTY_FOUR_HOURS_MS) {
       return {
         status: 'last-close',
@@ -210,7 +199,10 @@ export function classifyPriceStatus(input: PriceStatusInput): PriceStatusInfo {
         asOf,
         fetchedAt,
         observedAt,
-        description: 'Piyasa kapalı; son kapanış fiyatı gösteriliyor.',
+        description:
+          sessionInfo.state === 'holiday'
+            ? `Piyasa tatilde (${sessionInfo.holidayName || 'resmî tatil'}); son kapanış fiyatı gösteriliyor.`
+            : 'Piyasa kapalı; son kapanış fiyatı gösteriliyor.',
       };
     }
     return {

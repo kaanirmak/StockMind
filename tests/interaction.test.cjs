@@ -3815,6 +3815,91 @@ test('VER-09: exchange and symbol resolution prevents cross-exchange collisions 
   assert.equal(stocksMod.resolveHistoricalQuerySymbol('ARM', undefined, 'BIST').querySymbol, 'ARM.IS');
 });
 
+test('VER-10: market session and holiday status distinguish open, closed, and holiday', () => {
+  const loadWithAlias = createAliasedLoader();
+  const sessionMod = loadWithAlias('src/lib/market/marketSession.ts');
+  const statusMod = loadWithAlias('src/lib/market/priceStatus.ts');
+
+  // BIST weekday open session: 2026-10-28 11:00 TSİ = 08:00Z
+  const bistOpen = sessionMod.getMarketSessionStatus({
+    exchange: 'BIST',
+    asOf: '2026-10-28T07:59:00.000Z',
+    now: new Date('2026-10-28T08:00:00.000Z'),
+  });
+  assert.equal(bistOpen.state, 'open');
+  assert.equal(bistOpen.isOpen, true);
+  assert.equal(bistOpen.label, 'Piyasa açık');
+  assert.equal(bistOpen.dataSessionState, 'open');
+
+  // BIST weekday after-hours: 2026-10-28 20:00 TSİ = 17:00Z
+  const bistClosed = sessionMod.getMarketSessionStatus({
+    exchange: 'BIST',
+    asOf: '2026-10-28T15:10:00.000Z',
+    now: new Date('2026-10-28T17:00:00.000Z'),
+  });
+  assert.equal(bistClosed.state, 'closed');
+  assert.equal(bistClosed.isOpen, false);
+  assert.equal(bistClosed.label, 'Piyasa kapalı');
+  assert.equal(bistClosed.dataSessionState, 'open');
+  assert.match(bistClosed.lastCloseText || '', /Son kapanış/);
+
+  // BIST official holiday: Cumhuriyet Bayramı (2026-10-29 12:00 TSİ = 09:00Z)
+  const bistHoliday = sessionMod.getMarketSessionStatus({
+    exchange: 'BIST',
+    now: new Date('2026-10-29T09:00:00.000Z'),
+  });
+  assert.equal(bistHoliday.state, 'holiday');
+  assert.equal(bistHoliday.isOpen, false);
+  assert.equal(bistHoliday.holidayName, 'Cumhuriyet Bayramı');
+  assert.equal(bistHoliday.label, 'Tatil (Cumhuriyet Bayramı)');
+
+  const holidayPriceStatus = statusMod.classifyPriceStatus({
+    exchange: 'BIST',
+    price: 312.5,
+    now: new Date('2026-10-29T09:00:00.000Z'),
+    observation: {
+      source: 'TradingView',
+      asOf: '2026-10-28T15:10:00.000Z',
+      fetchedAt: '2026-10-29T08:55:00.000Z',
+    },
+  });
+  assert.equal(holidayPriceStatus.status, 'last-close');
+  assert.equal(holidayPriceStatus.label, 'Son kapanış');
+  assert.match(holidayPriceStatus.description, /Cumhuriyet Bayramı/);
+
+  // US NASDAQ weekday open session (EDT 11:00 = 15:00Z)
+  const usOpen = sessionMod.getMarketSessionStatus({
+    exchange: 'NASDAQ',
+    now: new Date('2026-10-28T15:00:00.000Z'),
+  });
+  assert.equal(usOpen.state, 'open');
+  assert.equal(usOpen.isOpen, true);
+
+  // US observed Independence Day holiday (2026-07-03 15:00Z)
+  const usHoliday = sessionMod.getMarketSessionStatus({
+    exchange: 'NASDAQ',
+    now: new Date('2026-07-03T15:00:00.000Z'),
+  });
+  assert.equal(usHoliday.state, 'holiday');
+  assert.equal(usHoliday.isOpen, false);
+  assert.match(usHoliday.label, /Tatil/);
+
+  // 24/7 Crypto session
+  const cryptoOpen = sessionMod.getMarketSessionStatus({
+    exchange: 'CRYPTO',
+    now: new Date('2026-10-29T09:00:00.000Z'),
+  });
+  assert.equal(cryptoOpen.state, 'open');
+  assert.equal(cryptoOpen.label, '7/24 Açık');
+
+  const stockPage = fs.readFileSync(
+    path.join(process.cwd(), 'src/app/(dashboard)/stocks/[symbol]/page.tsx'),
+    'utf8',
+  );
+  assert.match(stockPage, /data-testid="market-session-status"/);
+  assert.match(stockPage, /lastCloseText/);
+});
+
 
 
 

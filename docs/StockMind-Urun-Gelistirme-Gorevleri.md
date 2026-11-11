@@ -24,7 +24,7 @@ Durum işaretleri ☐ sırada, ◐ yerelde doğrulandı, ☑ canlıda doğruland
 | VER-07 | P0 | Gerçek hacim ve gün içi fiyat alanlarını doğrula | Eksik hacim, yüksek/düşük ve kapanış alanları boş kalır. Varsayılan değerler teknik hesaplamaya girmez. (`stocks.ts`, `indicators/index.ts`, `CandlestickChart.tsx` ve `TechnicalIndicatorsPanel.tsx` içindeki sentetik hacim/gün içi aralık/RSI/SMA varsayılanları kaldırıldı; eksik veriler boş bırakılarak doğrulandı.) | ◐ |
 | VER-08 | P1 | Varlık türünü ve işlem birimini düzelt | Hisse, ETF, fon, endeks, döviz ve emtia ayrı etiketlenir. Endeks puanla, gram altın TL/gram ile gösterilir. | ◐ |
 | VER-09 | P1 | Borsa ve sembol eşleşmelerini doğrula | Aynı sembole sahip farklı borsalar karışmaz. Endeks ve ETF eşlemeleri örnek varlıklarla test edilir. | ◐ |
-| VER-10 | P1 | Piyasa seansını ve son kapanışı göster | Açık piyasa, kapalı piyasa ve tatil durumları veri saatine göre ayırt edilir. | ☐ |
+| VER-10 | P1 | Piyasa seansını ve son kapanışı göster | Açık piyasa, kapalı piyasa ve tatil durumları veri saatine göre ayırt edilir. | ◐ |
 | VER-11 | P1 | Sağlayıcı koşullarını ve veri kapsamını belgeye bağla | Her kaynak için kapsanan pazar, gecikme, gösterim ve yeniden dağıtım koşulları kaydedilir. | ☐ |
 
 ## 2. TEFAS, fon keşfi ve karşılaştırma
