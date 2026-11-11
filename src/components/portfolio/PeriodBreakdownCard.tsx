@@ -4,7 +4,8 @@ import React from 'react';
 import { Badge } from '@/components/ui';
 import { PERIOD_LABELS } from '@/lib/portfolio/periodPerformance';
 import type { PeriodBreakdown } from '@/lib/portfolio/periodBreakdown';
-import { formatCurrency, formatSignedCurrency } from '@/lib/utils/format';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskCurrencyValue } from '@/lib/privacy';
 
 export interface PeriodBreakdownCardProps {
   breakdown?: PeriodBreakdown | null;
@@ -15,6 +16,7 @@ export const PeriodBreakdownCard: React.FC<PeriodBreakdownCardProps> = ({
   breakdown,
   loading = false,
 }) => {
+  const { isPrivacyMode } = usePrivacyMode();
   if (!breakdown) return null;
 
   const periodLabel = PERIOD_LABELS[breakdown.period] || breakdown.period;
@@ -56,7 +58,7 @@ export const PeriodBreakdownCard: React.FC<PeriodBreakdownCardProps> = ({
             Gerçekleşmiş Kâr
           </span>
           <span className={`text-sm font-bold font-mono block ${pnlColor(breakdown.realizedTradePnL)}`}>
-            {formatSignedCurrency(breakdown.realizedTradePnL, 'TRY')}
+            {maskCurrencyValue(breakdown.realizedTradePnL, 'TRY', isPrivacyMode, { signed: true })}
           </span>
           <span className="text-[10px] text-text-muted block">Kapanan satış işlemleri</span>
         </div>
@@ -68,11 +70,11 @@ export const PeriodBreakdownCard: React.FC<PeriodBreakdownCardProps> = ({
           </span>
           <span className={`text-sm font-bold font-mono block ${pnlColor(breakdown.unrealizedPnL)}`}>
             {breakdown.available
-              ? formatSignedCurrency(breakdown.unrealizedPnL, 'TRY')
+              ? maskCurrencyValue(breakdown.unrealizedPnL, 'TRY', isPrivacyMode, { signed: true })
               : 'Veri eksik'}
           </span>
           <span className="text-[10px] text-text-muted block">
-            Fiyat hareketi: {breakdown.available ? formatSignedCurrency(breakdown.assetPricePnL, 'TRY') : '—'}
+            Fiyat hareketi: {breakdown.available ? maskCurrencyValue(breakdown.assetPricePnL, 'TRY', isPrivacyMode, { signed: true }) : '—'}
           </span>
         </div>
 
@@ -82,10 +84,10 @@ export const PeriodBreakdownCard: React.FC<PeriodBreakdownCardProps> = ({
             Temettü & Nakit
           </span>
           <span className={`text-sm font-bold font-mono block ${pnlColor(breakdown.dividendsTotal)}`}>
-            {formatSignedCurrency(breakdown.dividendsTotal, 'TRY')}
+            {maskCurrencyValue(breakdown.dividendsTotal, 'TRY', isPrivacyMode, { signed: true })}
           </span>
           <span className="text-[10px] text-text-muted block">
-            Giriş: {formatCurrency(breakdown.depositsTotal, 'TRY')} · Çıkış: {formatCurrency(breakdown.withdrawalsTotal, 'TRY')}
+            Giriş: {maskCurrencyValue(breakdown.depositsTotal, 'TRY', isPrivacyMode)} · Çıkış: {maskCurrencyValue(breakdown.withdrawalsTotal, 'TRY', isPrivacyMode)}
           </span>
         </div>
 
@@ -100,11 +102,11 @@ export const PeriodBreakdownCard: React.FC<PeriodBreakdownCardProps> = ({
             }`}
           >
             {breakdown.feesAndCommissionsTotal > 0
-              ? formatSignedCurrency(-breakdown.feesAndCommissionsTotal, 'TRY')
-              : formatCurrency(0, 'TRY')}
+              ? maskCurrencyValue(-breakdown.feesAndCommissionsTotal, 'TRY', isPrivacyMode, { signed: true })
+              : maskCurrencyValue(0, 'TRY', isPrivacyMode)}
           </span>
           <span className="text-[10px] text-text-muted block">
-            Komisyon: {formatCurrency(breakdown.tradeCommissionsTotal, 'TRY')} · Ücret: {formatCurrency(breakdown.standaloneFeesTotal, 'TRY')}
+            Komisyon: {maskCurrencyValue(breakdown.tradeCommissionsTotal, 'TRY', isPrivacyMode)} · Ücret: {maskCurrencyValue(breakdown.standaloneFeesTotal, 'TRY', isPrivacyMode)}
           </span>
         </div>
 
@@ -115,7 +117,7 @@ export const PeriodBreakdownCard: React.FC<PeriodBreakdownCardProps> = ({
           </span>
           <span className={`text-sm font-bold font-mono block ${pnlColor(breakdown.fxImpact)}`}>
             {breakdown.available
-              ? formatSignedCurrency(breakdown.fxImpact, 'TRY')
+              ? maskCurrencyValue(breakdown.fxImpact, 'TRY', isPrivacyMode, { signed: true })
               : 'Veri eksik'}
           </span>
           <span className="text-[10px] text-text-muted block">Döviz kuru değişim katkısı</span>

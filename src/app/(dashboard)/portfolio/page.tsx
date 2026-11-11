@@ -31,6 +31,8 @@ import {
 import { computePortfolioDeletionImpact } from '@/lib/portfolio/portfolioDeletionImpact';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, StateView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskDisplayValue } from '@/lib/privacy';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
 
 export default function PortfolioPage() {
@@ -82,6 +84,7 @@ export default function PortfolioPage() {
   const setIsSamplePreview = setSampleMode;
 
   const { user, profile, loading: authLoading } = useAuth();
+  const { isPrivacyMode } = usePrivacyMode();
   const [showProModal, setShowProModal] = useState(false);
   const isPro = Boolean(
     user?.app_metadata?.plan === 'pro' ||
@@ -436,9 +439,15 @@ export default function PortfolioPage() {
                 missingCashRates={summary.cash?.missingRates}
               />
             </div>
-            <h2 className="text-xl sm:text-3xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h2>
-            <p className="mt-2 text-xs text-text-muted">{summary.cash?.configured ? 'Net yatırılan' : 'Maliyet'}: ₺{(summary.cash?.configured ? summary.cash.netContributions : summary.totalCost).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}</p>
-      <p className="mt-1 text-[10px] sm:text-xs text-text-muted leading-relaxed">İşlem hacmi: ₺{summary.totalVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Alış: ₺{summary.buyVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} · Satış: ₺{summary.sellVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</p>
+            <h2 className="text-xl sm:text-3xl font-black text-text-primary mt-1 font-mono tracking-tight truncate">
+              {maskDisplayValue(`₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+            </h2>
+            <p className="mt-2 text-xs text-text-muted">
+              {summary.cash?.configured ? 'Net yatırılan' : 'Maliyet'}: {maskDisplayValue(`₺${(summary.cash?.configured ? summary.cash.netContributions : summary.totalCost).toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+            </p>
+      <p className="mt-1 text-[10px] sm:text-xs text-text-muted leading-relaxed">
+        İşlem hacmi: {maskDisplayValue(`₺${summary.totalVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`, isPrivacyMode, '₺••••')} · Alış: {maskDisplayValue(`₺${summary.buyVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`, isPrivacyMode, '₺••••')} · Satış: {maskDisplayValue(`₺${summary.sellVolume.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`, isPrivacyMode, '₺••••')}
+      </p>
           </div>
           <PortfolioAllocationChart compact allocation={summary.allocation} totalValue={summary.totalValue} />
         </div>
@@ -451,7 +460,7 @@ export default function PortfolioPage() {
               <span className="text-base sm:text-lg">{isProfit ? "" : ""}</span>
             </div>
             <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${isProfit ? 'text-success' : 'text-danger'}`}>
-              {isProfit ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {maskDisplayValue(`${isProfit ? '+' : ''}₺${summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
             </h3>
           </div>
           <div className="mt-2 space-y-1">
@@ -462,9 +471,9 @@ export default function PortfolioPage() {
               <span className="text-text-muted hidden sm:inline">nakit hariç</span>
             </div>
             <div className="flex items-center justify-between text-[10px] text-text-muted pt-1 border-t border-border/50">
-              <span>Açık: <strong className={summary.unrealizedPnL >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>₺{summary.unrealizedPnL.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></span>
+              <span>Açık: <strong className={summary.unrealizedPnL >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>{maskDisplayValue(`₺${summary.unrealizedPnL.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, isPrivacyMode, '₺••••')}</strong></span>
               {summary.realizedPnL !== 0 && (
-                <span>Kapanan: <strong className={summary.realizedPnL >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>₺{summary.realizedPnL.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</strong></span>
+                <span>Kapanan: <strong className={summary.realizedPnL >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>{maskDisplayValue(`₺${summary.realizedPnL.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, isPrivacyMode, '₺••••')}</strong></span>
               )}
             </div>
           </div>
@@ -482,7 +491,7 @@ export default function PortfolioPage() {
               </span>
             </div>
             <h3 className={`text-lg sm:text-2xl font-black mt-1 font-mono tracking-tight truncate ${performance.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
-              {performance.available ? `${performance.pnl >= 0 ? '+' : ''}₺${performance.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : performance.loading ? 'Fiyatlar yükleniyor…' : 'Veri eksik'}
+              {performance.available ? maskDisplayValue(`${performance.pnl >= 0 ? '+' : ''}₺${performance.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••') : performance.loading ? 'Fiyatlar yükleniyor…' : 'Veri eksik'}
             </h3>
             {!performance.available && !performance.loading && <p role="status" className="mt-1 text-[10px] text-text-muted break-words">Fiyat alınamadı: {performance.missing.join(', ')}</p>}
           </div>
@@ -743,13 +752,13 @@ export default function PortfolioPage() {
                         <div>
                           <span className="text-[10px] text-text-muted font-sans block">Adet & Fiyat</span>
                           <span className="font-semibold text-text-primary mt-0.5 block">
-                            {tx.quantity.toLocaleString('tr-TR')} adet × ₺{tx.price.toFixed(2)}
+                            {maskDisplayValue(tx.quantity.toLocaleString('tr-TR'), isPrivacyMode, '•••')} adet × {maskDisplayValue(`₺${tx.price.toFixed(2)}`, isPrivacyMode, '₺••••')}
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="text-[10px] text-text-muted font-sans block">Toplam Tutar</span>
                           <span className={`font-bold mt-0.5 block ${isBuy ? 'text-text-primary' : 'text-emerald-400'}`}>
-                            ₺{total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {maskDisplayValue(`₺${total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                           </span>
                         </div>
                       </div>
@@ -845,15 +854,15 @@ export default function PortfolioPage() {
                             </Badge>
                           </td>
                           <td className="py-3.5 px-4 text-right font-mono text-text-primary">
-                            {tx.quantity.toLocaleString('tr-TR')}
+                            {maskDisplayValue(tx.quantity.toLocaleString('tr-TR'), isPrivacyMode, '•••')}
                           </td>
                           <td className="py-3.5 px-4 text-right font-mono text-text-secondary">
-                            ₺{tx.price.toFixed(2)}
+                            {maskDisplayValue(`₺${tx.price.toFixed(2)}`, isPrivacyMode, '₺••••')}
                           </td>
                           <td className="py-3.5 px-4 text-right font-mono font-bold text-text-primary">
-                            ₺{(tx.quantity * tx.price + (tx.commission || 0)).toLocaleString('tr-TR', {
+                            {maskDisplayValue(`₺${(tx.quantity * tx.price + (tx.commission || 0)).toLocaleString('tr-TR', {
                               minimumFractionDigits: 2,
-                            })}
+                            })}`, isPrivacyMode, '₺••••••')}
                           </td>
                           <td className="py-3.5 px-4 text-xs text-text-muted">
                             {tx.notes || '-'}

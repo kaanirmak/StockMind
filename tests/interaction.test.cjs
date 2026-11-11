@@ -4692,6 +4692,55 @@ test('QNT-06: DCF handles WACC <= terminal growth with explicit assumption adjus
   assert.match(dcfTabSrc, /dcfResult\.assumptionValidation\.spreadAdjusted/);
 });
 
+test('HSP-01: privacy mode syncs across storage/events and masks amounts across home, portfolio, heatmap, reports, and widget preview', () => {
+  const privacy = load('src/lib/privacy.ts');
+  const storeMap = new Map();
+  const dispatched = [];
+  const mockStorage = {
+    getItem: (k) => (storeMap.has(k) ? storeMap.get(k) : null),
+    setItem: (k, v) => storeMap.set(k, v),
+  };
+  const mockWindow = {
+    dispatchEvent: (ev) => dispatched.push(ev),
+  };
+
+  assert.equal(privacy.readPrivacyMode(mockStorage), false);
+  assert.equal(privacy.writePrivacyMode(true, mockStorage, mockWindow), true);
+  assert.equal(privacy.readPrivacyMode(mockStorage), true);
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].type, privacy.PRIVACY_EVENT);
+  assert.equal(dispatched[0].detail.enabled, true);
+
+  assert.equal(privacy.maskDisplayValue('₺125.430,00', true, '₺••••••'), '₺••••••');
+  assert.equal(privacy.maskDisplayValue('₺125.430,00', false, '₺••••••'), '₺125.430,00');
+  assert.equal(privacy.maskCurrencyValue(125430, 'TRY', true), '₺••••');
+  assert.equal(privacy.maskCurrencyValue(215, 'USD', true, { signed: true }), '$••••');
+  assert.doesNotMatch(privacy.maskCurrencyValue(125430, 'TRY', true), /\d/);
+  assert.match(privacy.maskCurrencyValue(125430, 'TRY', false), /125/);
+
+  const filesToCheck = [
+    { path: 'src/components/layout/Header.tsx', pattern: /header-privacy-toggle/ },
+    { path: 'src/components/dashboard/PortfolioSummary.tsx', pattern: /maskDisplayValue|maskCurrencyValue/ },
+    { path: 'src/components/dashboard/RecentTransactions.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/components/dashboard/PortfolioHeatmap.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/app/(dashboard)/portfolio/page.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/components/portfolio/HoldingsTable.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/components/portfolio/CashPanel.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/components/portfolio/DailyAttributionCard.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/components/portfolio/PeriodBreakdownCard.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/components/portfolio/PortfolioAllocationChart.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/components/portfolio/DailyPnLCalendarHeatmap.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/app/(dashboard)/reports/page.tsx', pattern: /reports-privacy-toggle/ },
+    { path: 'src/components/widgets/PortfolioStatusWidget.tsx', pattern: /usePrivacyMode/ },
+    { path: 'src/app/(dashboard)/widgets/page.tsx', pattern: /widgets-privacy-toggle/ },
+  ];
+
+  for (const item of filesToCheck) {
+    const src = fs.readFileSync(path.join(process.cwd(), item.path), 'utf8');
+    assert.match(src, item.pattern, `${item.path} must wire global privacy masking`);
+  }
+});
+
 
 
 

@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useAuth } from '@/hooks/useAuth';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskCurrencyValue, maskDisplayValue } from '@/lib/privacy';
 import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
 import { formatCurrency, formatPercent, formatSignedPercent, getPnLSign } from '@/lib/utils/format';
 
@@ -18,7 +20,7 @@ export default function PortfolioSummary() {
   const { loading: authLoading } = useAuth();
   const summary = getSummary();
   const [period, setPeriod] = useState<MetricView>('daily');
-  const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
+  const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const [fetchedUsdTry, setFetchedUsdTry] = useState<number | null>(null);
 
   const displayPhase = resolvePortfolioDisplayPhase({
@@ -31,21 +33,6 @@ export default function PortfolioSummary() {
     holdingsCount: summary.holdings.length,
     totalValue: summary.totalValue,
   });
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('stockmind_privacy_mode');
-      if (saved === 'true') setIsPrivacyMode(true);
-    } catch {}
-  }, []);
-
-  const togglePrivacyMode = () => {
-    const next = !isPrivacyMode;
-    setIsPrivacyMode(next);
-    try {
-      localStorage.setItem('stockmind_privacy_mode', String(next));
-    } catch {}
-  };
 
   const usdQuote = livePrices['USDTRY'] || livePrices['USD'];
   const storeUsdTry =
@@ -377,10 +364,10 @@ export default function PortfolioSummary() {
                 {/* Big Portfolio Value */}
                 <h2
                   className={`text-2xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight tabular-nums leading-none transition-all duration-300 ${
-                    isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''
+                    isPrivacyMode ? 'select-none opacity-80' : ''
                   }`}
                 >
-                  {formatCurrency(summary.totalValue)}
+                  {maskDisplayValue(formatCurrency(summary.totalValue), isPrivacyMode, '₺••••••')}
                 </h2>
 
                 {displayPhase === 'zero_value' && (
@@ -402,7 +389,7 @@ export default function PortfolioSummary() {
                 <div
                   className={`inline-flex items-center gap-1.5 text-sm sm:text-lg font-bold tabular-nums transition-all duration-300 ${
                     isPositive ? 'text-emerald-400' : 'text-rose-400'
-                  } ${isPrivacyMode ? 'filter blur-[6px] select-none opacity-60' : ''}`}
+                  } ${isPrivacyMode ? 'select-none opacity-80' : ''}`}
                 >
                   <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     {isPositive ? (
@@ -411,7 +398,7 @@ export default function PortfolioSummary() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" />
                     )}
                   </svg>
-                  <span title={periodData.available ? 'Nakit hariç varlık getirisi' : `Eksik fiyat: ${periodData.missing.join(', ')}`}>{periodData.available ? `${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}` : periodData.loading ? 'Fiyatlar yükleniyor…' : 'Veri eksik'}</span>
+                  <span title={periodData.available ? 'Nakit hariç varlık getirisi' : `Eksik fiyat: ${periodData.missing.join(', ')}`}>{periodData.available ? maskDisplayValue(`${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}`, isPrivacyMode, '₺••••') : periodData.loading ? 'Fiyatlar yükleniyor…' : 'Veri eksik'}</span>
                   {!periodData.available && !periodData.loading && <span role="status" className="text-[10px] font-normal">Fiyat alınamadı: {periodData.missing.join(', ')}</span>}
                   {periodData.available && periodData.pnlPercent !== 0 && (
                     <span className="text-xs sm:text-sm font-semibold opacity-90">({formatSignedPercent(periodData.pnlPercent, 1)})</span>
@@ -422,16 +409,16 @@ export default function PortfolioSummary() {
               {/* Sub-info: Cost, USD equivalent, and Breakdown */}
               <div
                 className={`flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium transition-all duration-300 ${
-                  isPrivacyMode ? 'filter blur-[5px] select-none opacity-60' : ''
+                  isPrivacyMode ? 'select-none opacity-80' : ''
                 }`}
               >
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <span>{summary.cash?.configured ? 'Net Yatırılan' : 'Maliyet'}: {formatCurrency(summary.totalCost)}</span>
+                  <span>{summary.cash?.configured ? 'Net Yatırılan' : 'Maliyet'}: {maskCurrencyValue(summary.totalCost, 'TRY', isPrivacyMode)}</span>
                   {usdTry && usdTry > 0 ? (
                     <>
                       <span>•</span>
                       <span>
-                        Dolar Karşılığı: {formatCurrency(summary.totalValue / usdTry, 'USD')}
+                        Dolar Karşılığı: {maskCurrencyValue(summary.totalValue / usdTry, 'USD', isPrivacyMode)}
                         {' '}
                         <span className="text-white/30 hidden sm:inline">(USD/TRY: {formatCurrency(usdTry)})</span>
                       </span>

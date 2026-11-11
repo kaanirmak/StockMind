@@ -7,7 +7,9 @@ import {
   type DailyAttributionReport,
   type DailyAssetAttributionItem,
 } from '@/lib/portfolio/dailyAttribution';
-import { formatSignedCurrency, formatSignedPercent } from '@/lib/utils/format';
+import { formatSignedPercent } from '@/lib/utils/format';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskCurrencyValue } from '@/lib/privacy';
 
 export interface DailyAttributionCardProps {
   attribution?: DailyAttributionReport;
@@ -19,11 +21,13 @@ function ContributorList({
   tone,
   items,
   emptyLabel,
+  isPrivacyMode,
 }: {
   title: string;
   tone: 'positive' | 'negative';
   items: DailyAssetAttributionItem[];
   emptyLabel: string;
+  isPrivacyMode: boolean;
 }) {
   const isPositive = tone === 'positive';
   return (
@@ -63,7 +67,7 @@ function ContributorList({
                     isPositive ? 'text-success' : 'text-danger'
                   }`}
                 >
-                  {formatSignedCurrency(item.contributionTry, 'TRY')}
+                  {maskCurrencyValue(item.contributionTry, 'TRY', isPrivacyMode, { signed: true })}
                 </span>
                 <span
                   className={`text-[10px] font-mono block ${
@@ -85,6 +89,7 @@ export const DailyAttributionCard: React.FC<DailyAttributionCardProps> = ({
   attribution,
   maxPerSide = 5,
 }) => {
+  const { isPrivacyMode } = usePrivacyMode();
   if (!attribution || attribution.allContributors.length === 0) {
     return null;
   }
@@ -111,7 +116,7 @@ export const DailyAttributionCard: React.FC<DailyAttributionCardProps> = ({
             {attribution.reconciled ? 'Portföy Sonucuyla Uzlaşıyor' : 'Fark Kontrolü'}
           </Badge>
           <span className="text-xs font-mono font-semibold text-text-primary">
-            Toplam Katkı: {formatSignedCurrency(attribution.totalContributionTry, 'TRY')} (
+            Toplam Katkı: {maskCurrencyValue(attribution.totalContributionTry, 'TRY', isPrivacyMode, { signed: true })} (
             {formatContributionPoints(attribution.totalContributionPercentPoints)})
           </span>
         </div>
@@ -123,12 +128,14 @@ export const DailyAttributionCard: React.FC<DailyAttributionCardProps> = ({
           tone="positive"
           items={positiveTop}
           emptyLabel="Bugün pozitif katkı sağlayan varlık yok."
+          isPrivacyMode={isPrivacyMode}
         />
         <ContributorList
           title="En Büyük Eksi Katkılar"
           tone="negative"
           items={negativeTop}
           emptyLabel="Bugün negatif katkı yazan varlık yok."
+          isPrivacyMode={isPrivacyMode}
         />
       </div>
 
@@ -136,14 +143,14 @@ export const DailyAttributionCard: React.FC<DailyAttributionCardProps> = ({
         <span>
           Katkılar Toplamı:{' '}
           <strong className="font-mono text-text-primary">
-            {formatSignedCurrency(attribution.totalContributionTry, 'TRY')}
+            {maskCurrencyValue(attribution.totalContributionTry, 'TRY', isPrivacyMode, { signed: true })}
           </strong>{' '}
           ({formatContributionPoints(attribution.totalContributionPercentPoints)})
         </span>
         <span>
           Günlük Portföy Sonucu:{' '}
           <strong className="font-mono text-text-primary">
-            {formatSignedCurrency(attribution.totalDailyPnL, 'TRY')}
+            {maskCurrencyValue(attribution.totalDailyPnL, 'TRY', isPrivacyMode, { signed: true })}
           </strong>{' '}
           ({formatSignedPercent(attribution.totalDailyReturnPercent)})
         </span>

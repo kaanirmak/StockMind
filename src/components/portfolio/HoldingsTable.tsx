@@ -6,6 +6,8 @@ import { Button, InstrumentLogo } from '@/components/ui';
 import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
 import { getAssetTypeLabel } from '@/lib/utils/symbol';
 import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskDisplayValue } from '@/lib/privacy';
 
 function HoldingPriceFlag({ holding }: { holding: Holding }) {
   if (holding.priceMissing) {
@@ -59,6 +61,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
   onTrade,
 }) => {
   const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(new Set());
+  const { isPrivacyMode } = usePrivacyMode();
 
   const toggleExpand = (sym: string) => {
     setExpandedSymbols((prev) => {
@@ -96,7 +99,9 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
         <div className="p-3 bg-bg-secondary/70 flex items-center justify-between text-xs font-semibold">
           <span className="text-text-muted">{holdings.length + cashBalances.length} Varlık Bulunuyor</span>
           <div className="flex items-center gap-2">
-            <span className="text-text-primary font-bold">₺{displayValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+            <span className="text-text-primary font-bold">
+              {maskDisplayValue(`₺${displayValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
+            </span>
             <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isTotalProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
               {isTotalProfit ? '+' : ''}{totalPnLPercent.toFixed(1)}%
             </span>
@@ -138,7 +143,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                 <div className="text-right shrink-0">
                   <div className="flex items-center justify-end gap-1.5">
                     <span className="font-bold text-sm text-text-primary tabular-nums font-mono">
-                      ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {maskDisplayValue(`₺${h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                     </span>
                     <span className="text-[10px] font-semibold text-text-muted px-1.5 py-0.2 rounded bg-bg-tertiary border border-border">
                       %{h.weight.toFixed(1)}
@@ -151,7 +156,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
               <div className="flex items-center justify-between gap-2 mt-1.5 text-xs">
                 <div className="flex items-center gap-1.5 font-mono text-[11px]">
                   <span className="text-text-muted">
-                    ₺{h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
+                    {maskDisplayValue(`₺${h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}`, isPrivacyMode, '₺••••')}
                   </span>
                   {dailyChange !== 0 && (
                     <span className={`font-semibold ${dailyChange >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -162,7 +167,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
 
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`font-mono text-[11px] font-bold ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {isProfit ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({isProfit ? '+' : ''}{h.pnlPercent.toFixed(1)}%)
+                    {maskDisplayValue(`${isProfit ? '+' : ''}₺${h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')} ({isProfit ? '+' : ''}{h.pnlPercent.toFixed(1)}%)
                   </span>
                   <button
                     type="button"
@@ -184,18 +189,18 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                   <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-bg-secondary/70 border border-border/40 font-mono text-[11px]">
                     <div>
                       <span className="text-[10px] text-text-muted font-sans block">Adet / Pay</span>
-                      <span className="font-semibold text-text-primary">{h.totalQuantity.toLocaleString('tr-TR')}</span>
+                      <span className="font-semibold text-text-primary">{maskDisplayValue(h.totalQuantity.toLocaleString('tr-TR'), isPrivacyMode, '•••')}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] text-text-muted font-sans block">Ort. Maliyet</span>
                       <span className="font-semibold text-text-primary">
-                        ₺{h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
+                        {maskDisplayValue(`₺${h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}`, isPrivacyMode, '₺••••')}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-text-muted font-sans block">Toplam Maliyet</span>
                       <span className="font-semibold text-text-primary">
-                        ₺{h.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {maskDisplayValue(`₺${h.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                       </span>
                     </div>
                     <div className="text-right">
@@ -220,12 +225,12 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                             <div key={idx} className="flex items-center justify-between py-1 border-b border-border/20 last:border-0 font-mono text-[11px]">
                               <div>
                                 <span className="text-text-muted block text-[10px] font-sans">{lot.date || 'İlk Lot'}</span>
-                                <span className="font-semibold text-text-primary">{lot.shares.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} Adet</span>
+                                <span className="font-semibold text-text-primary">{maskDisplayValue(lot.shares.toLocaleString('tr-TR', { maximumFractionDigits: 4 }), isPrivacyMode, '•••')} Adet</span>
                               </div>
                               <div className="text-right">
-                                <span className="text-text-secondary block">₺{lotCostPerShare.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <span className="text-text-secondary block">{maskDisplayValue(`₺${lotCostPerShare.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}</span>
                                 <span className={`text-[10px] font-bold ${lotProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                  {lotProfit ? '+' : ''}₺{lotPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {maskDisplayValue(`${lotProfit ? '+' : ''}₺${lotPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
                                 </span>
                               </div>
                             </div>
@@ -324,18 +329,18 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
 
                     {/* Quantity */}
                     <td className="py-3.5 px-3 text-right font-mono text-text-primary font-medium">
-                      {h.totalQuantity.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                      {maskDisplayValue(h.totalQuantity.toLocaleString('tr-TR', { maximumFractionDigits: 4 }), isPrivacyMode, '•••')}
                     </td>
 
                     {/* Average Cost */}
                     <td className="py-3.5 px-3 text-right font-mono">
                       <div className="flex flex-col items-end">
                         <span className="text-text-secondary font-medium">
-                          ₺{h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 6 : 4 })}
+                          {maskDisplayValue(`₺${h.averageCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 6 : 4 })}`, isPrivacyMode, '₺••••')}
                         </span>
                         {isUsd && h.originalAverageCost != null && (
                           <span className="text-[10px] text-text-muted">
-                            ${h.originalAverageCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {maskDisplayValue(`$${h.originalAverageCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '$••••')}
                           </span>
                         )}
                       </div>
@@ -345,12 +350,12 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                     <td className="py-3.5 px-3 text-right font-mono">
                       <div className="flex flex-col items-end">
                         <span className="font-semibold text-text-primary">
-                          ₺{h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 6 : 4 })}
+                          {maskDisplayValue(`₺${h.currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 6 : 4 })}`, isPrivacyMode, '₺••••')}
                         </span>
                         <div className="flex items-center gap-1.5">
                           {isUsd && h.originalPrice != null && (
                             <span className="text-[10px] text-text-muted">
-                              ${h.originalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {maskDisplayValue(`$${h.originalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '$••••')}
                             </span>
                           )}
                           {dailyChange !== 0 && (
@@ -364,19 +369,19 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
 
                     {/* Total Cost */}
                     <td className="py-3.5 px-3 text-right font-mono text-text-secondary font-medium">
-                      ₺{h.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      {maskDisplayValue(`₺${h.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                     </td>
 
                     {/* Current Value */}
                     <td className="py-3.5 px-3 text-right font-mono font-bold text-text-primary">
-                      ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                      {maskDisplayValue(`₺${h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                     </td>
 
                     {/* P&L */}
                     <td className="py-3.5 px-3 text-right font-mono">
                       <div className="flex flex-col items-end">
                         <span className={`font-bold text-xs ${isProfit ? 'text-success' : 'text-danger'}`}>
-                          {isProfit ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                          {maskDisplayValue(`${isProfit ? '+' : ''}₺${h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
                         </span>
                         <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${isProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
                           {isProfit ? '+' : ''}{h.pnlPercent.toFixed(2)}%
@@ -445,20 +450,20 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                                     <td className="py-2 text-text-muted font-sans font-medium">Lot #{idx + 1}</td>
                                     <td className="py-2 text-text-primary font-sans">{lot.date || '-'}</td>
                                     <td className="py-2 text-right font-semibold text-text-primary">
-                                      {lot.shares.toLocaleString('tr-TR', { maximumFractionDigits: 4 })}
+                                      {maskDisplayValue(lot.shares.toLocaleString('tr-TR', { maximumFractionDigits: 4 }), isPrivacyMode, '•••')}
                                     </td>
                                     <td className="py-2 text-right text-text-secondary">
-                                      ₺{lotCostPerShare.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}
+                                      {maskDisplayValue(`₺${lotCostPerShare.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: h.assetType === 'fund' ? 4 : 2 })}`, isPrivacyMode, '₺••••')}
                                     </td>
                                     <td className="py-2 text-right text-text-secondary">
-                                      ₺{lot.costTry.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                      {maskDisplayValue(`₺${lot.costTry.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                                     </td>
                                     <td className="py-2 text-right font-bold text-text-primary">
-                                      ₺{lotVal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                      {maskDisplayValue(`₺${lotVal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                                     </td>
                                     <td className="py-2 text-right">
                                       <span className={`font-bold ${lotProfit ? 'text-success' : 'text-danger'}`}>
-                                        {lotProfit ? '+' : ''}₺{lotPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                        {maskDisplayValue(`${lotProfit ? '+' : ''}₺${lotPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
                                         {' '}({lotProfit ? '+' : ''}{lotPnLPct.toFixed(1)}%)
                                       </span>
                                     </td>
@@ -484,15 +489,15 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
               <td className="py-3.5 px-3 text-right font-mono text-text-muted">-</td>
               <td className="py-3.5 px-3 text-right font-mono text-text-muted">-</td>
               <td className="py-3.5 px-3 text-right font-mono text-text-secondary">
-                ₺{totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {maskDisplayValue(`₺${totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
               </td>
               <td className="py-3.5 px-3 text-right font-mono font-bold text-text-primary">
-                ₺{displayValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {maskDisplayValue(`₺${displayValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
               </td>
               <td className="py-3.5 px-3 text-right font-mono">
                 <div className="flex flex-col items-end">
                   <span className={`font-bold text-xs ${isTotalProfit ? 'text-success' : 'text-danger'}`}>
-                    {isTotalProfit ? '+' : ''}₺{totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                    {maskDisplayValue(`${isTotalProfit ? '+' : ''}₺${totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
                   </span>
                   <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${isTotalProfit ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger'}`}>
                     {isTotalProfit ? '+' : ''}{totalPnLPercent.toFixed(2)}%
@@ -509,8 +514,8 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
       </div>
       {cashBalances.length > 0 && <div className="divide-y divide-border/50 border-t border-border/50">
         {cashBalances.map(row => <div key={row.currency} className="p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0"><span className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center shrink-0">{row.currency === 'USD' ? '$' : row.currency === 'EUR' ? '€' : '₺'}</span><div><p className="text-sm font-semibold">Nakit · {row.currency}</p><p className="text-xs text-text-muted">{row.amount.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} {row.currency}</p></div></div>
-          <div className="text-right"><p className="font-mono text-sm font-semibold">{row.value === null ? 'Kur alınamadı' : `₺${row.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}</p><p className="text-[10px] text-text-muted">Getiri hesabı dışında</p></div>
+          <div className="flex items-center gap-3 min-w-0"><span className="w-9 h-9 rounded-full bg-accent/10 text-accent flex items-center justify-center shrink-0">{row.currency === 'USD' ? '$' : row.currency === 'EUR' ? '€' : '₺'}</span><div><p className="text-sm font-semibold">Nakit · {row.currency}</p><p className="text-xs text-text-muted">{maskDisplayValue(`${row.amount.toLocaleString('tr-TR', { maximumFractionDigits: 4 })} ${row.currency}`, isPrivacyMode, `•••• ${row.currency}`)}</p></div></div>
+          <div className="text-right"><p className="font-mono text-sm font-semibold">{row.value === null ? 'Kur alınamadı' : maskDisplayValue(`₺${row.value.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}</p><p className="text-[10px] text-text-muted">Getiri hesabı dışında</p></div>
         </div>)}
       </div>}
     </div>

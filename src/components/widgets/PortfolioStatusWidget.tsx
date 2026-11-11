@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskCurrencyValue, maskDisplayValue } from '@/lib/privacy';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
 
 export interface PortfolioStatusWidgetProps {
@@ -39,26 +41,15 @@ export default function PortfolioStatusWidget({
   const summary = isSample ? SAMPLE_SUMMARY : rawSummary;
 
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'total'>(initialPeriod);
-  const [isPrivacyMode, setIsPrivacyMode] = useState<boolean>(false);
+  const { isPrivacyMode, setPrivacyMode } = usePrivacyMode();
 
   useEffect(() => {
     fetchPortfoliosAndTransactions();
   }, [fetchPortfoliosAndTransactions]);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('stockmind_privacy_mode');
-      if (saved === 'true') setIsPrivacyMode(true);
-    } catch {}
-  }, []);
-
   const togglePrivacyMode = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const next = !isPrivacyMode;
-    setIsPrivacyMode(next);
-    try {
-      localStorage.setItem('stockmind_privacy_mode', String(next));
-    } catch {}
+    setPrivacyMode(!isPrivacyMode);
   };
 
   const usdQuote = livePrices['USDTRY'] || livePrices['USD'];
@@ -228,12 +219,16 @@ export default function PortfolioStatusWidget({
             <h2
               className={`text-2xl sm:text-3xl font-black tracking-tight tabular-nums transition-all ${
                 isLight ? 'text-slate-900' : 'text-white'
-              } ${isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''}`}
+              } ${isPrivacyMode ? 'select-none opacity-80' : ''}`}
             >
-              ₺{summary.totalValue.toLocaleString('tr-TR', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
+              {maskDisplayValue(
+                `₺${summary.totalValue.toLocaleString('tr-TR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`,
+                isPrivacyMode,
+                '₺••••••'
+              )}
             </h2>
 
             {/* P&L Badge */}
@@ -242,7 +237,7 @@ export default function PortfolioStatusWidget({
                 isPositive
                   ? isLight ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                   : isLight ? 'bg-rose-100 text-rose-800 border-rose-300' : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-              } ${isPrivacyMode ? 'filter blur-[6px] select-none opacity-60' : ''}`}
+              } ${isPrivacyMode ? 'select-none opacity-80' : ''}`}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 {isPositive ? (
@@ -251,7 +246,7 @@ export default function PortfolioStatusWidget({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 4.5l15 15m0 0V8.25m0 11.25H8.25" />
                 )}
               </svg>
-              <span>{periodData.label}: {(period === 'weekly' || period === 'monthly') && (isSample || !actual.available) ? (actual.loading ? 'Hesaplanıyor…' : 'Veri eksik') : `${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}`}</span>
+              <span>{periodData.label}: {(period === 'weekly' || period === 'monthly') && (isSample || !actual.available) ? (actual.loading ? 'Hesaplanıyor…' : 'Veri eksik') : maskDisplayValue(`${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}`, isPrivacyMode, '₺••••')}</span>
               {(!(period === 'weekly' || period === 'monthly') || (!isSample && actual.available)) && <span className="opacity-80">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>}
             </div>
           </div>
@@ -272,9 +267,9 @@ export default function PortfolioStatusWidget({
             <div
               className={`font-bold tabular-nums text-xs mt-0.5 ${
                 summary.dailyPnL >= 0 ? isLight ? 'text-emerald-700' : 'text-emerald-400' : isLight ? 'text-rose-700' : 'text-rose-400'
-              } ${isPrivacyMode ? 'filter blur-[5px]' : ''}`}
+              } ${isPrivacyMode ? 'select-none opacity-80' : ''}`}
             >
-              {getPnLSign(summary.dailyPnL)}{formatCurrency(Math.abs(summary.dailyPnL))}
+              {maskDisplayValue(`${getPnLSign(summary.dailyPnL)}${formatCurrency(Math.abs(summary.dailyPnL))}`, isPrivacyMode, '₺••••')}
               <span className="text-[10px] ml-1 opacity-80">({getPnLSign(summary.dailyPnLPercent)}%{Math.abs(summary.dailyPnLPercent).toFixed(1)})</span>
             </div>
           </div>
@@ -292,9 +287,9 @@ export default function PortfolioStatusWidget({
             <div
               className={`font-bold tabular-nums text-xs mt-0.5 ${
                 actual.pnl >= 0 ? isLight ? 'text-emerald-700' : 'text-emerald-400' : isLight ? 'text-rose-700' : 'text-rose-400'
-              } ${isPrivacyMode ? 'filter blur-[5px]' : ''}`}
+              } ${isPrivacyMode ? 'select-none opacity-80' : ''}`}
             >
-              {period !== 'monthly' ? 'Görmek için seçin' : !isSample && actual.available ? `${getPnLSign(actual.pnl)}${formatCurrency(Math.abs(actual.pnl))}` : actual.loading ? 'Hesaplanıyor…' : 'Veri eksik'}
+              {period !== 'monthly' ? 'Görmek için seçin' : !isSample && actual.available ? maskDisplayValue(`${getPnLSign(actual.pnl)}${formatCurrency(Math.abs(actual.pnl))}`, isPrivacyMode, '₺••••') : actual.loading ? 'Hesaplanıyor…' : 'Veri eksik'}
             </div>
           </div>
         </div>
@@ -303,12 +298,12 @@ export default function PortfolioStatusWidget({
         {!hideFooter && (
           <div className={`flex items-center justify-between text-[11px] pt-1 ${isLight ? 'text-slate-500' : 'text-white/40'}`}>
             <div className="flex items-center gap-1.5">
-              <span>{summary.cash?.configured ? 'Net Yatırılan' : 'Maliyet'}: {isPrivacyMode ? '•••' : formatCurrency(summary.totalCost)}</span>
+              <span>{summary.cash?.configured ? 'Net Yatırılan' : 'Maliyet'}: {maskCurrencyValue(summary.totalCost, 'TRY', isPrivacyMode)}</span>
               {usdTry > 0 && summary.totalValue > 0 && (
                 <>
                   <span>•</span>
                   <span>
-                    ${isPrivacyMode ? '•••' : (summary.totalValue / usdTry).toLocaleString('en-US', { maximumFractionDigits: 1 })}
+                    ${isPrivacyMode ? '••••' : (summary.totalValue / usdTry).toLocaleString('en-US', { maximumFractionDigits: 1 })}
                   </span>
                 </>
               )}

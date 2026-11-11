@@ -3,11 +3,14 @@
 import React, { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskDisplayValue } from '@/lib/privacy';
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils/format';
 import { InstrumentLogo } from '@/components/ui';
 
 export default function RecentTransactions() {
   const { transactions, activePortfolioId, fetchPortfoliosAndTransactions } = usePortfolioStore();
+  const { isPrivacyMode } = usePrivacyMode();
 
   useEffect(() => {
     if (transactions.length === 0) {
@@ -81,13 +84,13 @@ export default function RecentTransactions() {
                   <div>
                     <p className="text-sm font-semibold text-text-primary leading-tight">{tx.symbol}</p>
                     <p className="text-[11px] text-text-muted font-mono">
-                      {formatNumber(tx.quantity, tx.quantity % 1 === 0 ? 0 : 2)} adet × {formatCurrency(tx.price, currency)}
+                      {maskDisplayValue(formatNumber(tx.quantity, tx.quantity % 1 === 0 ? 0 : 2), isPrivacyMode, '•••')} adet × {maskDisplayValue(formatCurrency(tx.price, currency), isPrivacyMode, `${currency === 'USD' ? '$' : '₺'}••••`)}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium font-mono text-text-primary">
-                    {formatCurrency(total, currency)}
+                    {maskDisplayValue(formatCurrency(total, currency), isPrivacyMode, `${currency === 'USD' ? '$' : '₺'}••••`)}
                   </p>
                   <p className="text-xs text-text-muted">
                     {formatRelativeTime(tx.transactionDate || tx.createdAt)}

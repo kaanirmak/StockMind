@@ -3,10 +3,13 @@ import { useEffect, useState } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Button, Input, Modal, useToast } from '@/components/ui';
 import { ConfirmAction } from '@/components/ui/ConfirmAction';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskDisplayValue } from '@/lib/privacy';
 import type { CashMovement } from '@/types/portfolio';
 
 export function CashPanel({ embedded = false, onComplete, onBusyChange }: { embedded?: boolean; onComplete?: () => void; onBusyChange?: (busy: boolean) => void }) {
   const { getSummary, cashMovements, activePortfolioId, addCashMovement, deleteCashMovement, cashError, fetchPortfoliosAndTransactions, livePrices, fetchLivePrices } = usePortfolioStore();
+  const { isPrivacyMode } = usePrivacyMode();
   const cash = getSummary().cash;
   const movements = cashMovements.filter((m) => m.portfolioId === activePortfolioId).sort((a, b) => b.movementDate.localeCompare(a.movementDate));
   const [open, setOpen] = useState(false);
@@ -33,18 +36,18 @@ export function CashPanel({ embedded = false, onComplete, onBusyChange }: { embe
         {error && <p role="alert" className="text-danger text-sm">{error}</p>}<Button type="submit" isLoading={busy}>Kaydet</Button>
       </form>);
   if (embedded) return <div className="space-y-3">
-    <p className="text-xs text-text-secondary">Kullanılabilir bakiye: {balance.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} {currency}</p>
+    <p className="text-xs text-text-secondary">Kullanılabilir bakiye: {maskDisplayValue(`${balance.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ${currency}`, isPrivacyMode, `•••• ${currency}`)}</p>
     {cashError && <p role="alert" className="text-sm text-danger">{cashError}</p>}
     {form}
   </div>;
   return <section className="glass-card p-4 sm:p-5 space-y-4" aria-labelledby="cash-title">
     <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0 flex-1"><h3 id="cash-title" className="text-base font-semibold">Nakit Hesabı</h3><p className="text-xs text-text-secondary">İşlemleriniz nakit bakiyesine otomatik yansır.</p></div><Button size="sm" className="w-full sm:w-auto" onClick={() => { setError(''); setOpen(true); }}>Para Yatır / Çek</Button></div>
     {cashError && <div role="alert" className="text-sm text-danger flex items-center justify-between gap-2">{cashError}<Button variant="secondary" onClick={() => void fetchPortfoliosAndTransactions()}>Tekrar Dene</Button></div>}
-    {!cash?.configured ? <p className="text-sm text-text-secondary">Nakit takibini başlatmak için geçmiş para yatırma ve çekme hareketlerinizi girin. Başlangıç bakiyesi varsayılmaz.</p> : <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">{cash.balances.map((row) => <div key={row.currency} className="p-3 rounded-xl bg-bg-tertiary"><p className="text-xs text-text-secondary">{row.currency} Bakiye</p><strong className={`text-lg tabular-nums ${row.amount < 0 ? 'text-danger' : 'text-text-primary'}`}>{row.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</strong><p className="text-xs text-text-muted">{row.value === null ? 'Güncel kur alınamadı' : `₺${row.value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`}</p></div>)}</div>}
+    {!cash?.configured ? <p className="text-sm text-text-secondary">Nakit takibini başlatmak için geçmiş para yatırma ve çekme hareketlerinizi girin. Başlangıç bakiyesi varsayılmaz.</p> : <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">{cash.balances.map((row) => <div key={row.currency} className="p-3 rounded-xl bg-bg-tertiary"><p className="text-xs text-text-secondary">{row.currency} Bakiye</p><strong className={`text-lg tabular-nums ${row.amount < 0 ? 'text-danger' : 'text-text-primary'}`}>{maskDisplayValue(row.amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }), isPrivacyMode, '••••')}</strong><p className="text-xs text-text-muted">{row.value === null ? 'Güncel kur alınamadı' : maskDisplayValue(`₺${row.value.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}</p></div>)}</div>}
     {cash?.configured && cash.hasDeficit && <p role="alert" className="p-3 rounded-xl bg-warning/10 text-warning text-sm">Nakit açığı var. Geçmiş para girişleri eksik olabilir; para yatırma/çekme kayıtlarını kontrol edin. Açık bakiyeler net portföy değerinden düşülür.</p>}
     {cash?.configured && cash.historicalDeficit && !cash.hasDeficit && <p role="alert" className="p-3 rounded-xl bg-warning/10 text-warning text-sm">Geçmişte nakit bakiyesi negatife düşmüş. Son bakiye pozitif olsa da eksik para yatırma veya döviz dönüşümü kayıtlarını kontrol edin.</p>}
     {!!cash?.missingRates.length && <p role="alert" className="text-warning text-sm">{cash.missingRates.join(', ')} kuru alınamadığı için nakit değerlemesi eksik.</p>}
-    <details><summary className="min-h-11 flex items-center text-xs font-semibold text-accent cursor-pointer">Para Hareketleri ({movements.length})</summary><div className="space-y-2 max-h-80 overflow-y-auto overscroll-contain">{movements.length === 0 ? <p className="text-sm text-text-muted">Henüz para hareketi yok.</p> : movements.map((m) => <div key={m.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-bg-tertiary text-xs"><div><p className="font-semibold">{m.movementType === 'deposit' ? '+' : '-'}{m.amount.toLocaleString('tr-TR')} {m.currency} · {m.movementType === 'deposit' ? 'Para Yatırma' : 'Para Çekme'}</p><p className="text-text-secondary">{m.movementDate} {m.notes && `· ${m.notes}`}</p></div><Button variant="ghost" size="sm" aria-label={`${m.movementDate} para hareketini sil`} onClick={() => setDeleting(m)}>Sil</Button></div>)}</div></details>
+    <details><summary className="min-h-11 flex items-center text-xs font-semibold text-accent cursor-pointer">Para Hareketleri ({movements.length})</summary><div className="space-y-2 max-h-80 overflow-y-auto overscroll-contain">{movements.length === 0 ? <p className="text-sm text-text-muted">Henüz para hareketi yok.</p> : movements.map((m) => <div key={m.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-bg-tertiary text-xs"><div><p className="font-semibold">{maskDisplayValue(`${m.movementType === 'deposit' ? '+' : '-'}${m.amount.toLocaleString('tr-TR')} ${m.currency}`, isPrivacyMode, `•••• ${m.currency}`)} · {m.movementType === 'deposit' ? 'Para Yatırma' : 'Para Çekme'}</p><p className="text-text-secondary">{m.movementDate} {m.notes && `· ${m.notes}`}</p></div><Button variant="ghost" size="sm" aria-label={`${m.movementDate} para hareketini sil`} onClick={() => setDeleting(m)}>Sil</Button></div>)}</div></details>
     <Modal isOpen={open} onClose={() => { if (!busy) setOpen(false); }} title="Para Hareketi Ekle" description="Alım ve satımlar nakit bakiyesini kendiliğinden değiştirir; bunları tekrar para hareketi olarak eklemeyin.">
       {form}
     </Modal>

@@ -5,7 +5,9 @@ import { Icon as UIIcon } from '@/components/ui/Icon';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Transaction, PortfolioSummary } from '@/types/portfolio';
 import { getPortfolioDailyActivity, DayPnLRecord } from '@/lib/portfolio/dailyActivity';
-import { formatCurrency, formatPercent } from '@/lib/utils/format';
+import { formatPercent } from '@/lib/utils/format';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskCurrencyValue } from '@/lib/privacy';
 
 interface DailyPnLCalendarHeatmapProps {
   portfolioId: string;
@@ -20,6 +22,8 @@ export function DailyPnLCalendarHeatmap({
   transactions,
   className = '',
 }: DailyPnLCalendarHeatmapProps) {
+  const { isPrivacyMode } = usePrivacyMode();
+  const formatCurrency = (val: number) => maskCurrencyValue(val, 'TRY', isPrivacyMode);
   const [calendarMonth, setCalendarMonth] = useState('');
   const [timeframe, setTimeframe] = useState<'1Y' | '6M' | 'YTD'>('1Y');
   const [hoveredDay, setHoveredDay] = useState<DayPnLRecord | null>(null);

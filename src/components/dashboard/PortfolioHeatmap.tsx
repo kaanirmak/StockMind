@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Holding } from '@/types/portfolio';
-import { formatCurrency, formatPercent, formatSignedPercent, getPnLSign } from '@/lib/utils/format';
+import { formatPercent, formatSignedPercent, getPnLSign } from '@/lib/utils/format';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskCurrencyValue } from '@/lib/privacy';
 import {
   buildHeatmapCompactSummary,
   buildHeatmapRows,
@@ -242,6 +244,7 @@ function getTileStyle(percent: number) {
 export default function PortfolioHeatmap() {
   const router = useRouter();
   const { getSummary, livePrices } = usePortfolioStore();
+  const { isPrivacyMode } = usePrivacyMode();
   const summary = getSummary();
   const [metric, setMetric] = useState<MetricType>('daily');
   const [isExpanded, setIsExpanded] = useState<boolean>(HEATMAP_DEFAULT_EXPANDED);
@@ -565,7 +568,7 @@ export default function PortfolioHeatmap() {
                         </Link>
                       </td>
                       <td className="py-2.5 px-3 text-right tabular-nums text-text-secondary">
-                        {formatCurrency(row.currentValue)}
+                        {maskCurrencyValue(row.currentValue, 'TRY', isPrivacyMode)}
                       </td>
                       <td className="py-2.5 px-3 text-right tabular-nums font-medium text-text-primary">
                         {formatPercent(row.weightPercent, 1)}
@@ -715,7 +718,7 @@ export default function PortfolioHeatmap() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-white/70 font-medium pt-0.5 border-t border-white/[0.08] truncate tabular-nums">
-                      <span className="truncate">{formatCurrency(holding.currentValue)}</span>
+                      <span className="truncate">{maskCurrencyValue(holding.currentValue, 'TRY', isPrivacyMode)}</span>
                       <span className="text-white/40 ml-1 font-semibold">%{weightPercent.toFixed(1)}</span>
                     </div>
                   </>
@@ -736,7 +739,7 @@ export default function PortfolioHeatmap() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-xs text-white/70 font-medium pt-1 border-t border-white/[0.08] truncate tabular-nums">
-                      <span className="truncate">{formatCurrency(holding.currentValue)}</span>
+                      <span className="truncate">{maskCurrencyValue(holding.currentValue, 'TRY', isPrivacyMode)}</span>
                       <span className="text-white/40 ml-1 font-bold">%{weightPercent.toFixed(1)}</span>
                     </div>
                   </>
@@ -771,7 +774,7 @@ export default function PortfolioHeatmap() {
                 </span>
               </div>
               <div className="text-[10px] sm:text-[11px] text-text-muted flex items-center gap-1.5 tabular-nums truncate mt-0.5">
-                <span>{formatCurrency(activeNode.holding.currentValue)}</span>
+                <span>{maskCurrencyValue(activeNode.holding.currentValue, 'TRY', isPrivacyMode)}</span>
                 <span>•</span>
                 <span className="text-accent font-semibold">%{activeNode.weightPercent.toFixed(1)} Pay</span>
               </div>

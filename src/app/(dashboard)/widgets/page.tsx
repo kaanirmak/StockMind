@@ -7,8 +7,10 @@ import PortfolioStatusWidget from '@/components/widgets/PortfolioStatusWidget';
 import HeatmapWidget from '@/components/widgets/HeatmapWidget';
 import WidgetEmbedModal from '@/components/widgets/WidgetEmbedModal';
 import ApkDownloadModal from '@/components/ui/ApkDownloadModal';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 
 export default function WidgetsHubPage() {
+  const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const [embedModalOpen, setEmbedModalOpen] = useState(false);
   const [selectedWidgetForModal, setSelectedWidgetForModal] = useState<'portfolio' | 'heatmap'>('portfolio');
   const [apkModalOpen, setApkModalOpen] = useState(false);
@@ -56,7 +58,21 @@ export default function WidgetsHubPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={togglePrivacyMode}
+            data-testid="widgets-privacy-toggle"
+            aria-pressed={isPrivacyMode}
+            className={`px-3 py-2 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer min-h-[44px] ${
+              isPrivacyMode
+                ? 'bg-accent/15 border-accent/40 text-accent'
+                : 'bg-bg-secondary/70 border-border text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            <span>{isPrivacyMode ? 'Gizlilik: Açık' : 'Tutarları Gizle'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setApkModalOpen(true)}

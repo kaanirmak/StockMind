@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskDisplayValue } from '@/lib/privacy';
 
 export interface AllocationItem {
   label: string;
@@ -23,6 +25,7 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
 }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const { isPrivacyMode } = usePrivacyMode();
   if (compact) {
     let offset = 0;
     return <>
@@ -61,7 +64,7 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
           <p className="text-xs text-text-muted">Ağırlıklara göre hisse ve fon dağılımı</p>
         </div>
         <span className="text-xs font-mono font-bold text-accent">
-          ₺{totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+          {maskDisplayValue(`₺${totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
         </span>
       </div>
 
@@ -103,7 +106,7 @@ export const PortfolioAllocationChart: React.FC<PortfolioAllocationChartProps> =
               </div>
               <div className="flex items-center gap-2 shrink-0 font-mono">
                 <span className="text-text-muted whitespace-nowrap text-right">
-                  ₺{item.value.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {maskDisplayValue(`₺${item.value.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, isPrivacyMode, '₺••••')}
                 </span>
                 <span className="font-bold text-text-primary min-w-[42px] text-right">
                   %{item.percentage.toFixed(1)}

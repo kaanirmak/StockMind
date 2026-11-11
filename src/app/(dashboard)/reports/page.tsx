@@ -7,11 +7,14 @@ import { Button, Badge, useToast, InstrumentLogo } from '@/components/ui';
 import { DailyAttributionCard } from '@/components/portfolio/DailyAttributionCard';
 import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { usePrivacyMode } from '@/hooks/usePrivacyMode';
+import { maskDisplayValue } from '@/lib/privacy';
 import { PERIOD_LABELS, type PerformancePeriod } from '@/lib/portfolio/periodPerformance';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
   const { portfolios, activePortfolioId, getSummary, fetchPortfoliosAndTransactions, loading: pricesLoading } = usePortfolioStore();
+  const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
   const [isMounted, setIsMounted] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -311,24 +314,41 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      {isPrivacyMode && (
+        <div
+          data-testid="reports-privacy-banner"
+          className="px-3.5 py-2 rounded-xl bg-accent/10 border border-accent/25 text-xs text-accent flex items-center justify-between gap-2 print:hidden"
+        >
+          <span>Gizlilik modu etkin: Tutarlar maskeleniyor (oransal performans korunur).</span>
+          <button
+            type="button"
+            data-testid="reports-privacy-toggle"
+            onClick={togglePrivacyMode}
+            className="font-semibold underline cursor-pointer shrink-0"
+          >
+            Tutarları Göster
+          </button>
+        </div>
+      )}
+
       {/* Primary Report Summary KPI Row (Appears right at top) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
           <span className="text-[11px] text-text-muted block">Toplam Piyasa Değeri</span>
           <span className="text-base sm:text-xl font-bold font-mono text-text-primary mt-1 block">
-            ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+            {maskDisplayValue(`₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
           <span className="text-[11px] text-text-muted block">Toplam Yatırım Maliyeti</span>
           <span className="text-base sm:text-xl font-bold font-mono text-text-secondary mt-1 block">
-            ₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+            {maskDisplayValue(`₺${summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
           <span className="text-[11px] text-text-muted block">Net Kar / Zarar</span>
           <span className={`text-base sm:text-xl font-bold font-mono ${summary.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
-            {summary.totalPnL >= 0 ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+            {maskDisplayValue(`${summary.totalPnL >= 0 ? '+' : ''}₺${summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4 rounded-2xl border border-border/80">
@@ -386,19 +406,19 @@ export default function ReportsPage() {
             <div className="glass-purple p-4 rounded-xl">
               <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Piyasa Değeri</span>
               <span className="text-lg sm:text-xl font-bold font-mono text-text-primary mt-1 block">
-                ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {maskDisplayValue(`₺${summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
               </span>
             </div>
             <div className="glass-purple p-4 rounded-xl">
               <span className="text-[11px] sm:text-xs text-text-muted block">Toplam Yatırım Maliyeti</span>
               <span className="text-lg sm:text-xl font-bold font-mono text-text-secondary mt-1 block">
-                ₺{summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {maskDisplayValue(`₺${summary.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
               </span>
             </div>
             <div className="glass-purple p-4 rounded-xl">
               <span className="text-[11px] sm:text-xs text-text-muted block">Net Kar / Zarar</span>
               <span className={`text-lg sm:text-xl font-bold font-mono ${summary.totalPnL >= 0 ? 'text-success' : 'text-danger'} mt-1 block`}>
-                {summary.totalPnL >= 0 ? '+' : ''}₺{summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                {maskDisplayValue(`${summary.totalPnL >= 0 ? '+' : ''}₺${summary.totalPnL.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
               </span>
             </div>
             <div className="glass-purple p-4 rounded-xl">
@@ -466,14 +486,14 @@ export default function ReportsPage() {
                     <tr key={h.symbol} className="hover:bg-bg-hover/40">
                       <td className="py-2.5 px-3 font-bold text-text-primary">{h.symbol}</td>
                       <td className="py-2.5 px-3 text-text-secondary">{h.assetType === 'stock' ? 'Hisse' : 'TEFAS Fon'}</td>
-                      <td className="py-2.5 px-3 text-right font-mono">{h.totalQuantity.toLocaleString('tr-TR')}</td>
-                      <td className="py-2.5 px-3 text-right font-mono">₺{h.averageCost.toFixed(2)}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-semibold">₺{h.currentPrice.toFixed(2)}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{maskDisplayValue(h.totalQuantity.toLocaleString('tr-TR'), isPrivacyMode, '•••')}</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{maskDisplayValue(`₺${h.averageCost.toFixed(2)}`, isPrivacyMode, '₺••••')}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold">{maskDisplayValue(`₺${h.currentPrice.toFixed(2)}`, isPrivacyMode, '₺••••')}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-text-primary">
-                        ₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        {maskDisplayValue(`₺${h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}
                       </td>
                       <td className={`py-2.5 px-3 text-right font-mono font-bold ${h.pnl >= 0 ? 'text-success' : 'text-danger'}`}>
-                        {h.pnl >= 0 ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ({h.pnl >= 0 ? '+' : ''}{h.pnlPercent.toFixed(1)}%)
+                        {maskDisplayValue(`${h.pnl >= 0 ? '+' : ''}₺${h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')} ({h.pnl >= 0 ? '+' : ''}{h.pnlPercent.toFixed(1)}%)
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-semibold">%{h.weight.toFixed(1)}</td>
                     </tr>
@@ -505,7 +525,7 @@ export default function ReportsPage() {
                         {h.pnl >= 0 ? '+' : ''}{h.pnlPercent.toFixed(1)}%
                       </span>
                       <span className={`text-[11px] font-mono ${h.pnl >= 0 ? 'text-success/70' : 'text-danger/70'}`}>
-                        {h.pnl >= 0 ? '+' : ''}₺{h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        {maskDisplayValue(`${h.pnl >= 0 ? '+' : ''}₺${h.pnl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••')}
                       </span>
                     </div>
                   </div>
@@ -514,19 +534,19 @@ export default function ReportsPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
                       <span className="text-[10px] text-text-muted block uppercase tracking-wider">Adet</span>
-                      <span className="text-xs font-bold font-mono text-text-primary">{h.totalQuantity.toLocaleString('tr-TR')}</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(h.totalQuantity.toLocaleString('tr-TR'), isPrivacyMode, '•••')}</span>
                     </div>
                     <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
                       <span className="text-[10px] text-text-muted block uppercase tracking-wider">Maliyet</span>
-                      <span className="text-xs font-bold font-mono text-text-primary">₺{h.averageCost.toFixed(2)}</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(`₺${h.averageCost.toFixed(2)}`, isPrivacyMode, '₺••••')}</span>
                     </div>
                     <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
                       <span className="text-[10px] text-text-muted block uppercase tracking-wider">Son Fiyat</span>
-                      <span className="text-xs font-bold font-mono text-text-primary">₺{h.currentPrice.toFixed(2)}</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(`₺${h.currentPrice.toFixed(2)}`, isPrivacyMode, '₺••••')}</span>
                     </div>
                     <div className="bg-bg-tertiary/50 rounded-lg p-2.5">
                       <span className="text-[10px] text-text-muted block uppercase tracking-wider">Değer</span>
-                      <span className="text-xs font-bold font-mono text-text-primary">₺{h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-xs font-bold font-mono text-text-primary">{maskDisplayValue(`₺${h.currentValue.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`, isPrivacyMode, '₺••••••')}</span>
                     </div>
                   </div>
 
