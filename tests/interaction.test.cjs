@@ -4378,6 +4378,62 @@ test('AIP-04: ağ kesintisi, kota, model hatası ve kullanıcı iptali ayrı anl
   assert.match(pageSrc, /handleRetryFailedPrompt/);
 });
 
+test('AIP-05: model seçimi, kalan kota, yenilenme zamanı, maliyet ve kişisel anahtar seçimi aynı yerden izlenir', () => {
+  const { buildAiUsageVisibilitySummary, formatQuotaResetWindow } = load('src/lib/ai/quotaVisibility.ts');
+
+  const now = new Date('2026-11-11T19:30:00.000Z');
+  const resetsAt = new Date('2026-11-11T19:45:00.000Z').toISOString();
+
+  const freePlatform = buildAiUsageVisibilitySummary({
+    selectedModel: { id: 'openrouter/free', name: 'Otomatik ücretsiz', free: true },
+    quota: { limit: 5, remaining: 3, used: 2, resetInSeconds: 900, resetsAt, isPro: false },
+    hasCustomKey: false,
+    usePersonalKey: true,
+    isPro: false,
+    now,
+  });
+
+  assert.equal(freePlatform.keyMode, 'platform_key');
+  assert.equal(freePlatform.quotaLabel, '3 / 5 kalan');
+  assert.match(freePlatform.costTierLabel, /Ücretsiz/);
+  assert.match(freePlatform.resetTimeLabel, /15 dk/);
+  assert.match(formatQuotaResetWindow(900, resetsAt, now), /TSİ/);
+
+  const paidWithPersonalKey = buildAiUsageVisibilitySummary({
+    selectedModel: { id: 'openai/gpt-4o', name: 'GPT-4o', free: false },
+    quota: { limit: 5, remaining: 0, used: 5, resetInSeconds: 900, resetsAt, isPro: false },
+    hasCustomKey: true,
+    usePersonalKey: true,
+    isPro: false,
+    now,
+  });
+
+  assert.equal(paidWithPersonalKey.keyMode, 'personal_key');
+  assert.match(paidWithPersonalKey.quotaLabel, /Sınırsız/);
+  assert.match(paidWithPersonalKey.costTierLabel, /Ücretli Model/i);
+  assert.match(paidWithPersonalKey.costDescription, /OpenRouter bakiyenizden/i);
+
+  const toggledBackToPlatform = buildAiUsageVisibilitySummary({
+    selectedModel: { id: 'openrouter/free', name: 'Otomatik ücretsiz', free: true },
+    quota: { limit: 5, remaining: 1, used: 4, resetInSeconds: 600, isPro: false },
+    hasCustomKey: true,
+    usePersonalKey: false,
+    isPro: false,
+    now,
+  });
+  assert.equal(toggledBackToPlatform.keyMode, 'platform_key');
+  assert.equal(toggledBackToPlatform.quotaLabel, '1 / 5 kalan');
+
+  const routeSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/ai/chat/route.ts'), 'utf8');
+  assert.match(routeSrc, /resetsAt:/);
+
+  const pageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  assert.match(pageSrc, /data-testid="ai-usage-visibility-strip"/);
+  assert.match(pageSrc, /data-testid="ai-quota-visibility-modal"/);
+  assert.match(pageSrc, /data-testid="ai-key-mode-toggle"/);
+  assert.match(pageSrc, /buildAiUsageVisibilitySummary/);
+});
+
 
 
 

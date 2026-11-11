@@ -31,6 +31,10 @@ import { useChatScroll } from '@/hooks/useChatScroll';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
 
 import type { AIContextProvenance } from '@/lib/ai/market-context';
+import {
+  buildAiUsageVisibilitySummary,
+  type AiQuotaSnapshot,
+} from '@/lib/ai/quotaVisibility';
 
 export interface Message {
   id: string;
@@ -83,12 +87,8 @@ function AIAssistantContent() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [readinessError, setReadinessError] = useState('');
-  const [quotaState, setQuotaState] = useState<{
-    limit: number;
-    remaining: number;
-    used: number;
-    isPro: boolean;
-  } | null>(null);
+  const [quotaState, setQuotaState] = useState<AiQuotaSnapshot | null>(null);
+  const [usePersonalKey, setUsePersonalKey] = useState(true);
   const [showProModal, setShowProModal] = useState(false);
   const [showQuotaExceededModal, setShowQuotaExceededModal] = useState(false);
   const [showQuotaDetailsModal, setShowQuotaDetailsModal] = useState(false);
@@ -183,6 +183,19 @@ function AIAssistantContent() {
   };
 
   const currentModel = models.find((m) => m.id === selectedModel) || { id: selectedModel, name: selectedModel, free: true };
+  const hasSavedCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
+  const activeCustomKey = hasSavedCustomKey && usePersonalKey ? customApiKey.trim() : undefined;
+  const usageVisibility = React.useMemo(
+    () =>
+      buildAiUsageVisibilitySummary({
+        selectedModel: currentModel,
+        quota: quotaState,
+        hasCustomKey: hasSavedCustomKey,
+        usePersonalKey,
+        isPro: quotaState?.isPro ?? proModelsAllowed,
+      }),
+    [currentModel, quotaState, hasSavedCustomKey, usePersonalKey, proModelsAllowed]
+  );
   const queryLower = modelSearchQuery.trim().toLowerCase();
   const searchFilter = (m: CatalogModel) =>
     !queryLower || m.name.toLowerCase().includes(queryLower) || m.id.toLowerCase().includes(queryLower);
@@ -361,7 +374,7 @@ function AIAssistantContent() {
     cleanText: string,
     shouldIncludePortfolio: boolean
   ) => {
-    const hasCustomKey = Boolean(customApiKey && customApiKey.trim().length > 0);
+    const hasCustomKey = Boolean(activeCustomKey);
     setLoading(true);
     followLatest();
 
@@ -381,10 +394,10 @@ function AIAssistantContent() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Sanitize model: if non-pro user and no custom API key, ensure they don't send a pro model
+    // Sanitize model: if non-pro user and no active custom API key, ensure they don't send a pro model
     let effectiveModel = selectedModel;
     const isFreeModel = selectedModel === AUTO_MODEL.id || models.some((m) => m.id === selectedModel && m.free);
-    if (!isFreeModel && !proModelsAllowed && !customApiKey) {
+    if (!isFreeModel && !proModelsAllowed && !activeCustomKey) {
       effectiveModel = AUTO_MODEL.id;
       setSelectedModel(AUTO_MODEL.id);
     }
@@ -404,7 +417,7 @@ function AIAssistantContent() {
         body: JSON.stringify({
           messages: payloadMessages.map((m) => ({ role: m.role, content: m.content })),
           model: effectiveModel,
-          apiKey: customApiKey || undefined,
+          apiKey: activeCustomKey,
           portfolioContext: portfolioPayload,
         }),
       });
@@ -554,7 +567,7 @@ function AIAssistantContent() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h1 className="text-xs sm:text-sm font-bold text-text-primary truncate">StockMind AI</h1>
-                {customApiKey ? (
+                {activeCustomKey ? (
                   <button
                     type="button"
                     onClick={() => setShowQuotaDetailsModal(true)}
@@ -609,9 +622,12 @@ function AIAssistantContent() {
           </div>
         </div>
 
-        {/* Row 2: Compact Model selector chip - hide on mobile when typing */}
-        <div className={`${isKeyboardOpen ? 'hidden sm:flex' : 'flex'} items-center justify-between gap-2 pt-1.5 border-t border-border/50`}>
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {/* Row 2: Unified Model, Quota, Cost & Key Visibility Strip */}
+        <div
+          data-testid="ai-usage-visibility-strip"
+          className={`${isKeyboardOpen ? 'hidden sm:flex' : 'flex'} flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-border/50`}
+        >
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
             <span className="text-[11px] text-text-muted shrink-0 font-medium">Model:</span>
             <button
               type="button"
@@ -636,6 +652,31 @@ function AIAssistantContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setShowQuotaDetailsModal(true)}
+              className="inline-flex items-center gap-1.5 h-7 px-2 rounded-lg bg-bg-secondary/80 border border-border text-[10px] text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+              title="Kota, maliyet ve kişisel anahtar ayrıntılarını aç"
+            >
+              <span>{usageVisibility.keyModeLabel}</span>
+              <span>•</span>
+              <span>{usageVisibility.costTierLabel}</span>
+              <span>•</span>
+              <span>{usageVisibility.quotaLabel}</span>
+              <span className="hidden md:inline">• {usageVisibility.resetTimeLabel}</span>
+            </button>
+
+            {hasSavedCustomKey && (
+              <button
+                type="button"
+                data-testid="ai-key-mode-toggle"
+                onClick={() => setUsePersonalKey((prev) => !prev)}
+                className="inline-flex items-center gap-1 h-7 px-2 rounded-lg border border-accent/30 bg-accent/10 text-accent text-[10px] font-semibold hover:bg-accent/20 transition-colors cursor-pointer"
+              >
+                {usePersonalKey ? 'Kişisel Anahtar Aktif (Platforma Geç)' : 'Platform Kotası Aktif (Kişisele Geç)'}
+              </button>
+            )}
           </div>
           {modelWarning && (
             <span className="text-[10px] text-amber-600 dark:text-amber-400 truncate max-w-[150px] shrink-0" title={modelWarning}>
@@ -1143,37 +1184,82 @@ function AIAssistantContent() {
         </div>
       )}
 
-      {/* Quota Details Modal */}
+      {/* Quota, Cost, Model & Key Details Modal */}
       {showQuotaDetailsModal && (
         <Modal
           isOpen={showQuotaDetailsModal}
           onClose={() => setShowQuotaDetailsModal(false)}
-          title="StockMind AI Soru Kotası"
+          title="Model, Kota ve Anahtar Özeti"
           size="sm"
         >
-          <div className="space-y-4 py-2">
-            <div className="p-4 rounded-2xl bg-bg-secondary border border-border text-center space-y-1.5">
-              <p className="text-xs text-text-muted">Kalan Saatlik Soru Hakkı</p>
-              <p className="text-3xl font-extrabold text-text-primary">
-                {customApiKey ? 'Limitsiz' : quotaState ? `${quotaState.remaining} / ${quotaState.isPro ? 20 : 5}` : '5 / 5'}
-              </p>
-              <p className="text-[11px] text-text-muted">
-                {customApiKey
-                  ? 'Kendi OpenRouter anahtarınız aktif olduğu için soru kotası uygulanmaz.'
-                  : quotaState?.isPro
-                  ? 'StockMind Pro üyesisiniz. Her saat başı 20 soru hakkınız yenilenir.'
-                  : 'Ücretsiz plandasınız. Her saat başı 5 soru hakkınız yenilenir.'}
+          <div data-testid="ai-quota-visibility-modal" className="space-y-4 py-2">
+            <div className="p-4 rounded-2xl bg-bg-secondary border border-border space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-muted">Seçili Model</span>
+                <span className="font-semibold text-text-primary">{usageVisibility.modelName}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-muted">Maliyet / Plan</span>
+                <span className="font-semibold text-text-primary">{usageVisibility.costTierLabel}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-muted">Kalan Kota</span>
+                <span className="font-bold text-text-primary">{usageVisibility.quotaLabel}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-muted">Kota Yenilenme Zamanı</span>
+                <span className="font-medium text-text-primary">{usageVisibility.resetTimeLabel}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-muted">API Anahtarı Kaynağı</span>
+                <span className="font-medium text-text-primary">{usageVisibility.keyModeLabel}</span>
+              </div>
+              <p className="pt-2 border-t border-border/60 text-[11px] text-text-muted leading-relaxed">
+                {usageVisibility.costDescription}
               </p>
             </div>
 
-            {!quotaState?.isPro && !customApiKey && (
+            <div className="p-3 rounded-xl bg-bg-secondary/60 border border-border space-y-2">
+              <p className="text-xs font-semibold text-text-primary">Kişisel Anahtar ve Model Tercihi</p>
+              <div className="flex flex-wrap gap-2">
+                {hasSavedCustomKey ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setUsePersonalKey((prev) => !prev)}
+                  >
+                    {usePersonalKey ? 'Platform Kotasını Kullan' : 'Kişisel Anahtarı Kullan'}
+                  </Button>
+                ) : (
+                  <a
+                    href="/settings"
+                    className="inline-flex items-center px-3 py-1.5 rounded-lg bg-bg-card border border-border text-xs font-semibold text-text-primary hover:bg-bg-hover"
+                  >
+                    Ayarlar &gt; Kişisel OpenRouter Anahtarı Ekle
+                  </a>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setShowQuotaDetailsModal(false);
+                    setModelSearchQuery('');
+                    setShowModelModal(true);
+                  }}
+                >
+                  Model Değiştir
+                </Button>
+              </div>
+            </div>
+
+            {!quotaState?.isPro && !activeCustomKey && (
               <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/25 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-amber-500 text-sm">⭐</span>
                   <p className="text-xs font-bold text-text-primary">StockMind Pro ile 4 Kat Fazla Soru</p>
                 </div>
                 <p className="text-[11px] text-text-secondary leading-relaxed">
-                  Pro üyeler saat başı 20 soru sorabilir ve GPT-4o, Claude 3.5 Sonnet gibi gelişmiş modelleri sınırsız kullanabilir.
+                  Pro üyeler saat başı 20 soru sorabilir ve Pro modelleri platform kotasıyla kullanabilir.
                 </p>
                 <Button
                   variant="primary"

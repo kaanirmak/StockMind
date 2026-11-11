@@ -187,6 +187,8 @@ export async function POST(request: Request) {
             limit: quotaStatus.limit,
             remaining: quotaStatus.remaining,
             used: quotaStatus.used,
+            resetInSeconds: quotaStatus.retryAfter,
+            resetsAt: quotaStatus.retryAfter > 0 ? new Date(Date.now() + quotaStatus.retryAfter * 1000).toISOString() : null,
             isPro,
           }
         : undefined,
@@ -225,6 +227,7 @@ export async function GET() {
         remaining: quota.remaining,
         used: quota.used,
         resetInSeconds: quota.retryAfter,
+        resetsAt: quota.retryAfter > 0 ? new Date(Date.now() + quota.retryAfter * 1000).toISOString() : null,
         isPro,
       },
     }, { headers: { 'Cache-Control': 'no-store' } });
