@@ -2,7 +2,8 @@ import { AUTO_MODEL, getModelCatalog, hasProAccess } from '@/lib/ai/modelCatalog
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import { callOpenRouter, OpenRouterError, type OpenRouterMessage } from '@/lib/ai/openrouter';
-import { buildLiveAIContext, type PortfolioContextPayload } from '@/lib/ai/market-context';
+import * as marketContext from '@/lib/ai/market-context';
+import type { AIContextProvenance, PortfolioContextPayload } from '@/lib/ai/market-context';
 import { ApiError, apiErrorResponse, authorizeAction, isRecord, optionalText, readJsonObject } from '@/lib/api/security';
 import {
   getHourlyChatQuota,
@@ -124,8 +125,15 @@ export async function POST(request: Request) {
     const effectivePortfolio = body.portfolioContext ?? (isRecord(body.context) ? body.context.portfolio : undefined);
     const portfolio = parsePortfolio(effectivePortfolio);
     let liveContext = '';
+    let provenance: AIContextProvenance | undefined;
     try {
-      liveContext = await buildLiveAIContext(messages.at(-1)!.content, portfolio);
+      if (typeof marketContext.buildLiveAIContextWithMetadata === 'function') {
+        const bundle = await marketContext.buildLiveAIContextWithMetadata(messages.at(-1)!.content, portfolio);
+        liveContext = bundle.promptContext;
+        provenance = bundle.provenance;
+      } else {
+        liveContext = await marketContext.buildLiveAIContext(messages.at(-1)!.content, portfolio);
+      }
     } catch {
       liveContext = 'Piyasa verisi alınamadı. Güncel fiyat veya teknik gösterge varmış gibi yorum yapma.';
     }
@@ -145,6 +153,21 @@ export async function POST(request: Request) {
     const hasLiveContext = !liveContext.startsWith('Piyasa verisi alınamadı') && Boolean(liveContext);
     const sourceScope = hasLiveContext ? 'live_market_data' : 'unverified_general_knowledge';
     const asOf = new Date().toISOString();
+    const resolvedProvenance: AIContextProvenance = provenance ?? {
+      hasLiveMarketData: hasLiveContext,
+      macroAvailableCount: 0,
+      macroTotalCount: 7,
+      missingMacroIndicators: hasLiveContext ? [] : ['USD/TRY', 'EUR/TRY', 'GBP/TRY', 'Gram Altın', 'Ons Altın', 'BIST 100', 'Brent Petrol'],
+      queriedSymbols: [],
+      resolvedSymbols: [],
+      missingSymbols: [],
+      portfolioScope: portfolio ? (portfolio.scope || 'full_financials') : 'none',
+      dataSources: hasLiveContext ? ['StockMind Piyasa Motoru'] : [],
+      observedAt: hasLiveContext ? asOf : null,
+      modelCommentaryNote:
+        'Model değerlendirmeleri ve öngörüler genel yapay zekâ yorumudur; sağlayıcı verisinden ayrı okunmalıdır.',
+      missingSummary: hasLiveContext ? null : 'Canlı piyasa verisi bağlama eklenemedi.',
+    };
     return NextResponse.json({
       success: true,
       message: {
@@ -153,10 +176,12 @@ export async function POST(request: Request) {
         createdAt: asOf,
         sourceScope,
         asOf,
+        provenance: resolvedProvenance,
       },
       hasLiveContext,
       sourceScope,
       asOf,
+      provenance: resolvedProvenance,
       quota: quotaStatus
         ? {
             limit: quotaStatus.limit,

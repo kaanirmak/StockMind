@@ -4285,6 +4285,61 @@ test('AIP-02: AI portföy alanlarını soru türüne göre azaltır; tam tutarla
   assert.match(pageSrc, /classifyPortfolioQuestionScope/);
 });
 
+test('AIP-03: AI yanıtı veri kaynağı, gözlem zamanı, portföy kapsamı ve eksik veriyi model yorumundan ayırır', async () => {
+  const { buildLiveAIContextWithMetadata } = load('src/lib/ai/market-context.ts', {
+    require: () => ({
+      getAllStocksLive: () => [
+        { symbol: 'THYAO', name: 'Türk Hava Yolları', sector: 'Ulaştırma', price: 300, changePercent: 1.5, currency: 'TRY' },
+        { symbol: 'MISS', name: 'Kayıp Varlık', sector: 'Diğer', price: 0, changePercent: 0, currency: 'TRY' },
+      ],
+      getStockBySymbolLive: async (symbol) => {
+        if (symbol === 'USDTRY') return { symbol: 'USDTRY', name: 'USD/TRY', price: 38.5, changePercent: 0.2, currency: 'TRY', sector: 'Döviz' };
+        if (symbol === 'THYAO') return { symbol: 'THYAO', name: 'Türk Hava Yolları', price: 300, changePercent: 1.5, currency: 'TRY', sector: 'Ulaştırma' };
+        return null;
+      },
+    }),
+  });
+
+  const partial = await buildLiveAIContextWithMetadata('THYAO ve MISS durumu nasıl?', {
+    scope: 'allocation_weights',
+    holdings: [{ symbol: 'THYAO', name: 'Türk Hava Yolları', assetType: 'HISSE', weight: 100 }],
+  });
+
+  assert.equal(partial.provenance.hasLiveMarketData, true);
+  assert.ok(partial.provenance.observedAt);
+  assert.equal(partial.provenance.portfolioScope, 'allocation_weights');
+  assert.ok(partial.provenance.dataSources.some((s) => s.includes('THYAO')));
+  assert.ok(partial.provenance.dataSources.some((s) => s.includes('Dağılım & Ağırlık')));
+  assert.deepEqual([...partial.provenance.missingSymbols], ['MISS']);
+  assert.ok(partial.provenance.missingMacroIndicators.includes('EUR/TRY'));
+  assert.match(partial.provenance.modelCommentaryNote, /yapay zek[aâ] yorumudur/i);
+  assert.match(partial.provenance.missingSummary, /MISS/);
+  assert.match(partial.promptContext, /EKSİK \/ ALINAMAYAN VERİLER/);
+
+  const outage = await buildLiveAIContextWithMetadata('Genel piyasa yorumu', undefined);
+  assert.equal(outage.provenance.hasLiveMarketData, true);
+
+  const fullOutageCtx = load('src/lib/ai/market-context.ts', {
+    require: () => ({
+      getAllStocksLive: () => [],
+      getStockBySymbolLive: async () => null,
+    }),
+  });
+  const emptyRes = await fullOutageCtx.buildLiveAIContextWithMetadata('dolar kaç tl');
+  assert.equal(emptyRes.provenance.hasLiveMarketData, false);
+  assert.equal(emptyRes.provenance.observedAt, null);
+  assert.match(emptyRes.provenance.missingSummary, /ulaşılamadı/i);
+
+  const routeSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/api/ai/chat/route.ts'), 'utf8');
+  assert.match(routeSrc, /provenance:\s*resolvedProvenance/);
+
+  const pageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/ai-assistant/page.tsx'), 'utf8');
+  assert.match(pageSrc, /data-testid="ai-response-provenance"/);
+  assert.match(pageSrc, /data-testid="ai-missing-data-notice"/);
+  assert.match(pageSrc, /Genel Model Yorumu/);
+  assert.match(pageSrc, /Sağlayıcı Verisi/);
+});
+
 
 
 

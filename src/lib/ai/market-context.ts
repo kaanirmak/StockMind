@@ -97,10 +97,36 @@ export function detectSymbolsInText(text: string, directory: Array<{ symbol: str
   return Array.from(detected).slice(0, 6);
 }
 
-export async function buildLiveAIContext(
+export interface AIContextProvenance {
+  hasLiveMarketData: boolean;
+  macroAvailableCount: number;
+  macroTotalCount: number;
+  missingMacroIndicators: string[];
+  queriedSymbols: string[];
+  resolvedSymbols: Array<{
+    symbol: string;
+    source: string;
+    observedAt: string | null;
+    price: number | null;
+    currency: string;
+  }>;
+  missingSymbols: string[];
+  portfolioScope: 'allocation_weights' | 'performance_returns' | 'full_financials' | 'none';
+  dataSources: string[];
+  observedAt: string | null;
+  modelCommentaryNote: string;
+  missingSummary: string | null;
+}
+
+export interface LiveAIContextBundle {
+  promptContext: string;
+  provenance: AIContextProvenance;
+}
+
+export async function buildLiveAIContextWithMetadata(
   userPrompt: string,
   portfolioPayload?: PortfolioContextPayload
-): Promise<string> {
+): Promise<LiveAIContextBundle> {
   const [macro, directory] = await Promise.all([
     getLiveMacroSnapshot(),
     Promise.resolve().then(() => getAllStocksLive()).catch(() => []),
@@ -120,10 +146,24 @@ export async function buildLiveAIContext(
     );
   }
 
+  const macroEntries: Array<[string, { price: number; changePercent: number } | undefined]> = [
+    ['USD/TRY', macro.usdTry],
+    ['EUR/TRY', macro.eurTry],
+    ['GBP/TRY', macro.gbpTry],
+    ['Gram Altın', macro.gramAltin],
+    ['Ons Altın', macro.onsAltin],
+    ['BIST 100', macro.bist100],
+    ['Brent Petrol', macro.brentPetrol],
+  ];
+  const macroAvailableCount = macroEntries.filter(([, val]) => Boolean(val)).length;
+  const missingMacroIndicators = macroEntries.filter(([, val]) => !val).map(([label]) => label);
+  const missingSymbols = detectedSymbols.filter((sym) => !stockQuotes[sym]);
+
   // Build Context Markdown
   const lines: string[] = [];
   lines.push('### ⚡ STOCKMIND UYGULAMA CANLI PİYASA & PORTFÖY ENTEGRASYONU');
   lines.push(`Sistem Zamanı: ${new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })} (TSİ)`);
+  lines.push(`Veri Gözlem Zamanı: ${new Date(macro.timestamp).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })} (TSİ)`);
   lines.push('');
 
   // 1. Macro Section
@@ -163,6 +203,17 @@ export async function buildLiveAIContext(
         `- **${q.symbol} (${q.name})**: Fiyat: ${q.currency === 'USD' ? '$' : '₺'}${q.price?.toFixed(2)} | Değişim: %${(q.changePercent || 0) > 0 ? '+' : ''}${(q.changePercent || 0).toFixed(2)}${peStr}${highStr}${lowStr} (Sektör: ${q.sector})`
       );
     });
+  }
+
+  if (missingMacroIndicators.length > 0 || missingSymbols.length > 0) {
+    lines.push('');
+    lines.push('**[EKSİK / ALINAMAYAN VERİLER]:**');
+    if (missingSymbols.length > 0) {
+      lines.push(`- Şu sembollerin canlı verisi alınamadı: ${missingSymbols.join(', ')}`);
+    }
+    if (missingMacroIndicators.length > 0) {
+      lines.push(`- Alınamayan makro göstergeler: ${missingMacroIndicators.join(', ')}`);
+    }
   }
 
   // 3. User's Portfolio Context (minimized by question scope per AIP-02)
@@ -227,11 +278,77 @@ export async function buildLiveAIContext(
   lines.push('');
   lines.push('**[VERİ KULLANIM KURALLARI]:**');
   lines.push('Yalnızca yukarıda açıkça verilen fiyat ve göstergeleri kullan. Eksik verileri tahmin etme.');
+  lines.push('Sağlayıcıdan gelen sayısal veriler ile genel model yorumunu birbirinden ayır.');
   lines.push('Portföy bilgileri kullanıcı tarafından gönderilmiştir; doğrulanmış hesap kaydı değildir.');
   lines.push('Fiyatların alındığı zamanı belirt; alınamayan veya eksik verileri açıkça söyle.');
-  if (!Object.values(stockQuotes).some(Boolean) && !Object.entries(macro).some(([key, value]) => key !== 'timestamp' && value)) {
+  const hasLiveMarketData =
+    validQuotes.length > 0 || macroAvailableCount > 0;
+  if (!hasLiveMarketData) {
     lines.unshift('Piyasa verisi alınamadı. Güncel fiyat veya teknik gösterge varmış gibi yorum yapma.');
   }
 
-  return lines.join('\n');
+  const dataSources: string[] = [];
+  if (macroAvailableCount > 0) {
+    dataSources.push(`StockMind Piyasa Motoru (Makro ${macroAvailableCount}/${macroEntries.length})`);
+  }
+  if (validQuotes.length > 0) {
+    dataSources.push(`Varlık Fiyat Sağlayıcısı (${validQuotes.map((q) => q.symbol).join(', ')})`);
+  }
+  if (portfolioPayload && (portfolioPayload.totalValue !== undefined || (portfolioPayload.holdings && portfolioPayload.holdings.length > 0))) {
+    const scopeText =
+      portfolioPayload.scope === 'allocation_weights'
+        ? 'Dağılım & Ağırlık'
+        : portfolioPayload.scope === 'performance_returns'
+          ? 'Getiri Oranları'
+          : 'Tam Portföy';
+    dataSources.push(`Kullanıcı Portföyü (${scopeText})`);
+  }
+
+  const missingParts: string[] = [];
+  if (!hasLiveMarketData) {
+    missingParts.push('Canlı piyasa verisi sağlayıcısına ulaşılamadı');
+  } else if (missingMacroIndicators.length > 0) {
+    missingParts.push(`Makro eksik: ${missingMacroIndicators.join(', ')}`);
+  }
+  if (missingSymbols.length > 0) {
+    missingParts.push(`Sembol verisi alınamadı: ${missingSymbols.join(', ')}`);
+  }
+
+  const provenance: AIContextProvenance = {
+    hasLiveMarketData,
+    macroAvailableCount,
+    macroTotalCount: macroEntries.length,
+    missingMacroIndicators,
+    queriedSymbols: detectedSymbols,
+    resolvedSymbols: validQuotes.map((q) => ({
+      symbol: q.symbol,
+      source: 'StockMind Piyasa Motoru',
+      observedAt: macro.timestamp,
+      price: typeof q.price === 'number' ? q.price : null,
+      currency: q.currency || 'TRY',
+    })),
+    missingSymbols,
+    portfolioScope:
+      portfolioPayload && (portfolioPayload.totalValue !== undefined || (portfolioPayload.holdings && portfolioPayload.holdings.length > 0))
+        ? portfolioPayload.scope || 'full_financials'
+        : 'none',
+    dataSources,
+    observedAt: hasLiveMarketData ? macro.timestamp : null,
+    modelCommentaryNote:
+      'Model değerlendirmeleri ve öngörüler genel yapay zekâ yorumudur; sağlayıcı verisinden ayrı okunmalıdır.',
+    missingSummary: missingParts.length > 0 ? missingParts.join(' • ') : null,
+  };
+
+  return {
+    promptContext: lines.join('\n'),
+    provenance,
+  };
+}
+
+export async function buildLiveAIContext(
+  userPrompt: string,
+  portfolioPayload?: PortfolioContextPayload
+): Promise<string> {
+  const result = await buildLiveAIContextWithMetadata(userPrompt, portfolioPayload);
+  return result.promptContext;
 }

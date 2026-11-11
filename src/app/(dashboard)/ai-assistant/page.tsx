@@ -26,6 +26,8 @@ import { ChatMessageContent } from '@/components/ai/ChatMessageContent';
 import { useChatScroll } from '@/hooks/useChatScroll';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
 
+import type { AIContextProvenance } from '@/lib/ai/market-context';
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -34,6 +36,7 @@ export interface Message {
   sourceScope?: 'live_market_data' | 'unverified_general_knowledge';
   asOf?: string;
   disclaimer?: string;
+  provenance?: AIContextProvenance;
 }
 
 export interface ChatSession {
@@ -440,6 +443,7 @@ function AIAssistantContent() {
           sourceScope: data.sourceScope || data.message.sourceScope,
           asOf: data.asOf || data.message.asOf,
           disclaimer: data.disclaimer,
+          provenance: data.provenance || data.message.provenance,
         };
         updateCurrentSessionMessages([...newMessages, assistantMessage]);
       } else {
@@ -666,23 +670,60 @@ function AIAssistantContent() {
                     <ChatMessageContent content={msg.content} isUser={isUser} />
                   </div>
 
-                  {!isUser && msg.sourceScope && (
-                    <div className="pt-1.5 border-t border-border/40 flex flex-wrap items-center justify-between gap-1 text-[10px]">
-                      {msg.sourceScope === 'live_market_data' ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          Piyasa verisi bağlama eklendi
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium">
-                          <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                          Genel Finans Bilgisi (Canlı veri yok)
-                        </span>
+                  {!isUser && (msg.sourceScope || msg.provenance) && (
+                    <div
+                      data-testid="ai-response-provenance"
+                      className="pt-2 border-t border-border/40 space-y-1.5 text-[10px]"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {msg.sourceScope === 'live_market_data' ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-medium">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Sağlayıcı Verisi: {msg.provenance?.dataSources?.length ? msg.provenance.dataSources.join(' • ') : 'Piyasa verisi bağlama eklendi'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium">
+                              <span><UIIcon name="sparkles" className="w-3.5 h-3.5" /></span>
+                              Canlı Sağlayıcı Verisi Yok
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-accent/10 text-accent font-medium">
+                            Genel Model Yorumu (Doğrulama gerektirir)
+                          </span>
+                        </div>
+                        {(msg.provenance?.observedAt || msg.asOf) && (
+                          <span className="text-text-muted">
+                            {msg.provenance?.observedAt
+                              ? `Veri saati: ${new Date(msg.provenance.observedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' })} TSİ`
+                              : ''}
+                            {msg.provenance?.observedAt && msg.asOf ? ' • ' : ''}
+                            {msg.asOf
+                              ? `Yanıt: ${new Date(msg.asOf).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' })} TSİ`
+                              : ''}
+                          </span>
+                        )}
+                      </div>
+
+                      {msg.provenance && (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-text-muted">
+                          <span>
+                            Kapsam:{' '}
+                            {msg.provenance.portfolioScope === 'none'
+                              ? 'Portföy eklenmedi (Genel soru)'
+                              : PORTFOLIO_SCOPE_LABELS[msg.provenance.portfolioScope]}
+                          </span>
+                          <span>• {msg.provenance.modelCommentaryNote}</span>
+                        </div>
                       )}
-                      {msg.asOf && (
-                        <span className="text-text-muted">
-                          Yanıt saati: {new Date(msg.asOf).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+
+                      {msg.provenance?.missingSummary && (
+                        <div
+                          data-testid="ai-missing-data-notice"
+                          className="rounded-lg bg-amber-500/10 border border-amber-500/25 px-2 py-1 text-amber-300"
+                        >
+                          <strong>Eksik veri:</strong> {msg.provenance.missingSummary}
+                        </div>
                       )}
                     </div>
                   )}
