@@ -10,19 +10,23 @@ android {
         applicationId "com.kaanirmak.stockmind"
         minSdk 24
         targetSdk 34
-        versionCode 11
-        versionName "1.4.1"
+        versionCode 12
+        versionName "1.5.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
         release {
-            if (System.getenv("KEYSTORE_PATH")) {
-                storeFile file(System.getenv("KEYSTORE_PATH"))
-                storePassword System.getenv("KEYSTORE_PASSWORD")
-                keyAlias System.getenv("KEY_ALIAS")
-                keyPassword System.getenv("KEY_PASSWORD")
+            def ksPath = System.getenv("KEYSTORE_PATH")
+            def ksPass = System.getenv("KEYSTORE_PASSWORD")
+            def ksAlias = System.getenv("KEY_ALIAS")
+            def ksKeyPass = System.getenv("KEY_PASSWORD")
+            if (ksPath && ksPass && ksAlias && ksKeyPass) {
+                storeFile file(ksPath)
+                storePassword ksPass
+                keyAlias ksAlias
+                keyPassword ksKeyPass
             }
         }
     }

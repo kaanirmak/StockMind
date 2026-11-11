@@ -896,5 +896,42 @@ test('SEC-05: /admin route is shielded in middleware and absent from user settin
   assert.match(proxyCode, /status: 404/, 'Middleware must return 404 status for unauthorized admin requests');
 });
 
+test('OPS-01: Android Gradle versionCode advances and matches package.json and /api/app/version', async () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const gradle = fs.readFileSync(path.join(root, 'android/app/build.gradle'), 'utf8');
+  const workflow = fs.readFileSync(path.join(root, '.github/workflows/build-android-apk.yml'), 'utf8');
+
+  const gradleVersionCode = Number(gradle.match(/versionCode\s+(\d+)/)?.[1]);
+  const gradleVersionName = gradle.match(/versionName\s+"([^"]+)"/)?.[1];
+
+  assert.ok(gradleVersionCode >= 12, `Expected incremented versionCode >= 12, got ${gradleVersionCode}`);
+  assert.equal(gradleVersionName, pkg.version, 'Android versionName must match package.json version');
+  assert.match(gradle, /signingConfigs\s*\{[\s\S]*release\s*\{/);
+  assert.match(workflow, /assembleRelease/);
+  assert.match(workflow, /apksigner[\s\S]*verify/);
+
+  const load = loader({
+    '@/lib/supabase/server': {
+      createClient: async () => ({
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    },
+  });
+
+  const versionRoute = load('src/app/api/app/version/route.ts');
+  const res = await versionRoute.GET();
+  assert.equal(res.status, 200);
+  const payload = await res.json();
+  assert.equal(payload.version, gradleVersionName);
+  assert.equal(payload.versionCode, gradleVersionCode);
+  assert.equal(payload.packageId, 'com.kaanirmak.stockmind');
+});
+
 
 

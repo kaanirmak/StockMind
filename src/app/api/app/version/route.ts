@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import pkg from '../../../../../package.json';
+import { buildAppVersionPayload } from '@/lib/app/releaseMetadata';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -22,17 +22,7 @@ export async function GET() {
   }
 
   return NextResponse.json(
-    {
-      success: true,
-      version: pkg.version,
-      versionCode: 11,
-      downloadUrl: '/api/download/apk',
-      directApkUrl: '/StockMind.apk',
-      releaseNotes: 'CI/CD düzeltmeleri: Supabase GitHub entegrasyonu ve Cloudflare deploy akışı iyileştirildi.',
-      publishedAt: '2026-10-15',
-      minAndroidVersion: '7.0 (Nougat) ve üzeri',
-      broadcast,
-    },
+    buildAppVersionPayload(broadcast),
     {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
