@@ -2976,6 +2976,83 @@ test('HBR-06: featured vs newest news stream expires old portfolio boost after 4
   assert.match(newsPageSource, /Son 48 saatlik portföy ve kritik olaylar üstte/);
 });
 
+test('HBR-07: separates news, official disclosures, and calendar events and splits headline tone from portfolio impact', () => {
+  const { classifyNewsCardKind, buildNewsToneAndImpact } = load('src/lib/news/cardClassification.ts');
+  const newsPageSource = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+
+  const officialKap = {
+    ...classifyNewsCardKind({
+      title: 'ASELS Özel Durum Açıklaması: Yeni sipariş sözleşmesi',
+      summary: 'Kamuyu Aydınlatma Platformu üzerinden bildirildi.',
+      source: 'KAP',
+      category: 'KAP',
+    }),
+  };
+  assert.equal(officialKap.kind, 'official_disclosure');
+  assert.equal(officialKap.label, 'Resmî Açıklama');
+
+  const officialCentralBank = {
+    ...classifyNewsCardKind({
+      title: 'Monetary policy decisions',
+      summary: 'Governing Council decision on key ECB interest rates.',
+      source: 'ECB',
+      category: 'MACRO',
+    }),
+  };
+  assert.equal(officialCentralBank.kind, 'official_disclosure');
+
+  const calendarEvent = {
+    ...classifyNewsCardKind({
+      title: 'TCMB faiz kararı 20 Kasım tarihinde açıklanacak',
+      summary: 'Ekonomik takvim içinde PPK toplantısı bekleniyor.',
+      source: 'Investing.com Türkiye',
+      category: 'MACRO',
+    }),
+  };
+  assert.equal(calendarEvent.kind, 'calendar_event');
+  assert.equal(calendarEvent.label, 'Takvim Olayı');
+
+  const standardNews = {
+    ...classifyNewsCardKind({
+      title: 'BIST 100 endeksi günü artıda tamamladı',
+      summary: 'Bankacılık öncülüğünde alımlar görüldü.',
+      source: 'TRT Haber',
+      category: 'BIST',
+    }),
+  };
+  assert.equal(standardNews.kind, 'news');
+  assert.equal(standardNews.label, 'Haber');
+
+  const portfolioImpact = {
+    ...buildNewsToneAndImpact({
+      sentiment: 'positive',
+      sentimentReason: 'Sözleşme artışı metinde olumlu geçti.',
+      matchedSymbols: ['ASELS'],
+      event: 'Şirket işlemi veya sözleşme',
+      cardKind: 'news',
+    }),
+  };
+  assert.equal(portfolioImpact.toneLabel, 'Olumlu');
+  assert.match(portfolioImpact.impactScopeLabel, /ASELS/);
+  assert.match(portfolioImpact.impactNote, /fiyatlaması|beklenti|marj/i);
+
+  const macroImpact = {
+    ...buildNewsToneAndImpact({
+      sentiment: 'neutral',
+      matchedSymbols: [],
+      event: 'Faiz kararı',
+      cardKind: 'calendar_event',
+    }),
+  };
+  assert.equal(macroImpact.toneLabel, 'Nötr');
+  assert.match(macroImpact.impactScopeLabel, /Makro/);
+
+  assert.match(newsPageSource, /data-testid="news-card-type"/);
+  assert.match(newsPageSource, /data-testid="news-tone-vs-impact"/);
+  assert.match(newsPageSource, /Haber Tonu:/);
+  assert.match(newsPageSource, /Olası Portföy Etkisi:/);
+});
+
 
 
 

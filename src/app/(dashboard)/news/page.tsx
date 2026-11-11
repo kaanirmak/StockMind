@@ -9,6 +9,7 @@ import type { NewsArticle } from '@/app/api/news/route';
 import { calculatePortfolioHoldings } from '@/lib/portfolio/calculations';
 import { matchNewsAssetIdentity, mentionsNewsSymbol, normalizeNewsText, type NewsAssetIdentity } from '@/lib/news/symbolMatch';
 import { normalizeNewsSortOrder, rankNews, type NewsSortOrder } from '@/lib/news/relevance';
+import { buildNewsToneAndImpact, classifyNewsCardKind } from '@/lib/news/cardClassification';
 import { mapNewsFetchErrorToTurkish, parseNewsApiResponse } from '@/lib/news/responseParser';
 import {
   NEWS_CLIENT_SNAPSHOT_KEY,
@@ -563,18 +564,26 @@ export default function NewsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredNews.map(({ article: item, matchedSymbols, matchDetails, event, eventTypeLabel }, idx) => {
+            const cardKind = classifyNewsCardKind(item);
+            const toneAndImpact = buildNewsToneAndImpact({
+              sentiment: item.sentiment,
+              sentimentReason: item.sentimentReason,
+              matchedSymbols,
+              event,
+              cardKind: cardKind.kind,
+            });
             const sentimentBadge =
               item.sentiment === 'positive' ? (
                 <Badge variant="success" size="sm">
-                  Olumlu
+                  Ton: Olumlu
                 </Badge>
               ) : item.sentiment === 'negative' ? (
                 <Badge variant="danger" size="sm">
-                  Olumsuz
+                  Ton: Olumsuz
                 </Badge>
               ) : (
                 <Badge variant="warning" size="sm">
-                  Nötr
+                  Ton: Nötr
                 </Badge>
               );
 
@@ -594,10 +603,17 @@ export default function NewsPage() {
                 }`}
               >
                 <div className="space-y-2">
-                  {/* Single Clean Row: Source, Date, and Sentiment Badge */}
+                  {/* Single Clean Row: Source, Card Type, Date, and Tone Badge */}
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                       <span className="font-semibold text-accent truncate text-[11px] sm:text-xs">{item.source}</span>
+                      <Badge
+                        variant={cardKind.badgeVariant}
+                        size="sm"
+                        data-testid="news-card-type"
+                      >
+                        {cardKind.label}
+                      </Badge>
                       <span className="text-text-muted text-[10px]">•</span>
                       <span className="text-[11px] text-text-muted whitespace-nowrap">
                         {new Date(item.publishedAt).toLocaleDateString('tr-TR', {
@@ -613,7 +629,7 @@ export default function NewsPage() {
                         </span>
                       )}
                     </div>
-                    <div className="shrink-0" title={`Haberin metin tonu. ${item.sentimentReason ?? ''}`}>
+                    <div className="shrink-0" title={`Haberin metin tonu. ${toneAndImpact.toneSummary}`}>
                       {sentimentBadge}
                     </div>
                   </div>
@@ -638,6 +654,23 @@ export default function NewsPage() {
                       {item.summary}
                     </p>
                   )}
+
+                  <div
+                    data-testid="news-tone-vs-impact"
+                    className="rounded-xl border border-border/60 bg-bg-secondary/50 px-2.5 py-2 text-[11px] space-y-1"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="text-text-secondary">
+                        <span className="font-semibold text-text-primary">Haber Tonu:</span>{' '}
+                        {toneAndImpact.toneLabel} — {toneAndImpact.toneSummary}
+                      </span>
+                    </div>
+                    <p className="text-text-secondary">
+                      <span className="font-semibold text-text-primary">Olası Portföy Etkisi:</span>{' '}
+                      <span className="font-medium text-accent">{toneAndImpact.impactScopeLabel}.</span>{' '}
+                      {toneAndImpact.impactNote}
+                    </p>
+                  </div>
 
                   {matchDetails.length > 0 && (
                     <div
