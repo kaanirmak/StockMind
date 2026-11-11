@@ -5,6 +5,15 @@ import {
   type NewsAssetMatchResult,
 } from './symbolMatch';
 
+export const PORTFOLIO_PRIORITY_WINDOW_MS = 48 * 60 * 60 * 1000;
+const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000;
+
+export type NewsSortOrder = 'important' | 'recent';
+
+export function normalizeNewsSortOrder(value: unknown): NewsSortOrder {
+  return value === 'recent' ? 'recent' : 'important';
+}
+
 export interface NewsMatchDetail {
   symbol: string;
   exchange?: string;
@@ -21,6 +30,7 @@ export interface RankedNewsArticle<T> {
   eventTypeLabel: string;
   date: number;
   priority: number;
+  withinPriorityWindow: boolean;
   connectionSummary: string | null;
 }
 
@@ -62,8 +72,12 @@ export function rankNews<
   now = Date.now(),
 ): RankedNewsArticle<T>[] {
   return articles.map(article => {
-    const date = Date.parse(article.publishedAt);
-    const recent = date <= now && now - date <= 48 * 60 * 60 * 1000;
+    const parsedDate = Date.parse(article.publishedAt);
+    const date = Number.isFinite(parsedDate) ? parsedDate : 0;
+    const recent =
+      date > 0 &&
+      date <= now + CLOCK_SKEW_TOLERANCE_MS &&
+      now - date <= PORTFOLIO_PRIORITY_WINDOW_MS;
     const text = `${article.title} ${article.summary}`;
     const matchDetails: NewsMatchDetail[] = [];
     const seenSymbols = new Set<string>();
@@ -109,6 +123,7 @@ export function rankNews<
       eventTypeLabel,
       date,
       priority,
+      withinPriorityWindow: recent,
       connectionSummary,
     };
   }).sort((a, b) => b.priority - a.priority || b.date - a.date);

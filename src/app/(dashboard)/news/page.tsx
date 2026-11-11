@@ -8,7 +8,7 @@ import { Badge, Input, Button, StateView } from '@/components/ui';
 import type { NewsArticle } from '@/app/api/news/route';
 import { calculatePortfolioHoldings } from '@/lib/portfolio/calculations';
 import { matchNewsAssetIdentity, mentionsNewsSymbol, normalizeNewsText, type NewsAssetIdentity } from '@/lib/news/symbolMatch';
-import { rankNews } from '@/lib/news/relevance';
+import { normalizeNewsSortOrder, rankNews, type NewsSortOrder } from '@/lib/news/relevance';
 import { mapNewsFetchErrorToTurkish, parseNewsApiResponse } from '@/lib/news/responseParser';
 import {
   NEWS_CLIENT_SNAPSHOT_KEY,
@@ -37,7 +37,25 @@ export default function NewsPage() {
   const [showingCachedSnapshot, setShowingCachedSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [sortOrder, setSortOrder] = useState<'important' | 'recent'>('important');
+  const [sortOrder, setSortOrder] = useState<NewsSortOrder>('important');
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('stockmind_news_sort_order');
+      if (saved) setSortOrder(normalizeNewsSortOrder(saved));
+    } catch {
+      // Ignore storage access errors in private browsing
+    }
+  }, []);
+
+  const handleSortOrderChange = (next: NewsSortOrder) => {
+    setSortOrder(next);
+    try {
+      window.localStorage.setItem('stockmind_news_sort_order', next);
+    } catch {
+      // Ignore storage quota / security errors
+    }
+  };
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedSymbolFilter, setSelectedSymbolFilter] = useState<string>('ALL');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -300,17 +318,46 @@ export default function NewsPage() {
             </select>
           )}
 
-        {selectedCategory !== 'KAP' && (
-          <select
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div
+            data-testid="news-sort-controls"
+            role="group"
             aria-label="Haber sıralaması"
-            value={sortOrder}
-            onChange={event => setSortOrder(event.target.value === 'recent' ? 'recent' : 'important')}
-            className="min-h-9 rounded-xl border border-border bg-bg-secondary px-3 text-xs text-text-primary"
+            className="inline-flex items-center gap-1 rounded-xl border border-border bg-bg-secondary p-1"
           >
-            <option value="important">Öne çıkanlar</option>
-            <option value="recent">En yeni</option>
-          </select>
-        )}
+            <button
+              type="button"
+              data-testid="news-sort-important"
+              aria-pressed={sortOrder === 'important'}
+              onClick={() => handleSortOrderChange('important')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                sortOrder === 'important'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              Öne Çıkanlar
+            </button>
+            <button
+              type="button"
+              data-testid="news-sort-recent"
+              aria-pressed={sortOrder === 'recent'}
+              onClick={() => handleSortOrderChange('recent')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                sortOrder === 'recent'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              En Yeni
+            </button>
+          </div>
+          <span data-testid="news-sort-hint" className="text-[11px] text-text-muted">
+            {sortOrder === 'important'
+              ? 'Son 48 saatlik portföy ve kritik olaylar üstte; daha eski haberler kronolojik sıraya döner.'
+              : 'Tüm haberler yayın saatine göre en yeniden eskiye sıralanır.'}
+          </span>
+        </div>
 
         {/* Portfolio symbols quick filter chips */}
         {selectedCategory === 'PORTFOLIO' && portfolioSymbols.length > 0 && (

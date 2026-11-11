@@ -2919,6 +2919,63 @@ test('HBR-05: news ranking exposes matched asset, event type, and match reason f
   assert.match(newsPageSource, /detail\.reasonText/);
 });
 
+test('HBR-06: featured vs newest news stream expires old portfolio boost after 48h and switches sort order cleanly', () => {
+  const { rankNews, normalizeNewsSortOrder, PORTFOLIO_PRIORITY_WINDOW_MS } = load('src/lib/news/relevance.ts');
+  const newsPageSource = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  const now = Date.parse('2026-11-11T12:00:00Z');
+  assert.equal(PORTFOLIO_PRIORITY_WINDOW_MS, 48 * 60 * 60 * 1000);
+  assert.equal(normalizeNewsSortOrder('recent'), 'recent');
+  assert.equal(normalizeNewsSortOrder('important'), 'important');
+  assert.equal(normalizeNewsSortOrder('invalid'), 'important');
+
+  const freshPortfolio = {
+    title: 'ASELS yeni iş anlaşması',
+    summary: 'Aselsan yeni sözleşme imzaladı.',
+    publishedAt: new Date(now - 6 * 3_600_000).toISOString(),
+  };
+  const expiredPortfolio = {
+    title: 'ASELS eski bilanço haberi',
+    summary: 'Aselsan bilançosunu açıkladı.',
+    publishedAt: new Date(now - 60 * 3_600_000).toISOString(),
+  };
+  const newestGeneral = {
+    title: 'Küresel piyasalarda son durum',
+    summary: 'Avrupa ve ABD endeksleri açılışta yatay.',
+    publishedAt: new Date(now - 1 * 3_600_000).toISOString(),
+  };
+  const invalidDatePortfolio = {
+    title: 'ASELS tarihsiz kayıt',
+    summary: 'ASELS duyurusu.',
+    publishedAt: 'not-a-date',
+  };
+
+  const featured = Array.from(
+    rankNews([expiredPortfolio, newestGeneral, freshPortfolio, invalidDatePortfolio], ['ASELS'], true, now),
+  );
+  // Fresh (<48h) portfolio event leads, followed strictly chronologically by newer general news,
+  // then expired (>48h) portfolio news (priority 0), then invalid date at bottom.
+  assert.equal(featured[0].article.title, freshPortfolio.title);
+  assert.equal(featured[0].withinPriorityWindow, true);
+  assert.equal(featured[1].article.title, newestGeneral.title);
+  assert.equal(featured[2].article.title, expiredPortfolio.title);
+  assert.equal(featured[2].withinPriorityWindow, false);
+  assert.equal(featured[2].priority, 0);
+  assert.equal(featured[3].article.title, invalidDatePortfolio.title);
+
+  const newest = Array.from(
+    rankNews([expiredPortfolio, newestGeneral, freshPortfolio, invalidDatePortfolio], ['ASELS'], false, now),
+  );
+  assert.deepEqual(
+    newest.map((item) => item.article.title),
+    [newestGeneral.title, freshPortfolio.title, expiredPortfolio.title, invalidDatePortfolio.title],
+  );
+
+  assert.match(newsPageSource, /data-testid="news-sort-controls"/);
+  assert.match(newsPageSource, /data-testid="news-sort-important"/);
+  assert.match(newsPageSource, /data-testid="news-sort-recent"/);
+  assert.match(newsPageSource, /Son 48 saatlik portföy ve kritik olaylar üstte/);
+});
+
 
 
 
