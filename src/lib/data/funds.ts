@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { FundCategory } from '@/types/fund';
+import { MarketPriceObservation } from '@/types/stock';
 import { calculateFuzzyScore } from '@/lib/utils/search';
 import TEFAS_DIRECTORY from './tefas_funds_directory.json';
 
@@ -47,12 +48,64 @@ export interface TefasFundInfo {
   kapLink?: string;
   navDate?: string | null;
   lastSyncAt?: string;
+  observation?: MarketPriceObservation | null;
+}
+
+export function buildFundObservation(
+  price: number | null,
+  dailyReturn: unknown,
+  navDate: string | null | undefined,
+  fetchedAt: string | null | undefined
+): MarketPriceObservation | null {
+  if (price === null || !Number.isFinite(price) || price <= 0) {
+    return null;
+  }
+  if (typeof fetchedAt !== 'string' || !Number.isFinite(Date.parse(fetchedAt))) {
+    return null;
+  }
+  const change = typeof dailyReturn === 'number' && Number.isFinite(dailyReturn) ? dailyReturn : null;
+  return {
+    source: 'TEFAS',
+    asOf: typeof navDate === 'string' && navDate.trim().length > 0 ? navDate.trim() : null,
+    fetchedAt,
+    changePercent: change,
+  };
 }
 
 function readStoredFundPrice(value: unknown, lastSyncAt: unknown): number | null {
   const price = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
   return Number.isFinite(price) && price > 0 && typeof lastSyncAt === 'string' &&
     Number.isFinite(Date.parse(lastSyncAt)) ? price : null;
+}
+
+function mapDatabaseFundRow(row: any): TefasFundInfo {
+  const price = readStoredFundPrice(row.price, row.last_sync_at);
+  const dailyReturn = Number(row.daily_return || 0);
+  const navDate = row.nav_date ?? null;
+  return {
+    code: row.code,
+    name: row.name,
+    category: row.category as FundCategory,
+    founder: row.founder,
+    price,
+    dailyReturn,
+    monthlyReturn: Number(row.monthly_return || 0),
+    return3m: Number(row.return_3m || 0),
+    return6m: Number(row.return_6m || 0),
+    ytdReturn: Number(row.ytd_return || 0),
+    yearlyReturn: Number(row.yearly_return || 0),
+    return3y: Number(row.return_3y || 0),
+    return5y: Number(row.return_5y || 0),
+    riskValue: Number(row.risk_value || 5),
+    totalValue: Number(row.total_value || 0),
+    investorCount: Number(row.investor_count || 0),
+    managementFee: Number(row.management_fee || 2),
+    assetAllocation: row.asset_allocation || [],
+    kapLink: row.kap_link,
+    navDate,
+    lastSyncAt: row.last_sync_at,
+    observation: buildFundObservation(price, dailyReturn, navDate, row.last_sync_at),
+  };
 }
 
 /**
@@ -137,29 +190,7 @@ export async function getFundsFromDatabase(filter?: {
     return [];
   }
 
-  let mapped: TefasFundInfo[] = data.map((row: any) => ({
-    code: row.code,
-    name: row.name,
-    category: row.category as FundCategory,
-    founder: row.founder,
-    price: readStoredFundPrice(row.price, row.last_sync_at),
-    dailyReturn: Number(row.daily_return || 0),
-    monthlyReturn: Number(row.monthly_return || 0),
-    return3m: Number(row.return_3m || 0),
-    return6m: Number(row.return_6m || 0),
-    ytdReturn: Number(row.ytd_return || 0),
-    yearlyReturn: Number(row.yearly_return || 0),
-    return3y: Number(row.return_3y || 0),
-    return5y: Number(row.return_5y || 0),
-    riskValue: Number(row.risk_value || 5),
-    totalValue: Number(row.total_value || 0),
-    investorCount: Number(row.investor_count || 0),
-    managementFee: Number(row.management_fee || 2),
-    assetAllocation: row.asset_allocation || [],
-    kapLink: row.kap_link,
-    navDate: row.nav_date ?? null,
-    lastSyncAt: row.last_sync_at,
-  }));
+  let mapped: TefasFundInfo[] = data.map(mapDatabaseFundRow);
 
   if (filter?.search && filter.search.trim().length > 0) {
     const q = filter.search.trim();
@@ -202,29 +233,7 @@ export async function getFundByCodeFromDatabase(code: string): Promise<TefasFund
     return null;
   }
 
-  return {
-    code: data.code,
-    name: data.name,
-    category: data.category as FundCategory,
-    founder: data.founder,
-    price: readStoredFundPrice(data.price, data.last_sync_at),
-    dailyReturn: Number(data.daily_return || 0),
-    monthlyReturn: Number(data.monthly_return || 0),
-    return3m: Number(data.return_3m || 0),
-    return6m: Number(data.return_6m || 0),
-    ytdReturn: Number(data.ytd_return || 0),
-    yearlyReturn: Number(data.yearly_return || 0),
-    return3y: Number(data.return_3y || 0),
-    return5y: Number(data.return_5y || 0),
-    riskValue: Number(data.risk_value || 5),
-    totalValue: Number(data.total_value || 0),
-    investorCount: Number(data.investor_count || 0),
-    managementFee: Number(data.management_fee || 2),
-    assetAllocation: data.asset_allocation || [],
-    kapLink: data.kap_link,
-    navDate: data.nav_date ?? null,
-    lastSyncAt: data.last_sync_at,
-  };
+  return mapDatabaseFundRow(data);
   } catch (err) {
     console.error('getFundByCodeFromDatabase error:', err);
     return null;

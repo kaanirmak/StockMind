@@ -912,3 +912,288 @@ test('TEFAS resume reports coverage from stored quotes and retries only missing 
   assert.deepEqual(requested, []);
   assert.deepEqual(writeAttempts.sort(), ['DDD', 'EEE', 'EEE', 'FFF', 'GGG']);
 });
+
+test('VER-02: valid stock, index, commodity, forex, crypto, fund, and history APIs include observation metadata and reject fake fallbacks', async () => {
+  function loadWithAlias(file, extraRequire = {}, extraGlobals = {}) {
+    const resolved = path.resolve(file);
+    const module = { exports: {} };
+    const source = ts.transpileModule(fs.readFileSync(resolved, 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText;
+    const loadJsonModule = (jsonPath) => {
+      const parsed = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      if (parsed && typeof parsed === 'object' && !Object.prototype.hasOwnProperty.call(parsed, 'default')) {
+        Object.defineProperty(parsed, 'default', { value: parsed, enumerable: false });
+      }
+      return parsed;
+    };
+    const customRequire = (name) => {
+      if (Object.prototype.hasOwnProperty.call(extraRequire, name)) return extraRequire[name];
+      if (name.startsWith('@/')) {
+        const subPath = name.slice(2);
+        if (subPath.endsWith('.json')) {
+          return loadJsonModule(path.resolve('src', subPath));
+        }
+        const mjsPath = path.resolve('src', subPath);
+        if (subPath.endsWith('.mjs') && fs.existsSync(mjsPath)) {
+          return require(mjsPath);
+        }
+        const directTs = path.resolve('src', `${subPath}.ts`);
+        const indexTs = path.resolve('src', subPath, 'index.ts');
+        return loadWithAlias(fs.existsSync(directTs) ? directTs : indexTs, extraRequire, extraGlobals);
+      }
+      if (name.endsWith('.json')) {
+        return loadJsonModule(path.resolve(path.dirname(resolved), name));
+      }
+      if (name.startsWith('.')) {
+        const directRel = path.resolve(path.dirname(resolved), `${name}.ts`);
+        const indexRel = path.resolve(path.dirname(resolved), name, 'index.ts');
+        return loadWithAlias(fs.existsSync(directRel) ? directRel : indexRel, extraRequire, extraGlobals);
+      }
+      return require(name);
+    };
+    vm.runInNewContext(source, {
+      module,
+      exports: module.exports,
+      Date,
+      Map,
+      Set,
+      Symbol,
+      URL,
+      Response,
+      AbortSignal,
+      Promise,
+      console,
+      process: { env: {} },
+      require: customRequire,
+      ...extraGlobals,
+    });
+    return module.exports;
+  }
+
+  // 1. TradingView BIST & US list + specific symbols (Index, TR Gold, Commodity, Forex, Crypto, Scanner null rejection)
+  const yahooTime = 1762858800; // 2025-11-11T11:00:00.000Z
+  const mockFetch = async (url, init) => {
+    const u = String(url);
+    const body = init?.body ? JSON.parse(init.body) : null;
+    if (u.includes('scanner.tradingview.com/turkey/scan')) {
+      const target = body?.filter?.find((f) => f.left === 'name')?.right;
+      if (target === 'BROKEN') {
+        return { ok: true, json: async () => ({ data: [{ d: ['BROKEN', null, 1.5, 100, 1000, 'Broken', null, null, null, null, null] }] }) };
+      }
+      if (target === 'ISCTR') {
+        return { ok: true, json: async () => ({ data: [{ d: ['ISCTR', 14.2, 2.5, 500000, 1000000, 'Turkiye Is Bankasi', 'Finance', 16, 10, 5.2, 2.1] }] }) };
+      }
+      if (target) {
+        return { ok: true, json: async () => ({ data: [] }) };
+      }
+      return { ok: true, json: async () => ({ data: [{ d: ['THYAO', 310.5, 1.25, 1000000, 400000000, 'Turk Hava Yollari', 'Transportation', 340, 220, 6.5, 0] }] }) };
+    }
+    if (u.includes('scanner.tradingview.com/america/scan')) {
+      const target = body?.filter?.find((f) => f.left === 'name')?.right;
+      if (target === 'BROKENUS') {
+        return { ok: true, json: async () => ({ data: [{ d: ['BROKENUS', 0, 1.0, 100, 1000, 'Broken US', null, null, null, null, null] }] }) };
+      }
+      if (target) {
+        return { ok: true, json: async () => ({ data: [] }) };
+      }
+      return { ok: true, json: async () => ({ data: [{ d: ['AAPL', 225.4, -0.5, 2000000, 3000000000, 'Apple Inc.', 'Electronic Technology', 240, 170, 30.2, 0.45, 'NASDAQ'] }] }) };
+    }
+    if (u.includes('scanner.tradingview.com/forex/scan')) {
+      const target = body?.filter?.[0]?.right;
+      if (target === 'USDTRY') {
+        return { ok: true, json: async () => ({ data: [{ d: ['USDTRY', 34.5, 0.2, 'USD / TRY', 35, 28] }] }) };
+      }
+      return { ok: true, json: async () => ({ data: [] }) };
+    }
+    if (u.includes('scanner.tradingview.com/cfd/scan')) {
+      const target = body?.filter?.[0]?.right;
+      if (target === 'XAUUSD') {
+        return { ok: true, json: async () => ({ data: [{ d: ['XAUUSD', 2650, 0.8, 'Gold Spot'] }] }) };
+      }
+      return { ok: true, json: async () => ({ data: [] }) };
+    }
+    if (u.includes('scanner.tradingview.com/crypto/scan')) {
+      return { ok: true, json: async () => ({ data: [{ d: ['BTCUSD', 89500, 3.2, 'Bitcoin', 90000, 35000] }] }) };
+    }
+    if (u.includes('query1.finance.yahoo.com/v8/finance/chart/')) {
+      return {
+        ok: true,
+        json: async () => ({
+          chart: {
+            result: [{
+              meta: {
+                regularMarketPrice: 9250.4,
+                chartPreviousClose: 9100,
+                regularMarketChangePercent: 1.65,
+                regularMarketTime: yahooTime,
+              },
+              timestamp: [yahooTime - 86400, yahooTime],
+              indicators: {
+                quote: [{
+                  open: [9100, 9150],
+                  high: [9200, 9280],
+                  low: [9050, 9120],
+                  close: [9120, 9250.4],
+                  volume: [1000, 1200],
+                }],
+              },
+            }],
+          },
+        }),
+      };
+    }
+    return { ok: false, status: 404, json: async () => ({}) };
+  };
+
+  const stocksMod = loadWithAlias(
+    'src/lib/data/stocks.ts',
+    {
+      'next/cache': { unstable_cache: (fn) => fn },
+      '@/lib/constants/stocks': { POPULAR_STOCKS: [] },
+      '@/lib/api/tefas': {
+        fetchTefasLiveDetail: async (code) =>
+          code === 'MAC'
+            ? {
+                code: 'MAC',
+                name: 'Marmara Capital Hisse Senedi Fonu',
+                category: 'Hisse Senedi Fonu',
+                founder: 'Marmara Portföy',
+                price: 0.4512,
+                navDate: '2026-11-10',
+                dailyReturn: 1.4,
+                investorCount: 12000,
+                totalValue: 5000000000,
+                lastSyncAt: '2026-11-11T09:00:00.000Z',
+                observation: {
+                  source: 'TEFAS',
+                  asOf: '2026-11-10',
+                  fetchedAt: '2026-11-11T09:00:00.000Z',
+                  changePercent: 1.4,
+                },
+              }
+            : null,
+      },
+    },
+    { fetch: mockFetch }
+  );
+
+  const list = await stocksMod.fetchAllTradingViewStocks();
+  assert.equal(list.bist[0].observation.source, 'TradingView');
+  assert.equal(list.bist[0].observation.changePercent, 1.25);
+  assert.ok(Date.parse(list.bist[0].observation.fetchedAt) > 0);
+  assert.equal(list.us[0].observation.source, 'TradingView');
+
+  const indexQuote = await stocksMod.fetchSpecificSymbolLive('XU100');
+  assert.equal(indexQuote.observation.source, 'Yahoo Finance');
+  assert.equal(indexQuote.observation.asOf, new Date(yahooTime * 1000).toISOString());
+
+  const goldQuote = await stocksMod.fetchSpecificSymbolLive('XAUTRYG');
+  assert.equal(goldQuote.observation.source, 'TradingView');
+  assert.ok(goldQuote.price > 0);
+
+  const fxQuote = await stocksMod.fetchSpecificSymbolLive('USDTRY');
+  assert.equal(fxQuote.observation.source, 'TradingView');
+  assert.equal(fxQuote.observation.changePercent, 0.2);
+
+  const btcQuote = await stocksMod.fetchSpecificSymbolLive('BTCUSD');
+  assert.equal(btcQuote.observation.source, 'TradingView');
+
+  const tefasQuote = await stocksMod.fetchSpecificSymbolLive('MAC');
+  assert.equal(tefasQuote.observation.source, 'TEFAS');
+  assert.equal(tefasQuote.observation.asOf, '2026-11-10');
+  assert.equal(tefasQuote.observation.fetchedAt, '2026-11-11T09:00:00.000Z');
+
+  assert.equal(await stocksMod.fetchSpecificSymbolLive('BROKEN'), null);
+  assert.equal(await stocksMod.fetchSpecificSymbolLive('BROKENUS'), null);
+
+  // 2. DB cached fund observation preserves stored last_sync_at & nav_date
+  const dbRowsResult = {
+    data: [
+      {
+        code: 'MAC',
+        name: 'Marmara Capital',
+        category: 'Hisse Senedi Fonu',
+        founder: 'Marmara',
+        price: 0.4512,
+        daily_return: 1.4,
+        nav_date: '2026-11-10',
+        last_sync_at: '2026-11-11T09:00:00.000Z',
+      },
+      {
+        code: 'NOQ',
+        name: 'No Price Fund',
+        category: 'Para Piyasası Fonu',
+        founder: 'Test',
+        price: 0,
+        daily_return: 0,
+        nav_date: null,
+        last_sync_at: null,
+      },
+    ],
+    error: null,
+  };
+  const supabaseQueryChain = {
+    select: () => supabaseQueryChain,
+    neq: () => supabaseQueryChain,
+    eq: () => supabaseQueryChain,
+    order: () => supabaseQueryChain,
+    range: () => supabaseQueryChain,
+    then: (resolve, reject) => Promise.resolve(dbRowsResult).then(resolve, reject),
+  };
+  const fundsModWithEnv = loadWithAlias(
+    'src/lib/data/funds.ts',
+    {
+      '@supabase/supabase-js': {
+        createClient: () => ({
+          from: () => supabaseQueryChain,
+        }),
+      },
+    },
+    { process: { env: { NEXT_PUBLIC_SUPABASE_URL: 'https://x.supabase.co', NEXT_PUBLIC_SUPABASE_ANON_KEY: 'k' } } }
+  );
+  const dbFunds = await fundsModWithEnv.getFundsFromDatabase();
+  assert.deepEqual({ ...dbFunds[0].observation }, {
+    source: 'TEFAS',
+    asOf: '2026-11-10',
+    fetchedAt: '2026-11-11T09:00:00.000Z',
+    changePercent: 1.4,
+  });
+  assert.equal(dbFunds[1].price, null);
+  assert.equal(dbFunds[1].observation, null);
+
+  // 3. History & Indicators API routes attach observation metadata
+  const mockCandles = [
+    { time: '2026-11-10', open: 300, high: 312, low: 299, close: 310, volume: 1000 },
+    { time: '2026-11-11', open: 310, high: 315, low: 308, close: 314, volume: 1200 },
+  ];
+  const nextServerStub = { NextResponse: { json: (body, init) => ({ body, status: init?.status || 200 }) } };
+  const routeStocksStub = {
+    getStockBySymbolLive: async () => ({
+      price: 314,
+      observation: { source: 'TradingView', asOf: null, fetchedAt: '2026-11-11T10:00:00.000Z', changePercent: 1.29 },
+    }),
+    fetchRealHistoricalCandles: async () => mockCandles,
+    getStockTechnicalAnalysis: () => ({ symbol: 'THYAO', rsi14: 58, trend: 'BULLISH' }),
+  };
+
+  const historyRoute = loadWithAlias(
+    'src/app/api/stocks/[symbol]/history/route.ts',
+    { 'next/server': nextServerStub, '@/lib/data/stocks': routeStocksStub }
+  );
+  const historyRes = await historyRoute.GET({ url: 'https://app.local/api/stocks/THYAO/history?timeframe=1M' }, { params: Promise.resolve({ symbol: 'THYAO' }) });
+  assert.equal(historyRes.status, 200);
+  assert.equal(historyRes.body.observation.source, 'Yahoo Finance');
+  assert.equal(historyRes.body.observation.asOf, '2026-11-11');
+  assert.equal(historyRes.body.quoteObservation.source, 'TradingView');
+
+  const indicatorsRoute = loadWithAlias(
+    'src/app/api/stocks/[symbol]/indicators/route.ts',
+    { 'next/server': nextServerStub, '@/lib/data/stocks': routeStocksStub }
+  );
+  const indicatorsRes = await indicatorsRoute.GET({ url: 'https://app.local/api/stocks/THYAO/indicators' }, { params: Promise.resolve({ symbol: 'THYAO' }) });
+  assert.equal(indicatorsRes.status, 200);
+  assert.equal(indicatorsRes.body.observation.source, 'Yahoo Finance');
+  assert.equal(indicatorsRes.body.observation.asOf, '2026-11-11');
+  assert.equal(indicatorsRes.body.quoteObservation.source, 'TradingView');
+});

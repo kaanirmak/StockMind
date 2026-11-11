@@ -88,11 +88,13 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
 
     if (turkeyRes.ok) {
       const turkeyData = await turkeyRes.json();
+      const fetchedAt = new Date().toISOString();
       turkeyData.data?.forEach((item: any) => {
         const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield] = item.d;
-        if (name && close !== null && close !== undefined) {
-          const currentPrice = Number(close.toFixed(2));
-          const changePercent = Number((change || 0).toFixed(2));
+        const validClose = finiteMarketNumber(close);
+        if (name && validClose !== null && validClose > 0) {
+          const currentPrice = Number(validClose.toFixed(2));
+          const changePercent = Number(((finiteMarketNumber(change) ?? 0)).toFixed(2));
           const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
           const sector = SECTOR_TR_MAP[rawSector] || rawSector || 'Sanayi & Ticaret';
 
@@ -117,7 +119,8 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
             high52w: high52 ? Number(high52.toFixed(2)) : undefined,
             low52w: low52 ? Number(low52.toFixed(2)) : undefined,
-            timestamp: new Date().toISOString(),
+            timestamp: fetchedAt,
+            observation: marketObservation('TradingView', change, null, fetchedAt),
           } as any);
         }
       });
@@ -155,11 +158,13 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
 
     if (usRes.ok) {
       const usData = await usRes.json();
+      const fetchedAt = new Date().toISOString();
       usData.data?.forEach((item: any) => {
         const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield, rawExchange] = item.d;
-        if (name && close !== null && close !== undefined) {
-          const currentPrice = Number(close.toFixed(2));
-          const changePercent = Number((change || 0).toFixed(2));
+        const validClose = finiteMarketNumber(close);
+        if (name && validClose !== null && validClose > 0) {
+          const currentPrice = Number(validClose.toFixed(2));
+          const changePercent = Number(((finiteMarketNumber(change) ?? 0)).toFixed(2));
           const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
           const sector = SECTOR_TR_MAP[rawSector] || rawSector || 'Teknoloji & Büyüme';
           const isNyse = String(rawExchange || '').toUpperCase().includes('NYSE');
@@ -185,7 +190,8 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
             high52w: high52 ? Number(high52.toFixed(2)) : undefined,
             low52w: low52 ? Number(low52.toFixed(2)) : undefined,
-            timestamp: new Date().toISOString(),
+            timestamp: fetchedAt,
+            observation: marketObservation('TradingView', change, null, fetchedAt),
           } as any);
         }
       });
@@ -570,13 +576,30 @@ function finiteMarketNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function marketObservation(source: string, change: unknown, epochSeconds?: unknown): MarketPriceObservation {
-  const seconds = finiteMarketNumber(epochSeconds);
-  const date = seconds !== null && seconds > 0 ? new Date(seconds * 1000) : null;
+function normalizeObservationTimestamp(observedAt?: unknown): string | null {
+  if (typeof observedAt === 'number' && Number.isFinite(observedAt) && observedAt > 0) {
+    const date = new Date(observedAt * 1000);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  }
+  if (typeof observedAt === 'string') {
+    const trimmed = observedAt.trim();
+    if (!trimmed) return null;
+    const parsed = new Date(trimmed);
+    return Number.isFinite(parsed.getTime()) ? trimmed : null;
+  }
+  return null;
+}
+
+function marketObservation(
+  source: string,
+  change: unknown,
+  observedAt?: unknown,
+  fetchedAt: string = new Date().toISOString()
+): MarketPriceObservation {
   return {
     source,
-    asOf: date && Number.isFinite(date.getTime()) ? date.toISOString() : null,
-    fetchedAt: new Date().toISOString(),
+    asOf: normalizeObservationTimestamp(observedAt),
+    fetchedAt,
     changePercent: finiteMarketNumber(change),
   };
 }
@@ -1134,11 +1157,14 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       }).then((r) => r.json()).catch(() => null);
 
       const meta = res?.chart?.result?.[0]?.meta;
-      if (!allowSynthetic && !(meta?.regularMarketPrice > 0)) return null;
-      const currentPrice = meta?.regularMarketPrice || indexDef.basePrice;
+      const livePrice = finiteMarketNumber(meta?.regularMarketPrice);
+      const hasLivePrice = livePrice !== null && livePrice > 0;
+      if (!allowSynthetic && !hasLivePrice) return null;
+      const currentPrice = hasLivePrice ? livePrice : indexDef.basePrice;
       const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
       const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
       const changePercent = meta?.regularMarketChangePercent ?? (prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0);
+      const fetchedAt = new Date().toISOString();
 
       return {
         symbol: indexDef.symbol,
@@ -1162,7 +1188,17 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         marketCap: indexDef.marketCap,
         high52w: meta?.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : Number((currentPrice * 1.25).toFixed(2)),
         low52w: meta?.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : Number((currentPrice * 0.75).toFixed(2)),
-        timestamp: new Date().toISOString(),
+        timestamp: fetchedAt,
+        ...(hasLivePrice
+          ? {
+              observation: marketObservation(
+                'Yahoo Finance',
+                Number(changePercent.toFixed(2)),
+                meta?.regularMarketTime,
+                fetchedAt
+              ),
+            }
+          : {}),
       } as any;
     } catch (e) {
       console.warn(`Error resolving index ${sym}:`, e);
@@ -1229,34 +1265,58 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           }).then((r) => r.json()).catch(() => null),
         ]);
 
-        let goldPrice = cfdGoldRes?.data?.[0]?.d?.[1];
-        let goldChange = cfdGoldRes?.data?.[0]?.d?.[2] || 0;
-        let silverPrice = cfdSilverRes?.data?.[0]?.d?.[1];
-        let silverChange = cfdSilverRes?.data?.[0]?.d?.[2] || 0;
-        let fxPrice = fxRes?.data?.[0]?.d?.[1];
-        let fxChange = fxRes?.data?.[0]?.d?.[2] || 0;
+        const isSilver = sym === 'XAGTRYG';
+        let metalPrice = finiteMarketNumber(isSilver ? cfdSilverRes?.data?.[0]?.d?.[1] : cfdGoldRes?.data?.[0]?.d?.[1]);
+        let metalChange = finiteMarketNumber(isSilver ? cfdSilverRes?.data?.[0]?.d?.[2] : cfdGoldRes?.data?.[0]?.d?.[2]) ?? 0;
+        let metalSource = metalPrice !== null && metalPrice > 0 ? 'TradingView' : null;
+        let metalTime: unknown = null;
 
-        if (!goldPrice || !fxPrice) {
-          const [goldY, fxY] = await Promise.all([
-            fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d', {
-              headers: { 'User-Agent': 'Mozilla/5.0' },
-              next: { revalidate: 30 },
-            }).then((r) => r.json()).catch(() => null),
-            fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
-              headers: { 'User-Agent': 'Mozilla/5.0' },
-              next: { revalidate: 30 },
-            }).then((r) => r.json()).catch(() => null),
+        let fxPrice = finiteMarketNumber(fxRes?.data?.[0]?.d?.[1]);
+        let fxChange = finiteMarketNumber(fxRes?.data?.[0]?.d?.[2]) ?? 0;
+        let fxSource = fxPrice !== null && fxPrice > 0 ? 'TradingView' : null;
+        let fxTime: unknown = null;
+
+        if (!(metalPrice !== null && metalPrice > 0) || !(fxPrice !== null && fxPrice > 0)) {
+          const yahooMetalTicker = isSilver ? 'SI=F' : 'GC=F';
+          const [metalY, fxY] = await Promise.all([
+            !(metalPrice !== null && metalPrice > 0)
+              ? fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooMetalTicker}?interval=1d&range=1d`, {
+                  headers: { 'User-Agent': 'Mozilla/5.0' },
+                  next: { revalidate: 30 },
+                }).then((r) => r.json()).catch(() => null)
+              : Promise.resolve(null),
+            !(fxPrice !== null && fxPrice > 0)
+              ? fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDTRY=X?interval=1d&range=1d', {
+                  headers: { 'User-Agent': 'Mozilla/5.0' },
+                  next: { revalidate: 30 },
+                }).then((r) => r.json()).catch(() => null)
+              : Promise.resolve(null),
           ]);
-          goldPrice = goldY?.chart?.result?.[0]?.meta?.regularMarketPrice || 4166.8;
-          goldChange = goldY?.chart?.result?.[0]?.meta?.regularMarketChangePercent || 0;
-          fxPrice = fxY?.chart?.result?.[0]?.meta?.regularMarketPrice || 49.25;
-          fxChange = fxY?.chart?.result?.[0]?.meta?.regularMarketChangePercent || 0;
+          const metalMeta = metalY?.chart?.result?.[0]?.meta;
+          const yahooMetalPrice = finiteMarketNumber(metalMeta?.regularMarketPrice);
+          if (yahooMetalPrice !== null && yahooMetalPrice > 0) {
+            metalPrice = yahooMetalPrice;
+            metalChange = finiteMarketNumber(metalMeta?.regularMarketChangePercent) ?? 0;
+            metalSource = 'Yahoo Finance';
+            metalTime = metalMeta?.regularMarketTime ?? null;
+          }
+          const fxMeta = fxY?.chart?.result?.[0]?.meta;
+          const yahooFxPrice = finiteMarketNumber(fxMeta?.regularMarketPrice);
+          if (yahooFxPrice !== null && yahooFxPrice > 0) {
+            fxPrice = yahooFxPrice;
+            fxChange = finiteMarketNumber(fxMeta?.regularMarketChangePercent) ?? 0;
+            fxSource = 'Yahoo Finance';
+            fxTime = fxMeta?.regularMarketTime ?? null;
+          }
         }
 
-        const isSilver = sym === 'XAGTRYG';
-        const baseMetalPrice = isSilver ? (silverPrice || 58.77) : (goldPrice || 4166.8);
-        const metalChange = isSilver ? silverChange : goldChange;
-        const gramPrice = (baseMetalPrice * (fxPrice || 49.25)) / 31.1034768;
+        const hasLiveInputs =
+          metalPrice !== null && metalPrice > 0 && fxPrice !== null && fxPrice > 0 && metalSource !== null && fxSource !== null;
+        if (!allowSynthetic && !hasLiveInputs) return null;
+
+        const baseMetalPrice = metalPrice !== null && metalPrice > 0 ? metalPrice : isSilver ? 58.77 : 4166.8;
+        const resolvedFxPrice = fxPrice !== null && fxPrice > 0 ? fxPrice : 49.25;
+        const gramPrice = (baseMetalPrice * resolvedFxPrice) / 31.1034768;
 
         let multiplier = 1.0;
         if (sym === 'CEYREK_ALTIN') multiplier = 1.63;
@@ -1266,8 +1326,11 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         else if (sym === 'BILEZIK22') multiplier = 0.916;
 
         const currentPrice = Number((gramPrice * multiplier).toFixed(2));
-        const changePercent = Number((metalChange + (fxChange || 0)).toFixed(2));
+        const changePercent = Number((metalChange + fxChange).toFixed(2));
         const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+        const fetchedAt = new Date().toISOString();
+        const combinedSource =
+          hasLiveInputs ? (metalSource === fxSource ? metalSource : `${metalSource} + ${fxSource}`) : null;
 
         return {
           symbol: commDef.symbol,
@@ -1290,10 +1353,21 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           marketCap: commDef.marketCap,
           high52w: Number((currentPrice * 1.3).toFixed(2)),
           low52w: Number((currentPrice * 0.7).toFixed(2)),
-          timestamp: new Date().toISOString(),
+          timestamp: fetchedAt,
+          ...(combinedSource
+            ? {
+                observation: marketObservation(
+                  combinedSource,
+                  changePercent,
+                  metalTime ?? fxTime ?? null,
+                  fetchedAt
+                ),
+              }
+            : {}),
         } as any;
       } catch (e) {
         console.warn(`Error resolving Turkish gold commodity ${sym}:`, e);
+        if (!allowSynthetic) return null;
       }
     } else {
       // Global commodity (USD futures from Yahoo Finance)
@@ -1304,11 +1378,14 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         }).then((r) => r.json()).catch(() => null);
 
         const meta = res?.chart?.result?.[0]?.meta;
-        if (!allowSynthetic && !(meta?.regularMarketPrice > 0)) return null;
-        const currentPrice = meta?.regularMarketPrice || commDef.basePrice;
+        const livePrice = finiteMarketNumber(meta?.regularMarketPrice);
+        const hasLivePrice = livePrice !== null && livePrice > 0;
+        if (!allowSynthetic && !hasLivePrice) return null;
+        const currentPrice = hasLivePrice ? livePrice : commDef.basePrice;
         const prevClose = meta?.chartPreviousClose || meta?.previousClose || currentPrice;
         const changeAmt = currentPrice && prevClose ? currentPrice - prevClose : 0;
         const changePercent = meta?.regularMarketChangePercent ?? (prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0);
+        const fetchedAt = new Date().toISOString();
 
         return {
           symbol: commDef.symbol,
@@ -1331,10 +1408,21 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           marketCap: commDef.marketCap,
           high52w: meta?.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
           low52w: meta?.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : Number((currentPrice * 0.7).toFixed(2)),
-          timestamp: new Date().toISOString(),
+          timestamp: fetchedAt,
+          ...(hasLivePrice
+            ? {
+                observation: marketObservation(
+                  'Yahoo Finance',
+                  Number(changePercent.toFixed(2)),
+                  meta?.regularMarketTime,
+                  fetchedAt
+                ),
+              }
+            : {}),
         } as any;
       } catch (e) {
         console.warn(`Error resolving global commodity ${sym}:`, e);
+        if (!allowSynthetic) return null;
       }
     }
   }
@@ -1356,6 +1444,11 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
     try {
       const fundDetail = await fetchTefasLiveDetail(originalSym);
       if (fundDetail && fundDetail.price !== null && fundDetail.price > 0) {
+        const fetchedAt = fundDetail.lastSyncAt ?? new Date().toISOString();
+        const observation =
+          fundDetail.observation ??
+          marketObservation('TEFAS', fundDetail.dailyReturn, fundDetail.navDate ?? null, fetchedAt);
+
         return {
           symbol: originalSym,
           name: fundDetail.name,
@@ -1373,7 +1466,8 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           previousClose: fundDetail.price,
           volume: (fundDetail.investorCount || 1000) * 100,
           marketCap: fundDetail.totalValue || 100000000,
-          timestamp: new Date().toISOString(),
+          timestamp: fetchedAt,
+          observation,
         } as any;
       }
     } catch (e) {
@@ -1398,42 +1492,47 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         const fxData = await fxRes.json();
         if (fxData.data && fxData.data.length > 0) {
           const [name, close, change, desc, high52, low52] = fxData.data[0].d;
-          const currentPrice = Number((close || 0).toFixed(4));
-          const changePercent = Number((change || 0).toFixed(2));
-          const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(4));
+          const validClose = finiteMarketNumber(close);
+          if (validClose !== null && validClose > 0) {
+            const currentPrice = Number(validClose.toFixed(4));
+            const changePercent = Number(((finiteMarketNumber(change) ?? 0)).toFixed(2));
+            const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(4));
+            const fetchedAt = new Date().toISOString();
 
-          const friendlyName =
-            sym === 'USDTRY'
-              ? 'Amerikan Doları / Türk Lirası'
-              : sym === 'EURTRY'
-              ? 'Euro / Türk Lirası'
-              : sym === 'GBPTRY'
-              ? 'İngiliz Sterlini / Türk Lirası'
-              : sym === 'EURUSD'
-              ? 'Euro / Amerikan Doları'
-              : desc || sym;
+            const friendlyName =
+              sym === 'USDTRY'
+                ? 'Amerikan Doları / Türk Lirası'
+                : sym === 'EURTRY'
+                ? 'Euro / Türk Lirası'
+                : sym === 'GBPTRY'
+                ? 'İngiliz Sterlini / Türk Lirası'
+                : sym === 'EURUSD'
+                ? 'Euro / Amerikan Doları'
+                : desc || sym;
 
-          return {
-            symbol: sym,
-            name: friendlyName,
-            exchange: 'FOREX' as any,
-            currency: sym.endsWith('TRY') ? 'TRY' : 'USD',
-            sector: 'Döviz & Kurlar',
-            basePrice: currentPrice,
-            price: currentPrice,
-            change: changeAmt,
-            changePercent,
-            high: Number((currentPrice * 1.005).toFixed(4)),
-            low: Number((currentPrice * 0.995).toFixed(4)),
-            open: Number((currentPrice - changeAmt).toFixed(4)),
-            close: currentPrice,
-            previousClose: Number((currentPrice - changeAmt).toFixed(4)),
-            volume: 80000000,
-            marketCap: 0,
-            high52w: high52 ? Number(high52.toFixed(4)) : Number((currentPrice * 1.15).toFixed(4)),
-            low52w: low52 ? Number(low52.toFixed(4)) : Number((currentPrice * 0.85).toFixed(4)),
-            timestamp: new Date().toISOString(),
-          } as any;
+            return {
+              symbol: sym,
+              name: friendlyName,
+              exchange: 'FOREX' as any,
+              currency: sym.endsWith('TRY') ? 'TRY' : 'USD',
+              sector: 'Döviz & Kurlar',
+              basePrice: currentPrice,
+              price: currentPrice,
+              change: changeAmt,
+              changePercent,
+              high: Number((currentPrice * 1.005).toFixed(4)),
+              low: Number((currentPrice * 0.995).toFixed(4)),
+              open: Number((currentPrice - changeAmt).toFixed(4)),
+              close: currentPrice,
+              previousClose: Number((currentPrice - changeAmt).toFixed(4)),
+              volume: 80000000,
+              marketCap: 0,
+              high52w: high52 ? Number(high52.toFixed(4)) : Number((currentPrice * 1.15).toFixed(4)),
+              low52w: low52 ? Number(low52.toFixed(4)) : Number((currentPrice * 0.85).toFixed(4)),
+              timestamp: fetchedAt,
+              observation: marketObservation('TradingView', change, null, fetchedAt),
+            } as any;
+          }
         }
       }
     }
@@ -1453,40 +1552,45 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         const cryptoData = await cryptoRes.json();
         if (cryptoData.data && cryptoData.data.length > 0) {
           const [name, close, change, desc, high52, low52] = cryptoData.data[0].d;
-          const currentPrice = Number((close || 0).toFixed(2));
-          const changePercent = Number((change || 0).toFixed(2));
-          const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+          const validClose = finiteMarketNumber(close);
+          if (validClose !== null && validClose > 0) {
+            const currentPrice = Number(validClose.toFixed(2));
+            const changePercent = Number(((finiteMarketNumber(change) ?? 0)).toFixed(2));
+            const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+            const fetchedAt = new Date().toISOString();
 
-          const friendlyName =
-            sym.startsWith('BTC')
-              ? 'Bitcoin ($)'
-              : sym.startsWith('ETH')
-              ? 'Ethereum ($)'
-              : sym.startsWith('SOL')
-              ? 'Solana ($)'
-              : desc || sym;
+            const friendlyName =
+              sym.startsWith('BTC')
+                ? 'Bitcoin ($)'
+                : sym.startsWith('ETH')
+                ? 'Ethereum ($)'
+                : sym.startsWith('SOL')
+                ? 'Solana ($)'
+                : desc || sym;
 
-          return {
-            symbol: sym,
-            name: friendlyName,
-            exchange: 'CRYPTO' as any,
-            currency: 'USD',
-            sector: 'Kripto Varlıklar',
-            basePrice: currentPrice,
-            price: currentPrice,
-            change: changeAmt,
-            changePercent,
-            high: Number((currentPrice * 1.02).toFixed(2)),
-            low: Number((currentPrice * 0.98).toFixed(2)),
-            open: Number((currentPrice - changeAmt).toFixed(2)),
-            close: currentPrice,
-            previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-            volume: 450000000,
-            marketCap: currentPrice * 19000000,
-            high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
-            low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.6).toFixed(2)),
-            timestamp: new Date().toISOString(),
-          } as any;
+            return {
+              symbol: sym,
+              name: friendlyName,
+              exchange: 'CRYPTO' as any,
+              currency: 'USD',
+              sector: 'Kripto Varlıklar',
+              basePrice: currentPrice,
+              price: currentPrice,
+              change: changeAmt,
+              changePercent,
+              high: Number((currentPrice * 1.02).toFixed(2)),
+              low: Number((currentPrice * 0.98).toFixed(2)),
+              open: Number((currentPrice - changeAmt).toFixed(2)),
+              close: currentPrice,
+              previousClose: Number((currentPrice - changeAmt).toFixed(2)),
+              volume: 450000000,
+              marketCap: currentPrice * 19000000,
+              high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
+              low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.6).toFixed(2)),
+              timestamp: fetchedAt,
+              observation: marketObservation('TradingView', change, null, fetchedAt),
+            } as any;
+          }
         }
       }
     }
@@ -1518,36 +1622,41 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       const data = await turkeyRes.json();
       if (data.data && data.data.length > 0) {
         const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield] = data.data[0].d;
-        const currentPrice = Number((close || 10).toFixed(2));
-        const changePercent = Number((change || 0).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+        const validClose = finiteMarketNumber(close);
+        if (name && validClose !== null && validClose > 0) {
+          const currentPrice = Number(validClose.toFixed(2));
+          const changePercent = Number(((finiteMarketNumber(change) ?? 0)).toFixed(2));
+          const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+          const fetchedAt = new Date().toISOString();
 
-        const stockInfo: StockMarketInfo = {
-          symbol: name,
-          name: desc || name,
-          exchange: 'BIST',
-          currency: 'TRY',
-          sector: SECTOR_TR_MAP[rawSector] || rawSector || 'Borsa İstanbul',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: undefined,
-          low: undefined,
-          open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-          close: currentPrice,
-          previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-          volume: volume || undefined,
-          marketCap: marketCap || undefined,
-          peRatio: pe ? Number(pe.toFixed(1)) : undefined,
-          dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
-          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
-          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
-          timestamp: new Date().toISOString(),
-        } as any;
+          const stockInfo: StockMarketInfo = {
+            symbol: name,
+            name: desc || name,
+            exchange: 'BIST',
+            currency: 'TRY',
+            sector: SECTOR_TR_MAP[rawSector] || rawSector || 'Borsa İstanbul',
+            basePrice: currentPrice,
+            price: currentPrice,
+            change: changeAmt,
+            changePercent,
+            high: undefined,
+            low: undefined,
+            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            close: currentPrice,
+            previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            volume: volume || undefined,
+            marketCap: marketCap || undefined,
+            peRatio: pe ? Number(pe.toFixed(1)) : undefined,
+            dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
+            high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+            low52w: low52 ? Number(low52.toFixed(2)) : undefined,
+            timestamp: fetchedAt,
+            observation: marketObservation('TradingView', change, null, fetchedAt),
+          } as any;
 
-        inMemoryCache.bist.push(stockInfo);
-        return stockInfo;
+          inMemoryCache.bist.push(stockInfo);
+          return stockInfo;
+        }
       }
     }
 
@@ -1578,36 +1687,41 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
       const data = await usRes.json();
       if (data.data && data.data.length > 0) {
         const [name, close, change, volume, marketCap, desc, rawSector, high52, low52, pe, divYield] = data.data[0].d;
-        const currentPrice = Number((close || 50).toFixed(2));
-        const changePercent = Number((change || 0).toFixed(2));
-        const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+        const validClose = finiteMarketNumber(close);
+        if (name && validClose !== null && validClose > 0) {
+          const currentPrice = Number(validClose.toFixed(2));
+          const changePercent = Number(((finiteMarketNumber(change) ?? 0)).toFixed(2));
+          const changeAmt = Number(((currentPrice * changePercent) / 100).toFixed(2));
+          const fetchedAt = new Date().toISOString();
 
-        const stockInfo: StockMarketInfo = {
-          symbol: name,
-          name: desc || name,
-          exchange: 'NASDAQ',
-          currency: 'USD',
-          sector: SECTOR_TR_MAP[rawSector] || rawSector || 'ABD Borsaları',
-          basePrice: currentPrice,
-          price: currentPrice,
-          change: changeAmt,
-          changePercent,
-          high: undefined,
-          low: undefined,
-          open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-          close: currentPrice,
-          previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-          volume: volume || undefined,
-          marketCap: marketCap || undefined,
-          peRatio: pe ? Number(pe.toFixed(1)) : undefined,
-          dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
-          high52w: high52 ? Number(high52.toFixed(2)) : undefined,
-          low52w: low52 ? Number(low52.toFixed(2)) : undefined,
-          timestamp: new Date().toISOString(),
-        } as any;
+          const stockInfo: StockMarketInfo = {
+            symbol: name,
+            name: desc || name,
+            exchange: 'NASDAQ',
+            currency: 'USD',
+            sector: SECTOR_TR_MAP[rawSector] || rawSector || 'ABD Borsaları',
+            basePrice: currentPrice,
+            price: currentPrice,
+            change: changeAmt,
+            changePercent,
+            high: undefined,
+            low: undefined,
+            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            close: currentPrice,
+            previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            volume: volume || undefined,
+            marketCap: marketCap || undefined,
+            peRatio: pe ? Number(pe.toFixed(1)) : undefined,
+            dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
+            high52w: high52 ? Number(high52.toFixed(2)) : undefined,
+            low52w: low52 ? Number(low52.toFixed(2)) : undefined,
+            timestamp: fetchedAt,
+            observation: marketObservation('TradingView', change, null, fetchedAt),
+          } as any;
 
-        inMemoryCache.us.push(stockInfo);
-        return stockInfo;
+          inMemoryCache.us.push(stockInfo);
+          return stockInfo;
+        }
       }
     }
   } catch (err) {

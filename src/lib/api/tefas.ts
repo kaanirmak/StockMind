@@ -1,4 +1,4 @@
-import { TefasFundInfo } from '@/lib/data/funds';
+import { buildFundObservation, TefasFundInfo } from '@/lib/data/funds';
 import { FundCategory } from '@/types/fund';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 import { getTefasQuote, parseTefasHistory, type TefasHistoryPoint } from '@/lib/data/tefas-prices.mjs';
@@ -276,6 +276,8 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
       const assetAllocation = getCategoryAssetAllocation(category, name);
       const kapLink = profil?.kapLink || `https://www.kap.org.tr/tr/fon-bilgileri/genel/${sym.toLowerCase()}`;
 
+      const fetchedAt = new Date().toISOString();
+      const roundedDailyReturn = Number(dailyReturn.toFixed(2));
       const result: TefasFundInfo = {
         code: sym,
         name,
@@ -283,7 +285,7 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
         founder,
         price: quote.price,
         navDate: quote.navDate,
-        dailyReturn: Number(dailyReturn.toFixed(2)),
+        dailyReturn: roundedDailyReturn,
         monthlyReturn: Number(monthlyReturn.toFixed(2)),
         return3m: Number(return3m.toFixed(1)),
         return6m: Number(return6m.toFixed(1)),
@@ -297,7 +299,8 @@ export async function fetchTefasLiveDetail(code: string): Promise<TefasFundInfo 
         managementFee,
         assetAllocation,
         kapLink,
-        lastSyncAt: new Date().toISOString(),
+        lastSyncAt: fetchedAt,
+        observation: buildFundObservation(quote.price, roundedDailyReturn, quote.navDate, fetchedAt),
       };
 
       liveFundCache.set(sym, { data: result, timestamp: Date.now() });

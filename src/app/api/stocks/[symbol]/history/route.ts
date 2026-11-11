@@ -36,11 +36,21 @@ export async function GET(
       );
     }
 
+    const fetchedAt = new Date().toISOString();
+    const latestCandle = candles[candles.length - 1];
+
     return NextResponse.json({
       success: true,
       symbol: symbol.toUpperCase(),
       timeframe,
       count: candles.length,
+      observation: {
+        source: 'Yahoo Finance',
+        asOf: latestCandle?.time ?? null,
+        fetchedAt,
+        changePercent: stock?.observation?.changePercent ?? null,
+      },
+      quoteObservation: stock?.observation ?? null,
       data: candles,
     });
   } catch (error) {
