@@ -6091,6 +6091,79 @@ test('PIY-07: financial ratio history computes period series with explicit formu
   assert.match(cardSrc, /Formül \/ Yöntem/);
 });
 
+test('PIY-08: BIST screener filters by fundamentals & price and persists named presets for reopening', () => {
+  const {
+    filterStocksByScreener,
+    saveBistScreenerPreset,
+    readSavedBistScreeners,
+    deleteBistScreenerPreset,
+    hasActiveStockScreenerFilter,
+    BIST_SCREENER_STORAGE_KEY,
+  } = load('src/lib/market/stockScreener.ts');
+
+  const storeMap = new Map();
+  const mockStorage = {
+    getItem: (k) => (storeMap.has(k) ? storeMap.get(k) : null),
+    setItem: (k, v) => storeMap.set(k, String(v)),
+  };
+
+  const sampleStocks = [
+    { symbol: 'TUPRS', sector: 'Enerji', price: 165, changePercent: 2.5, marketCap: 320_000_000_000, peRatio: 8.2, dividendYield: 5.5 },
+    { symbol: 'THYAO', sector: 'Ulaştırma', price: 295, changePercent: 1.1, marketCap: 410_000_000_000, peRatio: 6.4, dividendYield: 0 },
+    { symbol: 'ASELS', sector: 'Teknoloji', price: 72, changePercent: -2.4, marketCap: 330_000_000_000, peRatio: 22.0, dividendYield: 0.8 },
+    { symbol: 'KONTR', sector: 'Teknoloji', price: 42, changePercent: 4.1, marketCap: 8_500_000_000, peRatio: null, dividendYield: null },
+  ];
+
+  const criteria = {
+    sector: 'ALL',
+    peBand: 'UNDER_10',
+    dividendTier: 'ABOVE_4',
+    marketCapTier: 'LARGE_50B',
+    priceChange: 'POSITIVE',
+    minPrice: 100,
+    maxPrice: 250,
+  };
+  assert.equal(hasActiveStockScreenerFilter(criteria), true);
+
+  const filtered = filterStocksByScreener(sampleStocks, criteria);
+  assert.deepEqual(Array.from(filtered.map((s) => s.symbol)), ['TUPRS']);
+
+  // Empty name fails validation cleanly
+  const badSave = saveBistScreenerPreset({
+    name: '   ',
+    criteria,
+    sortBy: 'marketCap',
+    sortOrder: 'desc',
+  }, mockStorage);
+  assert.equal(badSave.ok, false);
+
+  const savedResult = saveBistScreenerPreset({
+    name: 'Ucuz Yüksek Temettü',
+    criteria,
+    sortBy: 'changePercent',
+    sortOrder: 'desc',
+    now: new Date('2026-11-11T10:00:00.000Z'),
+  }, mockStorage);
+  assert.equal(savedResult.ok, true);
+  assert.ok(storeMap.has(BIST_SCREENER_STORAGE_KEY));
+
+  // Reopen from fresh storage read
+  const reopened = readSavedBistScreeners(mockStorage);
+  assert.equal(reopened.length, 1);
+  assert.equal(reopened[0].name, 'Ucuz Yüksek Temettü');
+  assert.equal(reopened[0].criteria.peBand, 'UNDER_10');
+  assert.equal(reopened[0].criteria.dividendTier, 'ABOVE_4');
+  assert.equal(reopened[0].sortBy, 'changePercent');
+
+  const afterDelete = deleteBistScreenerPreset(reopened[0].id, mockStorage);
+  assert.equal(afterDelete.length, 0);
+
+  const piySrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/piyasalar/page.tsx'), 'utf8');
+  assert.match(piySrc, /bist-screener-panel/);
+  assert.match(piySrc, /saved-bist-screeners/);
+});
+
+
 
 
 

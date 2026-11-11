@@ -41,6 +41,24 @@ import {
   type FundReturnThreshold,
   type FundRiskRange,
 } from '@/lib/market/fundFilters';
+import {
+  DEFAULT_STOCK_SCREENER_CRITERIA,
+  STOCK_DIVIDEND_TIER_OPTIONS,
+  STOCK_MCAP_TIER_OPTIONS,
+  STOCK_PE_BAND_OPTIONS,
+  STOCK_PRICE_CHANGE_OPTIONS,
+  deleteBistScreenerPreset,
+  filterStocksByScreener,
+  hasActiveStockScreenerFilter,
+  readSavedBistScreeners,
+  saveBistScreenerPreset,
+  type SavedBistScreener,
+  type StockDividendTier,
+  type StockMarketCapTier,
+  type StockPeBand,
+  type StockPriceChangeFilter,
+  type StockScreenerCriteria,
+} from '@/lib/market/stockScreener';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatDate, formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -78,6 +96,18 @@ function PiyasalarContent() {
   const [stockSearch, setStockSearch] = useState<string>(initialResolved.search);
   const [stockSortBy, setStockSortBy] = useState<StockSortKey>(initialResolved.stockSortBy);
   const [stockSortOrder, setStockSortOrder] = useState<SortDirection>(initialResolved.stockSortOrder);
+  const [bistScreener, setBistScreener] = useState<Omit<StockScreenerCriteria, 'sector'>>({
+    peBand: DEFAULT_STOCK_SCREENER_CRITERIA.peBand,
+    dividendTier: DEFAULT_STOCK_SCREENER_CRITERIA.dividendTier,
+    marketCapTier: DEFAULT_STOCK_SCREENER_CRITERIA.marketCapTier,
+    priceChange: DEFAULT_STOCK_SCREENER_CRITERIA.priceChange,
+    minPrice: null,
+    maxPrice: null,
+  });
+  const [savedBistScreeners, setSavedBistScreeners] = useState<SavedBistScreener[]>([]);
+  const [activeScreenerId, setActiveScreenerId] = useState<string | null>(null);
+  const [screenerNameInput, setScreenerNameInput] = useState<string>('');
+  const [showBistScreenerBar, setShowBistScreenerBar] = useState<boolean>(false);
 
   // Pagination state (server-backed limited page size for stocks & TEFAS funds)
   const [stockPage, setStockPage] = useState<number>(1);
@@ -204,10 +234,23 @@ function PiyasalarContent() {
     setFundPage(1);
   };
 
+  // Load saved BIST screeners from storage once on mount
+  useEffect(() => {
+    setSavedBistScreeners(readSavedBistScreeners());
+  }, []);
+
   // Reset pagination to page 1 when filters, search, or sorting change
   useEffect(() => {
     setStockPage(1);
-  }, [activeMarket, selectedSector, stockSearch, stockSortBy, stockSortOrder, watchlistOnly]);
+  }, [
+    activeMarket,
+    selectedSector,
+    stockSearch,
+    stockSortBy,
+    stockSortOrder,
+    watchlistOnly,
+    bistScreener,
+  ]);
 
   useEffect(() => {
     setFundPage(1);
@@ -252,6 +295,13 @@ function PiyasalarContent() {
 
   // Stocks data (active when activeMarket is BIST, COMMODITY, CRYPTO, FOREX, INDEX, NASDAQ, or NYSE)
   const isStocksMarket = activeMarket !== 'TEFAS' && activeMarket !== 'ALL';
+  const currentBistCriteria: StockScreenerCriteria = {
+    sector: selectedSector,
+    ...bistScreener,
+  };
+  const isBistScreenerActive =
+    activeMarket === 'BIST' && hasActiveStockScreenerFilter(currentBistCriteria);
+
   const watchlistStockSymbols = React.useMemo(
     () => (watchlistOnly ? watchlistItems.filter((w) => w.assetType !== 'fund').map((w) => w.symbol) : undefined),
     [watchlistOnly, watchlistItems]
@@ -272,8 +322,8 @@ function PiyasalarContent() {
           search: stockSearch,
           sortBy: stockSortBy,
           order: stockSortOrder,
-          page: stockPage,
-          limit: MARKET_PAGE_SIZE,
+          page: isBistScreenerActive ? 1 : stockPage,
+          limit: isBistScreenerActive ? 200 : MARKET_PAGE_SIZE,
           symbols: watchlistStockSymbols && watchlistStockSymbols.length > 0 ? watchlistStockSymbols : undefined,
         }
       : undefined,
@@ -288,21 +338,87 @@ function PiyasalarContent() {
     { enabled: activeMarket === 'ALL' }
   );
 
+  const filteredStocksByWatchlist = stocks.filter(
+    (s) => !watchlistOnly || checkWatchlisted(s.symbol)
+  );
+  const screenedStocks =
+    activeMarket === 'BIST'
+      ? filterStocksByScreener(filteredStocksByWatchlist, currentBistCriteria)
+      : filteredStocksByWatchlist;
   const sortedStocks = sortStockRecords(
-    stocks.filter((s) => !watchlistOnly || checkWatchlisted(s.symbol)),
+    screenedStocks,
     stockSortBy,
     stockSortOrder
   );
 
-  const stockTotalCount = watchlistOnly
-    ? (watchlistStockSymbols?.length === 0 ? 0 : sortedStocks.length)
+  const useClientStockPagination = watchlistOnly || isBistScreenerActive;
+  const stockTotalCount = useClientStockPagination
+    ? (watchlistOnly && watchlistStockSymbols?.length === 0 ? 0 : sortedStocks.length)
     : serverStocksTotal;
-  const stockTotalPages = watchlistOnly
+  const stockTotalPages = useClientStockPagination
     ? paginateRecords(sortedStocks, stockPage, MARKET_PAGE_SIZE).totalPages
     : Math.max(1, serverStocksTotalPages);
-  const visibleStocks = watchlistOnly
+  const visibleStocks = useClientStockPagination
     ? paginateRecords(sortedStocks, stockPage, MARKET_PAGE_SIZE).items
     : sortedStocks;
+
+  const handleSaveBistScreener = () => {
+    const result = saveBistScreenerPreset({
+      name: screenerNameInput,
+      criteria: currentBistCriteria,
+      sortBy: stockSortBy,
+      sortOrder: stockSortOrder,
+    });
+    if (!result.ok) {
+      showToast({ type: 'danger', title: 'Kayıt Başarısız', message: result.error });
+      return;
+    }
+    setSavedBistScreeners(result.presets);
+    setActiveScreenerId(result.saved.id);
+    setScreenerNameInput('');
+    showToast({
+      type: 'success',
+      title: 'BIST Tarayıcı Kaydedildi',
+      message: `"${result.saved.name}" adlı tarayıcı kaydedildi.`,
+    });
+  };
+
+  const handleApplyBistScreener = (preset: SavedBistScreener) => {
+    setSelectedSector(preset.criteria.sector || 'ALL');
+    setBistScreener({
+      peBand: preset.criteria.peBand,
+      dividendTier: preset.criteria.dividendTier,
+      marketCapTier: preset.criteria.marketCapTier,
+      priceChange: preset.criteria.priceChange,
+      minPrice: preset.criteria.minPrice ?? null,
+      maxPrice: preset.criteria.maxPrice ?? null,
+    });
+    setStockSortBy(preset.sortBy);
+    setStockSortOrder(preset.sortOrder);
+    setActiveScreenerId(preset.id);
+    setShowBistScreenerBar(true);
+    setStockPage(1);
+  };
+
+  const handleDeleteBistScreener = (id: string) => {
+    const next = deleteBistScreenerPreset(id);
+    setSavedBistScreeners(next);
+    if (activeScreenerId === id) setActiveScreenerId(null);
+  };
+
+  const handleResetBistScreener = () => {
+    setSelectedSector('ALL');
+    setBistScreener({
+      peBand: 'ALL',
+      dividendTier: 'ALL',
+      marketCapTier: 'ALL',
+      priceChange: 'ALL',
+      minPrice: null,
+      maxPrice: null,
+    });
+    setActiveScreenerId(null);
+    setStockPage(1);
+  };
 
   const toggleStockSort = (column: 'changePercent' | 'price' | 'volume' | 'marketCap') => {
     if (stockSortBy === column) setStockSortOrder(stockSortOrder === 'desc' ? 'asc' : 'desc');
@@ -903,6 +1019,203 @@ function PiyasalarContent() {
                 </button>
               ))}
             </div>
+
+            {activeMarket === 'BIST' && (
+              <div className="pt-2 border-t border-border/50 space-y-2.5" data-testid="bist-screener-panel">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      data-testid="bist-screener-toggle"
+                      aria-expanded={showBistScreenerBar}
+                      onClick={() => setShowBistScreenerBar((v) => !v)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                        showBistScreenerBar || isBistScreenerActive
+                          ? 'bg-accent/15 border-accent text-accent'
+                          : 'bg-bg-secondary border-border text-text-secondary hover:text-text-primary'
+                      }`}
+                    >
+                      <span>BIST Temel & Fiyat Tarayıcısı</span>
+                      {isBistScreenerActive && (
+                        <Badge variant="purple" size="sm">Aktif</Badge>
+                      )}
+                    </button>
+
+                    {savedBistScreeners.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap" data-testid="saved-bist-screeners">
+                        {savedBistScreeners.map((preset) => (
+                          <div
+                            key={preset.id}
+                            className={`inline-flex items-center rounded-lg border text-[11px] ${
+                              activeScreenerId === preset.id
+                                ? 'bg-accent/20 border-accent text-accent font-semibold'
+                                : 'bg-bg-tertiary/60 border-border text-text-secondary'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleApplyBistScreener(preset)}
+                              className="px-2.5 py-1 hover:text-text-primary cursor-pointer"
+                            >
+                              {preset.name}
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`${preset.name} tarayıcısını sil`}
+                              onClick={() => handleDeleteBistScreener(preset.id)}
+                              className="px-1.5 py-1 text-text-muted hover:text-danger cursor-pointer border-l border-border/50"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {isBistScreenerActive && (
+                    <button
+                      type="button"
+                      onClick={handleResetBistScreener}
+                      className="text-xs text-text-muted hover:text-text-primary underline cursor-pointer"
+                    >
+                      Tarayıcıyı Sıfırla
+                    </button>
+                  )}
+                </div>
+
+                {showBistScreenerBar && (
+                  <div className="p-3 rounded-xl bg-bg-secondary/70 border border-border/70 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 text-xs">
+                      <label className="space-y-1">
+                        <span className="text-[11px] font-medium text-text-muted block">F/K Oranı</span>
+                        <select
+                          aria-label="BIST F/K filtresi"
+                          value={bistScreener.peBand}
+                          onChange={(e) => {
+                            setActiveScreenerId(null);
+                            setBistScreener((prev) => ({ ...prev, peBand: e.target.value as StockPeBand }));
+                          }}
+                          className="w-full h-9 rounded-lg border border-border bg-bg-card px-2.5 text-xs text-text-primary"
+                        >
+                          {STOCK_PE_BAND_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="space-y-1">
+                        <span className="text-[11px] font-medium text-text-muted block">Temettü Verimi</span>
+                        <select
+                          aria-label="BIST temettü filtresi"
+                          value={bistScreener.dividendTier}
+                          onChange={(e) => {
+                            setActiveScreenerId(null);
+                            setBistScreener((prev) => ({ ...prev, dividendTier: e.target.value as StockDividendTier }));
+                          }}
+                          className="w-full h-9 rounded-lg border border-border bg-bg-card px-2.5 text-xs text-text-primary"
+                        >
+                          {STOCK_DIVIDEND_TIER_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="space-y-1">
+                        <span className="text-[11px] font-medium text-text-muted block">Piyasa Değeri</span>
+                        <select
+                          aria-label="BIST piyasa değeri filtresi"
+                          value={bistScreener.marketCapTier}
+                          onChange={(e) => {
+                            setActiveScreenerId(null);
+                            setBistScreener((prev) => ({ ...prev, marketCapTier: e.target.value as StockMarketCapTier }));
+                          }}
+                          className="w-full h-9 rounded-lg border border-border bg-bg-card px-2.5 text-xs text-text-primary"
+                        >
+                          {STOCK_MCAP_TIER_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="space-y-1">
+                        <span className="text-[11px] font-medium text-text-muted block">Günlük Fiyat Hareketi</span>
+                        <select
+                          aria-label="BIST fiyat hareketi filtresi"
+                          value={bistScreener.priceChange}
+                          onChange={(e) => {
+                            setActiveScreenerId(null);
+                            setBistScreener((prev) => ({ ...prev, priceChange: e.target.value as StockPriceChangeFilter }));
+                          }}
+                          className="w-full h-9 rounded-lg border border-border bg-bg-card px-2.5 text-xs text-text-primary"
+                        >
+                          {STOCK_PRICE_CHANGE_OPTIONS.map((opt) => (
+                            <option key={opt.id} value={opt.id}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-medium text-text-muted block">Fiyat Aralığı (₺)</span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            placeholder="Min"
+                            aria-label="Minimum hisse fiyatı"
+                            value={bistScreener.minPrice ?? ''}
+                            onChange={(e) => {
+                              setActiveScreenerId(null);
+                              const v = e.target.value === '' ? null : Number(e.target.value);
+                              setBistScreener((prev) => ({ ...prev, minPrice: Number.isFinite(v) ? v : null }));
+                            }}
+                            className="w-full h-9 rounded-lg border border-border bg-bg-card px-2 text-xs text-text-primary"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            step="any"
+                            placeholder="Max"
+                            aria-label="Maksimum hisse fiyatı"
+                            value={bistScreener.maxPrice ?? ''}
+                            onChange={(e) => {
+                              setActiveScreenerId(null);
+                              const v = e.target.value === '' ? null : Number(e.target.value);
+                              setBistScreener((prev) => ({ ...prev, maxPrice: Number.isFinite(v) ? v : null }));
+                            }}
+                            className="w-full h-9 rounded-lg border border-border bg-bg-card px-2 text-xs text-text-primary"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-border/50">
+                      <div className="flex items-center gap-2 flex-1 max-w-md">
+                        <input
+                          type="text"
+                          value={screenerNameInput}
+                          onChange={(e) => setScreenerNameInput(e.target.value)}
+                          placeholder="Tarayıcı adı (ör. Ucuz Temettü)"
+                          aria-label="Kaydedilecek BIST tarayıcı adı"
+                          className="flex-1 h-9 rounded-lg border border-border bg-bg-card px-3 text-xs text-text-primary"
+                        />
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={handleSaveBistScreener}
+                        >
+                          Kaydet
+                        </Button>
+                      </div>
+                      <span className="text-[11px] text-text-muted">
+                        Eşleşen: <strong className="font-mono text-text-primary">{sortedStocks.length}</strong> hisse
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Stocks Content */}
@@ -921,8 +1234,8 @@ function PiyasalarContent() {
                   size="sm"
                   onClick={() => {
                     setStockSearch('');
-                    setSelectedSector('ALL');
                     setWatchlistOnly(false);
+                    handleResetBistScreener();
                   }}
                 >
                   Filtreleri Temizle
