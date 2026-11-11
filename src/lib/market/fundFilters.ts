@@ -235,3 +235,194 @@ export function countActiveFundFilters(criteria: FundFilterCriteria): number {
   if (criteria.watchlistOnly) count += 1;
   return count;
 }
+
+export const TEFAS_FILTER_PRESETS_STORAGE_KEY = 'stockmind.tefas.filterPresets.v1';
+
+export interface SavedTefasFilterCriteria {
+  category: string;
+  riskRange: FundRiskRange;
+  feeTier: FundFeeTier;
+  returnPeriod: FundReturnPeriod;
+  returnThreshold: FundReturnThreshold;
+}
+
+export interface SavedTefasFilterPreset {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  criteria: SavedTefasFilterCriteria;
+  sortBy: FundSortKey;
+  sortOrder: SortDirection;
+}
+
+const VALID_FUND_RISKS = new Set<FundRiskRange>(['ALL', 'LOW', 'MEDIUM', 'HIGH']);
+const VALID_FUND_FEES = new Set<FundFeeTier>(['ALL', 'LOW', 'MID', 'HIGH']);
+const VALID_FUND_PERIODS = new Set<FundReturnPeriod>([
+  'dailyReturn',
+  'monthlyReturn',
+  'return3m',
+  'return6m',
+  'ytdReturn',
+  'yearlyReturn',
+  'return3y',
+  'return5y',
+]);
+const VALID_FUND_THRESHOLDS = new Set<FundReturnThreshold>([
+  'ALL',
+  'POSITIVE',
+  'ABOVE_10',
+  'ABOVE_25',
+  'ABOVE_50',
+  'NEGATIVE',
+]);
+const VALID_FUND_SORTS = new Set<FundSortKey>([
+  'dailyReturn',
+  'monthlyReturn',
+  'return3m',
+  'yearlyReturn',
+  'return3y',
+  'return5y',
+  'price',
+  'riskValue',
+]);
+
+function normalizeTefasPresetCriteria(raw: unknown): SavedTefasFilterCriteria {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      category: 'ALL',
+      riskRange: 'ALL',
+      feeTier: 'ALL',
+      returnPeriod: 'yearlyReturn',
+      returnThreshold: 'ALL',
+    };
+  }
+  const obj = raw as Partial<SavedTefasFilterCriteria>;
+  return {
+    category: typeof obj.category === 'string' && obj.category.trim() ? obj.category.trim() : 'ALL',
+    riskRange: VALID_FUND_RISKS.has(obj.riskRange as FundRiskRange)
+      ? (obj.riskRange as FundRiskRange)
+      : 'ALL',
+    feeTier: VALID_FUND_FEES.has(obj.feeTier as FundFeeTier) ? (obj.feeTier as FundFeeTier) : 'ALL',
+    returnPeriod: VALID_FUND_PERIODS.has(obj.returnPeriod as FundReturnPeriod)
+      ? (obj.returnPeriod as FundReturnPeriod)
+      : 'yearlyReturn',
+    returnThreshold: VALID_FUND_THRESHOLDS.has(obj.returnThreshold as FundReturnThreshold)
+      ? (obj.returnThreshold as FundReturnThreshold)
+      : 'ALL',
+  };
+}
+
+export function readSavedTefasFilterPresets(
+  storage?: Pick<Storage, 'getItem'> | null
+): SavedTefasFilterPreset[] {
+  const store =
+    storage !== undefined
+      ? storage
+      : typeof window !== 'undefined'
+      ? window.localStorage
+      : null;
+  if (!store) return [];
+
+  try {
+    const raw = store.getItem(TEFAS_FILTER_PRESETS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object'))
+      .map((item) => ({
+        id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : `tf-${Date.now()}`,
+        name:
+          typeof item.name === 'string' && item.name.trim()
+            ? item.name.trim().slice(0, 60)
+            : 'Kayıtlı Fon Filtresi',
+        createdAt: typeof item.createdAt === 'string' ? item.createdAt : new Date().toISOString(),
+        updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : new Date().toISOString(),
+        criteria: normalizeTefasPresetCriteria(item.criteria),
+        sortBy: VALID_FUND_SORTS.has(item.sortBy as FundSortKey)
+          ? (item.sortBy as FundSortKey)
+          : 'yearlyReturn',
+        sortOrder: item.sortOrder === 'asc' ? ('asc' as const) : ('desc' as const),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+export function writeSavedTefasFilterPresets(
+  presets: readonly SavedTefasFilterPreset[],
+  storage?: Pick<Storage, 'setItem'> | null
+): SavedTefasFilterPreset[] {
+  const cleaned = presets.slice(0, 25);
+  const store =
+    storage !== undefined
+      ? storage
+      : typeof window !== 'undefined'
+      ? window.localStorage
+      : null;
+  if (store) {
+    try {
+      store.setItem(TEFAS_FILTER_PRESETS_STORAGE_KEY, JSON.stringify(cleaned));
+    } catch {
+      // Ignore storage quota errors
+    }
+  }
+  return cleaned;
+}
+
+export function saveTefasFilterPreset(
+  input: {
+    name: string;
+    criteria: SavedTefasFilterCriteria;
+    sortBy: FundSortKey;
+    sortOrder: SortDirection;
+    id?: string;
+    now?: Date;
+  },
+  storage?: Pick<Storage, 'getItem' | 'setItem'> | null
+):
+  | { ok: true; saved: SavedTefasFilterPreset; presets: SavedTefasFilterPreset[] }
+  | { ok: false; error: string } {
+  const trimmedName = (input.name || '').trim().slice(0, 60);
+  if (!trimmedName) {
+    return { ok: false, error: 'Filtre seti için bir ad girin.' };
+  }
+
+  const nowIso = (input.now ?? new Date()).toISOString();
+  const existing = readSavedTefasFilterPresets(storage);
+  const matchIdx = input.id
+    ? existing.findIndex((p) => p.id === input.id)
+    : existing.findIndex((p) => p.name.toLowerCase() === trimmedName.toLowerCase());
+
+  const entry: SavedTefasFilterPreset = {
+    id:
+      matchIdx >= 0
+        ? existing[matchIdx].id
+        : input.id || `tefas-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name: trimmedName,
+    createdAt: matchIdx >= 0 ? existing[matchIdx].createdAt : nowIso,
+    updatedAt: nowIso,
+    criteria: normalizeTefasPresetCriteria(input.criteria),
+    sortBy: VALID_FUND_SORTS.has(input.sortBy) ? input.sortBy : 'yearlyReturn',
+    sortOrder: input.sortOrder,
+  };
+
+  const next =
+    matchIdx >= 0
+      ? existing.map((item, idx) => (idx === matchIdx ? entry : item))
+      : [entry, ...existing];
+
+  return { ok: true, saved: entry, presets: writeSavedTefasFilterPresets(next, storage) };
+}
+
+export function deleteTefasFilterPreset(
+  id: string,
+  storage?: Pick<Storage, 'getItem' | 'setItem'> | null
+): SavedTefasFilterPreset[] {
+  const existing = readSavedTefasFilterPresets(storage);
+  return writeSavedTefasFilterPresets(
+    existing.filter((p) => p.id !== id),
+    storage
+  );
+}

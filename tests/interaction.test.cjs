@@ -6163,6 +6163,77 @@ test('PIY-08: BIST screener filters by fundamentals & price and persists named p
   assert.match(piySrc, /saved-bist-screeners/);
 });
 
+test('PIY-09: TEFAS filter sets persist category, risk, management fee and return conditions across sessions', () => {
+  const {
+    TEFAS_FILTER_PRESETS_STORAGE_KEY,
+    saveTefasFilterPreset,
+    readSavedTefasFilterPresets,
+    deleteTefasFilterPreset,
+    filterFundsCombinatorially,
+  } = load('src/lib/market/fundFilters.ts');
+
+  const store = new Map();
+  const mockStorage = {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => store.set(k, String(v)),
+  };
+
+  assert.equal(
+    saveTefasFilterPreset({
+      name: '',
+      criteria: {
+        category: 'Hisse Senedi Fonları',
+        riskRange: 'HIGH',
+        feeTier: 'LOW',
+        returnPeriod: 'yearlyReturn',
+        returnThreshold: 'ABOVE_25',
+      },
+      sortBy: 'yearlyReturn',
+      sortOrder: 'desc',
+    }, mockStorage).ok,
+    false
+  );
+
+  const saved = saveTefasFilterPreset({
+    name: 'Düşük Ücretli Yüksek Getiri',
+    criteria: {
+      category: 'Hisse Senedi Fonları',
+      riskRange: 'HIGH',
+      feeTier: 'LOW',
+      returnPeriod: 'yearlyReturn',
+      returnThreshold: 'ABOVE_25',
+    },
+    sortBy: 'yearlyReturn',
+    sortOrder: 'desc',
+    now: new Date('2026-11-11T12:00:00.000Z'),
+  }, mockStorage);
+
+  assert.equal(saved.ok, true);
+  assert.ok(store.has(TEFAS_FILTER_PRESETS_STORAGE_KEY));
+
+  const loadedPresets = readSavedTefasFilterPresets(mockStorage);
+  assert.equal(loadedPresets.length, 1);
+  assert.equal(loadedPresets[0].criteria.category, 'Hisse Senedi Fonları');
+  assert.equal(loadedPresets[0].criteria.riskRange, 'HIGH');
+  assert.equal(loadedPresets[0].criteria.feeTier, 'LOW');
+  assert.equal(loadedPresets[0].criteria.returnThreshold, 'ABOVE_25');
+
+  const sampleFunds = [
+    { code: 'TI2', name: 'İş Hisse', category: 'Hisse Senedi Fonları', price: 12.5, riskValue: 6, managementFee: 0.9, yearlyReturn: 42 },
+    { code: 'HP2', name: 'Pahalı Fon', category: 'Hisse Senedi Fonları', price: 8.2, riskValue: 6, managementFee: 2.5, yearlyReturn: 45 },
+    { code: 'PP1', name: 'Para Piyasası', category: 'Para Piyasası Fonları', price: 3.1, riskValue: 1, managementFee: 0.5, yearlyReturn: 40 },
+  ];
+  const matched = filterFundsCombinatorially(sampleFunds, loadedPresets[0].criteria);
+  assert.deepEqual(Array.from(matched.map((f) => f.code)), ['TI2']);
+
+  assert.equal(deleteTefasFilterPreset(loadedPresets[0].id, mockStorage).length, 0);
+
+  const piySrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/piyasalar/page.tsx'), 'utf8');
+  assert.match(piySrc, /tefas-saved-presets/);
+  assert.match(piySrc, /saveTefasFilterPreset/);
+});
+
+
 
 
 

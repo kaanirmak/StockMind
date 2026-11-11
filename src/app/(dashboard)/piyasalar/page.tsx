@@ -33,13 +33,17 @@ import {
   FUND_RETURN_THRESHOLD_OPTIONS,
   FUND_RISK_RANGE_OPTIONS,
   countActiveFundFilters,
+  deleteTefasFilterPreset,
   filterFundsCombinatorially,
   getFundPeriodReturn,
+  readSavedTefasFilterPresets,
+  saveTefasFilterPreset,
   sortFundsByField,
   type FundFeeTier,
   type FundReturnPeriod,
   type FundReturnThreshold,
   type FundRiskRange,
+  type SavedTefasFilterPreset,
 } from '@/lib/market/fundFilters';
 import {
   DEFAULT_STOCK_SCREENER_CRITERIA,
@@ -134,6 +138,9 @@ function PiyasalarContent() {
   };
   const [fundSortBy, setFundSortBy] = useState<FundSortKey>(initialResolved.fundSortBy);
   const [fundSortOrder, setFundSortOrder] = useState<SortDirection>(initialResolved.fundSortOrder);
+  const [savedTefasPresets, setSavedTefasPresets] = useState<SavedTefasFilterPreset[]>([]);
+  const [activeTefasPresetId, setActiveTefasPresetId] = useState<string | null>(null);
+  const [tefasPresetNameInput, setTefasPresetNameInput] = useState<string>('');
 
   // Shared view mode
   const [watchlistOnly, setWatchlistOnly] = useState<boolean>(initialResolved.watchlistOnly);
@@ -234,10 +241,56 @@ function PiyasalarContent() {
     setFundPage(1);
   };
 
-  // Load saved BIST screeners from storage once on mount
+  // Load saved BIST screeners & TEFAS filter presets from storage once on mount
   useEffect(() => {
     setSavedBistScreeners(readSavedBistScreeners());
+    setSavedTefasPresets(readSavedTefasFilterPresets());
   }, []);
+
+  const handleSaveTefasPreset = () => {
+    const result = saveTefasFilterPreset({
+      name: tefasPresetNameInput,
+      criteria: {
+        category: selectedCategory,
+        riskRange: fundRiskRange,
+        feeTier: fundFeeTier,
+        returnPeriod: fundReturnPeriod,
+        returnThreshold: fundReturnThreshold,
+      },
+      sortBy: fundSortBy,
+      sortOrder: fundSortOrder,
+    });
+    if (!result.ok) {
+      showToast({ type: 'danger', title: 'Kayıt Başarısız', message: result.error });
+      return;
+    }
+    setSavedTefasPresets(result.presets);
+    setActiveTefasPresetId(result.saved.id);
+    setTefasPresetNameInput('');
+    showToast({
+      type: 'success',
+      title: 'TEFAS Filtre Seti Kaydedildi',
+      message: `"${result.saved.name}" adlı fon filtresi kaydedildi.`,
+    });
+  };
+
+  const handleApplyTefasPreset = (preset: SavedTefasFilterPreset) => {
+    setSelectedCategory(preset.criteria.category || 'ALL');
+    setFundRiskRange(preset.criteria.riskRange);
+    setFundFeeTier(preset.criteria.feeTier);
+    setFundReturnPeriod(preset.criteria.returnPeriod);
+    setFundReturnThreshold(preset.criteria.returnThreshold);
+    setFundSortBy(preset.sortBy);
+    setFundSortOrder(preset.sortOrder);
+    setActiveTefasPresetId(preset.id);
+    setFundPage(1);
+  };
+
+  const handleDeleteTefasPreset = (id: string) => {
+    const next = deleteTefasFilterPreset(id);
+    setSavedTefasPresets(next);
+    if (activeTefasPresetId === id) setActiveTefasPresetId(null);
+  };
 
   // Reset pagination to page 1 when filters, search, or sorting change
   useEffect(() => {
@@ -1637,12 +1690,73 @@ function PiyasalarContent() {
               {activeFundFilterCount > 0 && (
                 <button
                   type="button"
-                  onClick={resetFundFilters}
+                  onClick={() => {
+                    setActiveTefasPresetId(null);
+                    resetFundFilters();
+                  }}
                   className="ml-auto text-xs font-semibold text-accent hover:underline cursor-pointer"
                 >
                   Filtreleri Temizle ({activeFundFilterCount})
                 </button>
               )}
+            </div>
+
+            {/* Savable TEFAS Filter Sets (PIY-09) */}
+            <div
+              data-testid="tefas-saved-presets"
+              className="pt-2 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+            >
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-medium text-text-muted mr-1">Kayıtlı Setler:</span>
+                {savedTefasPresets.length === 0 ? (
+                  <span className="text-[11px] text-text-muted">Henüz kayıtlı fon filtresi yok</span>
+                ) : (
+                  savedTefasPresets.map((preset) => (
+                    <div
+                      key={preset.id}
+                      className={`inline-flex items-center rounded-lg border text-[11px] ${
+                        activeTefasPresetId === preset.id
+                          ? 'bg-accent/20 border-accent text-accent font-semibold'
+                          : 'bg-bg-tertiary/60 border-border text-text-secondary'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleApplyTefasPreset(preset)}
+                        className="px-2.5 py-1 hover:text-text-primary cursor-pointer"
+                      >
+                        {preset.name}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`${preset.name} filtre setini sil`}
+                        onClick={() => handleDeleteTefasPreset(preset.id)}
+                        className="px-1.5 py-1 text-text-muted hover:text-danger cursor-pointer border-l border-border/50"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 max-w-xs w-full sm:w-auto">
+                <input
+                  type="text"
+                  value={tefasPresetNameInput}
+                  onChange={(e) => setTefasPresetNameInput(e.target.value)}
+                  placeholder="Filtre seti adı (ör. Düşük Risk)"
+                  aria-label="Kaydedilecek TEFAS filtre seti adı"
+                  className="flex-1 sm:w-44 h-8 rounded-lg border border-border bg-bg-secondary px-2.5 text-xs text-text-primary"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSaveTefasPreset}
+                >
+                  Seti Kaydet
+                </Button>
+              </div>
             </div>
           </div>
 
