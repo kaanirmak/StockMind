@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { InstrumentLogo, StateView } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { formatCurrency, formatPercent, getPnLColor, getPnLSign } from '@/lib/utils/format';
+import { formatContributionPoints } from '@/lib/portfolio/dailyAttribution';
 import {
   extractDailyContributors,
   selectTopImportantEvent,
@@ -25,6 +26,14 @@ export default function DailyPulseRow() {
     () => extractDailyContributors(summary.holdings, 4),
     [summary.holdings],
   );
+
+  const contributionPointsBySymbol = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const entry of summary.dailyAttribution?.allContributors || []) {
+      map.set(`${entry.assetType}-${entry.symbol.toUpperCase()}`, entry.contributionPercentPoints);
+    }
+    return map;
+  }, [summary.dailyAttribution]);
 
   const portfolioSymbolsKey = useMemo(
     () => summary.holdings.map((h) => h.symbol.toUpperCase()).slice(0, 20).join(','),
@@ -145,6 +154,13 @@ export default function DailyPulseRow() {
                     {getPnLSign(item.dailyChangePercent)}
                     {formatPercent(Math.abs(item.dailyChangePercent))}
                   </span>
+                  {contributionPointsBySymbol.has(`${item.assetType}-${item.symbol.toUpperCase()}`) && (
+                    <span className="text-[10px] font-mono text-text-muted block">
+                      {formatContributionPoints(
+                        contributionPointsBySymbol.get(`${item.assetType}-${item.symbol.toUpperCase()}`) || 0
+                      )}
+                    </span>
+                  )}
                 </div>
               </Link>
             ))}

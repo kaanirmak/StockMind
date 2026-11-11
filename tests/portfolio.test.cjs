@@ -1435,6 +1435,112 @@ test('POR-06: end-to-end Excel and CSV export -> re-import round-trip preserves 
   assert.match(portfolioSrc, /exportTransactionsToExcel/);
 });
 
+test('POR-07: daily return attribution splits gains/losses in TRY and percentage points and reconciles with daily PnL', () => {
+  const { formatContributionPoints } = loadModule('src/lib/portfolio/dailyAttribution.ts');
+
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date());
+  const transactions = [
+    // Opening position 1: 10 THYAO bought earlier @ 100, prev close 100, today 115 (+15% => +150 TL)
+    {
+      id: 'attr-1',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 10,
+      price: 100,
+      currency: 'TRY',
+      commission: 0,
+      transactionDate: '2026-01-10',
+      exchange: 'BIST',
+      notes: null,
+      createdAt: '2026-01-10T10:00:00Z',
+    },
+    // Opening position 2: 20 ASELS bought earlier @ 50, prev close 50, today 45 (-10% => -100 TL)
+    {
+      id: 'attr-2',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'ASELS',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 20,
+      price: 50,
+      currency: 'TRY',
+      commission: 0,
+      transactionDate: '2026-01-10',
+      exchange: 'BIST',
+      notes: null,
+      createdAt: '2026-01-10T10:00:00Z',
+    },
+    // Intraday position opened today: 10 EREGL bought @ 40, today 42 (+20 TL intraday gain)
+    {
+      id: 'attr-3',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'EREGL',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 10,
+      price: 40,
+      currency: 'TRY',
+      commission: 0,
+      transactionDate: today,
+      exchange: 'BIST',
+      notes: null,
+      createdAt: `${today}T10:00:00Z`,
+    },
+  ];
+
+  // Opening base = 10*100 + 20*50 = 2000 TRY
+  // Gains: THYAO (+150 -> +7.50 pts), EREGL (+20 -> +1.00 pts), ASELS (-100 -> -5.00 pts)
+  // Total daily PnL = +70 TRY (+3.50%)
+  const livePrices = {
+    THYAO: { price: 115, changePercent: 15 },
+    ASELS: { price: 45, changePercent: -10 },
+    EREGL: { price: 42, changePercent: 5 },
+  };
+
+  const summary = calculatePortfolioSummary(transactions, livePrices);
+  const attribution = summary.dailyAttribution;
+
+  assert.ok(attribution);
+  assert.equal(summary.dailyPnL, 70);
+  assert.equal(summary.dailyPnLPercent, 3.5);
+  assert.equal(attribution.reconciled, true);
+  assert.equal(attribution.totalContributionTry, 70);
+  assert.equal(attribution.totalContributionPercentPoints, 3.5);
+  assert.equal(attribution.reconciliationDiffTry, 0);
+  assert.equal(attribution.reconciliationDiffPercentPoints, 0);
+
+  const positives = Array.from(attribution.positiveContributors).map((x) => ({ ...x }));
+  const negatives = Array.from(attribution.negativeContributors).map((x) => ({ ...x }));
+
+  assert.equal(positives.length, 2);
+  assert.equal(positives[0].symbol, 'THYAO');
+  assert.equal(positives[0].contributionTry, 150);
+  assert.equal(positives[0].contributionPercentPoints, 7.5);
+  assert.equal(positives[1].symbol, 'EREGL');
+  assert.equal(positives[1].contributionTry, 20);
+  assert.equal(positives[1].contributionPercentPoints, 1);
+
+  assert.equal(negatives.length, 1);
+  assert.equal(negatives[0].symbol, 'ASELS');
+  assert.equal(negatives[0].contributionTry, -100);
+  assert.equal(negatives[0].contributionPercentPoints, -5);
+
+  assert.equal(formatContributionPoints(7.5), '+7,50 puan');
+  assert.equal(formatContributionPoints(-5), '-5,00 puan');
+
+  const reportsSrc = fs.readFileSync(
+    path.join(root, 'src/app/(dashboard)/reports/page.tsx'),
+    'utf8'
+  );
+  assert.match(reportsSrc, /DailyAttributionCard/);
+});
+
+
 
 
 

@@ -2,6 +2,10 @@ import { palette } from '@/theme/palette';
 import { Holding, MissingPositionImpact, PortfolioSummary, Transaction, ValuationStatus } from '@/types/portfolio';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { cleanSymbol, normalizeSymbolKey } from '@/lib/utils/symbol';
+import {
+  buildDailyAttributionReport,
+  type RawDailyAttributionInputItem,
+} from '@/lib/portfolio/dailyAttribution';
 
 export { cleanSymbol, normalizeSymbolKey };
 
@@ -529,12 +533,26 @@ export function calculatePortfolioSummary(
   const previousRate = liveUsdTry && fxChange > -100 ? liveUsdTry / (1 + fxChange / 100) : liveUsdTry || 1;
   let dailyPnL = 0;
   let openingValue = 0;
+  const rawAttributionItems: RawDailyAttributionInputItem[] = [];
   const keys = new Set([...currentByKey.keys(), ...openingByKey.keys(), ...flowByKey.keys()]);
   for (const key of keys) {
     const current = currentByKey.get(key);
     const old = openingByKey.get(key);
     const holding = current || old;
-    if (!holding) { dailyPnL += flowByKey.get(key) || 0; continue; }
+    if (!holding) {
+      const flowGain = flowByKey.get(key) || 0;
+      dailyPnL += flowGain;
+      const sampleTx = todayTransactions.find((t) => keyOf(t.symbol) === key);
+      rawAttributionItems.push({
+        symbol: sampleTx?.symbol || key.split(':').pop() || key,
+        assetType: sampleTx?.assetType || 'stock',
+        rawGainTry: flowGain,
+        openingBaseTry: 0,
+        currentValueTry: 0,
+        assetDailyReturnPercent: 0,
+      });
+      continue;
+    }
     const quote = getCurrentAssetPrice(holding.symbol, holding.assetType, livePrices, holding.originalPrice || holding.currentPrice);
     const priorNative = quote.changePercent > -100 ? quote.price / (1 + quote.changePercent / 100) : quote.price;
     const priorTry = priorNative * (holding.originalCurrency === 'USD' ? previousRate : 1);
@@ -542,19 +560,36 @@ export function calculatePortfolioSummary(
     const gain = (current?.currentValue || 0) - base + (flowByKey.get(key) || 0);
     openingValue += base;
     dailyPnL += gain;
+    const boughtCapital = todayTransactions.filter(t => keyOf(t.symbol) === key && t.transactionType === 'buy')
+      .reduce((sum, t) => sum + (t.quantity * t.price + (t.commission || 0)) *
+        (holding.originalCurrency === 'USD' ? (t.exchangeRate && t.exchangeRate > 0 ? t.exchangeRate : liveUsdTry || 1) : 1), 0);
+    const positionBase = base > 0 ? base : boughtCapital;
+    const assetDailyReturnPercent = positionBase > 0 ? (gain / positionBase) * 100 : 0;
+
+    rawAttributionItems.push({
+      symbol: holding.symbol,
+      assetType: holding.assetType,
+      rawGainTry: gain,
+      openingBaseTry: positionBase,
+      currentValueTry: current?.currentValue || 0,
+      assetDailyReturnPercent,
+    });
+
     if (current) {
       current.dailyPnL = Number(gain.toFixed(2));
-      const boughtCapital = todayTransactions.filter(t => keyOf(t.symbol) === key && t.transactionType === 'buy')
-        .reduce((sum, t) => sum + (t.quantity * t.price + (t.commission || 0)) *
-          (holding.originalCurrency === 'USD' ? (t.exchangeRate && t.exchangeRate > 0 ? t.exchangeRate : liveUsdTry || 1) : 1), 0);
-      const positionBase = base > 0 ? base : boughtCapital;
-      current.dailyReturnPercent = positionBase > 0 ? gain / positionBase * 100 : 0;
+      current.dailyReturnPercent = assetDailyReturnPercent;
       current.previousClosePrice = priorTry;
       current.dailyChangePercent = priorTry > 0 ? (current.currentPrice / priorTry - 1) * 100 : 0;
     }
   }
   const dailyBase = openingValue > 0 ? openingValue : todayBuyCapital;
   const dailyPnLPercent = dailyBase > 0 ? (dailyPnL / dailyBase) * 100 : 0;
+  const dailyAttribution = buildDailyAttributionReport({
+    items: rawAttributionItems,
+    dailyBaseTry: dailyBase,
+    totalDailyPnL: dailyPnL,
+    totalDailyReturnPercent: dailyPnLPercent,
+  });
 
   // Turnover metrics
   const effectiveUsdRate = liveUsdTry || 1.0;
@@ -599,6 +634,7 @@ export function calculatePortfolioSummary(
     feesTotal: Number(feesTotal.toFixed(2)),
     dailyPnL: Number(dailyPnL.toFixed(2)),
     dailyPnLPercent: Number(dailyPnLPercent.toFixed(2)),
+    dailyAttribution,
     totalVolume: Number(totalVolume.toFixed(2)),
     buyVolume: Number(buyVolume.toFixed(2)),
     sellVolume: Number(sellVolume.toFixed(2)),

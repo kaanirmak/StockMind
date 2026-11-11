@@ -70,7 +70,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | POR-04 | P1 | Hazır aracı kurum ekstre şablonları ekle | Seçilen ilk ekstre biçimleri örnek dosyalarla tanınır ve eşlenen sütunlar önizlemede gösterilir. | ◐ |
 | POR-05 | P1 | Dosya aktarım önizlemesini güçlendir | Geçerli, hatalı ve mükerrer satır sayıları görünür. Hatalı satırın nedeni kullanıcıya bildirilir. | ◐ |
 | POR-06 | P1 | Excel/CSV aktarma ve geri yüklemeyi uçtan uca doğrula | Aynı örnek veri dışa aktarılıp tekrar içe alındığında tutarlar ve tarihler korunur. | ◐ |
-| POR-07 | P1 | Günlük getiriyi varlık katkısına ayır | En büyük artı ve eksi katkılar TL ve yüzde puanla listelenir. Toplam katkı günlük portföy sonucuyla uzlaşır. | ☐ |
+| POR-07 | P1 | Günlük getiriyi varlık katkısına ayır | En büyük artı ve eksi katkılar TL ve yüzde puanla listelenir. Toplam katkı günlük portföy sonucuyla uzlaşır. | ◐ |
 | POR-08 | P1 | Kâr, temettü, komisyon ve kur etkisini ayır | Aynı seçili dönemde gerçekleşmiş kâr, açık pozisyon sonucu, nakit olayları, ücret ve kur etkisi görülebilir. | ☐ |
 | POR-09 | P2 | Referans endeks karşılaştırması ekle | Portföy ile seçili referans aynı dönem ve para biriminde, aynı başlangıç seviyesinden karşılaştırılır. | ☐ |
 | POR-10 | P2 | Portföy değerini ve net yatırılan tutarı grafikle göster | Geçmiş değer serisi ile para giriş ve çıkışları ayrı çizilir. Eksik tarihçenin kapsamı belirtilir. | ☐ |

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Button, Badge, useToast, InstrumentLogo } from '@/components/ui';
+import { DailyAttributionCard } from '@/components/portfolio/DailyAttributionCard';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
@@ -402,6 +403,9 @@ export default function ReportsPage() {
               </span>
             </div>
           </div>
+
+          {/* Daily Return Asset Attribution (POR-07) */}
+          <DailyAttributionCard attribution={summary.dailyAttribution} />
 
           {/* Detailed Holdings Statement */}
           <div className="space-y-3">

@@ -1,6 +1,7 @@
 // Portfolio Types
 
 import type { Exchange } from './stock';
+import type { DailyAttributionReport } from '@/lib/portfolio/dailyAttribution';
 
 export type AssetType = 'stock' | 'fund';
 export type TransactionType = 'buy' | 'sell' | 'dividend' | 'split' | 'fee';
@@ -103,6 +104,7 @@ export interface PortfolioSummary {
   unrealizedPnLPercent: number;
   dailyPnL: number;
   dailyPnLPercent: number;
+  dailyAttribution?: DailyAttributionReport;
   fxPnL?: number; // Net portfolio currency impact (FIN-04)
   assetPnL?: number; // Net asset price change impact (FIN-04)
   dividendsTotal?: number; // Total dividend returns (FIN-06)
