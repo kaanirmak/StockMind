@@ -9,7 +9,8 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
-import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal } from '@/components/ui';
+import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal, PriceStatusBadge } from '@/components/ui';
+import { classifyFundPriceStatus, classifyStockPriceStatus } from '@/lib/market/priceStatus';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatDate, formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
@@ -313,6 +314,8 @@ function PiyasalarContent() {
     const curr = (item.currency as string) === 'TRY' ? '₺' : (item.currency as string) === 'EUR' ? '€' : '$';
     const isStarred = checkWatchlisted(item.symbol);
     const isIndexItem = item.isIndex || item.exchange === 'INDEX';
+    const statusInfo = classifyStockPriceStatus(item);
+    const hasObservedPrice = statusInfo.status !== 'missing';
 
     return (
       <div
@@ -331,24 +334,30 @@ function PiyasalarContent() {
           </div>
         </Link>
 
-        <div className="text-right shrink-0">
-          <span className="font-mono font-bold text-xs sm:text-sm text-text-primary block">
-            {(() => {
-              const p = Number(item.price ?? item.basePrice ?? 0);
-              const validP = Number.isFinite(p) ? p : 0;
-              if (isIndexItem) {
-                return `${validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`;
-              }
-              return `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
-            })()}
-          </span>
-          <span
-            className={`font-mono text-[10px] sm:text-xs font-bold px-1.5 py-0.2 rounded ${
-              isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'
-            }`}
-          >
-            {isPositive ? '+' : ''}{Number(item.changePercent || 0).toFixed(2)}%
-          </span>
+        <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+          {hasObservedPrice ? (
+            <>
+              <span className="font-mono font-bold text-xs sm:text-sm text-text-primary block">
+                {(() => {
+                  const validP = item.price as number;
+                  if (isIndexItem) {
+                    return `${validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`;
+                  }
+                  return `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+                })()}
+              </span>
+              <span
+                className={`font-mono text-[10px] sm:text-xs font-bold px-1.5 py-0.2 rounded ${
+                  isPositive ? 'text-success bg-success/10' : 'text-danger bg-danger/10'
+                }`}
+              >
+                {isPositive ? '+' : ''}{Number(item.changePercent || 0).toFixed(2)}%
+              </span>
+            </>
+          ) : (
+            <span className="text-xs font-medium text-text-muted">Fiyat yok</span>
+          )}
+          <PriceStatusBadge statusInfo={statusInfo} />
         </div>
 
         <button
@@ -778,28 +787,41 @@ function PiyasalarContent() {
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
                             {(() => {
-                              const p = Number(stock.price ?? stock.basePrice ?? 0);
-                              const validP = Number.isFinite(p) ? p : 0;
+                              const statusInfo = classifyStockPriceStatus(stock);
+                              if (statusInfo.status === 'missing') {
+                                return (
+                                  <div className="flex flex-col items-end gap-0.5 font-sans">
+                                    <span className="text-xs font-medium text-text-muted">Fiyat yok</span>
+                                    <PriceStatusBadge statusInfo={statusInfo} />
+                                  </div>
+                                );
+                              }
+                              const validP = stock.price as number;
                               if (activeMarket === 'INDEX' || stock.isIndex) {
                                 return (
-                                  <div className="flex flex-col items-end">
+                                  <div className="flex flex-col items-end gap-0.5">
                                     <span>{validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     <span className="text-[10px] text-text-muted font-normal font-sans">Puan</span>
+                                    <PriceStatusBadge statusInfo={statusInfo} />
                                   </div>
                                 );
                               }
                               if (activeMarket === 'COMMODITY') {
                                 return (
-                                  <div className="flex flex-col items-end">
+                                  <div className="flex flex-col items-end gap-0.5">
                                     <span>{curr}{validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     {stock.unit && <span className="text-[10px] text-text-muted font-normal font-sans">{stock.unit}</span>}
+                                    <PriceStatusBadge statusInfo={statusInfo} />
                                   </div>
                                 );
                               }
                               return (
-                                <span>
-                                  {curr}{validP < 1 ? (validP < 0.001 ? validP.toFixed(6) : validP.toFixed(4)) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}
-                                </span>
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span>
+                                    {curr}{validP < 1 ? (validP < 0.001 ? validP.toFixed(6) : validP.toFixed(4)) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}
+                                  </span>
+                                  <PriceStatusBadge statusInfo={statusInfo} />
+                                </div>
                               );
                             })()}
                           </td>
@@ -881,23 +903,29 @@ function PiyasalarContent() {
                       </button>
                     </div>
                     <Link href={`/stocks/${stock.symbol}`}>
-                      <div className="pt-2 border-t border-border/50 flex items-center justify-between">
+                      <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2">
                         <div>
-                          <span className="text-[10px] text-text-muted block">
+                          <span className="text-[10px] text-text-muted block mb-0.5">
                             {stock.isIndex || activeMarket === 'INDEX' ? 'Endeks Değeri' : 'Son Fiyat'}
                           </span>
-                          <span className="text-sm font-bold font-mono text-text-primary">
-                            {(() => {
-                              const p = Number(stock.price ?? stock.basePrice ?? 0);
-                              const validP = Number.isFinite(p) ? p : 0;
-                              if (stock.isIndex || activeMarket === 'INDEX') {
-                                return `${validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`;
-                              }
-                              return `${curr}${validP < 1 ? validP.toFixed(4) : validP.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}`;
-                            })()}
-                          </span>
+                          {(() => {
+                            const statusInfo = classifyStockPriceStatus(stock);
+                            const hasObservedPrice = statusInfo.status !== 'missing';
+                            return (
+                              <div className="space-y-1">
+                                <span className="text-sm font-bold font-mono text-text-primary block">
+                                  {!hasObservedPrice
+                                    ? 'Fiyat yok'
+                                    : stock.isIndex || activeMarket === 'INDEX'
+                                      ? `${(stock.price as number).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Pts`
+                                      : `${curr}${(stock.price as number) < 1 ? (stock.price as number).toFixed(4) : (stock.price as number).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: activeMarket === 'FOREX' ? 4 : 2 })}`}
+                                </span>
+                                <PriceStatusBadge statusInfo={statusInfo} />
+                              </div>
+                            );
+                          })()}
                           {stock.unit && (
-                            <span className="text-[10px] text-text-muted block font-sans">{stock.unit}</span>
+                            <span className="text-[10px] text-text-muted block font-sans mt-0.5">{stock.unit}</span>
                           )}
                         </div>
                         <div className="text-right">
@@ -1036,10 +1064,15 @@ function PiyasalarContent() {
                             </Link>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
-                            {fund.price == null ? 'Fiyat yok' : `₺${fund.price.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`}
-                            {fund.price != null && <span className="block font-sans text-[10px] font-normal text-text-muted">
-                              {fund.navDate ? <time dateTime={fund.navDate} title="TEFAS değerleme tarihi">{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time> : 'Tarih bilinmiyor'}
-                            </span>}
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span>{fund.price == null ? 'Fiyat yok' : `₺${fund.price.toLocaleString('tr-TR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`}</span>
+                              <PriceStatusBadge statusInfo={classifyFundPriceStatus(fund)} />
+                              {fund.price != null && (
+                                <span className="font-sans text-[10px] font-normal text-text-muted">
+                                  {fund.navDate ? <time dateTime={fund.navDate} title="TEFAS değerleme tarihi">{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time> : 'Tarih bilinmiyor'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-lg ${dailyPos ? 'text-success bg-success/10' : 'text-danger bg-danger/10'}`}>
@@ -1103,7 +1136,10 @@ function PiyasalarContent() {
                         <div className="min-w-0">
                           <h4 className="font-bold text-text-primary group-hover:text-accent transition-colors text-sm truncate">{fund.code}</h4>
                           <span className={`font-mono text-xs font-semibold ${dailyPos ? 'text-success' : 'text-danger'}`}>{fund.price == null ? 'Fiyat yok' : `${dailyPos ? '+' : ''}${fund.dailyReturn.toFixed(2)}%`}</span>
-                          {fund.price != null && <span className="block text-[10px] text-text-muted">
+                          <div className="mt-1">
+                            <PriceStatusBadge statusInfo={classifyFundPriceStatus(fund)} />
+                          </div>
+                          {fund.price != null && <span className="block text-[10px] text-text-muted mt-0.5">
                             {fund.navDate ? <>Değerleme <time dateTime={fund.navDate}>{formatDate(fund.navDate, 'tr-TR', { timeZone: 'UTC' })}</time></> : 'Değerleme tarihi bilinmiyor'}
                           </span>}
                         </div>

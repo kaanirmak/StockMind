@@ -17,7 +17,7 @@ Durum işaretleri ☐ sırada, ◐ yerelde doğrulandı, ☑ canlıda doğruland
 |---|---|---|---|---|
 | VER-01 | P0 | Piyasa özetindeki sabit fiyatları kaldır | Sağlayıcı kesintisi testinde BIST 100, kur, altın ve diğer kartlar kaynaklı son değeri veya veri yok durumunu döndürür. | ◐ |
 | VER-02 | P0 | Fiyat kaynağını ve gözlem zamanını API’ye ekle | Her geçerli fiyat sağlayıcı, veri zamanı ve alınma zamanı alanlarını taşır. (`observation`: `source`, `asOf`, `fetchedAt` hisse, endeks, döviz, emtia, kripto, TEFAS ve geçmiş/gösterge API’lerinde doğrulandı.) | ◐ |
-| VER-03 | P0 | Fiyat durumlarını arayüzde tutarlı göster | Güncel, gecikmeli, son kapanış, eski ve eksik değerler kartta ve detayda ayrı etiketlenir. | ☐ |
+| VER-03 | P0 | Fiyat durumlarını arayüzde tutarlı göster | Güncel, gecikmeli, son kapanış, eski ve eksik değerler kartta ve detayda ayrı etiketlenir. (`classifyPriceStatus` ve `PriceStatusBadge` ile piyasa özeti, piyasalar, hisse ve fon detayında 5 durum doğrulandı.) | ◐ |
 | VER-04 | P0 | Son doğrulanmış fiyatı sakla | Sağlayıcı kesilince son gerçek değer özgün zaman damgasıyla görünür. İlk veri yoksa boş durum gösterilir. | ☐ |
 | VER-05 | P0 | Eksik fiyatın portföy toplamına etkisini göster | Kısmi değerleme etiketlenir ve fiyatı eksik pozisyonlar listelenir. | ☐ |
 | VER-06 | P0 | Eksik veya eski fiyatla alarm tetiklenmesini önle | Kaynak ve tazelik kontrolünden geçmeyen fiyat için alarm ertelenir ve nedeni kaydedilir. | ☐ |

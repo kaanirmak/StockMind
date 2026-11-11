@@ -9,7 +9,8 @@ import { useStockDetail, useStockHistory, useStockIndicators } from '@/hooks/use
 import { CandlestickChart } from '@/components/stocks/CandlestickChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
 import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
-import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
+import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
+import { classifyStockPriceStatus } from '@/lib/market/priceStatus';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { BROKERS, Broker } from '@/lib/data/brokers';
@@ -69,7 +70,9 @@ export default function StockDetailPage({
   const isForexAsset = stock?.exchange === 'FOREX';
 
   const currSymbol = isIndexAsset ? '' : (stock?.currency === 'TRY' ? '₺' : stock?.currency === 'EUR' ? '€' : '$');
-  const currentPrice = stock?.price || (candles.length > 0 ? candles[candles.length - 1].close : 0);
+  const priceStatus = classifyStockPriceStatus(stock);
+  const observedLivePrice = priceStatus.status !== 'missing' ? stock!.price! : null;
+  const currentPrice = observedLivePrice || (candles.length > 0 ? candles[candles.length - 1].close : 0);
   const isPositive = (stock?.changePercent || 0) >= 0;
   const isWatchlisted = checkWatchlisted(symbol);
 
@@ -257,34 +260,45 @@ export default function StockDetailPage({
 
           {/* Prominent Price & Clean Percentage */}
           <div className="flex flex-wrap items-baseline gap-2 sm:gap-2.5 mt-2">
-            <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
-              {isIndexAsset ? (
-                <>
-                  {currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  <span className="text-base sm:text-lg font-bold text-text-muted ml-2 font-sans">Puan</span>
-                </>
-              ) : (
-                <>
-                  {currSymbol}
-                  {currentPrice < 1
-                    ? (currentPrice < 0.001 ? currentPrice.toFixed(6) : currentPrice.toFixed(4))
-                    : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: isForexAsset ? 4 : 2 })}
-                </>
-              )}
-            </span>
-            <span
-              className={`text-base sm:text-lg font-bold font-mono ${
-                isPositive ? 'text-success' : 'text-danger'
-              }`}
-            >
-              {isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
-            </span>
+            {currentPrice <= 0 && !stockLoading ? (
+              <span className="text-2xl sm:text-3xl font-bold text-text-muted">Fiyat alınamadı</span>
+            ) : (
+              <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
+                {isIndexAsset ? (
+                  <>
+                    {currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className="text-base sm:text-lg font-bold text-text-muted ml-2 font-sans">Puan</span>
+                  </>
+                ) : (
+                  <>
+                    {currSymbol}
+                    {currentPrice < 1
+                      ? (currentPrice < 0.001 ? currentPrice.toFixed(6) : currentPrice.toFixed(4))
+                      : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: isForexAsset ? 4 : 2 })}
+                  </>
+                )}
+              </span>
+            )}
+            {observedLivePrice !== null && (
+              <span
+                className={`text-base sm:text-lg font-bold font-mono ${
+                  isPositive ? 'text-success' : 'text-danger'
+                }`}
+              >
+                {isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
+              </span>
+            )}
             {isCommodityAsset && stock?.unit && (
               <span className="text-xs sm:text-sm font-semibold text-text-muted font-sans ml-1">
                 ({stock.unit})
               </span>
             )}
           </div>
+          {!stockLoading && (
+            <div className="mt-2">
+              <PriceStatusBadge statusInfo={priceStatus} showMeta />
+            </div>
+          )}
         </div>
 
         {/* Desktop Quick Actions */}

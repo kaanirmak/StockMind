@@ -3,7 +3,8 @@
 import React, { useState, use } from 'react';
 import Link from 'next/link';
 import { useFundDetail } from '@/hooks/useFunds';
-import { Badge, Button, Modal, Input, useToast, InstrumentLogo } from '@/components/ui';
+import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
+import { classifyFundPriceStatus } from '@/lib/market/priceStatus';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatDate } from '@/lib/utils/format';
@@ -127,6 +128,7 @@ export default function FundDetailPage({
   }
 
   const isDailyPos = fund.dailyReturn >= 0;
+  const priceStatus = classifyFundPriceStatus(fund);
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-fade-in pb-32 sm:pb-16">
@@ -209,7 +211,7 @@ export default function FundDetailPage({
 
         {/* Priority Price & Daily Return Banner */}
         <div className="flex flex-wrap items-baseline justify-between gap-3 pt-3 border-t border-border/60">
-          <div className="flex items-baseline gap-3">
+          <div className="flex flex-wrap items-baseline gap-3">
             <span className="text-2xl sm:text-3xl font-black font-mono text-text-primary">
               {fund.price === null ? 'Fiyat alınamadı' : `₺${fund.price.toFixed(4)}`}
             </span>
@@ -221,6 +223,7 @@ export default function FundDetailPage({
               {isDailyPos ? '+' : ''}
               %{fund.dailyReturn.toFixed(2)} (Günlük)
             </span>}
+            <PriceStatusBadge statusInfo={priceStatus} />
           </div>
 
           {fund.price !== null && <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-text-muted">

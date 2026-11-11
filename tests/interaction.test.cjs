@@ -1197,3 +1197,126 @@ test('VER-02: valid stock, index, commodity, forex, crypto, fund, and history AP
   assert.equal(indicatorsRes.body.observation.asOf, '2026-11-11');
   assert.equal(indicatorsRes.body.quoteObservation.source, 'TradingView');
 });
+
+test('VER-03: classifyPriceStatus consistently separates current, delayed, last-close, stale, and missing quotes', () => {
+  const {
+    classifyPriceStatus,
+    classifyStockPriceStatus,
+    classifyFundPriceStatus,
+  } = load('src/lib/market/priceStatus.ts');
+
+  // Wednesday 2026-11-11 12:00:00+03:00 (09:00:00Z) — BIST session open (10:00-18:10 TR)
+  const bistOpenNow = new Date('2026-11-11T09:00:00.000Z');
+  // Saturday 2026-11-14 12:00:00+03:00 (09:00:00Z) — BIST closed
+  const weekendNow = new Date('2026-11-14T09:00:00.000Z');
+
+  // 1. Güncel (fresh open-session observation <= 5m)
+  const currentRes = classifyPriceStatus({
+    price: 310.5,
+    exchange: 'BIST',
+    now: bistOpenNow,
+    observation: {
+      source: 'TradingView',
+      asOf: '2026-11-11T08:58:00.000Z',
+      fetchedAt: '2026-11-11T08:59:30.000Z',
+      changePercent: 1.2,
+    },
+  });
+  assert.equal(currentRes.status, 'current');
+  assert.equal(currentRes.label, 'Güncel');
+
+  // 2. Gecikmeli (open-session observation 15m old)
+  const delayedRes = classifyPriceStatus({
+    price: 310.5,
+    exchange: 'BIST',
+    now: bistOpenNow,
+    observation: {
+      source: 'Yahoo Finance',
+      asOf: '2026-11-11T08:45:00.000Z',
+      fetchedAt: '2026-11-11T08:59:50.000Z',
+      changePercent: 1.2,
+    },
+  });
+  assert.equal(delayedRes.status, 'delayed');
+  assert.equal(delayedRes.label, 'Gecikmeli');
+
+  // 3. Son kapanış (closed BIST weekend session with Friday close & freshly fetched)
+  const lastCloseRes = classifyPriceStatus({
+    price: 310.5,
+    exchange: 'BIST',
+    now: weekendNow,
+    observation: {
+      source: 'TradingView',
+      asOf: '2026-11-13T15:05:00.000Z',
+      fetchedAt: '2026-11-14T08:50:00.000Z',
+      changePercent: 0.4,
+    },
+  });
+  assert.equal(lastCloseRes.status, 'last-close');
+  assert.equal(lastCloseRes.label, 'Son kapanış');
+
+  // 4. Eski (cached fallback or > 6h open session / > 4 days TEFAS)
+  const lastKnownRes = classifyPriceStatus({
+    price: 310.5,
+    exchange: 'BIST',
+    isLastKnown: true,
+    now: bistOpenNow,
+    observation: {
+      source: 'TradingView',
+      asOf: '2026-11-11T08:58:00.000Z',
+      fetchedAt: '2026-11-11T08:58:00.000Z',
+      changePercent: 1.2,
+    },
+  });
+  assert.equal(lastKnownRes.status, 'stale');
+  assert.equal(lastKnownRes.label, 'Eski');
+
+  const staleOpenRes = classifyPriceStatus({
+    price: 90000,
+    exchange: 'CRYPTO',
+    now: bistOpenNow,
+    observation: {
+      source: 'TradingView / Binance',
+      asOf: '2026-11-11T01:00:00.000Z',
+      fetchedAt: '2026-11-11T01:00:00.000Z',
+      changePercent: 0.5,
+    },
+  });
+  assert.equal(staleOpenRes.status, 'stale');
+  assert.equal(staleOpenRes.label, 'Eski');
+
+  // 5. Eksik (missing price or missing observation)
+  const missingPriceRes = classifyStockPriceStatus({ price: null, exchange: 'BIST', observation: null }, bistOpenNow);
+  assert.equal(missingPriceRes.status, 'missing');
+  assert.equal(missingPriceRes.label, 'Eksik');
+
+  const unverifiedPriceRes = classifyStockPriceStatus({ price: 100, exchange: 'BIST' }, bistOpenNow);
+  assert.equal(unverifiedPriceRes.status, 'missing');
+  assert.equal(unverifiedPriceRes.label, 'Eksik');
+
+  // TEFAS fund valuation day states
+  const tefasToday = classifyFundPriceStatus(
+    { price: 0.4512, navDate: '2026-11-11', lastSyncAt: '2026-11-11T08:30:00.000Z', dailyReturn: 1.1 },
+    bistOpenNow
+  );
+  assert.equal(tefasToday.status, 'current');
+  assert.equal(tefasToday.label, 'Güncel');
+
+  const tefasPrevDay = classifyFundPriceStatus(
+    { price: 0.4512, navDate: '2026-11-10', lastSyncAt: '2026-11-11T08:30:00.000Z', dailyReturn: 1.1 },
+    bistOpenNow
+  );
+  assert.equal(tefasPrevDay.status, 'last-close');
+  assert.equal(tefasPrevDay.label, 'Son kapanış');
+
+  const tefasOld = classifyFundPriceStatus(
+    { price: 0.4512, navDate: '2026-11-01', lastSyncAt: '2026-11-11T08:30:00.000Z', dailyReturn: 1.1 },
+    bistOpenNow
+  );
+  assert.equal(tefasOld.status, 'stale');
+  assert.equal(tefasOld.label, 'Eski');
+
+  const tefasMissing = classifyFundPriceStatus({ price: null, navDate: null }, bistOpenNow);
+  assert.equal(tefasMissing.status, 'missing');
+  assert.equal(tefasMissing.label, 'Eksik');
+});

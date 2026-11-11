@@ -16,3 +16,4 @@ export * from './LegalDisclaimerModal';
 export { Icon } from './Icon';
 export { StateView } from './StateView';
 export { BottomSheet } from './BottomSheet';
+export * from './PriceStatusBadge';
