@@ -303,7 +303,7 @@ export default function DCFValuationTab({
             </div>
             <input
               type="range"
-              min="10"
+              min="4"
               max="25"
               step="0.5"
               value={wacc}
@@ -311,8 +311,8 @@ export default function DCFValuationTab({
               className="w-full accent-accent h-2 bg-bg-input rounded-lg cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-text-muted">
-              <span>%10 (Düşük Risk)</span>
-              <span>%17.5</span>
+              <span>%4 (Düşük Risk)</span>
+              <span>%14.5</span>
               <span>%25 (Yüksek Risk)</span>
             </div>
             <p className="text-[11px] text-text-muted mt-1 leading-snug">
@@ -376,6 +376,23 @@ export default function DCFValuationTab({
             </p>
           </div>
         </div>
+
+        {dcfResult.assumptionValidation.spreadAdjusted && (
+          <div
+            data-testid="dcf-wacc-validation-banner"
+            className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-xs text-amber-200 flex items-start gap-2.5"
+          >
+            <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <div className="font-bold text-amber-300">
+                Geçersiz Varsayım Düzeltildi (Girilen AOMM: %{dcfResult.assumptionValidation.requestedWacc.toFixed(1)} → Etkin AOMM: %{dcfResult.assumptionValidation.effectiveWacc.toFixed(1)})
+              </div>
+              <p className="text-[11px] text-amber-200/90 leading-snug">
+                {dcfResult.assumptionValidation.message}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Detailed Financial Inputs Toggle */}
         <div className="pt-2 border-t border-border">
@@ -543,10 +560,19 @@ export default function DCFValuationTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {dcfResult.sensitivityMatrix.waccRates.map((wRate, wIdx) => (
+              {dcfResult.sensitivityMatrix.waccRates.map((wRate, wIdx) => {
+                const isRowAdjusted = dcfResult.sensitivityMatrix.adjustedCells[wIdx]?.[0];
+                const effectiveWRate = dcfResult.sensitivityMatrix.effectiveWaccRates[wIdx] ?? wRate;
+                return (
                 <tr key={wRate}>
                   <td className="py-2.5 px-3 text-left font-bold text-text-muted">
-                    %{wRate} WACC
+                    {isRowAdjusted ? (
+                      <span data-testid="dcf-sensitivity-adjusted-wacc" className="text-amber-400">
+                        %{wRate} → %{effectiveWRate} WACC (Düz.)
+                      </span>
+                    ) : (
+                      `%${wRate} WACC`
+                    )}
                   </td>
                   {dcfResult.sensitivityMatrix.growthRates.map((_, gIdx) => {
                     const fairVal = dcfResult.sensitivityMatrix.grid[wIdx][gIdx];
@@ -569,7 +595,8 @@ export default function DCFValuationTab({
                     );
                   })}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -579,8 +606,10 @@ export default function DCFValuationTab({
       <div className="p-4 rounded-xl bg-bg-secondary/50 border border-border text-[11px] text-text-muted flex items-start gap-2.5">
         <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
         <span className="leading-relaxed">
-          {wacc <= terminalGrowthRate && (
-            <p className="mb-2 text-warning">AOMM terminal büyümesinden yüksek olmalı. Bu senaryoda hesaplanan AOMM %{(terminalGrowthRate + 1).toFixed(1)}.</p>
+          {dcfResult.assumptionValidation.spreadAdjusted && (
+            <p data-testid="dcf-wacc-footer-note" className="mb-2 text-amber-400">
+              {dcfResult.assumptionValidation.message}
+            </p>
           )}
           <strong className="text-text-secondary font-medium">Model Varsayımları ve Yasal Uyarı:</strong> Bu değerleme motorundaki serbest nakit akımları (FCF), AOMM (WACC) ve terminal büyüme oranları analitik projeksiyon varsayımlarıdır. Başlangıç bilanço girdileri örnek değerlerdir. İşlem fiyatı portföyde mevcutsa oradan, aksi halde örnek profilden alınır. Sonuç girdiğiniz varsayımlara bağlı bir senaryodur.
         </span>

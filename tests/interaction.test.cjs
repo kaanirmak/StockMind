@@ -4621,6 +4621,77 @@ test('QNT-05: DCF validates statement, market price, and valuation currency cons
   assert.doesNotMatch(dcfTabSrc, /BIST son işlem fiyatı/);
 });
 
+test('QNT-06: DCF handles WACC <= terminal growth with explicit assumption adjustment and validation notice', () => {
+  const models = load('src/lib/quant/models.ts');
+
+  const valid = models.calculateDCF({
+    symbol: 'THYAO',
+    currentPrice: 300,
+    freeCashFlow: 10000,
+    growthRate5Y: 15,
+    terminalGrowthRate: 5,
+    wacc: 12,
+    netDebt: 5000,
+    sharesOutstanding: 1380,
+    currency: 'TRY',
+  });
+  assert.equal(valid.assumptionValidation.isValid, true);
+  assert.equal(valid.assumptionValidation.spreadAdjusted, false);
+  assert.equal(valid.assumptionValidation.requestedWacc, 12);
+  assert.equal(valid.assumptionValidation.effectiveWacc, 12);
+  assert.equal(valid.assumptionValidation.message, undefined);
+  assert.equal(valid.assumptionValidation.sensitivityAdjustedCells, 0);
+
+  const equalSpread = models.calculateDCF({
+    symbol: 'THYAO',
+    currentPrice: 300,
+    freeCashFlow: 10000,
+    growthRate5Y: 15,
+    terminalGrowthRate: 6,
+    wacc: 6,
+    netDebt: 5000,
+    sharesOutstanding: 1380,
+    currency: 'TRY',
+  });
+  assert.equal(equalSpread.assumptionValidation.isValid, false);
+  assert.equal(equalSpread.assumptionValidation.spreadAdjusted, true);
+  assert.equal(equalSpread.assumptionValidation.requestedWacc, 6);
+  assert.equal(equalSpread.assumptionValidation.effectiveWacc, 7);
+  assert.equal(equalSpread.assumptionValidation.minimumRequiredWacc, 7);
+  assert.ok(typeof equalSpread.assumptionValidation.message === 'string' && equalSpread.assumptionValidation.message.length > 0);
+  assert.ok(Number.isFinite(equalSpread.fairValuePerShare));
+  assert.deepEqual([...equalSpread.sensitivityMatrix.effectiveWaccRates], [7, 7, 8]);
+  assert.equal(equalSpread.sensitivityMatrix.adjustedCells[0][0], true);
+  assert.equal(equalSpread.sensitivityMatrix.adjustedCells[1][0], true);
+  assert.equal(equalSpread.sensitivityMatrix.adjustedCells[2][0], false);
+  assert.equal(equalSpread.assumptionValidation.sensitivityAdjustedCells, 6);
+
+  const lowerSpread = models.calculateDCF({
+    symbol: 'AAPL',
+    currentPrice: 215,
+    freeCashFlow: 100000,
+    growthRate5Y: 12,
+    terminalGrowthRate: 7,
+    wacc: 4,
+    netDebt: -10000,
+    sharesOutstanding: 15000,
+    currency: 'USD',
+  });
+  assert.equal(lowerSpread.assumptionValidation.isValid, false);
+  assert.equal(lowerSpread.assumptionValidation.spreadAdjusted, true);
+  assert.equal(lowerSpread.assumptionValidation.effectiveWacc, 8);
+  assert.ok(Number.isFinite(lowerSpread.fairValuePerShare) && lowerSpread.fairValuePerShare > 0);
+
+  const dcfTabSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/quant/DCFValuationTab.tsx'),
+    'utf8'
+  );
+  assert.match(dcfTabSrc, /data-testid="dcf-wacc-validation-banner"/);
+  assert.match(dcfTabSrc, /data-testid="dcf-sensitivity-adjusted-wacc"/);
+  assert.match(dcfTabSrc, /data-testid="dcf-wacc-footer-note"/);
+  assert.match(dcfTabSrc, /dcfResult\.assumptionValidation\.spreadAdjusted/);
+});
+
 
 
 

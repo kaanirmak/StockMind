@@ -114,9 +114,21 @@ export interface DCFProjectionYear {
   presentValue: number;
 }
 
+export interface DCFAssumptionValidation {
+  isValid: boolean;
+  spreadAdjusted: boolean;
+  requestedWacc: number;
+  effectiveWacc: number;
+  terminalGrowthRate: number;
+  minimumRequiredWacc: number;
+  message?: string;
+  sensitivityAdjustedCells: number;
+}
+
 export interface DCFResult {
   currency: 'TRY' | 'USD';
   currencyConsistency: DCFCurrencyConsistency;
+  assumptionValidation: DCFAssumptionValidation;
   projections: DCFProjectionYear[];
   sumPVScheduled: number;
   terminalValue: number;
@@ -131,8 +143,10 @@ export interface DCFResult {
   modelApplicabilityWarning?: string;
   sensitivityMatrix: {
     waccRates: number[];
+    effectiveWaccRates: number[];
     growthRates: number[];
     grid: number[][]; // [waccIndex][growthIndex] -> fairValue
+    adjustedCells: boolean[][];
   };
 }
 
@@ -152,7 +166,12 @@ export function calculateDCF(params: DCFParams): DCFResult {
 
   const g = params.growthRate5Y / 100;
   const tg = params.terminalGrowthRate / 100;
-  const wacc = Math.max(params.wacc / 100, tg + 0.01); // WACC must be > terminal growth
+  const requestedWaccPct = Number(params.wacc.toFixed(2));
+  const terminalGrowthPct = Number(params.terminalGrowthRate.toFixed(2));
+  const minimumRequiredWaccPct = Number((terminalGrowthPct + 1).toFixed(2));
+  const spreadAdjusted = requestedWaccPct <= terminalGrowthPct;
+  const effectiveWaccPct = spreadAdjusted ? minimumRequiredWaccPct : requestedWaccPct;
+  const wacc = effectiveWaccPct / 100; // WACC must be > terminal growth (Gordon Growth)
 
   const projections: DCFProjectionYear[] = [];
   let currentFCF = params.freeCashFlow;
@@ -194,12 +213,24 @@ export function calculateDCF(params: DCFParams): DCFResult {
   // 3x3 Sensitivity Matrix
   const waccSteps = [params.wacc - 2, params.wacc, params.wacc + 2];
   const growthSteps = [params.growthRate5Y - 4, params.growthRate5Y, params.growthRate5Y + 4];
+  const effectiveWaccRates: number[] = [];
+  const adjustedCells: boolean[][] = [];
+  let sensitivityAdjustedCells = 0;
 
   const grid: number[][] = waccSteps.map((wRate) => {
-    return growthSteps.map((gRate) => {
+    const isRowAdjusted = wRate <= params.terminalGrowthRate;
+    const effectiveRowWaccPct = isRowAdjusted ? minimumRequiredWaccPct : Number(wRate.toFixed(2));
+    effectiveWaccRates.push(effectiveRowWaccPct);
+
+    const rowFlags: boolean[] = [];
+    const rowValues = growthSteps.map((gRate) => {
       const simG = gRate / 100;
       const simTg = tg;
-      const simW = Math.max(wRate / 100, simTg + 0.01);
+      const simW = effectiveRowWaccPct / 100;
+      rowFlags.push(isRowAdjusted);
+      if (isRowAdjusted) {
+        sensitivityAdjustedCells += 1;
+      }
 
       let simFCF = params.freeCashFlow;
       let simSumPV = 0;
@@ -212,7 +243,22 @@ export function calculateDCF(params: DCFParams): DCFResult {
       const simEqVal = simSumPV + simPVTV - params.netDebt;
       return Number(Math.max(0, simEqVal / sharesOutstanding).toFixed(2));
     });
+    adjustedCells.push(rowFlags);
+    return rowValues;
   });
+
+  const assumptionValidation: DCFAssumptionValidation = {
+    isValid: !spreadAdjusted,
+    spreadAdjusted,
+    requestedWacc: requestedWaccPct,
+    effectiveWacc: effectiveWaccPct,
+    terminalGrowthRate: terminalGrowthPct,
+    minimumRequiredWacc: minimumRequiredWaccPct,
+    message: spreadAdjusted
+      ? `AOMM (%${requestedWaccPct.toFixed(1)}) terminal büyüme oranından (%${terminalGrowthPct.toFixed(1)}) büyük olmalıdır. Modelin tanımsız kalmaması için hesaplama düzeltilmiş asgari AOMM (%${effectiveWaccPct.toFixed(1)}) varsayımıyla yapıldı.`
+      : undefined,
+    sensitivityAdjustedCells,
+  };
 
   const bankSymbols = new Set(['GARAN', 'AKBNK', 'ISCTR', 'YKBNK', 'HALKB', 'VAKBN', 'ALBRK', 'SKBNK', 'TSKB', 'QNBFB']);
   const isBank = bankSymbols.has(params.symbol.toUpperCase());
@@ -223,6 +269,7 @@ export function calculateDCF(params: DCFParams): DCFResult {
   return {
     currency: statementCurrency,
     currencyConsistency,
+    assumptionValidation,
     projections,
     sumPVScheduled: Math.round(sumPVScheduled),
     terminalValue: Math.round(terminalValue),
@@ -237,8 +284,10 @@ export function calculateDCF(params: DCFParams): DCFResult {
     modelApplicabilityWarning,
     sensitivityMatrix: {
       waccRates: waccSteps,
+      effectiveWaccRates,
       growthRates: growthSteps,
       grid,
+      adjustedCells,
     },
   };
 }
