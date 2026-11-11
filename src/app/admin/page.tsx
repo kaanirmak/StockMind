@@ -37,6 +37,22 @@ interface AdminStats {
       updated_at?: string;
     }>;
   };
+  bulletinScheduleSummary?: {
+    available: boolean;
+    latestRun: {
+      bulletinDate: string;
+      scheduledFor: string;
+      startedAt: string;
+      finishedAt: string | null;
+      durationMs: number | null;
+      scheduleDelayMs: number | null;
+      status: string;
+      recipientsCount: number;
+      successfulCount: number;
+    } | null;
+    missedDates: string[];
+    missedCount: number;
+  };
   systemTime: string;
   adminEmail: string;
 }
@@ -1131,6 +1147,73 @@ export default function AdminConsolePage() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* Zamanlanmış Bülten Gecikme & Kaçan Çalıştırma İzleme */}
+            <div data-testid="bulletin-schedule-monitor" className="rounded-2xl border border-white/10 bg-[#070b16] p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-white">Zamanlanmış Bülten Gecikme &amp; Kaçan Çalıştırma İzleme</h4>
+                  <p className="text-[11px] text-slate-400">
+                    Planlanan (18:30 TSİ), başlama zamanı, dağıtım süresi ve kaçan iş günü kayıtları
+                  </p>
+                </div>
+                <span
+                  data-testid="bulletin-missed-badge"
+                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
+                    (stats?.bulletinScheduleSummary?.missedCount ?? 0) > 0
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  }`}
+                >
+                  {(stats?.bulletinScheduleSummary?.missedCount ?? 0) > 0
+                    ? `${stats?.bulletinScheduleSummary?.missedCount} Kaçan Çalıştırma`
+                    : 'Kaçan Çalıştırma Yok'}
+                </span>
+              </div>
+
+              {stats?.bulletinScheduleSummary?.latestRun ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-3">
+                    <p className="text-[11px] text-slate-400">Planlanan Zaman</p>
+                    <p className="font-mono font-semibold text-white mt-0.5">
+                      {new Date(stats.bulletinScheduleSummary.latestRun.scheduledFor).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-3">
+                    <p className="text-[11px] text-slate-400">Başlama Zamanı</p>
+                    <p className="font-mono font-semibold text-white mt-0.5">
+                      {new Date(stats.bulletinScheduleSummary.latestRun.startedAt).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-3">
+                    <p className="text-[11px] text-slate-400">Planlama Gecikmesi</p>
+                    <p className="font-mono font-semibold text-amber-300 mt-0.5">
+                      {stats.bulletinScheduleSummary.latestRun.scheduleDelayMs != null
+                        ? `${(stats.bulletinScheduleSummary.latestRun.scheduleDelayMs / 1000).toFixed(1)} sn`
+                        : '—'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-700/60 bg-slate-900/60 p-3">
+                    <p className="text-[11px] text-slate-400">Dağıtım Süresi</p>
+                    <p className="font-mono font-semibold text-emerald-300 mt-0.5">
+                      {stats.bulletinScheduleSummary.latestRun.durationMs != null
+                        ? `${(stats.bulletinScheduleSummary.latestRun.durationMs / 1000).toFixed(2)} sn`
+                        : 'Devam ediyor'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">
+                  Henüz kaydedilmiş zamanlanmış bülten çalıştırması bulunmuyor.
+                </p>
+              )}
+
+              {(stats?.bulletinScheduleSummary?.missedDates?.length ?? 0) > 0 && (
+                <p className="text-xs text-rose-300 font-mono">
+                  Kaçan günler: {stats?.bulletinScheduleSummary?.missedDates.join(', ')}
+                </p>
               )}
             </div>
 

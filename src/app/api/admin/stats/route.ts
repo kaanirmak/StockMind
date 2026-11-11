@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { apiErrorResponse } from '@/lib/api/security';
 import { getEmailTransportDiagnostics } from '@/lib/email/service';
 import { summarizeDeliveryQueue } from '@/lib/email/deliveryQueue';
+import { summarizeBulletinScheduleTelemetry } from '@/lib/email/scheduleMonitor';
 import TEFAS_DIRECTORY from '@/lib/data/tefas_funds_directory.json';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,10 @@ export async function GET(request: Request) {
     const pendingRequests = users.filter((u: any) => u.user_metadata?.pro_request_status === 'pending').length;
 
     const emailDiagnostics = getEmailTransportDiagnostics();
-    const emailQueueSummary = await summarizeDeliveryQueue(admin);
+    const [emailQueueSummary, bulletinScheduleSummary] = await Promise.all([
+      summarizeDeliveryQueue(admin),
+      summarizeBulletinScheduleTelemetry(admin),
+    ]);
     const emailServiceMode =
       emailDiagnostics.mode === 'gmail'
         ? emailDiagnostics.configured
@@ -55,6 +59,7 @@ export async function GET(request: Request) {
           emailServiceMode,
           emailDiagnostics,
           emailQueueSummary,
+          bulletinScheduleSummary,
           environment: process.env.NODE_ENV || 'production',
           systemTime: new Date().toISOString(),
           adminEmail: process.env.ADMIN_EMAIL || 'kaanrmak7@gmail.com',

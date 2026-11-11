@@ -10,6 +10,11 @@ import {
 } from '@/lib/email/deliveryQueue';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isUserEligibleForScheduledBulletin } from '@/lib/email/subscriptionStatus';
+import {
+  computeScheduledBulletinTime,
+  recordBulletinRunFinish,
+  recordBulletinRunStart,
+} from '@/lib/email/scheduleMonitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,9 +101,14 @@ async function handleDailyReport(request: Request) {
       );
     }
 
+    const startedAt = new Date();
+    const todayStr = startedAt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
+    let scheduledFor = computeScheduledBulletinTime(todayStr);
+
     let recipients: ReportRecipient[] = [];
     let customIdempotencyKey = idempotencyHeader;
     let force = false;
+    let triggerSource = 'cron';
 
     if (request.method === 'POST') {
       try {
@@ -112,8 +122,17 @@ async function handleDailyReport(request: Request) {
         }
         if (typeof body.idempotencyKey === 'string') customIdempotencyKey = body.idempotencyKey.trim();
         if (Boolean(body.force)) force = true;
+        if (typeof body.scheduledFor === 'string') {
+          const parsedSched = new Date(body.scheduledFor);
+          if (Number.isFinite(parsedSched.getTime())) scheduledFor = parsedSched;
+        }
+        if (typeof body.triggerSource === 'string' && body.triggerSource.trim()) {
+          triggerSource = body.triggerSource.trim();
+        }
       } catch (_) {}
     }
+
+    const admin = createAdminClient();
 
     // Scheduled runs target confirmed Pro accounts with the bulletin enabled. Manual calls may
     // still provide an explicit recipient list for testing or recovery.
@@ -121,6 +140,17 @@ async function handleDailyReport(request: Request) {
     recipients = deduplicateRecipients(recipients);
 
     if (recipients.length === 0) {
+      const telemetry = await recordBulletinRunFinish(admin, {
+        runId: null,
+        bulletinDate: todayStr,
+        scheduledFor,
+        startedAt,
+        finishedAt: new Date(),
+        status: 'no_recipients',
+        recipientsCount: 0,
+        successfulCount: 0,
+        triggerSource,
+      });
       return NextResponse.json({
         success: true,
         message: 'Bülten gönderilecek aktif Pro abone bulunmuyor.',
@@ -129,11 +159,10 @@ async function handleDailyReport(request: Request) {
         batchesProcessed: 0,
         batchSize: BULLETIN_BATCH_SIZE,
         results: [],
+        telemetry,
         timestamp: new Date().toISOString(),
       }, { status: 200 });
     }
-
-    const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
 
     // Check overall batch idempotency key if supplied
     if (customIdempotencyKey && sentReportsCache.has(customIdempotencyKey) && !force) {
@@ -145,7 +174,13 @@ async function handleDailyReport(request: Request) {
       });
     }
 
-    const admin = createAdminClient();
+    const runId = await recordBulletinRunStart(admin, {
+      bulletinDate: todayStr,
+      scheduledFor,
+      startedAt,
+      triggerSource,
+      recipientsCount: recipients.length,
+    });
     const marketData = await getBulletinMarketData();
     const subjectDate = new Date().toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' });
     const subject = `StockMind Günlük Piyasa Kapanış Bülteni (18:30) • ${subjectDate}`;
@@ -232,10 +267,23 @@ async function handleDailyReport(request: Request) {
     if (customIdempotencyKey && complete) sentReportsCache.add(customIdempotencyKey);
 
     const queueSummary = await summarizeDeliveryQueue(admin, todayStr);
+    const finishedAt = new Date();
+    const runStatus = complete ? 'completed' : successfulCount > 0 ? 'partial' : 'failed';
+    const telemetry = await recordBulletinRunFinish(admin, {
+      runId,
+      bulletinDate: todayStr,
+      scheduledFor,
+      startedAt,
+      finishedAt,
+      status: runStatus,
+      recipientsCount: recipients.length,
+      successfulCount,
+      triggerSource,
+    });
 
     return NextResponse.json({
       success: complete,
-      timestamp: new Date().toISOString(),
+      timestamp: finishedAt.toISOString(),
       recipientsCount: recipients.length,
       successfulCount,
       newlySentCount,
@@ -243,6 +291,7 @@ async function handleDailyReport(request: Request) {
       batchesProcessed: batches.length,
       batchSize: BULLETIN_BATCH_SIZE,
       queueSummary,
+      telemetry,
       results,
       marketSummary: marketData,
     }, { status: complete ? 200 : successfulCount > 0 ? 207 : 503 });

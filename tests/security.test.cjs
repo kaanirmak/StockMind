@@ -1118,5 +1118,106 @@ test('EPO-07: daily bulletin includes quote observation timestamps and explicit 
   assert.match(emptyHtml, /güncel fiyat alınamadı/);
 });
 
+test('EPO-08: scheduled bulletin records scheduled/start times, duration, delay, and detects missed runs', async () => {
+  const schedMod = loader()('src/lib/email/scheduleMonitor.ts');
+
+  const scheduled = schedMod.computeScheduledBulletinTime('2026-11-11');
+  assert.equal(scheduled.toISOString(), '2026-11-11T15:30:00.000Z'); // 18:30 TSİ
+
+  const metrics = schedMod.calculateScheduleMetrics({
+    scheduledFor: new Date('2026-11-11T15:30:00.000Z'),
+    startedAt: new Date('2026-11-11T15:32:15.000Z'),
+    finishedAt: new Date('2026-11-11T15:32:45.000Z'),
+  });
+  assert.equal(metrics.scheduleDelayMs, 135_000);
+  assert.equal(metrics.durationMs, 30_000);
+
+  // Wednesday 2026-11-11 19:00 TSİ (16:00Z, past grace window).
+  // Monday 2026-11-09 completed, Tuesday 2026-11-10 missed, Wednesday 2026-11-11 missed, weekend ignored.
+  const missed = schedMod.detectMissedBulletinRuns({
+    now: new Date('2026-11-11T16:00:00.000Z'),
+    lookbackDays: 5,
+    recentRuns: [
+      {
+        bulletin_date: '2026-11-09',
+        job_type: 'daily_bulletin',
+        scheduled_for: '2026-11-09T15:30:00.000Z',
+        started_at: '2026-11-09T15:30:05.000Z',
+        status: 'completed',
+        recipients_count: 10,
+        successful_count: 10,
+      },
+    ],
+  });
+  assert.deepEqual([...missed], ['2026-11-11', '2026-11-10']);
+
+  // Verify cron route records and returns schedule telemetry
+  const inserted = [];
+  const updated = [];
+  const fakeAdmin = {
+    auth: { admin: { listUsers: async () => ({ data: { users: [] }, error: null }) } },
+    from: (table) => ({
+      insert: (row) => {
+        if (table === 'bulletin_run_telemetry') inserted.push(row);
+        return {
+          select: () => ({ maybeSingle: async () => ({ data: { id: 'run-1' }, error: null }) }),
+        };
+      },
+      update: (patch) => {
+        if (table === 'bulletin_run_telemetry') updated.push(patch);
+        return { eq: async () => ({ error: null }) };
+      },
+      select: () => ({
+        eq: () => ({
+          eq: async () => ({ data: [], error: null }),
+          order: () => ({ limit: async () => ({ data: [], error: null }) }),
+        }),
+      }),
+      upsert: async () => ({ error: null }),
+    }),
+  };
+  const cronLoader = loader({
+    '@/lib/supabase/admin': { createAdminClient: () => fakeAdmin },
+    '@/lib/email/service': { sendTestEmail: async () => ({ success: true, message: 'ok', senderAddress: 'kaanrmak7@gmail.com' }) },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 34.2 }) },
+    '@/lib/email/deliveryQueue': {
+      enqueueBulletinRecipients: async () => ({ persisted: true, existingByEmail: new Map() }),
+      hasAcceptedDeliveryForDay: async () => false,
+      recordDeliveryOutcome: async () => ({ status: 'accepted' }),
+      shouldSkipDuplicateDelivery: () => false,
+      summarizeDeliveryQueue: async () => ({ pending: 0, accepted: 1, failed: 0, retryScheduled: 0, total: 1, available: true, bulletinDate: '2026-11-11', recentItems: [] }),
+    },
+    '@/lib/ai/modelCatalog': { hasProAccess: () => true },
+  }, { CRON_SECRET: 'cron-secret-test' });
+  const cronRoute = cronLoader('src/app/api/cron/daily-report/route.ts');
+  const res = await cronRoute.POST(
+    new Request('https://stockmind.test/api/cron/daily-report', {
+      method: 'POST',
+      headers: { authorization: 'Bearer cron-secret-test', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        recipients: [{ email: 'sub@example.com', name: 'Abone' }],
+        scheduledFor: '2026-11-11T15:30:00.000Z',
+      }),
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.telemetry);
+  assert.equal(body.telemetry.scheduled_for, '2026-11-11T15:30:00.000Z');
+  assert.ok(typeof body.telemetry.started_at === 'string');
+  assert.ok(typeof body.telemetry.finished_at === 'string');
+  assert.equal(typeof body.telemetry.duration_ms, 'number');
+  assert.equal(typeof body.telemetry.schedule_delay_ms, 'number');
+  assert.equal(inserted.length, 1);
+  assert.equal(updated.length, 1);
+
+  // Verify admin stats & page display monitor
+  const statsSrc = fs.readFileSync(path.join(root, 'src/app/api/admin/stats/route.ts'), 'utf8');
+  assert.match(statsSrc, /summarizeBulletinScheduleTelemetry/);
+  const adminPageSrc = fs.readFileSync(path.join(root, 'src/app/admin/page.tsx'), 'utf8');
+  assert.match(adminPageSrc, /data-testid="bulletin-schedule-monitor"/);
+  assert.match(adminPageSrc, /data-testid="bulletin-missed-badge"/);
+});
+
 
 
