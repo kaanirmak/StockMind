@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Button, Badge, useToast, InstrumentLogo } from '@/components/ui';
 import { DailyAttributionCard } from '@/components/portfolio/DailyAttributionCard';
+import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
+import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
+import { PERIOD_LABELS, type PerformancePeriod } from '@/lib/portfolio/periodPerformance';
 
 export default function ReportsPage() {
   const { showToast } = useToast();
@@ -12,6 +15,8 @@ export default function ReportsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [reportPeriod, setReportPeriod] = useState<PerformancePeriod>('total');
+  const performance = usePortfolioPerformance(reportPeriod);
 
   useEffect(() => {
     setIsMounted(true);
@@ -402,6 +407,36 @@ export default function ReportsPage() {
                 {summary.totalPnLPercent >= 0 ? '+' : ''}%{summary.totalPnLPercent.toFixed(2)}
               </span>
             </div>
+          </div>
+
+          {/* Period Breakdown (POR-08): realized, unrealized, cash/dividends, commissions, FX */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm sm:text-base font-bold text-text-primary">
+                Dönem Bazlı Kâr ve Etki Dökümü
+              </h3>
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-bg-secondary border border-border" role="group" aria-label="Rapor dönemi">
+                {(['daily', 'weekly', 'monthly', 'total'] as PerformancePeriod[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={reportPeriod === p}
+                    onClick={() => setReportPeriod(p)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                      reportPeriod === p
+                        ? 'bg-accent text-white'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    {PERIOD_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <PeriodBreakdownCard
+              breakdown={performance.breakdown}
+              loading={performance.loading}
+            />
           </div>
 
           {/* Daily Return Asset Attribution (POR-07) */}

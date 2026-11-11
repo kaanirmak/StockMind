@@ -14,6 +14,7 @@ import { PartialValuationBadge, PartialValuationBanner } from '@/components/port
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
+import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
 import {
@@ -506,6 +507,13 @@ export default function PortfolioPage() {
           </div>
         </div>
       </div>
+
+      {!showEmptyOnboarding && (
+        <PeriodBreakdownCard
+          breakdown={performance.breakdown}
+          loading={performance.loading}
+        />
+      )}
 
       {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
       <div className="space-y-4">

@@ -2,11 +2,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { calculatePeriodPerformance, istanbulDate, type PerformancePeriod, type PriceHistoryMap } from '@/lib/portfolio/periodPerformance';
+import { calculatePeriodBreakdown } from '@/lib/portfolio/periodBreakdown';
 import { cleanSymbol } from '@/lib/utils/symbol';
 
 export function usePortfolioPerformance(period: PerformancePeriod) {
-  const { transactions, activePortfolioId, livePrices, isRefreshingPrices } = usePortfolioStore();
+  const { transactions, cashMovements, activePortfolioId, livePrices, isRefreshingPrices } = usePortfolioStore();
   const active = useMemo(() => transactions.filter(t => t.portfolioId === activePortfolioId), [transactions, activePortfolioId]);
+  const activeMovements = useMemo(
+    () => (cashMovements || []).filter((m) => m.portfolioId === activePortfolioId),
+    [cashMovements, activePortfolioId]
+  );
   const [loaded, setLoaded] = useState<{ key: string; history: PriceHistoryMap } | null>(null);
   const key = `${activePortfolioId}:${istanbulDate(new Date())}:${active.map(t => `${t.symbol}:${t.assetType}`).sort().join('|')}`;
   const needsHistory = period === 'weekly' || period === 'monthly';
@@ -45,5 +50,12 @@ export function usePortfolioPerformance(period: PerformancePeriod) {
   }, [key, needsHistory, active]);
   const history = loaded?.key === key ? loaded.history : {};
   const metric = calculatePeriodPerformance(active, livePrices, history, period);
-  return { ...metric, loading: isRefreshingPrices || (needsHistory && loaded?.key !== key) };
+  const breakdown = calculatePeriodBreakdown({
+    transactions: active,
+    cashMovements: activeMovements,
+    prices: livePrices,
+    history,
+    period,
+  });
+  return { ...metric, breakdown, loading: isRefreshingPrices || (needsHistory && loaded?.key !== key) };
 }

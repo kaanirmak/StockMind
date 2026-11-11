@@ -1540,6 +1540,212 @@ test('POR-07: daily return attribution splits gains/losses in TRY and percentage
   assert.match(reportsSrc, /DailyAttributionCard/);
 });
 
+test('POR-08: period breakdown separates realized trade PnL, unrealized PnL, cash events, fees/commissions, and FX impact', () => {
+  const { calculatePeriodBreakdown } = loadModule('src/lib/portfolio/periodBreakdown.ts');
+
+  const now = new Date('2026-04-15T12:00:00Z');
+  const transactions = [
+    // Prior month: Buy 10 THYAO @ 100 TRY (commission 10 TL)
+    {
+      id: 'b-1',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 10,
+      price: 100,
+      currency: 'TRY',
+      commission: 10,
+      transactionDate: '2026-03-10',
+      exchange: 'BIST',
+      notes: null,
+      createdAt: '2026-03-10T10:00:00Z',
+    },
+    // Prior month: Buy 10 AAPL @ $200, USD/TRY = 30 (commission $5 -> 150 TL)
+    {
+      id: 'b-2',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'AAPL',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 10,
+      price: 200,
+      currency: 'USD',
+      exchangeRate: 30,
+      commission: 5,
+      transactionDate: '2026-03-12',
+      exchange: 'NASDAQ',
+      notes: null,
+      createdAt: '2026-03-12T10:00:00Z',
+    },
+    // Current month (April): Sell 4 THYAO @ 140 TRY (commission 20 TL)
+    // Cost for 4 shares = 4 * 101 = 404 TRY; net proceeds = 560 - 20 = 540 TRY -> realized = +136 TRY
+    {
+      id: 's-1',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      transactionType: 'sell',
+      quantity: 4,
+      price: 140,
+      currency: 'TRY',
+      commission: 20,
+      transactionDate: '2026-04-05',
+      exchange: 'BIST',
+      notes: null,
+      createdAt: '2026-04-05T10:00:00Z',
+    },
+    // Current month (April): Dividend 60 TRY
+    {
+      id: 'd-1',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      transactionType: 'dividend',
+      quantity: 6,
+      price: 10,
+      currency: 'TRY',
+      commission: 0,
+      transactionDate: '2026-04-08',
+      exchange: 'BIST',
+      notes: null,
+      createdAt: '2026-04-08T10:00:00Z',
+    },
+    // Current month (April): Standalone custody fee 25 TRY
+    {
+      id: 'f-1',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      transactionType: 'fee',
+      quantity: 1,
+      price: 25,
+      currency: 'TRY',
+      commission: 0,
+      transactionDate: '2026-04-10',
+      exchange: 'BIST',
+      notes: null,
+      createdAt: '2026-04-10T10:00:00Z',
+    },
+  ];
+
+  const cashMovements = [
+    {
+      id: 'm-1',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      movementType: 'deposit',
+      amount: 10000,
+      currency: 'TRY',
+      exchangeRate: 1,
+      movementDate: '2026-03-05',
+      notes: null,
+      createdAt: '2026-03-05T10:00:00Z',
+    },
+    {
+      id: 'm-2',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      movementType: 'deposit',
+      amount: 2000,
+      currency: 'TRY',
+      exchangeRate: 1,
+      movementDate: '2026-04-03',
+      notes: null,
+      createdAt: '2026-04-03T10:00:00Z',
+    },
+    {
+      id: 'm-3',
+      portfolioId: 'p-1',
+      userId: 'u-1',
+      movementType: 'withdrawal',
+      amount: 500,
+      currency: 'TRY',
+      exchangeRate: 1,
+      movementDate: '2026-04-12',
+      notes: null,
+      createdAt: '2026-04-12T10:00:00Z',
+    },
+  ];
+
+  const prices = {
+    THYAO: { price: 150, changePercent: 0 },
+    AAPL: { price: 220, changePercent: 0 },
+    USDTRY: { price: 34, changePercent: 0 },
+  };
+  const history = {
+    THYAO: { '2026-03-31': 120 },
+    AAPL: { '2026-03-31': 210 },
+    USDTRY: { '2026-03-31': 32 },
+  };
+
+  // 1. Total period breakdown
+  const totalBd = {
+    ...calculatePeriodBreakdown({
+      transactions,
+      cashMovements,
+      prices,
+      history,
+      period: 'total',
+      now,
+    }),
+  };
+  assert.equal(totalBd.available, true);
+  assert.equal(totalBd.realizedTradePnL, 136);
+  assert.equal(totalBd.dividendsTotal, 60);
+  assert.equal(totalBd.depositsTotal, 12000);
+  assert.equal(totalBd.withdrawalsTotal, 500);
+  assert.equal(totalBd.netCashEvents, 11560);
+  assert.equal(totalBd.tradeCommissionsTotal, 10 + 150 + 20);
+  assert.equal(totalBd.standaloneFeesTotal, 25);
+  assert.equal(totalBd.feesAndCommissionsTotal, 205);
+  assert.ok(totalBd.fxImpact > 0, 'Total USDTRY rise 30 -> 34 must yield positive FX impact');
+  assert.equal(
+    Number((totalBd.assetPricePnL + totalBd.fxImpact).toFixed(2)),
+    totalBd.unrealizedPnL,
+    'Open position result decomposes into asset price movement + FX impact'
+  );
+
+  // 2. Monthly period breakdown isolates only April events & March-end -> April change
+  const monthlyBd = {
+    ...calculatePeriodBreakdown({
+      transactions,
+      cashMovements,
+      prices,
+      history,
+      period: 'monthly',
+      now,
+    }),
+  };
+  assert.equal(monthlyBd.available, true);
+  assert.equal(monthlyBd.startDate, '2026-04-01');
+  assert.equal(monthlyBd.realizedTradePnL, 136);
+  assert.equal(monthlyBd.dividendsTotal, 60);
+  assert.equal(monthlyBd.depositsTotal, 2000);
+  assert.equal(monthlyBd.withdrawalsTotal, 500);
+  assert.equal(monthlyBd.tradeCommissionsTotal, 20);
+  assert.equal(monthlyBd.standaloneFeesTotal, 25);
+  assert.equal(monthlyBd.feesAndCommissionsTotal, 45);
+  assert.equal(monthlyBd.fxImpact, 4000, 'April USDTRY 32 -> 34 across 10*200 USD cost = +4,000 TRY');
+
+  const portfolioSrc = fs.readFileSync(
+    path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'),
+    'utf8'
+  );
+  const reportsSrc = fs.readFileSync(
+    path.join(root, 'src/app/(dashboard)/reports/page.tsx'),
+    'utf8'
+  );
+  assert.match(portfolioSrc, /PeriodBreakdownCard/);
+  assert.match(reportsSrc, /PeriodBreakdownCard/);
+});
+
+
 
 
 
