@@ -276,6 +276,96 @@ test('EPO-02: günlük bülten 51 ve üzeri alıcıyı sınır olmadan partiler 
   assert.equal(sentTo.length, 65);
 });
 
+test('EPO-03: kalıcı e-posta kuyruğu iş yarıda kesilse bile yeniden başlatmadan sonra bekleyen ve tamamlanan alıcıları ayırt eder', async () => {
+  const queueStore = new Map();
+  const buildAdminMock = (users) => ({
+    auth: { admin: { listUsers: async () => ({ data: { users } }) } },
+    from: (table) => {
+      assert.equal(table, 'email_delivery_queue');
+      return {
+        select: () => ({
+          eq: (_col, val) => {
+            const rows = Array.from(queueStore.values()).filter((r) => r.bulletin_date === val || r.job_type === val);
+            return {
+              eq: (_c2, v2) => Promise.resolve({ data: rows.filter((r) => r.job_type === v2), error: null }),
+              order: () => ({ limit: () => Promise.resolve({ data: rows, error: null }) }),
+            };
+          },
+        }),
+        upsert: (payload, opts = {}) => {
+          const items = Array.isArray(payload) ? payload : [payload];
+          const saved = [];
+          for (const item of items) {
+            const key = `${item.bulletin_date}:${item.job_type}:${item.recipient_email}`;
+            if (!(opts.ignoreDuplicates && queueStore.has(key))) {
+              queueStore.set(key, { ...item });
+            }
+            saved.push(queueStore.get(key));
+          }
+          return {
+            select: () => Promise.resolve({ data: saved, error: null }),
+            then: (resolve) => resolve({ data: saved, error: null }),
+          };
+        },
+      };
+    },
+  });
+
+  const users = [
+    { email: 'a@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
+    { email: 'b@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
+  ];
+
+  // Run 1: crashes mid-job after 'a' is delivered and before 'b' completes
+  const run1Sent = [];
+  const loadRun1 = loader({
+    '@/lib/email/service': {
+      sendTestEmail: async ({ to }) => {
+        run1Sent.push(to);
+        if (to === 'b@example.test') {
+          throw new Error('Simulated worker crash before completion');
+        }
+        return { success: true, method: 'google_smtp', senderAddress: 'kaanrmak7@gmail.com', messageId: 'm1' };
+      },
+    },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 42 }) },
+    '@/lib/supabase/admin': { createAdminClient: () => buildAdminMock(users) },
+  }, { CRON_SECRET: 'cron-secret' });
+
+  const crashRes = await loadRun1('src/app/api/cron/daily-report/route.ts').POST(
+    request({}, { authorization: 'Bearer cron-secret' })
+  );
+  assert.equal(crashRes.status, 500);
+  assert.deepEqual(run1Sent, ['a@example.test', 'b@example.test']);
+
+  const rowsAfterCrash = Array.from(queueStore.values());
+  assert.equal(rowsAfterCrash.length, 2, 'Both recipients must exist in persistent queue before dispatch');
+  assert.equal(rowsAfterCrash.find((r) => r.recipient_email === 'a@example.test').status, 'accepted');
+  assert.equal(rowsAfterCrash.find((r) => r.recipient_email === 'b@example.test').status, 'pending');
+
+  // Run 2 (fresh module load -> simulated process restart with empty sentReportsCache)
+  const run2Sent = [];
+  const loadRun2 = loader({
+    '@/lib/email/service': {
+      sendTestEmail: async ({ to }) => {
+        run2Sent.push(to);
+        return { success: true, method: 'google_smtp', senderAddress: 'kaanrmak7@gmail.com', messageId: 'm2' };
+      },
+    },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 42 }) },
+    '@/lib/supabase/admin': { createAdminClient: () => buildAdminMock(users) },
+  }, { CRON_SECRET: 'cron-secret' });
+
+  const recoverRes = await loadRun2('src/app/api/cron/daily-report/route.ts').POST(
+    request({}, { authorization: 'Bearer cron-secret' })
+  );
+  assert.equal(recoverRes.status, 200);
+  const recoverBody = await recoverRes.json();
+  assert.deepEqual(run2Sent, ['b@example.test'], 'Only pending recipient must be sent after restart');
+  assert.equal(recoverBody.queueSummary.accepted, 2);
+  assert.equal(recoverBody.queueSummary.pending, 0);
+});
+
 test('Daily bulletin shows supplied market prices and omits sample portfolio values', () => {
   const load = loader({ nodemailer: {}, '@supabase/supabase-js': {} });
   const { generateStockMindEmailHtml } = load('src/lib/email/service.ts');

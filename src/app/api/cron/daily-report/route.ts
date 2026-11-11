@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { sendTestEmail } from '@/lib/email/service';
 import { getBulletinMarketData } from '@/lib/email/marketData';
+import {
+  enqueueBulletinRecipients,
+  recordDeliveryOutcome,
+  summarizeDeliveryQueue,
+} from '@/lib/email/deliveryQueue';
 import { hasProAccess } from '@/lib/ai/modelCatalog';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -140,19 +145,42 @@ async function handleDailyReport(request: Request) {
       });
     }
 
+    const admin = createAdminClient();
     const marketData = await getBulletinMarketData();
     const subjectDate = new Date().toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' });
     const subject = `StockMind Günlük Piyasa Kapanış Bülteni (18:30) • ${subjectDate}`;
 
-    const results: Array<{ email: string; success: boolean; skipped?: boolean; message?: string; batchIndex?: number }> = [];
+    const enqueueState = await enqueueBulletinRecipients(admin, todayStr, recipients, {
+      jobType: 'daily_bulletin',
+    });
+
+    const results: Array<{
+      email: string;
+      success: boolean;
+      skipped?: boolean;
+      status?: string;
+      message?: string;
+      batchIndex?: number;
+    }> = [];
     const batches = chunkRecipients(recipients, BULLETIN_BATCH_SIZE);
 
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
       const batch = batches[batchIndex];
       for (const recipient of batch) {
-        const perUserKey = `${todayStr}:${recipient.email.toLowerCase()}`;
-        if (sentReportsCache.has(perUserKey) && !force) {
-          results.push({ email: recipient.email, success: true, skipped: true, message: 'Bugün için zaten iletildi', batchIndex });
+        const normalizedEmail = recipient.email.toLowerCase();
+        const perUserKey = `${todayStr}:${normalizedEmail}`;
+        const existingQueueRow = enqueueState.existingByEmail.get(normalizedEmail);
+
+        if ((sentReportsCache.has(perUserKey) || existingQueueRow?.status === 'accepted') && !force) {
+          sentReportsCache.add(perUserKey);
+          results.push({
+            email: recipient.email,
+            success: true,
+            skipped: true,
+            status: existingQueueRow?.status || 'accepted',
+            message: 'Bugün için zaten iletildi',
+            batchIndex,
+          });
           continue;
         }
 
@@ -164,16 +192,38 @@ async function handleDailyReport(request: Request) {
           marketData,
         });
 
+        const updatedRecord = await recordDeliveryOutcome(admin, {
+          bulletinDate: todayStr,
+          recipientEmail: recipient.email,
+          recipientName: recipient.name,
+          jobType: 'daily_bulletin',
+          previousAttemptCount: existingQueueRow?.attempt_count ?? 0,
+          maxAttempts: existingQueueRow?.max_attempts,
+          success: sendResult.success,
+          senderAddress: sendResult.senderAddress,
+          method: sendResult.method,
+          messageId: sendResult.messageId,
+          errorMessage: sendResult.message,
+        });
+
         if (sendResult.success) {
           sentReportsCache.add(perUserKey);
         }
-        results.push({ email: recipient.email, success: sendResult.success, message: sendResult.message, batchIndex });
+        results.push({
+          email: recipient.email,
+          success: sendResult.success,
+          status: updatedRecord?.status || (sendResult.success ? 'accepted' : 'retry_scheduled'),
+          message: sendResult.message,
+          batchIndex,
+        });
       }
     }
 
     const successfulCount = results.filter((r) => r.success).length;
     const complete = successfulCount === recipients.length;
     if (customIdempotencyKey && complete) sentReportsCache.add(customIdempotencyKey);
+
+    const queueSummary = await summarizeDeliveryQueue(admin, todayStr);
 
     return NextResponse.json({
       success: complete,
@@ -182,6 +232,7 @@ async function handleDailyReport(request: Request) {
       successfulCount,
       batchesProcessed: batches.length,
       batchSize: BULLETIN_BATCH_SIZE,
+      queueSummary,
       results,
       marketSummary: marketData,
     }, { status: complete ? 200 : successfulCount > 0 ? 207 : 503 });
