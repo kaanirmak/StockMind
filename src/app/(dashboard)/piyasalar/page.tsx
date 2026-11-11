@@ -12,6 +12,7 @@ import { useFunds } from '@/hooks/useFunds';
 import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal, PriceStatusBadge } from '@/components/ui';
 import { classifyFundPriceStatus, classifyStockPriceStatus } from '@/lib/market/priceStatus';
 import { MARKET_CATALOG, MOBILE_PRIMARY_MARKETS, type MarketId } from '@/lib/market/marketSelector';
+import { describeSearchResult } from '@/lib/market/searchResultDescriptor';
 import {
   MARKET_FILTER_STORAGE_KEY,
   buildMarketSearchParams,
@@ -901,6 +902,7 @@ function PiyasalarContent() {
                       const isPositive = (stock.changePercent || 0) >= 0;
                       const curr = (stock.currency as string) === 'TRY' ? '₺' : (stock.currency as string) === 'EUR' ? '€' : '$';
                       const badgeVariant = getBadgeVariant(stock.exchange);
+                      const desc = describeSearchResult(stock);
 
                       return (
                         <tr key={stock.symbol} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
@@ -908,13 +910,19 @@ function PiyasalarContent() {
                             <Link href={`/stocks/${stock.symbol}`} className="flex items-center gap-2 sm:gap-2.5">
                               <InstrumentLogo symbol={stock.symbol} name={stock.name} size="sm" />
                               <div>
-                                <span className="font-bold text-text-primary block group-hover:text-accent transition-colors text-xs sm:text-sm">{stock.symbol}</span>
-                                <span className="text-[11px] text-text-muted line-clamp-1 hidden sm:block">{stock.name}</span>
+                                <span className="font-bold text-text-primary block group-hover:text-accent transition-colors text-xs sm:text-sm">{desc.symbol}</span>
+                                <span className="text-[11px] text-text-muted line-clamp-1 hidden sm:block">{desc.name}</span>
+                                <span className="text-[10px] text-text-muted sm:hidden block">
+                                  {desc.exchange} • {desc.assetTypeLabel} • {desc.currency}
+                                </span>
                               </div>
                             </Link>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 hidden sm:table-cell">
-                            <Badge variant={badgeVariant as any} size="sm">{stock.exchange}</Badge>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge variant={badgeVariant as any} size="sm">{desc.exchange}</Badge>
+                              <span className="text-[11px] text-text-muted">{desc.assetTypeLabel} • {desc.currency}</span>
+                            </div>
                           </td>
                           <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-mono font-semibold text-text-primary text-xs sm:text-sm whitespace-nowrap">
                             {(() => {
@@ -1199,14 +1207,18 @@ function PiyasalarContent() {
                     <WindowedRows columns={8}>{visibleFunds.map((fund) => {
                       const dailyPos = (fund.dailyReturn || 0) >= 0;
                       const yearlyPos = (fund.yearlyReturn || 0) >= 0;
+                      const fundDesc = describeSearchResult({ code: fund.code, name: fund.name, exchange: 'TEFAS', assetType: 'fund', currency: 'TRY' });
                       return (
                         <tr key={fund.code} className="hover:bg-bg-hover/60 transition-colors group cursor-pointer">
                           <td className="py-2 sm:py-3 px-2 sm:px-4">
                             <Link href={`/funds/${fund.code}`} className="flex items-center gap-2 sm:gap-2.5">
                               <InstrumentLogo symbol={fund.code} name={fund.name} size="sm" />
                               <div>
-                                <span className="font-bold text-text-primary block group-hover:text-accent transition-colors text-xs sm:text-sm">{fund.code}</span>
-                                <span className="text-[11px] text-text-muted line-clamp-1 hidden sm:block">{fund.name}</span>
+                                <span className="font-bold text-text-primary block group-hover:text-accent transition-colors text-xs sm:text-sm">{fundDesc.symbol}</span>
+                                <span className="text-[11px] text-text-muted line-clamp-1 hidden sm:block">{fundDesc.name}</span>
+                                <span className="text-[10px] text-text-muted block">
+                                  {fundDesc.exchange} • {fundDesc.assetTypeLabel} • {fundDesc.currency}
+                                </span>
                               </div>
                             </Link>
                           </td>

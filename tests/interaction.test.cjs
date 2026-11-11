@@ -2655,6 +2655,55 @@ test('PIY-02 remembers last market and filter while honoring explicit shared URL
   assert.match(piyasalarSrc, /buildMarketSearchParams/);
 });
 
+test('PIY-03 ensures every search result displays symbol, exchange, asset type and currency', () => {
+  const { describeSearchResult } = load('src/lib/market/searchResultDescriptor.ts');
+
+  const bist = { ...describeSearchResult({ symbol: 'THYAO.IS', name: 'Türk Hava Yolları', exchange: 'BIST', currency: 'TRY' }) };
+  assert.deepEqual(bist, {
+    symbol: 'THYAO',
+    name: 'Türk Hava Yolları',
+    exchange: 'BIST',
+    assetTypeLabel: 'Hisse',
+    currency: 'TRY',
+  });
+
+  const us = { ...describeSearchResult({ symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', currency: 'USD' }) };
+  assert.deepEqual(us, {
+    symbol: 'AAPL',
+    name: 'Apple Inc.',
+    exchange: 'NASDAQ',
+    assetTypeLabel: 'Hisse',
+    currency: 'USD',
+  });
+
+  const fund = { ...describeSearchResult({ code: 'TI2', name: 'İş Portföy BIST 30 Fonu', assetType: 'fund' }) };
+  assert.deepEqual(fund, {
+    symbol: 'TI2',
+    name: 'İş Portföy BIST 30 Fonu',
+    exchange: 'TEFAS',
+    assetTypeLabel: 'Fon',
+    currency: 'TRY',
+  });
+
+  const crypto = { ...describeSearchResult({ symbol: 'BTC', name: 'Bitcoin', exchange: 'CRYPTO' }) };
+  assert.deepEqual(crypto, {
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    exchange: 'CRYPTO',
+    assetTypeLabel: 'Kripto',
+    currency: 'USD',
+  });
+
+  for (const relPath of [
+    'src/components/layout/SearchPalette.tsx',
+    'src/components/portfolio/TransactionModal.tsx',
+    'src/app/(dashboard)/piyasalar/page.tsx',
+  ]) {
+    const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    assert.match(src, /describeSearchResult/, `${relPath} should use describeSearchResult`);
+  }
+});
+
 
 
 

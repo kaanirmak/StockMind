@@ -7,6 +7,7 @@ import { CashPanel } from './CashPanel';
 import { BrokerDirectory } from './BrokerDirectory';
 import { BROKERS, Broker } from '@/lib/data/brokers';
 import { cleanSymbol } from '@/lib/utils/symbol';
+import { describeSearchResult } from '@/lib/market/searchResultDescriptor';
 import {
   TRANSACTION_CHANNEL_OPTIONS,
   TransactionChannel,
@@ -515,7 +516,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   <span className="text-[9px] font-mono text-violet-400">İşlem Kaydı</span>
                 </div>
                 <div className="space-y-1">
-                  {spotlightResults.stocks.map((s) => (
+                  {spotlightResults.stocks.map((s) => {
+                    const desc = describeSearchResult({ ...s, assetType: 'stock' });
+                    return (
                     <button
                       type="button"
                       key={s.symbol}
@@ -530,22 +533,23 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="px-1.5 py-0.5 rounded bg-accent/15 text-accent font-mono font-bold text-xs shrink-0">
-                          {s.symbol}
+                          {desc.symbol}
                         </span>
                         <div className="min-w-0">
                           <span className="text-xs font-semibold text-text-primary block truncate group-hover:text-accent transition-colors">
-                            {s.name || s.symbol}
+                            {desc.name}
                           </span>
                           <span className="text-[10px] text-text-muted block truncate">
-                            {s.exchange || 'BIST'} • {s.currency || 'TRY'}
+                            {desc.exchange} • {desc.assetTypeLabel} • {desc.currency}
                           </span>
                         </div>
                       </div>
                       <span className="text-xs font-bold font-mono text-text-primary shrink-0">
-                        {s.price ? `${s.currency === 'USD' ? '$' : '₺'}${Number(s.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : 'Seç →'}
+                        {s.price ? `${desc.currency === 'USD' ? '$' : '₺'}${Number(s.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : 'Seç →'}
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -558,7 +562,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   <span className="text-[9px] font-mono text-purple-400">İşlem Kaydı</span>
                 </div>
                 <div className="space-y-1">
-                  {spotlightResults.funds.map((f) => (
+                  {spotlightResults.funds.map((f) => {
+                    const desc = describeSearchResult({ code: f.code || f.symbol, name: f.name, exchange: 'TEFAS', assetType: 'fund', currency: 'TRY' });
+                    return (
                     <button
                       type="button"
                       key={f.code || f.symbol}
@@ -573,14 +579,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 font-mono font-bold text-xs shrink-0">
-                          {f.code || f.symbol}
+                          {desc.symbol}
                         </span>
                         <div className="min-w-0">
                           <span className="text-xs font-semibold text-text-primary block truncate group-hover:text-accent transition-colors">
-                            {f.name}
+                            {desc.name}
                           </span>
                           <span className="text-[10px] text-text-muted block truncate">
-                            TEFAS Yatırım Fonu
+                            {desc.exchange} • {desc.assetTypeLabel} • {desc.currency}
                           </span>
                         </div>
                       </div>
@@ -588,7 +594,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                         {f.price ? `₺${Number(f.price).toFixed(4)}` : 'Seç →'}
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

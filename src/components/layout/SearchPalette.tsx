@@ -3,8 +3,17 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal, InstrumentLogo, Icon } from '@/components/ui';
+import { describeSearchResult } from '@/lib/market/searchResultDescriptor';
 
-type Result = { symbol: string; name: string; path: string; price: number | null; currency: string; kind: string };
+type Result = {
+  symbol: string;
+  name: string;
+  path: string;
+  price: number | null;
+  currency: string;
+  kind: string;
+  exchange: string;
+};
 
 export function SearchPalette() {
   const router = useRouter();
@@ -41,8 +50,30 @@ export function SearchPalette() {
         ]);
         if (controller.signal.aborted) return;
         setResults([
-          ...(stocks.success ? stocks.data.slice(0, 6) : []).map((s: { symbol: string; name: string; price: number; currency: string }) => ({ ...s, path: `/stocks/${s.symbol}`, kind: 'Hisse' })),
-          ...(funds.success ? funds.data.slice(0, 6) : []).map((f: { code: string; name: string; price: number | null }) => ({ symbol: f.code, name: f.name, price: f.price, currency: 'TRY', path: `/funds/${f.code}`, kind: 'Fon' })),
+          ...(stocks.success ? stocks.data.slice(0, 6) : []).map((s: { symbol: string; name: string; price: number; currency?: string; exchange?: string; assetType?: string; isIndex?: boolean }) => {
+            const desc = describeSearchResult(s);
+            return {
+              ...s,
+              symbol: desc.symbol,
+              name: desc.name,
+              currency: desc.currency,
+              exchange: desc.exchange,
+              kind: desc.assetTypeLabel,
+              path: `/stocks/${s.symbol}`,
+            };
+          }),
+          ...(funds.success ? funds.data.slice(0, 6) : []).map((f: { code: string; name: string; price: number | null }) => {
+            const desc = describeSearchResult({ code: f.code, name: f.name, exchange: 'TEFAS', assetType: 'fund', currency: 'TRY' });
+            return {
+              symbol: desc.symbol,
+              name: desc.name,
+              price: f.price,
+              currency: desc.currency,
+              exchange: desc.exchange,
+              kind: desc.assetTypeLabel,
+              path: `/funds/${f.code}`,
+            };
+          }),
         ]);
       } catch { if (!controller.signal.aborted) { setError(true); setResults([]); } }
       finally { if (!controller.signal.aborted) setLoading(false); }
@@ -70,7 +101,15 @@ export function SearchPalette() {
       <div ref={resultsRef} id={listId} role="listbox" aria-label="Arama sonuçları" aria-busy={loading} className="max-h-[48dvh] overflow-y-auto overscroll-contain pt-2 space-y-1">
         {loading ? <p role="status" className="p-4 text-sm text-text-muted">Aranıyor…</p> : error ? <p role="status" className="p-4 text-sm text-danger">Arama yüklenemedi. Tekrar deneyin.</p> : results.map((result, index) => <button key={result.path} id={`${listId}-${index}`} role="option" aria-selected={active === index} onClick={() => navigate(result.path)} className={`w-full min-w-0 flex items-center gap-3 p-3 rounded-xl text-left ${active === index ? 'bg-accent/10' : 'hover:bg-bg-hover'}`}>
           <InstrumentLogo symbol={result.symbol} name={result.name} size="md" />
-          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-text-primary">{result.symbol}<span className="ml-2 text-xs font-normal text-text-muted">{result.kind}</span></span><span className="block truncate text-xs text-text-secondary">{result.name}</span></span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-text-primary">
+              <span>{result.symbol}</span>
+              <span className="px-1.5 py-0.5 rounded bg-bg-tertiary border border-border/70 text-[10px] font-mono text-text-secondary">{result.exchange}</span>
+              <span className="px-1.5 py-0.5 rounded bg-accent/10 text-[10px] font-medium text-accent">{result.kind}</span>
+              <span className="px-1.5 py-0.5 rounded bg-bg-tertiary/70 text-[10px] font-mono text-text-muted">{result.currency}</span>
+            </span>
+            <span className="block truncate text-xs text-text-secondary">{result.name}</span>
+          </span>
           <span className="shrink-0 text-xs tabular-nums text-text-primary">{result.price == null ? 'Fiyat yok' : result.price.toLocaleString('tr-TR', { style: 'currency', currency: result.currency || 'TRY', maximumFractionDigits: result.kind === 'Fon' ? 4 : 2 })}</span>
         </button>)}
         {!loading && !error && !results.length && <p role="status" className="p-4 text-sm text-text-muted">{query.trim() ? 'Eşleşen varlık bulunamadı.' : 'Aramaya başlamak için bir şirket adı veya kod yazın.'}</p>}
