@@ -7,9 +7,18 @@ const TRY_FORMATTER = new Intl.NumberFormat('tr-TR', {
   maximumFractionDigits: 2,
 });
 
-const USD_FORMATTER = new Intl.NumberFormat('en-US', {
+const USD_FORMATTER = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
   currency: 'USD',
+  currencyDisplay: 'narrowSymbol',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const EUR_FORMATTER = new Intl.NumberFormat('tr-TR', {
+  style: 'currency',
+  currency: 'EUR',
+  currencyDisplay: 'narrowSymbol',
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
@@ -26,24 +35,68 @@ const PERCENT_FORMATTER = new Intl.NumberFormat('tr-TR', {
   maximumFractionDigits: 2,
 });
 
-export function formatCurrency(value: number, currency: string = 'TRY'): string {
-  if (currency === 'USD') return USD_FORMATTER.format(value);
-  return TRY_FORMATTER.format(value);
+function sanitizeNumeric(value: number): number {
+  if (!Number.isFinite(value) || Math.abs(value) < 1e-9) return 0;
+  return value;
+}
+
+export function formatCurrency(
+  value: number,
+  currency: string = 'TRY',
+  decimals: number = 2
+): string {
+  const safe = sanitizeNumeric(value);
+  if (decimals === 2) {
+    if (currency === 'USD') return USD_FORMATTER.format(safe);
+    if (currency === 'EUR') return EUR_FORMATTER.format(safe);
+    return TRY_FORMATTER.format(safe);
+  }
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: currency === 'USD' || currency === 'EUR' ? currency : 'TRY',
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(safe);
+}
+
+export function formatSignedCurrency(
+  value: number,
+  currency: string = 'TRY',
+  decimals: number = 2
+): string {
+  const safe = sanitizeNumeric(value);
+  if (safe > 0) return `+${formatCurrency(safe, currency, decimals)}`;
+  if (safe < 0) return `-${formatCurrency(Math.abs(safe), currency, decimals)}`;
+  return formatCurrency(0, currency, decimals);
 }
 
 export function formatCompact(value: number): string {
-  return COMPACT_FORMATTER.format(value);
+  return COMPACT_FORMATTER.format(sanitizeNumeric(value));
 }
 
-export function formatPercent(value: number): string {
-  return PERCENT_FORMATTER.format(value / 100);
+export function formatPercent(value: number, decimals: number = 2): string {
+  const safe = sanitizeNumeric(value);
+  if (decimals === 2) return PERCENT_FORMATTER.format(safe / 100);
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'percent',
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(safe / 100);
+}
+
+export function formatSignedPercent(value: number, decimals: number = 2): string {
+  const safe = sanitizeNumeric(value);
+  if (safe > 0) return `+${formatPercent(safe, decimals)}`;
+  if (safe < 0) return `-${formatPercent(Math.abs(safe), decimals)}`;
+  return formatPercent(0, decimals);
 }
 
 export function formatNumber(value: number, decimals: number = 2): string {
   return new Intl.NumberFormat('tr-TR', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(value);
+  }).format(sanitizeNumeric(value));
 }
 
 export function formatDate(
@@ -52,6 +105,7 @@ export function formatDate(
   options?: Intl.DateTimeFormatOptions
 ): string {
   const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'short',
@@ -65,6 +119,7 @@ export function formatDateTime(
   locale: string = 'tr-TR'
 ): string {
   const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString(locale, {
     year: 'numeric',
     month: 'short',

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useStocks } from '@/hooks/useStockData';
-import { getPnLColor, getPnLSign } from '@/lib/utils/format';
+import { formatCurrency, formatSignedPercent, getPnLColor } from '@/lib/utils/format';
 import { InstrumentLogo } from '@/components/ui';
 
 export default function TopMovers() {
@@ -51,12 +51,12 @@ export default function TopMovers() {
                   <span className="text-[10px] text-text-muted hidden sm:inline truncate max-w-[100px] block">{stock.name}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 tabular-nums">
                 <span className="text-sm text-text-secondary">
-                  {stock.currency === 'USD' ? '$' : '₺'}{stock.price.toFixed(2)}
+                  {formatCurrency(stock.price, stock.currency === 'USD' ? 'USD' : 'TRY')}
                 </span>
                 <span className={`text-sm font-medium ${getPnLColor(stock.changePercent)} min-w-[60px] text-right`}>
-                  {getPnLSign(stock.changePercent)}{Math.abs(stock.changePercent).toFixed(2)}%
+                  {formatSignedPercent(stock.changePercent)}
                 </span>
               </div>
             </Link>
@@ -86,12 +86,12 @@ export default function TopMovers() {
                   <span className="text-[10px] text-text-muted hidden sm:inline truncate max-w-[100px] block">{stock.name}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 tabular-nums">
                 <span className="text-sm text-text-secondary">
-                  {stock.currency === 'USD' ? '$' : '₺'}{stock.price.toFixed(2)}
+                  {formatCurrency(stock.price, stock.currency === 'USD' ? 'USD' : 'TRY')}
                 </span>
                 <span className={`text-sm font-medium ${getPnLColor(stock.changePercent)} min-w-[60px] text-right`}>
-                  {getPnLSign(stock.changePercent)}{Math.abs(stock.changePercent).toFixed(2)}%
+                  {formatSignedPercent(stock.changePercent)}
                 </span>
               </div>
             </Link>

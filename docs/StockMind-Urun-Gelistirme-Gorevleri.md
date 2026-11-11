@@ -58,7 +58,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | UX-09 | P1 | Açık ve koyu tema kontrastını doğrula | Temel metin, yardımcı etiket, grafik ve odak göstergeleri iki temada da ölçülür ve okunabilir hale gelir. | ◐ |
 | UX-10 | P1 | Klavye ve ekran okuyucu akışlarını test et | Menü, filtre, modal, geri dönüş ve hata mesajları klavyeyle ve ekran okuyucuyla kullanılabilir. | ◐ |
 | UX-11 | P1 | Yükleniyor, hata ve boş durumları birleştir | Ana ekranların her birinde durum adı, kısa neden ve uygun sonraki eylem görünür. | ◐ |
-| UX-12 | P2 | Finansal sayı biçimini tutarlı yap | Negatif yüzde, Türkçe ondalık, para simgesi ve tarih yazımı tüm ekranlarda ortak biçimi kullanır. | ☐ |
+| UX-12 | P2 | Finansal sayı biçimini tutarlı yap | Negatif yüzde, Türkçe ondalık, para simgesi ve tarih yazımı tüm ekranlarda ortak biçimi kullanır. | ◐ |
 
 ## 4. Portföy, işlem kaydı ve raporlama
 

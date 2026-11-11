@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Holding } from '@/types/portfolio';
-import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
+import { formatCurrency, formatPercent, formatSignedPercent, getPnLSign } from '@/lib/utils/format';
 import {
   buildHeatmapCompactSummary,
   buildHeatmapRows,
@@ -489,13 +489,13 @@ export default function PortfolioHeatmap() {
                   <span className="text-text-muted">
                     En Büyük Pay:{' '}
                     <strong className="text-text-primary">
-                      {compactSummary.topHolding.symbol} %{compactSummary.topHolding.weightPercent.toFixed(1)}
+                      {compactSummary.topHolding.symbol} {formatPercent(compactSummary.topHolding.weightPercent, 1)}
                     </strong>
                   </span>
                 )}
                 {compactSummary.strongestGainer && (
                   <span className="text-success font-semibold">
-                    Lider: {compactSummary.strongestGainer.symbol} +{compactSummary.strongestGainer.metricValue.toFixed(2)}%
+                    Lider: {compactSummary.strongestGainer.symbol} {formatSignedPercent(compactSummary.strongestGainer.metricValue)}
                   </span>
                 )}
               </div>
@@ -568,7 +568,7 @@ export default function PortfolioHeatmap() {
                         {formatCurrency(row.currentValue)}
                       </td>
                       <td className="py-2.5 px-3 text-right tabular-nums font-medium text-text-primary">
-                        %{row.weightPercent.toFixed(1)}
+                        {formatPercent(row.weightPercent, 1)}
                       </td>
                       <td
                         className={`py-2.5 px-3 text-right tabular-nums font-bold ${
@@ -579,7 +579,7 @@ export default function PortfolioHeatmap() {
                             : 'text-text-muted'
                         }`}
                       >
-                        {getPnLSign(row.metricValue)}{formatPercent(Math.abs(row.metricValue))}
+                        {formatSignedPercent(row.metricValue)}
                       </td>
                     </tr>
                   ))}

@@ -132,7 +132,7 @@ export default function DailyPulseRow() {
                       {item.symbol}
                     </span>
                     <span className="text-[10px] text-text-muted block">
-                      Ağırlık %{item.weight.toFixed(1)}
+                      Ağırlık {formatPercent(item.weight, 1)}
                     </span>
                   </div>
                 </div>

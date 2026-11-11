@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useAuth } from '@/hooks/useAuth';
 import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
-import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
+import { formatCurrency, formatPercent, formatSignedPercent, getPnLSign } from '@/lib/utils/format';
 
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { type PerformancePeriod as MetricView } from '@/lib/portfolio/periodPerformance';
@@ -380,7 +380,7 @@ export default function PortfolioSummary() {
                     isPrivacyMode ? 'filter blur-[7px] select-none opacity-60' : ''
                   }`}
                 >
-                  ₺{summary.totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatCurrency(summary.totalValue)}
                 </h2>
 
                 {displayPhase === 'zero_value' && (
@@ -414,7 +414,7 @@ export default function PortfolioSummary() {
                   <span title={periodData.available ? 'Nakit hariç varlık getirisi' : `Eksik fiyat: ${periodData.missing.join(', ')}`}>{periodData.available ? `${getPnLSign(periodData.pnl)}${formatCurrency(Math.abs(periodData.pnl))}` : periodData.loading ? 'Fiyatlar yükleniyor…' : 'Veri eksik'}</span>
                   {!periodData.available && !periodData.loading && <span role="status" className="text-[10px] font-normal">Fiyat alınamadı: {periodData.missing.join(', ')}</span>}
                   {periodData.available && periodData.pnlPercent !== 0 && (
-                    <span className="text-xs sm:text-sm font-semibold opacity-90">({getPnLSign(periodData.pnlPercent)}%{Math.abs(periodData.pnlPercent).toFixed(1)})</span>
+                    <span className="text-xs sm:text-sm font-semibold opacity-90">({formatSignedPercent(periodData.pnlPercent, 1)})</span>
                   )}
                 </div>
               </div>
@@ -431,9 +431,9 @@ export default function PortfolioSummary() {
                     <>
                       <span>•</span>
                       <span>
-                        Dolar Karşılığı: ${(summary.totalValue / usdTry).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Dolar Karşılığı: {formatCurrency(summary.totalValue / usdTry, 'USD')}
                         {' '}
-                        <span className="text-white/30 hidden sm:inline">(USD/TRY: ₺{usdTry.toFixed(2)})</span>
+                        <span className="text-white/30 hidden sm:inline">(USD/TRY: {formatCurrency(usdTry)})</span>
                       </span>
                     </>
                   ) : null}

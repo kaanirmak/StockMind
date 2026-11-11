@@ -10,6 +10,7 @@ import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { POPULAR_FUNDS } from '@/lib/constants/funds';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
 import { loadDeferredAlerts, type DeferredAlertRecord } from '@/lib/market/alertFreshness';
+import { formatCurrency, formatSignedPercent } from '@/lib/utils/format';
 
 export default function WatchlistPage() {
   const { items, addItem, removeItem, syncStatus, retrySync, refreshFromServer } = useWatchlistStore();
@@ -133,7 +134,7 @@ export default function WatchlistPage() {
           items.map((item) => {
             const isPositive = item.changePercent >= 0;
             const link = item.assetType === 'stock' ? `/stocks/${item.symbol}` : `/funds/${item.symbol}`;
-            const curr = item.exchange === 'NASDAQ' || item.exchange === 'NYSE' ? '$' : '₺';
+            const currencyCode = item.exchange === 'NASDAQ' || item.exchange === 'NYSE' ? 'USD' : 'TRY';
             const isOptionsOpen = activeOptionsId === item.id;
 
             return (
@@ -162,16 +163,16 @@ export default function WatchlistPage() {
                   </Link>
 
                   {/* Price & Change */}
-                  <div className="text-right shrink-0">
+                  <div className="text-right shrink-0 tabular-nums">
                     <div className="font-mono text-sm font-bold text-text-primary">
-                      {curr}{item.price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: item.assetType === 'fund' ? 4 : 2 })}
+                      {formatCurrency(item.price, currencyCode, item.assetType === 'fund' ? 4 : 2)}
                     </div>
                     <span
                       className={`font-semibold text-[11px] px-1.5 py-0.5 rounded font-mono inline-block ${
                         isPositive ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
                       }`}
                     >
-                      {isPositive ? '+' : ''}{item.changePercent.toFixed(2)}%
+                      {formatSignedPercent(item.changePercent)}
                     </span>
                   </div>
                 </div>
@@ -352,18 +353,20 @@ export default function WatchlistPage() {
                           {item.exchange || item.assetType}
                         </Badge>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-text-primary">
-                        {item.exchange === 'NASDAQ' || item.exchange === 'NYSE' ? '$' : '₺'}
-                        {item.price.toFixed(item.assetType === 'fund' ? 4 : 2)}
+                      <td className="py-3.5 px-4 text-right font-mono font-bold text-text-primary tabular-nums">
+                        {formatCurrency(
+                          item.price,
+                          item.exchange === 'NASDAQ' || item.exchange === 'NYSE' ? 'USD' : 'TRY',
+                          item.assetType === 'fund' ? 4 : 2
+                        )}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono">
+                      <td className="py-3.5 px-4 text-right font-mono tabular-nums">
                         <span
                           className={`font-semibold text-xs px-2.5 py-1 rounded-lg ${
                             isPositive ? 'text-success bg-success/15' : 'text-danger bg-danger/15'
                           }`}
                         >
-                          {isPositive ? '+' : ''}
-                          {item.changePercent.toFixed(2)}%
+                          {formatSignedPercent(item.changePercent)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono text-text-secondary">

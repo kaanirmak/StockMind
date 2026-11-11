@@ -2393,6 +2393,41 @@ test('UX-11 unifies loading, error, and empty states with status label, reason, 
   }
 });
 
+test('UX-12 enforces consistent Turkish decimals, currency symbols, signed percents, and safe dates across UI', () => {
+  const {
+    formatCurrency,
+    formatSignedCurrency,
+    formatPercent,
+    formatSignedPercent,
+    formatDate,
+  } = load('src/lib/utils/format.ts');
+
+  assert.equal(formatCurrency(1234.56, 'TRY'), '₺1.234,56');
+  assert.equal(formatCurrency(-1234.56, 'TRY'), '-₺1.234,56');
+  assert.equal(formatCurrency(1234.56, 'USD'), '$1.234,56');
+  assert.equal(formatCurrency(-1234.56, 'USD'), '-$1.234,56');
+  assert.equal(formatSignedCurrency(250.5, 'TRY'), '+₺250,50');
+  assert.equal(formatSignedCurrency(-250.5, 'TRY'), '-₺250,50');
+  assert.equal(formatPercent(-2.5), '-%2,50');
+  assert.equal(formatSignedPercent(2.5), '+%2,50');
+  assert.equal(formatSignedPercent(-2.5), '-%2,50');
+  assert.equal(formatSignedPercent(-0.0), '%0,00');
+  assert.equal(formatDate('not-a-date'), '—');
+
+  const consistencyChecks = [
+    ['src/components/dashboard/WatchlistPreview.tsx', /formatSignedPercent\(/],
+    ['src/components/dashboard/TopMovers.tsx', /formatSignedPercent\(/],
+    ['src/components/dashboard/PortfolioSummary.tsx', /formatSignedPercent\(/],
+    ['src/components/dashboard/PortfolioHeatmap.tsx', /formatSignedPercent\(/],
+    ['src/app/(dashboard)/watchlist/page.tsx', /formatSignedPercent\(/],
+    ['src/components/dashboard/RecentTransactions.tsx', /formatCurrency\(total, currency\)/],
+  ];
+  for (const [relPath, pattern] of consistencyChecks) {
+    const src = fs.readFileSync(path.join(__dirname, '..', relPath), 'utf8');
+    assert.match(src, pattern, `Expected shared financial formatting in ${relPath}`);
+  }
+});
+
 
 
 

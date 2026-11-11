@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
-import { getPnLColor, getPnLSign } from '@/lib/utils/format';
+import { formatCurrency, formatSignedPercent, getPnLColor } from '@/lib/utils/format';
 import { InstrumentLogo } from '@/components/ui';
 
 export default function WatchlistPreview() {
@@ -46,10 +46,10 @@ export default function WatchlistPreview() {
                     <p className="text-[11px] text-text-muted truncate max-w-[120px]">{item.name}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-text-primary">₺{item.price.toFixed(2)}</p>
+                <div className="text-right tabular-nums">
+                  <p className="text-sm font-medium text-text-primary">{formatCurrency(item.price)}</p>
                   <p className={`text-xs font-medium ${getPnLColor(item.changePercent)}`}>
-                    {getPnLSign(item.changePercent)}{Math.abs(item.changePercent).toFixed(2)}%
+                    {formatSignedPercent(item.changePercent)}
                   </p>
                 </div>
               </Link>

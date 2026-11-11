@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
-import { formatRelativeTime } from '@/lib/utils/format';
+import { formatCurrency, formatNumber, formatRelativeTime } from '@/lib/utils/format';
 import { InstrumentLogo } from '@/components/ui';
 
 export default function RecentTransactions() {
@@ -56,7 +56,7 @@ export default function RecentTransactions() {
       ) : (
         <div className="space-y-3">
           {recentTx.map((tx) => {
-            const sym = tx.currency === 'USD' ? '$' : tx.currency === 'EUR' ? '€' : '₺';
+            const currency = tx.currency || 'TRY';
             const total = tx.quantity * tx.price + (tx.commission || 0);
 
             return (
@@ -81,13 +81,13 @@ export default function RecentTransactions() {
                   <div>
                     <p className="text-sm font-semibold text-text-primary leading-tight">{tx.symbol}</p>
                     <p className="text-[11px] text-text-muted font-mono">
-                      {tx.quantity.toLocaleString('tr-TR')} adet × {sym}{tx.price.toFixed(2)}
+                      {formatNumber(tx.quantity, tx.quantity % 1 === 0 ? 0 : 2)} adet × {formatCurrency(tx.price, currency)}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium font-mono text-text-primary">
-                    {sym}{total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(total, currency)}
                   </p>
                   <p className="text-xs text-text-muted">
                     {formatRelativeTime(tx.transactionDate || tx.createdAt)}
