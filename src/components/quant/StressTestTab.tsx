@@ -22,11 +22,18 @@ import {
 } from '@/components/quant/QuantIcons';
 import {
   DEFAULT_STRESS_SHOCKS,
+  MONTE_CARLO_SIMULATIONS,
   runMonteCarloSimulation,
   getFinancialProfile,
   getQuantCurrency,
   PRESET_FINANCIAL_PROFILES,
 } from '@/lib/quant/models';
+import {
+  listMonteCarloScenarios,
+  saveMonteCarloScenario,
+  deleteMonteCarloScenario,
+  type SavedMonteCarloScenario,
+} from '@/lib/quant/monteCarloScenarios';
 import { Holding } from '@/types/portfolio';
 
 interface StressTestTabProps {
@@ -44,12 +51,19 @@ export default function StressTestTab({
   const [currentSymbol, setCurrentSymbol] = useState<string>(initialSym);
   const [volatility, setVolatility] = useState<number>(32); // %32
   const [drift, setDrift] = useState<number>(24); // %24
-  const [seed, setSeed] = useState<number>(0);
+  const [timeHorizonDays, setTimeHorizonDays] = useState<number>(252);
+  const [simulationsCount, setSimulationsCount] = useState<number>(MONTE_CARLO_SIMULATIONS);
+  const [seed, setSeed] = useState<number>(42);
+  const [savedScenarios, setSavedScenarios] = useState<SavedMonteCarloScenario[]>([]);
   const [fxShockPercent, setFxShockPercent] = useState<number>(DEFAULT_STRESS_SHOCKS.fxShockPercent);
   const [rateShockBps, setRateShockBps] = useState<number>(DEFAULT_STRESS_SHOCKS.rateShockBps);
   const [demandShockPercent, setDemandShockPercent] = useState<number>(DEFAULT_STRESS_SHOCKS.demandShockPercent);
   const [fxExposureInput, setFxExposureInput] = useState<string>('');
   const [demandBetaInput, setDemandBetaInput] = useState<string>('');
+
+  useEffect(() => {
+    setSavedScenarios(listMonteCarloScenarios());
+  }, []);
 
   // Active holding in portfolio if user owns this stock
   const activeHolding = useMemo(() => {
@@ -89,26 +103,36 @@ export default function StressTestTab({
     return demandBetaInput.trim() !== '' && Number.isFinite(num) ? num : null;
   }, [demandBetaInput]);
 
-  // Run simulation
+  // Run deterministic seeded simulation
   const mcResult = useMemo(() => {
-    return runMonteCarloSimulation(currentPrice, volatility / 100, drift / 100, undefined, {
-      symbol: currentSymbol,
-      livePrice: holdingPrice,
-      profile,
-      shocks: {
-        fxShockPercent,
-        rateShockBps,
-        demandShockPercent,
-      },
-      sensitivities: {
-        fxExposureRatio: parsedFxExposure,
-        demandBeta: parsedDemandBeta,
-      },
-    });
+    return runMonteCarloSimulation(
+      currentPrice,
+      volatility / 100,
+      drift / 100,
+      simulationsCount,
+      {
+        symbol: currentSymbol,
+        livePrice: holdingPrice,
+        profile,
+        timeHorizonDays,
+        seed,
+        shocks: {
+          fxShockPercent,
+          rateShockBps,
+          demandShockPercent,
+        },
+        sensitivities: {
+          fxExposureRatio: parsedFxExposure,
+          demandBeta: parsedDemandBeta,
+        },
+      }
+    );
   }, [
     currentPrice,
     volatility,
     drift,
+    simulationsCount,
+    timeHorizonDays,
     seed,
     currentSymbol,
     holdingPrice,
@@ -119,6 +143,32 @@ export default function StressTestTab({
     parsedFxExposure,
     parsedDemandBeta,
   ]);
+
+  const handleSaveScenario = () => {
+    const next = saveMonteCarloScenario({
+      symbol: currentSymbol,
+      initialPrice: currentPrice,
+      currency: nativeCurrency,
+      timeHorizonDays: mcResult.timeHorizonDays,
+      volatilityPercent: volatility,
+      driftPercent: drift,
+      simulationsCount: mcResult.simulationsCount,
+      seed: mcResult.seed,
+      medianPrice: mcResult.medianPrice,
+      var5Percentile: mcResult.var5Percentile,
+      best95Percentile: mcResult.best95Percentile,
+    });
+    setSavedScenarios(next);
+  };
+
+  const handleLoadScenario = (scenario: SavedMonteCarloScenario) => {
+    handleSelect(scenario.symbol);
+    setTimeHorizonDays(scenario.timeHorizonDays);
+    setVolatility(scenario.volatilityPercent);
+    setDrift(scenario.driftPercent);
+    setSimulationsCount(scenario.simulationsCount);
+    setSeed(scenario.seed);
+  };
 
   // SVG Chart Dimensions & Scaling
   const chartWidth = 700;
@@ -165,21 +215,31 @@ export default function StressTestTab({
                 <Shuffle className="w-4 h-4" />
               </div>
               <h2 className="text-base sm:text-lg font-bold text-text-primary">
-                Monte Carlo Simülatörü & Makro Kriz Stres Testi
+                Monte Carlo Simülatörü &amp; Makro Kriz Stres Testi
               </h2>
             </div>
             <p className="text-xs text-text-muted mt-1">
-              {mcResult.simulationsCount.toLocaleString('tr-TR')} İstatistiki simülasyon (Geometrik Brownian Hareketi) ile 1 yıllık olasılık dağılımını ve makroekonomik kriz şoklarına karşı direnci test edin.
+              {mcResult.simulationsCount.toLocaleString('tr-TR')} koşu • {mcResult.timeHorizonDays} iş günü vade • Tohum (Seed):{' '}
+              <span className="font-mono font-bold text-accent">{mcResult.seed}</span> — aynı girdiler her zaman aynı sonucu üretir.
             </p>
           </div>
 
-          <div className="flex w-full min-w-0 flex-col-reverse gap-3 sm:w-auto sm:items-end">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             <button
+              type="button"
+              data-testid="mc-save-scenario-btn"
+              onClick={handleSaveScenario}
+              className="min-h-11 justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-accent/15 hover:bg-accent/25 text-accent border border-accent/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>Senaryoyu Kaydet</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setSeed((s) => s + 1)}
               className="min-h-11 justify-center px-3 py-2 rounded-xl text-xs font-semibold bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Shuffle className="w-3.5 h-3.5 text-accent" />
-              <span>Yeniden Simüle Et</span>
+              <span>Yeni Tohum (#{seed + 1})</span>
             </button>
 
             <QuantSymbolSelect
@@ -287,8 +347,8 @@ export default function StressTestTab({
         </div>
       </div>
 
-      {/* Interactive Simulation Sliders */}
-      <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border">
+      {/* Interactive Simulation Controls & Reproducibility */}
+      <div className="glass-card p-4 sm:p-5 rounded-2xl border border-border space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {/* Volatility Slider */}
           <div className="space-y-2">
@@ -304,7 +364,7 @@ export default function StressTestTab({
               max="60"
               step="1"
               value={volatility}
-              onChange={(e) => setVolatility(parseInt(e.target.value))}
+              onChange={(e) => setVolatility(parseInt(e.target.value, 10))}
               className="w-full accent-accent h-2 bg-bg-input rounded-lg cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-text-muted">
@@ -328,7 +388,7 @@ export default function StressTestTab({
               max="50"
               step="1"
               value={drift}
-              onChange={(e) => setDrift(parseInt(e.target.value))}
+              onChange={(e) => setDrift(parseInt(e.target.value, 10))}
               className="w-full accent-accent h-2 bg-bg-input rounded-lg cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-text-muted">
@@ -338,6 +398,97 @@ export default function StressTestTab({
             </div>
           </div>
         </div>
+
+        {/* Horizon, Simulations Count & Reproducible Seed */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-border/60 text-xs">
+          <div className="space-y-1">
+            <label htmlFor="mc-horizon-days" className="block font-bold text-text-secondary">
+              Vade (İş Günü)
+            </label>
+            <select
+              id="mc-horizon-days"
+              value={timeHorizonDays}
+              onChange={(e) => setTimeHorizonDays(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl bg-bg-input border border-border text-text-primary font-mono text-xs"
+            >
+              <option value={63}>63 İş Günü (~3 Ay)</option>
+              <option value={126}>126 İş Günü (~6 Ay)</option>
+              <option value={252}>252 İş Günü (1 Yıl)</option>
+              <option value={504}>504 İş Günü (2 Yıl)</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="mc-runs-count" className="block font-bold text-text-secondary">
+              Koşu Sayısı
+            </label>
+            <select
+              id="mc-runs-count"
+              value={simulationsCount}
+              onChange={(e) => setSimulationsCount(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-xl bg-bg-input border border-border text-text-primary font-mono text-xs"
+            >
+              <option value={1000}>1.000 Koşu</option>
+              <option value={2500}>2.500 Koşu</option>
+              <option value={5000}>5.000 Koşu</option>
+              <option value={10000}>10.000 Koşu</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="mc-seed-input" className="block font-bold text-text-secondary">
+              Rastgelelik Tohumu (Seed)
+            </label>
+            <input
+              id="mc-seed-input"
+              type="number"
+              min={1}
+              step={1}
+              value={seed}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (Number.isFinite(val)) setSeed(Math.max(1, Math.trunc(val)));
+              }}
+              className="w-full px-3 py-2 rounded-xl bg-bg-input border border-border text-text-primary font-mono text-xs"
+            />
+          </div>
+        </div>
+
+        {savedScenarios.length > 0 && (
+          <div data-testid="mc-saved-scenarios" className="pt-3 border-t border-border/60 space-y-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted block">
+              Kaydedilen Tekrarlanabilir Senaryolar ({savedScenarios.length})
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {savedScenarios.map((sc) => (
+                <div
+                  key={sc.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-bg-secondary border border-border text-[11px]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleLoadScenario(sc)}
+                    className="font-semibold text-text-primary hover:text-accent cursor-pointer text-left"
+                  >
+                    {sc.label} → Medyan:{' '}
+                    <span className="font-mono font-bold text-accent">
+                      {sc.currency === 'USD' ? '$' : '₺'}
+                      {sc.medianPrice.toFixed(2)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${sc.label} senaryosunu sil`}
+                    onClick={() => setSavedScenarios(deleteMonteCarloScenario(sc.id))}
+                    className="text-text-muted hover:text-rose-400 px-1 cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SVG Trajectory Chart */}
@@ -346,7 +497,7 @@ export default function StressTestTab({
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-accent" />
             <h3 className="text-sm sm:text-base font-bold text-text-primary">
-              1 Yıllık Olasılıksal Fiyat Patikaları ({mcResult.simulationsCount.toLocaleString('tr-TR')} Simülasyondan Örnek {mcResult.sampleTrajectories.length} Yol)
+              {mcResult.timeHorizonDays} İş Günlük Olasılıksal Fiyat Patikaları ({mcResult.simulationsCount.toLocaleString('tr-TR')} Koşu • Tohum #{mcResult.seed})
             </h3>
           </div>
           <span className="text-xs text-text-muted font-mono font-medium">

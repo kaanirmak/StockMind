@@ -7425,6 +7425,88 @@ test('QNT-08: Piotroski, Altman, and DuPont scores compute from verified financi
   assert.match(healthTabSrc, /dupont-provenance/);
 });
 
+test('QNT-09: Monte Carlo scenarios record horizon, volatility, drift, run count and PRNG seed with deterministic reproduction', () => {
+  const modelsMod = load('src/lib/quant/models.ts');
+  const scenarioStoreMod = load('src/lib/quant/monteCarloScenarios.ts');
+
+  const opts = { symbol: 'THYAO', timeHorizonDays: 126, seed: 2026 };
+  const runA = modelsMod.runMonteCarloSimulation(310, 0.34, 0.25, 1500, opts);
+  const runB = modelsMod.runMonteCarloSimulation(310, 0.34, 0.25, 1500, opts);
+
+  assert.equal(runA.timeHorizonDays, 126);
+  assert.equal(runA.simulationsCount, 1500);
+  assert.equal(runA.seed, 2026);
+  assert.equal(runA.medianPrice, runB.medianPrice);
+  assert.equal(runA.var5Percentile, runB.var5Percentile);
+  assert.equal(runA.best95Percentile, runB.best95Percentile);
+  assert.deepEqual(
+    Array.from(runA.sampleTrajectories, (row) => Array.from(row)),
+    Array.from(runB.sampleTrajectories, (row) => Array.from(row))
+  );
+
+  // Different seed produces different stochastic outcome
+  const runOtherSeed = modelsMod.runMonteCarloSimulation(310, 0.34, 0.25, 1500, {
+    symbol: 'THYAO',
+    timeHorizonDays: 126,
+    seed: 9999,
+  });
+  assert.notDeepEqual(
+    Array.from(runA.sampleTrajectories[0]),
+    Array.from(runOtherSeed.sampleTrajectories[0])
+  );
+
+  // Persist & reload scenario parameters deterministically
+  const mem = new Map();
+  const mockStorage = {
+    getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+    setItem: (k, v) => mem.set(k, v),
+  };
+
+  const savedList = Array.from(
+    scenarioStoreMod.saveMonteCarloScenario(
+      {
+        symbol: 'THYAO',
+        initialPrice: 310,
+        currency: 'TRY',
+        timeHorizonDays: runA.timeHorizonDays,
+        volatilityPercent: 34,
+        driftPercent: 25,
+        simulationsCount: runA.simulationsCount,
+        seed: runA.seed,
+        medianPrice: runA.medianPrice,
+        var5Percentile: runA.var5Percentile,
+        best95Percentile: runA.best95Percentile,
+      },
+      mockStorage
+    )
+  );
+  assert.equal(savedList.length, 1);
+  const reloaded = savedList[0];
+  const reproduced = modelsMod.runMonteCarloSimulation(
+    reloaded.initialPrice,
+    reloaded.volatilityPercent / 100,
+    reloaded.driftPercent / 100,
+    reloaded.simulationsCount,
+    { symbol: reloaded.symbol, timeHorizonDays: reloaded.timeHorizonDays, seed: reloaded.seed }
+  );
+  assert.equal(reproduced.medianPrice, reloaded.medianPrice);
+  assert.equal(reproduced.var5Percentile, reloaded.var5Percentile);
+  assert.equal(reproduced.best95Percentile, reloaded.best95Percentile);
+
+  const afterDelete = Array.from(scenarioStoreMod.deleteMonteCarloScenario(reloaded.id, mockStorage));
+  assert.equal(afterDelete.length, 0);
+
+  const stressTabSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/quant/StressTestTab.tsx'),
+    'utf8'
+  );
+  assert.match(stressTabSrc, /id="mc-horizon-days"/);
+  assert.match(stressTabSrc, /id="mc-runs-count"/);
+  assert.match(stressTabSrc, /id="mc-seed-input"/);
+  assert.match(stressTabSrc, /data-testid="mc-save-scenario-btn"/);
+  assert.match(stressTabSrc, /data-testid="mc-saved-scenarios"/);
+});
+
 
 
 

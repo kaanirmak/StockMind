@@ -560,11 +560,16 @@ export interface MonteCarloStressOptions {
   profile?: ResolvedFinancialProfile;
   shocks?: Partial<StressShockInputs>;
   sensitivities?: StressSensitivityInputs;
+  timeHorizonDays?: number;
+  seed?: number;
 }
 
 export interface MonteCarloResult {
   simulationsCount: number;
   timeHorizonDays: number;
+  volatility: number;
+  drift: number;
+  seed: number;
   initialPrice: number;
   medianPrice: number;
   var5Percentile: number; // En Kötü %5 senaryo
@@ -743,10 +748,22 @@ export function calculateMacroStressTests(options: MonteCarloStressOptions & { v
   ];
 }
 
-function gaussianRandom(): number {
-  let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
+/** Deterministic Mulberry32 PRNG for reproducible Monte Carlo simulations */
+export function createSeededPrng(seed: number): () => number {
+  let state = (Math.floor(Number.isFinite(seed) ? seed : 42) >>> 0) || 1;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function gaussianRandom(rng: () => number): number {
+  let u = 0;
+  let v = 0;
+  while (u <= 1e-12) u = rng();
+  while (v <= 1e-12) v = rng();
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
@@ -757,20 +774,31 @@ export function runMonteCarloSimulation(
   requestedSimulations = MONTE_CARLO_SIMULATIONS,
   stressOptions: MonteCarloStressOptions = {}
 ): MonteCarloResult {
-  const days = 252; // 1 yıl
+  const rawHorizon = stressOptions.timeHorizonDays;
+  const days =
+    typeof rawHorizon === 'number' && Number.isFinite(rawHorizon) && rawHorizon >= 5
+      ? Math.min(1260, Math.round(rawHorizon))
+      : 252;
+  const horizonYears = days / 252;
+  const effectiveSeed =
+    typeof stressOptions.seed === 'number' && Number.isFinite(stressOptions.seed)
+      ? Math.trunc(stressOptions.seed)
+      : 42;
+  const rng = createSeededPrng(effectiveSeed);
+
   const numSimulations =
     Number.isFinite(requestedSimulations) && requestedSimulations >= 100
-      ? Math.round(requestedSimulations)
+      ? Math.min(20000, Math.round(requestedSimulations))
       : MONTE_CARLO_SIMULATIONS;
   const terminalPrices: number[] = new Array(numSimulations);
 
   // Genuine Geometric Brownian Motion terminal price simulations
   // S_T = S_0 * exp((drift - 0.5 * sigma^2) * T + sigma * sqrt(T) * Z)
-  const driftTerm = (drift - 0.5 * volatility * volatility) * 1.0;
-  const volTerm = volatility * Math.sqrt(1.0);
+  const driftTerm = (drift - 0.5 * volatility * volatility) * horizonYears;
+  const volTerm = volatility * Math.sqrt(horizonYears);
 
   for (let i = 0; i < numSimulations; i++) {
-    const z = gaussianRandom();
+    const z = gaussianRandom(rng);
     terminalPrices[i] = Math.max(0.01, currentPrice * Math.exp(driftTerm + volTerm * z));
   }
 
@@ -780,10 +808,10 @@ export function runMonteCarloSimulation(
   const median = Number(terminalPrices[Math.floor(numSimulations * 0.50)].toFixed(2));
   const best95 = Number(terminalPrices[Math.floor(numSimulations * 0.95)].toFixed(2));
 
-  // Generate 5 sample curves for the chart using the exact same GBM dynamics
+  // Generate 5 sample curves for the chart using the exact same GBM dynamics and seeded PRNG
   const sampleTrajectories: number[][] = [];
   const points = 20;
-  const stepDt = 1.0 / points;
+  const stepDt = horizonYears / points;
   const stepDrift = (drift - 0.5 * volatility * volatility) * stepDt;
   const stepVol = volatility * Math.sqrt(stepDt);
 
@@ -791,7 +819,7 @@ export function runMonteCarloSimulation(
     const trajectory: number[] = [currentPrice];
     let p = currentPrice;
     for (let step = 1; step <= points; step++) {
-      const z = gaussianRandom();
+      const z = gaussianRandom(rng);
       p = Math.max(0.01, p * Math.exp(stepDrift + stepVol * z));
       trajectory.push(Number(p.toFixed(2)));
     }
@@ -807,6 +835,9 @@ export function runMonteCarloSimulation(
   return {
     simulationsCount: numSimulations,
     timeHorizonDays: days,
+    volatility,
+    drift,
+    seed: effectiveSeed,
     initialPrice: currentPrice,
     medianPrice: median,
     var5Percentile: var5,
