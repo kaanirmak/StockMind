@@ -11,6 +11,12 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isUserEligibleForScheduledBulletin } from '@/lib/email/subscriptionStatus';
 import {
+  buildPersonalizedBulletinSection,
+  resolvePersonalizedBulletinPrefs,
+  type PersonalizedBulletinPrefs,
+} from '@/lib/email/personalizedBulletin';
+import { fetchNewsSnapshot } from '@/lib/news/snapshot';
+import {
   computeScheduledBulletinTime,
   recordBulletinRunFinish,
   recordBulletinRunStart,
@@ -31,8 +37,10 @@ const BULLETIN_BATCH_SIZE = 25;
 const sentReportsCache = new Set<string>();
 
 interface ReportRecipient {
+  id?: string;
   email: string;
   name?: string;
+  personalizedPrefs?: PersonalizedBulletinPrefs;
 }
 
 function deduplicateRecipients(recipients: ReportRecipient[]): ReportRecipient[] {
@@ -43,7 +51,7 @@ function deduplicateRecipients(recipients: ReportRecipient[]): ReportRecipient[]
     const key = email.toLowerCase();
     if (!email || !email.includes('@') || seen.has(key)) continue;
     seen.add(key);
-    unique.push({ email, name: r.name });
+    unique.push({ ...r, email });
   }
   return unique;
 }
@@ -69,8 +77,12 @@ async function loadConfirmedUsers(): Promise<ReportRecipient[]> {
       if (!isUserEligibleForScheduledBulletin(user)) continue;
 
       recipients.push({
+        id: user.id,
         email: user.email!.trim(),
         name: user.user_metadata?.full_name || user.user_metadata?.name || undefined,
+        personalizedPrefs: resolvePersonalizedBulletinPrefs(
+          (user.user_metadata ?? {}) as Record<string, unknown>,
+        ),
       });
     }
 
@@ -182,6 +194,10 @@ async function handleDailyReport(request: Request) {
       recipientsCount: recipients.length,
     });
     const marketData = await getBulletinMarketData();
+    const hasPersonalizedSubscribers = recipients.some((r) => r.personalizedPrefs?.enabled);
+    const sharedNewsEvents = hasPersonalizedSubscribers
+      ? await fetchNewsSnapshot().catch(() => [])
+      : [];
     const subjectDate = new Date().toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' });
     const subject = `StockMind Günlük Piyasa Kapanış Bülteni (18:30) • ${subjectDate}`;
 
@@ -225,12 +241,44 @@ async function handleDailyReport(request: Request) {
           continue;
         }
 
+        let personalizedPortfolio = null;
+        if (recipient.personalizedPrefs?.enabled && recipient.id) {
+          try {
+            const { data: txRows } = await admin
+              .from('portfolio_transactions')
+              .select('symbol, asset_type')
+              .eq('user_id', recipient.id);
+            const symbolSet = new Set<string>();
+            if (Array.isArray(txRows)) {
+              for (const row of txRows) {
+                if (typeof row?.symbol === 'string' && row.symbol.trim()) {
+                  symbolSet.add(row.symbol.trim().toUpperCase());
+                }
+              }
+            }
+            const userAssets = Array.from(symbolSet).map((symbol) => ({ symbol }));
+            personalizedPortfolio = buildPersonalizedBulletinSection({
+              prefs: recipient.personalizedPrefs,
+              assets: userAssets,
+              events: sharedNewsEvents.map((art) => ({
+                title: art.title,
+                summary: art.summary,
+                source: art.source,
+                publishedAt: art.publishedAt,
+              })),
+            });
+          } catch {
+            personalizedPortfolio = null;
+          }
+        }
+
         const sendResult = await sendTestEmail({
           to: recipient.email,
           userName: recipient.name || 'Değerli Yatırımcı',
           subject,
           isDailyReport: true,
           marketData,
+          personalizedPortfolio,
         });
 
         const updatedRecord = await recordDeliveryOutcome(admin, {

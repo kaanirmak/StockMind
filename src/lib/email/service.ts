@@ -2,6 +2,7 @@ import { palette } from '@/theme/palette';
 import { escapeHtml } from '@/lib/utils/html';
 import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
 import type { BulletinMarketDataPayload, BulletinMarketKey } from '@/lib/email/marketData';
+import type { PersonalizedBulletinSection } from '@/lib/email/personalizedBulletin';
 import nodemailer from 'nodemailer';
 
 export interface EmailPayload {
@@ -10,6 +11,7 @@ export interface EmailPayload {
   userName?: string;
   isDailyReport?: boolean;
   marketData?: BulletinMarketDataPayload;
+  personalizedPortfolio?: PersonalizedBulletinSection | null;
   portfolioSummary?: {
     totalValue?: number;
     totalPnL?: number;
@@ -117,6 +119,30 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
         ${missingFields.map((field) => `<li>${field} — kaynak verisi yok</li>`).join('')}
       </ul>
     </div>` : ''}
+    ${payload?.personalizedPortfolio?.enabled ? (() => {
+      const pSection = payload.personalizedPortfolio;
+      const summary = pSection.allowedSummary;
+      const summaryParts: string[] = [];
+      if (typeof summary.totalValue === 'number') {
+        summaryParts.push(`Toplam Değer: <strong>${escapeHtml(formatValue(summary.totalValue, 'TRY'))}</strong>`);
+      }
+      if (typeof summary.dailyChangePct === 'number') {
+        const sign = summary.dailyChangePct >= 0 ? '+' : '';
+        summaryParts.push(`Günlük Değişim: <strong>${escapeHtml(`${sign}${summary.dailyChangePct.toFixed(2)}%`)}</strong>`);
+      }
+      const eventsHtml = pSection.events.length > 0
+        ? `<ul style="margin:8px 0 0 18px;padding:0">
+            ${pSection.events.map((ev) => `<li style="margin-bottom:4px"><strong>${escapeHtml(ev.symbol)}</strong>: ${escapeHtml(ev.title)} <span style="color:#64748b">(${escapeHtml(ev.source)})</span></li>`).join('')}
+          </ul>`
+        : '<p style="margin:6px 0 0;color:#64748b">Portföy varlıklarınızla eşleşen yeni olay bulunmuyor.</p>';
+      return `
+    <div style="margin-top:18px;padding:14px 16px;border-radius:12px;background:#eef2ff;border:1px solid #c7d2fe;font-size:13px;color:#1e293b">
+      <p style="margin:0 0 6px;font-weight:bold;color:#3730a3">Kişiselleştirilmiş Portföy Özeti</p>
+      <p style="margin:0 0 8px;font-size:12px;color:#475569">İzin verilen alanlar: ${escapeHtml(pSection.allowedFieldLabels.join(', ') || 'Yalnızca izinli özet')}</p>
+      ${summaryParts.length > 0 ? `<p style="margin:0 0 8px">${summaryParts.join(' · ')}</p>` : ''}
+      ${eventsHtml}
+    </div>`;
+    })() : ''}
     ${typeof portfolio?.totalValue === 'number' && Number.isFinite(portfolio.totalValue)
       ? `<p>Portföy değeri ${formatValue(portfolio.totalValue, 'TRY')}</p>`
       : ''}

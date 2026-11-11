@@ -1219,5 +1219,165 @@ test('EPO-08: scheduled bulletin records scheduled/start times, duration, delay,
   assert.match(adminPageSrc, /data-testid="bulletin-missed-badge"/);
 });
 
+test('EPO-09: personalized daily bulletin includes only matched portfolio events and opted-in summary fields', async () => {
+  const baseLoad = loader();
+  const pbMod = baseLoad('src/lib/email/personalizedBulletin.ts');
+
+  const defaultPrefs = pbMod.resolvePersonalizedBulletinPrefs({});
+  assert.equal(defaultPrefs.enabled, false);
+
+  const optedOutSection = pbMod.buildPersonalizedBulletinSection({
+    prefs: defaultPrefs,
+    assets: [{ symbol: 'THYAO.IS', name: 'Türk Hava Yolları', exchange: 'BIST' }],
+    events: [{ title: 'THYAO yeni sipariş', source: 'KAP' }],
+    valuation: { totalValue: 250000, dailyChangePct: 1.5, isVerified: true },
+  });
+  assert.equal(optedOutSection, null);
+
+  const optedInPrefs = pbMod.resolvePersonalizedBulletinPrefs({
+    daily_report_personalized: true,
+    daily_report_portfolio_fields: { events: true, totalValue: false, dailyChange: true },
+  });
+  assert.equal(optedInPrefs.enabled, true);
+  assert.equal(optedInPrefs.includeTotalValue, false);
+  assert.equal(optedInPrefs.includeDailyChange, true);
+
+  const section = pbMod.buildPersonalizedBulletinSection({
+    prefs: optedInPrefs,
+    assets: [{ symbol: 'THYAO.IS', name: 'Türk Hava Yolları', exchange: 'BIST' }],
+    events: [
+      { title: 'Türk Hava Yolları kâr açıkladı <script>x</script>', source: 'KAP' },
+      { title: 'GARAN kredi anlaşması imzaladı', source: 'AA Finans' },
+    ],
+    valuation: { totalValue: 250000, dailyChangePct: 2.35, isVerified: true },
+  });
+  assert.equal(section.enabled, true);
+  assert.equal(section.events.length, 1);
+  assert.equal(section.events[0].symbol, 'THYAO.IS');
+  assert.equal(section.omittedEventCount, 1);
+  assert.equal(section.allowedSummary.totalValue, undefined);
+  assert.equal(section.allowedSummary.dailyChangePct, 2.35);
+
+  const emailLoad = loader({ nodemailer: { createTransport: () => ({}) } });
+  const emailSvc = emailLoad('src/lib/email/service.ts');
+  const htmlStandard = emailSvc.generateStockMindEmailHtml('Yatırımcı', {
+    isDailyReport: true,
+    marketData: { usdtry: 34.5 },
+    personalizedPortfolio: null,
+  });
+  assert.ok(!htmlStandard.includes('Kişiselleştirilmiş Portföy Özeti'));
+
+  const htmlPersonalized = emailSvc.generateStockMindEmailHtml('Yatırımcı', {
+    isDailyReport: true,
+    marketData: { usdtry: 34.5 },
+    personalizedPortfolio: section,
+  });
+  assert.ok(htmlPersonalized.includes('Kişiselleştirilmiş Portföy Özeti'));
+  assert.ok(htmlPersonalized.includes('THYAO.IS'));
+  assert.ok(htmlPersonalized.includes('&lt;script&gt;'));
+  assert.ok(!htmlPersonalized.includes('GARAN'));
+  assert.ok(!htmlPersonalized.includes('Toplam Değer'));
+  assert.ok(htmlPersonalized.includes('2.35%'));
+
+  // Cron route sends personalizedPortfolio strictly for opted-in subscribers
+  const dispatchedPayloads = [];
+  const fakeAdmin = {
+    auth: {
+      admin: {
+        listUsers: async () => ({
+          data: {
+            users: [
+              {
+                id: 'u-std',
+                email: 'std@example.com',
+                email_confirmed_at: '2026-01-01T00:00:00Z',
+                app_metadata: { plan: 'pro' },
+                user_metadata: { daily_report_enabled: true, daily_report_personalized: false },
+              },
+              {
+                id: 'u-pers',
+                email: 'pers@example.com',
+                email_confirmed_at: '2026-01-01T00:00:00Z',
+                app_metadata: { plan: 'pro' },
+                user_metadata: {
+                  daily_report_enabled: true,
+                  daily_report_personalized: true,
+                  daily_report_portfolio_fields: { events: true, totalValue: false, dailyChange: false },
+                },
+              },
+            ],
+          },
+          error: null,
+        }),
+      },
+    },
+    from(table) {
+      if (table === 'portfolio_transactions') {
+        return {
+          select() { return this; },
+          eq: async () => ({ data: [{ symbol: 'THYAO.IS', asset_type: 'stock' }], error: null }),
+        };
+      }
+      return {
+        insert() {
+          return {
+            select() {
+              return { maybeSingle: async () => ({ data: { id: 'run-1' }, error: null }) };
+            },
+          };
+        },
+        update() { return { eq: async () => ({ error: null }) }; },
+        select() { return this; },
+        eq() { return this; },
+        limit: async () => ({ data: [], error: null }),
+      };
+    },
+  };
+
+  const cronLoader = loader({
+    '@/lib/supabase/admin': { createAdminClient: () => fakeAdmin },
+    '@/lib/email/service': {
+      sendTestEmail: async (p) => {
+        dispatchedPayloads.push(p);
+        return { success: true, message: 'ok', senderAddress: 'kaanrmak7@gmail.com' };
+      },
+    },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 34.5 }) },
+    '@/lib/news/snapshot': {
+      fetchNewsSnapshot: async () => [
+        { title: 'THYAO yolcu sayısı arttı', source: 'KAP', summary: '', publishedAt: '2026-11-11T15:00:00Z' },
+        { title: 'Alakasız makro başlık', source: 'AA', summary: '', publishedAt: '2026-11-11T15:05:00Z' },
+      ],
+    },
+    '@/lib/email/deliveryQueue': {
+      enqueueBulletinRecipients: async () => ({ persisted: true, existingByEmail: new Map() }),
+      hasAcceptedDeliveryForDay: async () => false,
+      recordDeliveryOutcome: async () => ({ status: 'accepted' }),
+      shouldSkipDuplicateDelivery: () => false,
+      summarizeDeliveryQueue: async () => ({ pending: 0, accepted: 2, failed: 0, retryScheduled: 0, total: 2, available: true, bulletinDate: '2026-11-11', recentItems: [] }),
+    },
+    '@/lib/ai/modelCatalog': { hasProAccess: () => true },
+  }, { CRON_SECRET: 'cron-secret-test' });
+
+  const cronRoute = cronLoader('src/app/api/cron/daily-report/route.ts');
+  const res = await cronRoute.POST(
+    new Request('https://stockmind.test/api/cron/daily-report', {
+      method: 'POST',
+      headers: { authorization: 'Bearer cron-secret-test', 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    }),
+  );
+  assert.equal(res.status, 200);
+  const stdPayload = dispatchedPayloads.find((p) => p.to === 'std@example.com');
+  const persPayload = dispatchedPayloads.find((p) => p.to === 'pers@example.com');
+  assert.equal(stdPayload.personalizedPortfolio, null);
+  assert.equal(persPayload.personalizedPortfolio.enabled, true);
+  assert.equal(persPayload.personalizedPortfolio.events.length, 1);
+  assert.equal(persPayload.personalizedPortfolio.events[0].symbol, 'THYAO.IS');
+
+  const settingsSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/settings/page.tsx'), 'utf8');
+  assert.match(settingsSrc, /personalized-bulletin-prefs/);
+});
+
 
 

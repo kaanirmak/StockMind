@@ -14,6 +14,11 @@ import { ProPlanCard } from '@/components/pro/ProPlanCard';
 import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
 import { resolveBulletinSubscriptionView } from '@/lib/email/subscriptionStatus';
+import {
+  DEFAULT_PERSONALIZED_BULLETIN_PREFS,
+  resolvePersonalizedBulletinPrefs,
+  type PersonalizedBulletinPrefs,
+} from '@/lib/email/personalizedBulletin';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/components/theme/ThemeProvider';
@@ -98,6 +103,8 @@ export default function SettingsPage() {
   const [isAdvancedAiOpen, setIsAdvancedAiOpen] = useState(false);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
   const [savedDailyReportEnabled, setSavedDailyReportEnabled] = useState(true);
+  const [personalizedBulletinPrefs, setPersonalizedBulletinPrefs] =
+    useState<PersonalizedBulletinPrefs>(DEFAULT_PERSONALIZED_BULLETIN_PREFS);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingEmailSettings, setIsSavingEmailSettings] = useState(false);
@@ -397,6 +404,11 @@ export default function SettingsPage() {
     const nextDailyReportEnabled = user?.user_metadata?.daily_report_enabled !== false;
     setDailyReportEnabled(nextDailyReportEnabled);
     setSavedDailyReportEnabled(nextDailyReportEnabled);
+    setPersonalizedBulletinPrefs(
+      resolvePersonalizedBulletinPrefs(
+        (user?.user_metadata ?? {}) as Record<string, unknown>,
+      ),
+    );
 
     // Load AI preferences per user
     try {
@@ -580,7 +592,15 @@ export default function SettingsPage() {
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({
-        data: { daily_report_enabled: dailyReportEnabled },
+        data: {
+          daily_report_enabled: dailyReportEnabled,
+          daily_report_personalized: personalizedBulletinPrefs.enabled,
+          daily_report_portfolio_fields: {
+            events: personalizedBulletinPrefs.includePortfolioEvents,
+            totalValue: personalizedBulletinPrefs.includeTotalValue,
+            dailyChange: personalizedBulletinPrefs.includeDailyChange,
+          },
+        },
       });
       if (error) throw error;
       setSavedDailyReportEnabled(dailyReportEnabled);
@@ -1784,6 +1804,82 @@ export default function SettingsPage() {
               className="h-4 w-4 accent-accent"
             />
           </label>
+
+          {/* Personalized Bulletin Opt-In & Permitted Fields (EPO-09) */}
+          <div
+            data-testid="personalized-bulletin-prefs"
+            className="rounded-xl border border-border/70 bg-bg-secondary/40 p-3.5 space-y-3"
+          >
+            <label className="flex items-center justify-between gap-4 cursor-pointer">
+              <div>
+                <span className="text-sm font-semibold text-text-primary block">
+                  Kişiselleştirilmiş portföy bülteni
+                </span>
+                <span className="text-xs text-text-muted">
+                  Açıldığında yalnızca portföy varlıklarınızla eşleşen olaylar ve seçtiğiniz özet alanları bültene eklenir.
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={personalizedBulletinPrefs.enabled}
+                onChange={(e) =>
+                  setPersonalizedBulletinPrefs((prev) => ({
+                    ...prev,
+                    enabled: e.target.checked,
+                  }))
+                }
+                disabled={!user?.email_confirmed_at || !dailyReportEnabled || isSavingEmailSettings}
+                className="h-4 w-4 accent-accent shrink-0"
+              />
+            </label>
+
+            {personalizedBulletinPrefs.enabled && dailyReportEnabled && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/50 text-xs">
+                <label className="flex items-center gap-2 cursor-pointer text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={personalizedBulletinPrefs.includePortfolioEvents}
+                    onChange={(e) =>
+                      setPersonalizedBulletinPrefs((prev) => ({
+                        ...prev,
+                        includePortfolioEvents: e.target.checked,
+                      }))
+                    }
+                    className="h-3.5 w-3.5 accent-accent"
+                  />
+                  <span>İlgili portföy olayları</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={personalizedBulletinPrefs.includeTotalValue}
+                    onChange={(e) =>
+                      setPersonalizedBulletinPrefs((prev) => ({
+                        ...prev,
+                        includeTotalValue: e.target.checked,
+                      }))
+                    }
+                    className="h-3.5 w-3.5 accent-accent"
+                  />
+                  <span>Toplam portföy değeri</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={personalizedBulletinPrefs.includeDailyChange}
+                    onChange={(e) =>
+                      setPersonalizedBulletinPrefs((prev) => ({
+                        ...prev,
+                        includeDailyChange: e.target.checked,
+                      }))
+                    }
+                    className="h-3.5 w-3.5 accent-accent"
+                  />
+                  <span>Günlük değişim (%)</span>
+                </label>
+              </div>
+            )}
+          </div>
 
           <div className="pt-3 border-t border-border/60 space-y-2">
             <h4 className="text-sm font-bold text-text-primary">Test e-postası</h4>
