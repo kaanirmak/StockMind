@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { PRODUCT_SCOPE } from '@/lib/marketing/productScope';
 
 export default async function LandingPage() {
   let shouldRedirect = false;
@@ -74,7 +75,7 @@ export default async function LandingPage() {
         {/* Badge */}
         <div className="inline-flex max-w-full items-center gap-2 px-3 sm:px-4 py-2 rounded-full glass-subtle text-xs sm:text-sm text-text-secondary mb-7 sm:mb-8 animate-fade-in-down whitespace-nowrap">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-          BIST • NYSE • NASDAQ • TEFAS destekli
+          {PRODUCT_SCOPE.badgeText}
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-text-primary leading-[1.12] sm:leading-tight max-w-4xl animate-fade-in-up">
@@ -84,8 +85,7 @@ export default async function LandingPage() {
         </h1>
 
         <p className="mt-5 sm:mt-6 text-base sm:text-lg lg:text-xl leading-relaxed text-text-secondary max-w-2xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          StockMind ile borsa hisselerini ve TEFAS fonlarını gerçek zamanlı takip edin.
-          AI destekli analizler, teknik göstergeler ve portföy yönetimi ile yatırım kararlarınızı güçlendirin.
+          {PRODUCT_SCOPE.heroSubtitle}
         </p>
 
         {/* CTA Buttons */}
@@ -106,18 +106,21 @@ export default async function LandingPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-x-12 gap-y-6 sm:gap-8 lg:gap-12 mt-14 sm:mt-16 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-          {[
-            { value: '4+', label: 'Borsa' },
-            { value: '10K+', label: 'Hisse & Fon' },
-            { value: '15+', label: 'Teknik Gösterge' },
-            { value: "", label: 'AI Destekli' },
-          ].map((stat) => (
+          {PRODUCT_SCOPE.stats.map((stat) => (
             <div key={stat.label} className="text-center">
               <p className="text-2xl lg:text-3xl font-bold gradient-text">{stat.value}</p>
               <p className="text-xs lg:text-sm text-text-muted mt-1">{stat.label}</p>
             </div>
           ))}
         </div>
+
+        <p
+          data-testid="landing-delay-notice"
+          className="mt-6 text-xs text-text-muted max-w-2xl leading-relaxed animate-fade-in-up"
+          style={{ animationDelay: '0.35s' }}
+        >
+          {PRODUCT_SCOPE.delayNotice}
+        </p>
       </section>
 
 
@@ -127,42 +130,11 @@ export default async function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-text-primary text-center mb-4">Neden StockMind?</h2>
           <p className="text-text-secondary text-center mb-12 max-w-xl mx-auto">
-            Profesyonel yatırımcılar için tasarlanmış, kullanımı kolay bir platform
+            Türkçe portföy takibi ve analiz araçlarını sade bir arayüzde sunar
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
-            {[
-              {
-                icon: '📊',
-                title: 'Gerçek Zamanlı Veriler',
-                desc: 'BIST, NYSE ve NASDAQ hisselerini anlık olarak takip edin.',
-              },
-              {
-                icon: '📈',
-                title: 'Teknik Analiz',
-                desc: 'RSI, MACD, Bollinger Bands ve daha fazlası ile analiz yapın.',
-              },
-              {
-                icon: '💼',
-                title: 'Portföy Yönetimi',
-                desc: 'Alım/satım kayıtları, maliyet hesaplama ve performans takibi.',
-              },
-              {
-                icon: '🏦',
-                title: 'TEFAS Fonları',
-                desc: 'Yatırım fonlarını keşfedin, karşılaştırın ve portföyünüze ekleyin.',
-              },
-              {
-                icon: '🤖',
-                title: 'AI Asistan',
-                desc: 'Yapay zeka destekli piyasa analizi ve yatırım önerileri alın.',
-              },
-              {
-                icon: '🌍',
-                title: 'Çoklu Dil & Borsa',
-                desc: 'Türkçe ve İngilizce arayüz, global borsalar desteği.',
-              },
-            ].map((feature) => (
+            {PRODUCT_SCOPE.features.map((feature) => (
               <div key={feature.title} className="glass-card p-6 group">
                 <span className="text-3xl mb-4 block">{feature.icon}</span>
                 <h3 className="text-lg font-semibold text-text-primary mb-2">{feature.title}</h3>

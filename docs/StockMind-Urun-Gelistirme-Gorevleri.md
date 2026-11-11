@@ -185,7 +185,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | HSP-03 | P1 | Giriş, kayıt ve şifre sıfırlamayı uçtan uca test et | Doğrulama, süresi dolan bağlantı ve başarısız oturum senaryoları kullanıcıya açık durum gösterir. | ◐ |
 | HSP-04 | P1 | Widget örnek verisini belirgin etiketle | Demo widget üzerinde Örnek Veri görünür. Kişisel widget kendi veri ve gizlilik durumunu gösterir. | ◐ |
 | HSP-05 | P1 | Widget paylaşım sınırlarını görünür yap | Gömme önizlemesi hangi verinin paylaşılacağını gösterir. Kişisel değerler için açık seçim gerekir. | ◐ |
-| HSP-06 | P1 | Açılış sayfasındaki ürün vaatlerini doğrula | Varlık sayısı, kapsanan pazar, fiyat gecikmesi, dil ve özellik açıklamaları çalışan kapsamla eşleşir. | ☐ |
+| HSP-06 | P1 | Açılış sayfasındaki ürün vaatlerini doğrula | Varlık sayısı, kapsanan pazar, fiyat gecikmesi, dil ve özellik açıklamaları çalışan kapsamla eşleşir. | ◐ |
 | HSP-07 | P1 | Demo girişini gerçek misafir akışına bağla | Demo düğmesinden örnek veriye kayıt formu doldurmadan ulaşılır. | ☐ |
 | HSP-08 | P2 | Dil kapsamı kararını uygula | Türkçe ve İngilizce destek vaadi varsa temel akışlar her iki dilde tamamlanır. Desteklenen diller yardım ekranında yazılır. | ☐ |
 | HSP-09 | P2 | Veri ve gizlilik yardımını görünür yap | Piyasa verisinin kaynağı, AI’ya giden veri, widget paylaşımı ve hesap tercihleri yardım ekranında açıklanır. | ☐ |

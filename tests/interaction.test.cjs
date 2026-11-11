@@ -5082,6 +5082,42 @@ test('HSP-05: widget embed preview discloses shared data boundaries and requires
   assert.match(modalSrc, /data-testid="widget-share-boundary-preview"/);
 });
 
+test('HSP-06: landing page claims match implemented markets, asset count, indicator count, delay notice and Turkish UI scope', () => {
+  const { PRODUCT_SCOPE } = load('src/lib/marketing/productScope.ts');
+  const landingSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/page.tsx'), 'utf8');
+  const tefasDir = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), 'src/lib/data/tefas_funds_directory.json'), 'utf8')
+  );
+  const indicatorsSrc = fs.readFileSync(path.join(process.cwd(), 'src/lib/indicators/index.ts'), 'utf8');
+
+  // 1. Landing uses PRODUCT_SCOPE and shows explicit delay disclosure
+  assert.match(landingSrc, /PRODUCT_SCOPE/);
+  assert.match(landingSrc, /data-testid="landing-delay-notice"/);
+
+  // 2. Stats match verified counts: 1051+ assets -> "1.000+" (not 10K+), 6 indicators (not 15+), Turkish UI
+  assert.ok(Array.isArray(tefasDir) && tefasDir.length >= 1000);
+  const indicatorFns = (indicatorsSrc.match(/export function calculate[A-Za-z0-9_]+\(/g) || []).length;
+  assert.equal(indicatorFns, 6);
+
+  const combinedText = [
+    PRODUCT_SCOPE.badgeText,
+    PRODUCT_SCOPE.heroSubtitle,
+    PRODUCT_SCOPE.delayNotice,
+    ...PRODUCT_SCOPE.stats.map((s) => `${s.value} ${s.label}`),
+    ...PRODUCT_SCOPE.features.map((f) => `${f.title} ${f.desc}`),
+  ].join(' ');
+
+  assert.doesNotMatch(combinedText, /10K\+|15\+\s*Teknik|Gerçek Zamanlı Veriler|İngilizce arayüz|Çoklu Dil/i);
+  assert.match(combinedText, /1\.000\+/);
+  assert.match(combinedText, /\b6\b/);
+  assert.match(combinedText, /gecikmeli/i);
+  assert.match(combinedText, /BIST/);
+  assert.match(combinedText, /NASDAQ/);
+  assert.match(combinedText, /TEFAS/);
+  assert.deepEqual([...PRODUCT_SCOPE.supportedLanguages], ['Türkçe']);
+});
+
+
 
 
 
