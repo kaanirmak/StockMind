@@ -1779,4 +1779,138 @@ test('VER-07: eksik hacim, yüksek/düşük ve kapanış alanları boş kalır; 
   assert.equal(insufficient, null);
 });
 
+test('UX-01 mobile home priority ranks daily contributors and important event first', () => {
+  const resolveReq = (name) => {
+    if (name.startsWith('@/')) {
+      return load(path.join('src', `${name.slice(2)}.ts`), { require: resolveReq });
+    }
+    if (name.startsWith('./')) {
+      return load(path.join('src/lib/news', `${name.slice(2)}.ts`), { require: resolveReq });
+    }
+    return require(name);
+  };
+  const {
+    DASHBOARD_MOBILE_SECTION_ORDER,
+    extractDailyContributors,
+    selectTopImportantEvent,
+  } = load('src/lib/dashboard/homePriority.ts', { require: resolveReq });
+
+  assert.deepEqual(
+    Array.from(DASHBOARD_MOBILE_SECTION_ORDER.slice(0, 3)),
+    ['portfolio-summary', 'daily-contributors-and-event', 'portfolio-heatmap']
+  );
+
+  const dashboardSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/dashboard/page.tsx'),
+    'utf8'
+  );
+  const summaryPos = dashboardSrc.indexOf('<PortfolioSummary />');
+  const pulsePos = dashboardSrc.indexOf('<DailyPulseRow />');
+  const heatmapPos = dashboardSrc.indexOf('<PortfolioHeatmap />');
+  assert.ok(summaryPos !== -1 && pulsePos !== -1 && heatmapPos !== -1);
+  assert.ok(summaryPos < pulsePos && pulsePos < heatmapPos, 'mobile DOM order puts DailyPulseRow before Heatmap');
+  assert.match(dashboardSrc, /className="order-1"[\s\S]*?<PortfolioSummary/);
+  assert.match(dashboardSrc, /className="order-2"[\s\S]*?<DailyPulseRow/);
+  assert.match(dashboardSrc, /className="order-3"[\s\S]*?<PortfolioHeatmap/);
+
+  const contributors = extractDailyContributors([
+    {
+      symbol: 'THYAO',
+      assetType: 'stock',
+      exchange: 'BIST',
+      totalQuantity: 100,
+      averageCost: 280,
+      totalCost: 28000,
+      currentPrice: 300,
+      currentValue: 30000,
+      pnl: 2000,
+      pnlPercent: 7.14,
+      weight: 45,
+      dailyPnL: 650,
+      dailyChangePercent: 2.21,
+    },
+    {
+      symbol: 'AEFES',
+      assetType: 'stock',
+      exchange: 'BIST',
+      totalQuantity: 500,
+      averageCost: 24,
+      totalCost: 12000,
+      currentPrice: 22,
+      currentValue: 11000,
+      pnl: -1000,
+      pnlPercent: -8.33,
+      weight: 30,
+      dailyPnL: -1200,
+      dailyChangePercent: -9.84,
+    },
+    {
+      symbol: 'TI2',
+      assetType: 'fund',
+      exchange: 'TEFAS',
+      totalQuantity: 1000,
+      averageCost: 10,
+      totalCost: 10000,
+      currentPrice: 10.5,
+      currentValue: 10500,
+      pnl: 500,
+      pnlPercent: 5,
+      weight: 25,
+      dailyChangePercent: 1.5,
+    },
+    {
+      symbol: 'MISSING',
+      assetType: 'stock',
+      exchange: 'BIST',
+      totalQuantity: 10,
+      averageCost: 100,
+      totalCost: 1000,
+      currentPrice: 0,
+      currentValue: 0,
+      pnl: 0,
+      pnlPercent: 0,
+      weight: 0,
+      priceMissing: true,
+      dailyPnL: 9999,
+    },
+  ], 3);
+
+  assert.equal(contributors.length, 3);
+  assert.equal(contributors[0].symbol, 'AEFES');
+  assert.equal(contributors[0].dailyPnL, -1200);
+  assert.equal(contributors[1].symbol, 'THYAO');
+  assert.equal(contributors[2].symbol, 'TI2');
+  assert.equal(contributors[2].href, '/funds/TI2');
+
+  const now = Date.parse('2026-11-11T12:00:00Z');
+  const topEvent = selectTopImportantEvent(
+    [
+      {
+        id: '1',
+        title: 'Genel piyasa ozeti yayinlandi',
+        summary: 'Haftalik genel bulten.',
+        source: 'Test',
+        publishedAt: '2026-11-11T11:30:00Z',
+        url: 'https://example.com/1',
+      },
+      {
+        id: '2',
+        title: 'THYAO yeni ucak alim sozlesmesi ve faiz karari gundemi',
+        summary: 'THYAO bilanco ve operasyon detaylari aciklandi.',
+        source: 'Test',
+        publishedAt: '2026-11-11T09:00:00Z',
+        url: 'https://example.com/2',
+      },
+    ],
+    ['THYAO'],
+    now
+  );
+
+  assert.ok(topEvent);
+  assert.equal(topEvent.article.id, '2');
+  assert.deepEqual(Array.from(topEvent.matchedSymbols), ['THYAO']);
+  assert.ok(topEvent.priority >= 2);
+});
+
+
 

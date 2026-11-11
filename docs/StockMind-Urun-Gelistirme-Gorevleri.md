@@ -47,7 +47,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| UX-01 | P1 | Mobil ana ekranın sıralamasını değiştir | 390 pikselde portföy özeti, günün katkı sağlayan varlıkları ve önemli olay ilk görünümde önceliklidir. | ☐ |
+| UX-01 | P1 | Mobil ana ekranın sıralamasını değiştir | 390 pikselde portföy özeti, günün katkı sağlayan varlıkları ve önemli olay ilk görünümde önceliklidir. | ◐ |
 | UX-02 | P1 | Isı haritasını kompakt başlat | İlk yükte küçük özet görünür. Kullanıcı genişletebilir ve varlık listesi eşdeğer bilgi sunar. | ☐ |
 | UX-03 | P1 | Boş portföy başlangıç akışını düzenle | İlk işlem kaydı, Excel yükleme ve örnek portföy seçeneklerine tek ekrandan ulaşılır. | ☐ |
 | UX-04 | P1 | Örnek portföy deneyimi ekle | Misafir, örnek veriyi kendi portföy kayıtlarına karıştırmadan inceleyebilir. | ☐ |

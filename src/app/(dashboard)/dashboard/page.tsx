@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
+import DailyPulseRow from '@/components/dashboard/DailyPulseRow';
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import MarketOverview from '@/components/dashboard/MarketOverview';
 import TopMovers from '@/components/dashboard/TopMovers';
@@ -24,15 +25,36 @@ export default function DashboardPage() {
   }, [fetchPortfoliosAndTransactions]);
 
   return (
-    <div className="dashboard-page space-y-4 sm:space-y-6 animate-fade-in pb-[calc(4rem+env(safe-area-inset-bottom))]">
-      {/* Portfolio Hero Card */}
-      <PortfolioSummary />
+    <div className="dashboard-page flex flex-col gap-4 sm:gap-6 animate-fade-in pb-[calc(4rem+env(safe-area-inset-bottom))]">
+      {/* 1. Portfolio Hero Card */}
+      <div className="order-1">
+        <PortfolioSummary />
+      </div>
 
-      {/* Portfolio Heatmap */}
-      <PortfolioHeatmap />
+      {/* 2. Daily Contributors & Important Event (first-fold priority on 390px mobile) */}
+      <div className="order-2">
+        <DailyPulseRow />
+      </div>
 
-      {/* Quick Access: Widgets & Android App */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl glass-card border border-border shadow-sm">
+      {/* 3. Portfolio Heatmap */}
+      <div className="order-3">
+        <PortfolioHeatmap />
+      </div>
+
+      {/* 4. Market Overview */}
+      <div className="order-4 md:order-5">
+        <MarketOverview />
+      </div>
+
+      {/* 5. Grid: Top Movers + Recent Transactions + Watchlist */}
+      <div className="order-5 md:order-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <TopMovers />
+        <RecentTransactions />
+        <WatchlistPreview />
+      </div>
+
+      {/* 6. Quick Access: Widgets & Android App (demoted below core cards on mobile) */}
+      <div className="order-6 md:order-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl glass-card border border-border shadow-sm">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="w-8 h-8 rounded-xl bg-accent/15 border border-accent/25 text-accent flex items-center justify-center font-bold text-sm shrink-0">
             <Icon name="layers" />
@@ -64,16 +86,6 @@ export default function DashboardPage() {
             </button>
           )}
         </div>
-      </div>
-
-      {/* Market Overview */}
-      <MarketOverview />
-
-      {/* Grid: Top Movers + Recent Transactions + Watchlist */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <TopMovers />
-        <RecentTransactions />
-        <WatchlistPreview />
       </div>
 
       {/* APK Download Modal */}
