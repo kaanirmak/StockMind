@@ -3311,6 +3311,123 @@ test('ALR-06: records and displays last check time, observed price, and last tri
   assert.match(alertsPageSource, /Son Tetikleme:/);
 });
 
+test('ALR-07: server alert evaluator runs headlessly, skips paused/stale rules, and deduplicates identical threshold events', async () => {
+  const loadWithAlias = createAliasedLoader();
+  const priceStatusMod = load('src/lib/market/priceStatus.ts');
+  const alertFreshnessMod = loadWithAlias('src/lib/market/alertFreshness.ts', {
+    '@/lib/market/priceStatus': priceStatusMod,
+  });
+  const alertFormMod = load('src/lib/market/alertForm.ts');
+  const { evaluateServerPriceAlerts } = loadWithAlias('src/lib/market/serverAlertEvaluator.ts', {
+    '@/lib/market/alertFreshness': alertFreshnessMod,
+    '@/lib/market/alertForm': alertFormMod,
+  });
+
+  const now = new Date('2026-11-11T10:15:00.000Z'); // BIST open window
+  const recordedKeys = new Set();
+  const persistedEvents = [];
+  const updates = [];
+
+  const store = {
+    hasEventKey: async (key) => recordedKeys.has(key),
+    insertEvent: async (evt) => {
+      if (recordedKeys.has(evt.eventKey)) return { inserted: false, duplicate: true };
+      recordedKeys.add(evt.eventKey);
+      persistedEvents.push(evt);
+      return { inserted: true };
+    },
+    updateRuleEvaluation: async (u) => {
+      updates.push(u);
+    },
+  };
+
+  const rules = [
+    {
+      watchlistItemId: 'w-1',
+      userId: 'user-a',
+      symbol: 'THYAO',
+      name: 'Türk Hava Yolları',
+      assetType: 'stock',
+      exchange: 'BIST',
+      targetPrice: 310,
+      alertType: 'price',
+      alertBasePrice: 295,
+      alertCurrency: 'TRY',
+      alertDirection: 'up',
+      alertPaused: false,
+    },
+    {
+      watchlistItemId: 'w-2',
+      userId: 'user-a',
+      symbol: 'ASELS',
+      name: 'Aselsan',
+      assetType: 'stock',
+      exchange: 'BIST',
+      targetPrice: 90,
+      alertType: 'price',
+      alertPaused: true,
+    },
+    {
+      watchlistItemId: 'w-3',
+      userId: 'user-a',
+      symbol: 'GARAN',
+      name: 'Garanti BBVA',
+      assetType: 'stock',
+      exchange: 'BIST',
+      targetPrice: 120,
+      alertType: 'price',
+      alertPaused: false,
+    },
+  ];
+
+  const quotes = new Map([
+    [
+      'stock:THYAO',
+      {
+        price: 315.4,
+        exchange: 'BIST',
+        assetType: 'stock',
+        observation: { source: 'TradingView', asOf: now.toISOString(), fetchedAt: now.toISOString(), changePercent: 1.5 },
+      },
+    ],
+    [
+      'stock:ASELS',
+      {
+        price: 95,
+        exchange: 'BIST',
+        assetType: 'stock',
+        observation: { source: 'TradingView', asOf: now.toISOString(), fetchedAt: now.toISOString(), changePercent: 0.4 },
+      },
+    ],
+    // GARAN is missing -> deferred cleanly
+  ]);
+
+  const firstRun = await evaluateServerPriceAlerts({ rules, quotes, store, now });
+  assert.equal(firstRun.skippedPausedCount, 1);
+  assert.equal(firstRun.checkedCount, 2);
+  assert.equal(firstRun.deferredCount, 1);
+  assert.equal(firstRun.triggeredCount, 1);
+  assert.equal(firstRun.deduplicatedCount, 0);
+  assert.equal(persistedEvents.length, 1);
+  assert.equal(persistedEvents[0].symbol, 'THYAO');
+  assert.equal(persistedEvents[0].link, '/stocks/THYAO');
+
+  // Re-evaluating the same threshold crossing 5 minutes later must deduplicate instead of recording twice
+  const secondRun = await evaluateServerPriceAlerts({
+    rules,
+    quotes,
+    store,
+    now: new Date('2026-11-11T10:20:00.000Z'),
+  });
+  assert.equal(secondRun.triggeredCount, 0);
+  assert.equal(secondRun.deduplicatedCount, 1);
+  assert.equal(persistedEvents.length, 1);
+
+  const cronRouteSource = fs.readFileSync(path.join(process.cwd(), 'src/app/api/cron/evaluate-alerts/route.ts'), 'utf8');
+  assert.match(cronRouteSource, /CRON_SECRET/);
+  assert.match(cronRouteSource, /evaluateServerPriceAlerts/);
+});
+
 
 
 
