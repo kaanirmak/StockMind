@@ -5,6 +5,10 @@ import { rssPlainText } from '@/lib/news/rssText';
 import { fetchNewsSnapshot } from '@/lib/news/snapshot';
 import { analyzeNewsSentiment } from '@/lib/news/sentiment';
 import { NEWS_FEEDS, feedCategory, type NewsFeed } from '@/lib/news/feeds';
+import {
+  buildNewsSourceCoverageReport,
+  classifyNewsFeedError,
+} from '@/lib/news/sourceCoverage';
 
 export const dynamic = 'force-dynamic';
 
@@ -149,18 +153,58 @@ export async function GET(request: Request) {
     const now = Date.now();
     const freshIds = new Set(snapshot
       .filter(article => now - Date.parse(article.collectedAt) < 30 * 60 * 1000)
-      .map(article => article.feedId));
+      .map(article => article.feedId)
+      .filter((id): id is string => Boolean(id)));
     const liveFeeds = feeds.filter(feed => !freshIds.has(feed.id));
     const results = await Promise.allSettled(liveFeeds.map(feed => fetchLiveNews(feed)));
-    const failedIds = new Set(liveFeeds.filter((_, index) => results[index].status === 'rejected').map(feed => feed.id));
+    const liveResultsByFeedId = new Map<string, { ok: boolean; count?: number; errorReason?: string }>();
+    const failedIds = new Set<string>();
+    liveFeeds.forEach((feed, index) => {
+      const outcome = results[index];
+      if (outcome.status === 'fulfilled') {
+        liveResultsByFeedId.set(feed.id, { ok: true, count: outcome.value.length });
+      } else {
+        failedIds.add(feed.id);
+        liveResultsByFeedId.set(feed.id, { ok: false, errorReason: classifyNewsFeedError(outcome.reason) });
+      }
+    });
+
+    const snapshotArticlesByFeedId = new Map<string, { count: number; latestCollectedAt: string | null }>();
+    for (const article of snapshot) {
+      if (!article.feedId) continue;
+      const existing = snapshotArticlesByFeedId.get(article.feedId);
+      const count = (existing?.count ?? 0) + 1;
+      const latestCollectedAt =
+        !existing?.latestCollectedAt || article.collectedAt > existing.latestCollectedAt
+          ? article.collectedAt
+          : existing.latestCollectedAt;
+      snapshotArticlesByFeedId.set(article.feedId, { count, latestCollectedAt });
+    }
+
+    const sourceCoverage = buildNewsSourceCoverageReport({
+      feeds,
+      freshFeedIds: freshIds,
+      liveResultsByFeedId,
+      snapshotArticlesByFeedId,
+      nowIso: new Date(now).toISOString(),
+    });
+
     const fallback = snapshot.filter(article => feeds.some(feed => feed.id === article.feedId &&
       (freshIds.has(feed.id) || failedIds.has(feed.id))));
     const failedFeeds = failedIds.size;
     if (feeds.length > 0 && failedFeeds === feeds.length && fallback.length === 0) {
-      return NextResponse.json({ success: false, error: 'Haber kaynaklarına şu anda ulaşılamıyor. Lütfen tekrar deneyin.', data: [] }, { status: 503 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Haber kaynaklarına şu anda ulaşılamıyor. Lütfen tekrar deneyin.',
+          sourceCoverage,
+          data: [],
+        },
+        { status: 503 }
+      );
     }
     const allNews = [...results.flatMap(result => result.status === 'fulfilled' ? result.value : []), ...fallback].filter(relevant);
-    const stale = fallback.some(article => relevant(article) && !freshIds.has(article.feedId));
+    const stale = fallback.some(article => relevant(article) && (!article.feedId || !freshIds.has(article.feedId)));
     const snapshotForCategory = fallback.filter(relevant);
 
     // Sort by publication date newest first
@@ -190,6 +234,7 @@ export async function GET(request: Request) {
       stale,
       collectedAt: snapshotForCategory.length ? snapshotForCategory.map(a => a.collectedAt).sort()[0] : undefined,
       partial: failedFeeds > 0,
+      sourceCoverage,
       warning: stale ? 'Canlı kaynaklara ulaşılamadı; son başarılı haberler gösteriliyor.' : failedFeeds > 0 ? 'Bazı haber kaynakları yanıt vermedi; ulaşılabilen haberler gösteriliyor.' : undefined,
       data: uniqueNews.map(article => {
         const analysis = analyzeNewsSentiment(article.title, article.summary);

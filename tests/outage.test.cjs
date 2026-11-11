@@ -414,3 +414,63 @@ test('HBR-02 persists last successful news feed per category with timestamp and 
   assert.match(newsPageSrc, /lastSuccessAt/);
   assert.match(newsPageSrc, /Tekrar Dene/);
 });
+
+test('HBR-03 reports per-source lastSuccessAt, articleCount and failure reason in coverage telemetry', () => {
+  const { NEWS_FEEDS } = loadTs('src/lib/news/feeds.ts');
+  const {
+    classifyNewsFeedError,
+    buildNewsSourceCoverageReport,
+  } = loadTs('src/lib/news/sourceCoverage.ts');
+
+  assert.equal(classifyNewsFeedError(new Error('RSS upstream HTTP 503')), 'HTTP 503 hatası');
+  assert.equal(classifyNewsFeedError(new Error('News upstream did not return RSS')), 'Geçerli RSS akışı döndürmedi');
+  assert.equal(classifyNewsFeedError(Object.assign(new Error('timed out'), { name: 'TimeoutError' })), 'Kaynak zaman aşımına uğradı');
+
+  const feeds = NEWS_FEEDS.slice(0, 4);
+  const nowIso = '2026-05-01T14:00:00.000Z';
+  const snapTime = '2026-05-01T13:50:00.000Z';
+  const staleTime = '2026-05-01T10:00:00.000Z';
+
+  const report = buildNewsSourceCoverageReport({
+    feeds,
+    freshFeedIds: new Set([feeds[1].id]),
+    liveResultsByFeedId: new Map([
+      [feeds[0].id, { ok: true, count: 14 }],
+      [feeds[2].id, { ok: false, errorReason: 'HTTP 502 hatası' }],
+      [feeds[3].id, { ok: false, errorReason: 'Kaynak zaman aşımına uğradı' }],
+    ]),
+    snapshotArticlesByFeedId: new Map([
+      [feeds[1].id, { count: 9, latestCollectedAt: snapTime }],
+      [feeds[2].id, { count: 6, latestCollectedAt: staleTime }],
+    ]),
+    nowIso,
+  });
+
+  assert.equal(report.totalSources, 4);
+  assert.equal(report.healthySources, 3);
+  assert.equal(report.failedSources, 1);
+
+  assert.deepEqual(
+    Array.from(report.sources, (s) => ({
+      feedId: s.feedId,
+      status: s.status,
+      articleCount: s.articleCount,
+      lastSuccessAt: s.lastSuccessAt,
+      errorReason: s.errorReason,
+    })),
+    [
+      { feedId: feeds[0].id, status: 'live', articleCount: 14, lastSuccessAt: nowIso, errorReason: null },
+      { feedId: feeds[1].id, status: 'snapshot', articleCount: 9, lastSuccessAt: snapTime, errorReason: null },
+      { feedId: feeds[2].id, status: 'stale_fallback', articleCount: 6, lastSuccessAt: staleTime, errorReason: 'HTTP 502 hatası' },
+      { feedId: feeds[3].id, status: 'failed', articleCount: 0, lastSuccessAt: null, errorReason: 'Kaynak zaman aşımına uğradı' },
+    ]
+  );
+
+  const routeSrc = fs.readFileSync(path.join(root, 'src/app/api/news/route.ts'), 'utf8');
+  assert.match(routeSrc, /buildNewsSourceCoverageReport/);
+  assert.match(routeSrc, /sourceCoverage/);
+
+  const pageSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  assert.match(pageSrc, /data-testid="news-source-coverage"/);
+  assert.match(pageSrc, /sourceCoverage/);
+});

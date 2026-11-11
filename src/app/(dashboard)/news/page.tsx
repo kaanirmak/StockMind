@@ -15,6 +15,7 @@ import {
   getNewsCategorySnapshot,
   upsertNewsCategorySnapshot,
 } from '@/lib/news/clientSnapshot';
+import type { NewsCoverageSummary } from '@/lib/news/sourceCoverage';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function NewsPage() {
@@ -30,6 +31,8 @@ export default function NewsPage() {
   const [newsError, setNewsError] = useState('');
   const [newsWarning, setNewsWarning] = useState('');
   const [news, setNews] = useState<NewsArticle[]>([]);
+  const [sourceCoverage, setSourceCoverage] = useState<NewsCoverageSummary | null>(null);
+  const [showCoverageDetails, setShowCoverageDetails] = useState(false);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
   const [showingCachedSnapshot, setShowingCachedSnapshot] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -73,7 +76,17 @@ export default function NewsPage() {
       }
 
       const res = await fetch(`/api/news?${params.toString()}`, { signal: controller.signal });
-      const parsed = await parseNewsApiResponse<{ success?: boolean; data?: NewsArticle[]; warning?: string; collectedAt?: string; error?: string }>(res);
+      const parsed = await parseNewsApiResponse<{
+        success?: boolean;
+        data?: NewsArticle[];
+        warning?: string;
+        collectedAt?: string;
+        sourceCoverage?: NewsCoverageSummary;
+        error?: string;
+      }>(res);
+      if (parsed.payload?.sourceCoverage) {
+        setSourceCoverage(parsed.payload.sourceCoverage);
+      }
       if (!parsed.ok || !parsed.payload || !Array.isArray(parsed.payload.data)) {
         throw new Error(parsed.errorMessage || 'Haberler yüklenemedi. Lütfen tekrar deneyin.');
       }
@@ -336,6 +349,87 @@ export default function NewsPage() {
         </p>
       )}
       {newsWarning && <p role="status" className="text-xs text-warning">{newsWarning}</p>}
+
+      {sourceCoverage && sourceCoverage.sources.length > 0 && (
+        <div
+          data-testid="news-source-coverage"
+          className="rounded-xl border border-border/60 bg-bg-secondary/40 px-3 py-2 space-y-2"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-text-primary">Kaynak Kapsamı</span>
+              <span className="text-text-muted">
+                {sourceCoverage.healthySources}/{sourceCoverage.totalSources} kaynak aktif
+              </span>
+              {sourceCoverage.failedSources > 0 && (
+                <Badge variant="warning" size="sm">
+                  {sourceCoverage.failedSources} hata
+                </Badge>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCoverageDetails((prev) => !prev)}
+              aria-expanded={showCoverageDetails}
+              className="text-[11px] font-semibold text-accent hover:underline cursor-pointer"
+            >
+              {showCoverageDetails ? 'Kaynak detaylarını gizle' : 'Kaynak durumunu göster'}
+            </button>
+          </div>
+
+          {showCoverageDetails && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+              {sourceCoverage.sources.map((src) => {
+                const statusVariant =
+                  src.status === 'live'
+                    ? 'success'
+                    : src.status === 'snapshot'
+                    ? 'info'
+                    : src.status === 'stale_fallback'
+                    ? 'warning'
+                    : 'danger';
+                const statusText =
+                  src.status === 'live'
+                    ? 'Canlı'
+                    : src.status === 'snapshot'
+                    ? 'Önbellek'
+                    : src.status === 'stale_fallback'
+                    ? 'Yedek Önbellek'
+                    : 'Hata';
+
+                return (
+                  <div
+                    key={src.feedId}
+                    className="rounded-lg border border-border/50 bg-bg-card/80 p-2.5 text-[11px] space-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="font-semibold text-text-primary truncate">
+                        {src.sourceName}
+                      </span>
+                      <Badge variant={statusVariant} size="sm">
+                        {statusText}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-text-muted">
+                      <span>Haber: {src.articleCount}</span>
+                      <span>
+                        {src.lastSuccessAt
+                          ? new Date(src.lastSuccessAt).toLocaleString('tr-TR')
+                          : 'Alım yok'}
+                      </span>
+                    </div>
+                    {src.errorReason && (
+                      <p className="text-danger text-[10px] truncate" title={src.errorReason}>
+                        Hata: {src.errorReason}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {selectedCategory === 'KAP' && !loading && (
         <p className="text-sm">

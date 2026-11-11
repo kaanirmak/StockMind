@@ -134,7 +134,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 |---|---|---|---|---|
 | HBR-01 | P1 | JSON olmayan yanıtı kullanıcı mesajına çevir | HTML, zaman aşımı ve boş yanıt testlerinde teknik ayrıştırma hatası yerine Türkçe mesaj gösterilir. | ◐ |
 | HBR-02 | P1 | Son başarılı haber akışını sakla | Geçici kesintide son liste tarihiyle birlikte kalır ve tekrar deneme sunulur. | ◐ |
-| HBR-03 | P1 | Haber kaynağı kapsamasını izle | Her kaynak için son başarılı alım, haber sayısı ve hata nedeni raporlanır. | ☐ |
+| HBR-03 | P1 | Haber kaynağı kapsamasını izle | Her kaynak için son başarılı alım, haber sayısı ve hata nedeni raporlanır. | ◐ |
 | HBR-04 | P1 | Haberleri varlık kimliğine göre eşleştir | Şirket takma adları, aynı sembollü farklı borsalar ve yanlış pozitif örnekler test edilir. | ☐ |
 | HBR-05 | P1 | Haberde portföy bağlantısının nedenini göster | Eşleşen varlık, olay türü ve eşleşme nedeni kartta görünür. | ☐ |
 | HBR-06 | P1 | Öne çıkanlar ile en yeni akışını doğrula | Sıralama değiştirilebilir. Eski bir portföy haberi yeni gelişmeleri süresiz geriye itmez. | ☐ |
