@@ -19,6 +19,7 @@ import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard'
 import { BenchmarkComparisonCard } from '@/components/portfolio/BenchmarkComparisonCard';
 import { NetInvestedChartCard } from '@/components/portfolio/NetInvestedChartCard';
 import { DividendOverviewCard } from '@/components/portfolio/DividendOverviewCard';
+import { CashFlowOverviewCard } from '@/components/portfolio/CashFlowOverviewCard';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 
 const ExcelImportModal = dynamic(
@@ -82,7 +83,7 @@ export default function PortfolioPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
-  const [activeTab, setActiveTab] = useState<'holdings' | 'dividends' | 'heatmap' | 'activity' | 'transactions'>('holdings');
+  const [activeTab, setActiveTab] = useState<'holdings' | 'dividends' | 'cashflow' | 'heatmap' | 'activity' | 'transactions'>('holdings');
   const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
@@ -576,7 +577,7 @@ export default function PortfolioPage() {
         {/* Navigation Tabs & Secondary Actions */}
         <div className="sm:sticky sm:top-[4.25rem] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 sm:p-2.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm">
           <div role="tablist" aria-label="Portföy bölümleri" className="flex flex-wrap gap-1 w-full">
-            {([['holdings', 'Varlıklar'], ['dividends', 'Temettü'], ['heatmap', 'Isı Haritası'], ['activity', 'Aktivite'], ['transactions', 'İşlemler']] as const).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[80px] min-h-11 px-2 rounded-lg text-[11px] sm:text-sm font-semibold ${activeTab === tab ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-secondary'}`}>{label}</button>)}
+            {([['holdings', 'Varlıklar'], ['dividends', 'Temettü'], ['cashflow', 'Nakit Akışı'], ['heatmap', 'Isı Haritası'], ['activity', 'Aktivite'], ['transactions', 'İşlemler']] as const).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[80px] min-h-11 px-2 rounded-lg text-[11px] sm:text-sm font-semibold ${activeTab === tab ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-secondary'}`}>{label}</button>)}
           </div>
 
           {activeTab === 'transactions' && !isSamplePreview && activeTransactions.length > 0 && (
@@ -626,6 +627,13 @@ export default function PortfolioPage() {
           <DividendOverviewCard
             transactions={activeTransactions}
             holdings={summary.holdings}
+            livePrices={livePrices}
+            isPrivacyMode={isPrivacyMode}
+          />
+        ) : activeTab === 'cashflow' ? (
+          <CashFlowOverviewCard
+            transactions={activeTransactions}
+            cashMovements={activeCashMovements}
             livePrices={livePrices}
             isPrivacyMode={isPrivacyMode}
           />

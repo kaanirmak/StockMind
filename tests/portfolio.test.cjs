@@ -2051,6 +2051,122 @@ test('POR-11: dividend view strictly separates realized payments, announced even
   assert.match(portSrc, /DividendOverviewCard/);
 });
 
+test('POR-12: cash flow view filters inflows, outflows, dividends, and fees by period and currency', () => {
+  const cfMod = loadModule('src/lib/portfolio/cashFlowView.ts');
+
+  const transactions = [
+    {
+      id: 't1',
+      portfolioId: 'p1',
+      userId: 'u1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 100,
+      price: 300,
+      currency: 'TRY',
+      commission: 45,
+      transactionDate: '2026-09-10',
+      exchange: 'BIST',
+      notes: null,
+      createdAt: '2026-09-10T10:00:00Z',
+    },
+    {
+      id: 't2',
+      portfolioId: 'p1',
+      userId: 'u1',
+      symbol: 'AAPL',
+      assetType: 'stock',
+      transactionType: 'dividend',
+      quantity: 1,
+      price: 100,
+      currency: 'USD',
+      exchangeRate: 40,
+      commission: 15,
+      transactionDate: '2026-09-20',
+      exchange: 'NASDAQ',
+      notes: null,
+      createdAt: '2026-09-20T10:00:00Z',
+    },
+    {
+      id: 't3',
+      portfolioId: 'p1',
+      userId: 'u1',
+      symbol: 'FEE',
+      assetType: 'stock',
+      transactionType: 'fee',
+      quantity: 1,
+      price: 20,
+      currency: 'USD',
+      exchangeRate: 40,
+      commission: 0,
+      transactionDate: '2026-06-01', // outside 1M
+      exchange: 'NASDAQ',
+      notes: 'Saklama ücreti',
+      createdAt: '2026-06-01T10:00:00Z',
+    },
+  ];
+
+  const cashMovements = [
+    {
+      id: 'm1',
+      portfolioId: 'p1',
+      userId: 'u1',
+      movementType: 'deposit',
+      amount: 50000,
+      currency: 'TRY',
+      exchangeRate: 1,
+      movementDate: '2026-09-05',
+      notes: 'TRY yatırma',
+      createdAt: '2026-09-05T09:00:00Z',
+    },
+    {
+      id: 'm2',
+      portfolioId: 'p1',
+      userId: 'u1',
+      movementType: 'withdrawal',
+      amount: 200,
+      currency: 'USD',
+      exchangeRate: 40,
+      movementDate: '2026-09-25',
+      notes: 'USD çekme',
+      createdAt: '2026-09-25T09:00:00Z',
+    },
+  ];
+
+  // 1. ALL currencies over 1M excludes June 2026 USD fee
+  const monthlyAll = cfMod.buildCashFlowViewReport({
+    transactions,
+    cashMovements,
+    period: '1M',
+    currencyFilter: 'ALL',
+    today: '2026-09-30',
+  });
+
+  assert.equal(monthlyAll.totalsTry.deposits, 50_000);
+  assert.equal(monthlyAll.totalsTry.withdrawals, 8_000); // 200 * 40
+  assert.equal(monthlyAll.totalsTry.dividends, 4_000); // 100 * 40
+  assert.equal(monthlyAll.totalsTry.fees, 645); // 45 TRY + 15*40=600 TRY
+
+  // 2. USD-only filter over ALL periods shows native USD totals
+  const allUsd = cfMod.buildCashFlowViewReport({
+    transactions,
+    cashMovements,
+    period: 'ALL',
+    currencyFilter: 'USD',
+    today: '2026-09-30',
+  });
+
+  assert.equal(allUsd.totalsInSelectedCurrency.deposits, 0);
+  assert.equal(allUsd.totalsInSelectedCurrency.withdrawals, 200);
+  assert.equal(allUsd.totalsInSelectedCurrency.dividends, 100);
+  assert.equal(allUsd.totalsInSelectedCurrency.fees, 35); // 15 div commission + 20 June fee
+  assert.equal(allUsd.totalsInSelectedCurrency.netCashFlow, -135);
+
+  const portSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
+  assert.match(portSrc, /CashFlowOverviewCard/);
+});
+
 
 
 
