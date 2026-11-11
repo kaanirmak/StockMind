@@ -7243,6 +7243,80 @@ test('AIP-08: saved analysis reports store symbol, data date, model and assumpti
   assert.match(commTabSrc, /committee-saved-reports/);
 });
 
+test('QNT-07: DCF connects periodic FCF, net debt and shares with explicit period and source provenance', () => {
+  const periodicMod = load('src/lib/quant/periodicDcf.ts');
+
+  const sampleStatements = {
+    symbol: 'THYAO',
+    yahooTicker: 'THYAO.IS',
+    status: 'ok',
+    currency: 'TRY',
+    sourceName: 'Yahoo Finance',
+    sourceUrl: 'https://finance.yahoo.com/quote/THYAO.IS/financials/',
+    secondarySourceUrl: 'https://www.kap.org.tr/tr/bildirim-sorgu',
+    secondarySourceLabel: 'KAP',
+    fetchedAt: '2026-11-12T10:00:00.000Z',
+    notice: null,
+    annual: {
+      income: { kind: 'income', title: 'Gelir Tablosu', periodType: 'annual', currency: 'TRY', periods: [], rows: [] },
+      balance: {
+        kind: 'balance',
+        title: 'Bilanço',
+        periodType: 'annual',
+        currency: 'TRY',
+        periods: [{ id: 'fy-2025', endDate: '2025-12-31', label: 'FY 2025', currency: 'TRY' }],
+        rows: [
+          { key: 'totalDebt', label: 'Toplam Finansal Borç', values: { 'fy-2025': 220_000_000_000 } },
+          { key: 'cash', label: 'Nakit ve Benzerleri', values: { 'fy-2025': 95_000_000_000 } },
+        ],
+      },
+      cashflow: {
+        kind: 'cashflow',
+        title: 'Nakit Akış Tablosu',
+        periodType: 'annual',
+        currency: 'TRY',
+        periods: [{ id: 'fy-2025', endDate: '2025-12-31', label: 'FY 2025', currency: 'TRY' }],
+        rows: [
+          { key: 'freeCashFlow', label: 'Serbest Nakit Akışı (FCF)', values: { 'fy-2025': 42_500_000_000 } },
+        ],
+      },
+    },
+    quarterly: {
+      income: { kind: 'income', title: 'Gelir Tablosu', periodType: 'quarterly', currency: 'TRY', periods: [], rows: [] },
+      balance: { kind: 'balance', title: 'Bilanço', periodType: 'quarterly', currency: 'TRY', periods: [], rows: [] },
+      cashflow: { kind: 'cashflow', title: 'Nakit Akış Tablosu', periodType: 'quarterly', currency: 'TRY', periods: [], rows: [] },
+    },
+  };
+
+  const extracted = periodicMod.extractPeriodicDcfInputs({
+    symbol: 'THYAO',
+    report: sampleStatements,
+    periodType: 'annual',
+    quoteSharesMillions: 1380,
+  });
+
+  assert.equal(extracted.isSourced, true);
+  assert.equal(extracted.freeCashFlowMillions, 42500);
+  assert.equal(extracted.netDebtMillions, 125000);
+  assert.equal(extracted.sharesOutstandingMillions, 1380);
+  assert.match(extracted.fcfSourceLabel, /Yahoo Finance.*FY 2025/);
+  assert.match(extracted.netDebtSourceLabel, /Yahoo Finance.*FY 2025/);
+
+  // Unavailable report clearly flags missing fields and non-sourced status
+  const unavailable = periodicMod.extractPeriodicDcfInputs({
+    symbol: 'THYAO',
+    report: { ...sampleStatements, status: 'unavailable' },
+  });
+  assert.equal(unavailable.isSourced, false);
+  assert.equal(unavailable.freeCashFlowMillions, null);
+  assert.ok(unavailable.missingFields.length >= 2);
+
+  const dcfSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/quant/DCFValuationTab.tsx'), 'utf8');
+  assert.match(dcfSrc, /dcf-periodic-provenance/);
+  assert.match(dcfSrc, /extractPeriodicDcfInputs/);
+});
+
+
 
 
 

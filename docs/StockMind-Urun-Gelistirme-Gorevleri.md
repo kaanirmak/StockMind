@@ -169,7 +169,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | QNT-04 | P1 | Komite analizini kullanıcı eylemine bağla | Ekrana girilince analiz çağrısı başlamaz. Analiz düğmesi, iptal ve yeniden deneme net görünür. | ◐ |
 | QNT-05 | P1 | DCF’de girdi ve para birimi tutarlılığını doğrula | Bilanço birimi, işlem fiyatı ve değerleme sonucu aynı para biriminde gösterilir. | ◐ |
 | QNT-06 | P1 | DCF geçersiz varsayımlarını ele al | AOMM terminal büyümesinden düşük veya eşitse sonuç, düzeltilmiş açık varsayımla veya doğrulama hatasıyla gösterilir. | ◐ |
-| QNT-07 | P2 | DCF’yi dönemsel nakit akışına bağla | Kullanıcı FCF, net borç ve pay adedi girdilerinin dönemini ve kaynağını görebilir. | ☐ |
+| QNT-07 | P2 | DCF’yi dönemsel nakit akışına bağla | Kullanıcı FCF, net borç ve pay adedi girdilerinin dönemini ve kaynağını görebilir. | ◐ |
 | QNT-08 | P2 | Sağlık skorlarını doğrulanmış finansallardan üret | Piotroski, Altman ve DuPont çıktıları kullanılan kalemleri, dönemleri ve eksik girdileri gösterir. | ☐ |
 | QNT-09 | P2 | Tekrarlanabilir Monte Carlo senaryoları ekle | Vade, oynaklık, drift, koşu sayısı ve rastgelelik tohumu kaydedilir. Aynı girdiler aynı sonucu üretir. | ☐ |
 | QNT-10 | P2 | Portföy bazında stres testi ekle | Seçilen kur, faiz veya piyasa şoku portföy pozisyonlarına uygulanır. Varsayımlar ve katkılar gösterilir. | ☐ |

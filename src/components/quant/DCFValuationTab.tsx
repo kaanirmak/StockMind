@@ -26,6 +26,8 @@ import {
   getFinancialProfile,
   PRESET_FINANCIAL_PROFILES,
 } from '@/lib/quant/models';
+import { extractPeriodicDcfInputs } from '@/lib/quant/periodicDcf';
+import type { FinancialStatementsReport, StatementPeriodType } from '@/lib/market/financialStatements';
 import { Holding } from '@/types/portfolio';
 
 interface DCFValuationTabProps {
@@ -67,6 +69,57 @@ export default function DCFValuationTab({
   const [wacc, setWacc] = useState<number>(presetData.wacc);
   const [netDebt, setNetDebt] = useState<number>(presetData.netDebt);
   const [sharesOutstanding, setSharesOutstanding] = useState<number>(presetData.sharesOutstanding);
+  const [statementReport, setStatementReport] = useState<FinancialStatementsReport | null>(null);
+  const [periodType, setPeriodType] = useState<StatementPeriodType>('annual');
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>('');
+  const [loadingFinancials, setLoadingFinancials] = useState<boolean>(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingFinancials(true);
+    setSelectedPeriodId('');
+    fetch(`/api/stocks/${encodeURIComponent(selectedPreset)}/financials`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!active) return;
+        const report = json && json.annual ? (json as FinancialStatementsReport) : null;
+        setStatementReport(report);
+      })
+      .catch(() => {
+        if (!active) return;
+        setStatementReport(null);
+      })
+      .finally(() => {
+        if (active) setLoadingFinancials(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedPreset]);
+
+  const periodicInputs = useMemo(
+    () =>
+      extractPeriodicDcfInputs({
+        symbol: selectedPreset,
+        report: statementReport,
+        periodType,
+        periodId: selectedPeriodId || null,
+        fallbackCurrency: nativeCurrency,
+        quoteSharesMillions: presetData.sharesOutstanding,
+        fallbackSharesLabel: `${presetData.profileMeta.sourceLabel} (Pay Adedi)`,
+      }),
+    [selectedPreset, statementReport, periodType, selectedPeriodId, nativeCurrency, presetData]
+  );
+
+  useEffect(() => {
+    if (!periodicInputs.isSourced) return;
+    if (periodicInputs.freeCashFlowMillions !== null) {
+      setFreeCashFlow(periodicInputs.freeCashFlowMillions);
+    }
+    if (periodicInputs.netDebtMillions !== null) {
+      setNetDebt(periodicInputs.netDebtMillions);
+    }
+  }, [periodicInputs.periodId, periodicInputs.periodType, periodicInputs.freeCashFlowMillions, periodicInputs.netDebtMillions, periodicInputs.isSourced]);
 
   // Synchronize when external selectedSymbol prop changes
   useEffect(() => {
@@ -190,6 +243,85 @@ export default function DCFValuationTab({
                 %{activeHolding.pnlPercent >= 0 ? '+' : ''}
                 {activeHolding.pnlPercent.toFixed(1)}
               </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Girdi Dönemi ve Kaynak Doğrulaması (QNT-07) */}
+      <div
+        data-testid="dcf-periodic-provenance"
+        className="rounded-xl border border-border/70 bg-bg-secondary/40 p-3 space-y-2.5 text-xs"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="font-bold text-text-primary">
+            Dönemsel Girdi Kaynakları ({selectedPreset})
+          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                setPeriodType('annual');
+                setSelectedPeriodId('');
+              }}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-pointer ${
+                periodType === 'annual' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
+              }`}
+            >
+              Yıllık
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPeriodType('quarterly');
+                setSelectedPeriodId('');
+              }}
+              className={`px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-pointer ${
+                periodType === 'quarterly' ? 'bg-accent text-white' : 'bg-bg-card text-text-secondary'
+              }`}
+            >
+              Çeyreklik
+            </button>
+            {periodicInputs.availablePeriods.length > 0 && (
+              <select
+                aria-label="Finansal dönem seçin"
+                value={selectedPeriodId || periodicInputs.periodId || ''}
+                onChange={(e) => setSelectedPeriodId(e.target.value)}
+                className="px-2 py-1 rounded-md border border-border bg-bg-card text-[11px] text-text-primary"
+              >
+                {periodicInputs.availablePeriods.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label} ({p.endDate})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+        {loadingFinancials ? (
+          <p className="text-[11px] text-text-muted">Dönemsel nakit akışı ve bilanço verileri kontrol ediliyor...</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+            <div className="rounded-lg bg-bg-card/80 border border-border/50 p-2">
+              <div className="text-text-muted">Serbest Nakit Akışı (FCF)</div>
+              <div className="font-mono font-bold text-text-primary">
+                {freeCashFlow.toFixed(1)} M {currencySign}
+              </div>
+              <div className="text-accent text-[10px] mt-0.5">{periodicInputs.fcfSourceLabel}</div>
+            </div>
+            <div className="rounded-lg bg-bg-card/80 border border-border/50 p-2">
+              <div className="text-text-muted">Net Borç</div>
+              <div className="font-mono font-bold text-text-primary">
+                {netDebt.toFixed(1)} M {currencySign}
+              </div>
+              <div className="text-accent text-[10px] mt-0.5">{periodicInputs.netDebtSourceLabel}</div>
+            </div>
+            <div className="rounded-lg bg-bg-card/80 border border-border/50 p-2">
+              <div className="text-text-muted">Pay Adedi (Lot)</div>
+              <div className="font-mono font-bold text-text-primary">
+                {sharesOutstanding.toFixed(1)} M
+              </div>
+              <div className="text-accent text-[10px] mt-0.5">{periodicInputs.sharesSourceLabel}</div>
             </div>
           </div>
         )}
