@@ -2566,6 +2566,34 @@ test('POR-03 moves portfolio deletion into management menu and shows portfolio i
   assert.doesNotMatch(portfolioSrc, /portföyünü sil`/);
 });
 
+test('PIY-01 keeps BIST, TEFAS and ABD market choices at the top on mobile', () => {
+  const {
+    MOBILE_PRIMARY_MARKETS,
+    normalizeMarketParam,
+    matchesMarketExchangeFilter,
+  } = load('src/lib/market/marketSelector.ts');
+
+  const ids = Array.from(MOBILE_PRIMARY_MARKETS, (m) => m.id);
+  assert.deepEqual(ids.slice(0, 3), ['BIST', 'TEFAS', 'ABD']);
+  assert.equal(normalizeMarketParam('us'), 'ABD');
+  assert.equal(normalizeMarketParam('abd'), 'ABD');
+  assert.equal(normalizeMarketParam('funds'), 'TEFAS');
+  assert.equal(normalizeMarketParam('bist'), 'BIST');
+
+  assert.equal(matchesMarketExchangeFilter('NASDAQ', 'ABD'), true);
+  assert.equal(matchesMarketExchangeFilter('NYSE', 'ABD'), true);
+  assert.equal(matchesMarketExchangeFilter('BIST', 'ABD'), false);
+  assert.equal(matchesMarketExchangeFilter('BIST', 'BIST'), true);
+
+  const piyasalarSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/piyasalar/page.tsx'),
+    'utf8'
+  );
+  assert.match(piyasalarSrc, /data-testid="mobile-top-market-bar"/);
+  assert.match(piyasalarSrc, /sticky top-0/);
+  assert.match(piyasalarSrc, /MOBILE_PRIMARY_MARKETS/);
+});
+
 
 
 

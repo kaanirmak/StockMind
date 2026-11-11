@@ -11,22 +11,11 @@ import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
 import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal, PriceStatusBadge } from '@/components/ui';
 import { classifyFundPriceStatus, classifyStockPriceStatus } from '@/lib/market/priceStatus';
+import { MARKET_CATALOG, MOBILE_PRIMARY_MARKETS, normalizeMarketParam, type MarketId } from '@/lib/market/marketSelector';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { formatDate, formatNumber, getPnLColor, getPnLSign } from '@/lib/utils/format';
 
-type MarketId = 'ALL' | 'BIST' | 'COMMODITY' | 'CRYPTO' | 'FOREX' | 'INDEX' | 'TEFAS' | 'NASDAQ' | 'NYSE';
-
-const MARKETS: Array<{ id: MarketId; label: string; icon: string; name: string }> = [
-  { id: 'ALL', label: 'Tüm Piyasalar', icon: '🌟', name: 'Canlı Finans Özeti' },
-  { id: 'BIST', label: 'BIST', icon: '🇹🇷', name: 'Borsa İstanbul' },
-  { id: 'COMMODITY', label: 'Emtia & Altın', icon: '🪙', name: 'Kıymetli Madenler' },
-  { id: 'CRYPTO', label: 'Kripto', icon: '₿', name: 'Kripto Paralar' },
-  { id: 'FOREX', label: 'Döviz', icon: '💱', name: 'Döviz Kurları' },
-  { id: 'INDEX', label: 'Endeksler', icon: '🌍', name: 'Küresel Endeksler' },
-  { id: 'TEFAS', label: 'TEFAS', icon: '📊', name: 'Yatırım Fonları' },
-  { id: 'NASDAQ', label: 'NASDAQ', icon: '🇺🇸', name: 'NASDAQ' },
-  { id: 'NYSE', label: 'NYSE', icon: '🏛️', name: 'NYSE' },
-];
+const MARKETS = MARKET_CATALOG;
 
 interface OverviewSections {
   commodity: StockWithQuote[];
@@ -39,16 +28,8 @@ function PiyasalarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const rawParam = (searchParams.get('market') || searchParams.get('tab') || searchParams.get('exchange') || 'ALL').toUpperCase();
-  const initialMarket: MarketId =
-    rawParam === 'ALL' || rawParam === 'OZET' || rawParam === 'TUMU' ? 'ALL' :
-    rawParam === 'FUNDS' || rawParam === 'TEFAS' ? 'TEFAS' :
-    rawParam === 'COMMODITY' || rawParam === 'EMTIA' || rawParam === 'ALTIN' ? 'COMMODITY' :
-    rawParam === 'CRYPTO' || rawParam === 'KRIPTO' ? 'CRYPTO' :
-    rawParam === 'FOREX' || rawParam === 'DOVIZ' || rawParam === 'FX' ? 'FOREX' :
-    rawParam === 'INDEX' || rawParam === 'ENDEKS' ? 'INDEX' :
-    rawParam === 'NASDAQ' ? 'NASDAQ' :
-    rawParam === 'NYSE' ? 'NYSE' : 'BIST';
+  const rawParam = searchParams.get('market') || searchParams.get('tab') || searchParams.get('exchange') || 'ALL';
+  const initialMarket: MarketId = normalizeMarketParam(rawParam);
 
   const [activeMarket, setActiveMarket] = useState<MarketId>(initialMarket);
 
@@ -393,32 +374,75 @@ function PiyasalarContent() {
 
   return (
     <div className="space-y-3 sm:space-y-6 animate-fade-in pb-12">
-      {/* Page Header */}
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="hidden sm:block text-lg font-semibold text-text-primary">Piyasalar</h1>
-        <div className="sm:hidden min-w-0 flex-1"><select aria-label="Piyasa seçimi" value={activeMarket} onChange={(e) => handleMarketChange(e.target.value as MarketId)} className="w-full min-w-0 h-11 rounded-xl border border-border bg-bg-card text-text-primary px-3 text-sm">
-          {MARKETS.map((market) => <option key={market.id} value={market.id}>{market.label}</option>)}
-        </select></div>
-        {/* View Mode Toggle */}
-        <div className="inline-flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => setViewMode('table')}
-            className={`w-11 h-11 inline-flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
-            aria-label="Tablo Görünümü" aria-pressed={viewMode === 'table'}
-          >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`w-11 h-11 inline-flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
-            aria-label="Kart Görünümü" aria-pressed={viewMode === 'grid'}
-          >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-          </button>
+      {/* Page Header & Sticky Mobile Top Market Selector */}
+      <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-bg-primary/95 backdrop-blur-md border-b border-border/50 space-y-2 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none sm:border-b-0 sm:space-y-0">
+        {/* Mobile First-Fold Quick Market Selector (BIST, TEFAS, ABD, Tümü) */}
+        <div
+          data-testid="mobile-top-market-bar"
+          role="tablist"
+          aria-label="Hızlı pazar seçimi"
+          className="grid grid-cols-4 gap-1.5 sm:hidden"
+        >
+          {MOBILE_PRIMARY_MARKETS.map((m) => {
+            const isActive =
+              activeMarket === m.id ||
+              (m.id === 'ABD' && (activeMarket === 'NASDAQ' || activeMarket === 'NYSE'));
+            return (
+              <button
+                key={m.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => handleMarketChange(m.id)}
+                className={`h-10 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center ${
+                  isActive
+                    ? 'bg-accent text-white border-accent shadow-sm shadow-accent/25'
+                    : 'bg-bg-card text-text-secondary border-border hover:text-text-primary'
+                }`}
+              >
+                {m.shortLabel}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
+          <h1 className="hidden sm:block text-lg font-semibold text-text-primary">Piyasalar</h1>
+          <div className="sm:hidden min-w-0 flex-1">
+            <select
+              aria-label="Piyasa seçimi"
+              value={activeMarket}
+              onChange={(e) => handleMarketChange(e.target.value as MarketId)}
+              className="w-full min-w-0 h-10 rounded-xl border border-border bg-bg-card text-text-primary px-3 text-xs font-medium"
+            >
+              {MARKETS.map((market) => (
+                <option key={market.id} value={market.id}>
+                  {market.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* View Mode Toggle */}
+          <div className="inline-flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`w-10 h-10 sm:w-11 sm:h-11 inline-flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
+              aria-label="Tablo Görünümü" aria-pressed={viewMode === 'table'}
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`w-10 h-10 sm:w-11 sm:h-11 inline-flex items-center justify-center rounded-xl border transition-colors cursor-pointer ${viewMode === 'grid' ? 'bg-accent/15 border-accent text-accent' : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'}`}
+              aria-label="Kart Görünümü" aria-pressed={viewMode === 'grid'}
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -675,7 +699,7 @@ function PiyasalarContent() {
 
             {/* Desktop Category / Sector Chips */}
             <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-xs">
-              {['BIST', 'NASDAQ', 'NYSE'].includes(activeMarket) && sectors.map((s) => (
+              {['BIST', 'ABD', 'NASDAQ', 'NYSE'].includes(activeMarket) && sectors.map((s) => (
                 <button
                   key={s}
                   onClick={() => setSelectedSector(s)}
@@ -1310,7 +1334,7 @@ function PiyasalarContent() {
                     </button>
                   ))}
 
-                {['BIST', 'NASDAQ', 'NYSE'].includes(activeMarket) &&
+                {['BIST', 'ABD', 'NASDAQ', 'NYSE'].includes(activeMarket) &&
                   sectors.map((s) => (
                     <button
                       key={s}

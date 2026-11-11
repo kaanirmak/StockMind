@@ -85,7 +85,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| PIY-01 | P1 | Pazar seçicisini mobilde üstte tut | BIST, TEFAS ve ABD seçeneklerine sayfanın başından ulaşılır. | ☐ |
+| PIY-01 | P1 | Pazar seçicisini mobilde üstte tut | BIST, TEFAS ve ABD seçeneklerine sayfanın başından ulaşılır. | ◐ |
 | PIY-02 | P1 | Son seçilen pazarı ve filtreyi hatırla | Sayfaya dönüldüğünde son seçim korunur. Paylaşılan URL açıkça seçilmiş filtreyi uygular. | ☐ |
 | PIY-03 | P1 | Arama sonuçlarını ayırt edilebilir yap | Her sonuçta sembol, borsa, varlık türü ve para birimi bulunur. | ☐ |
 | PIY-04 | P1 | Hisse grafiğinde veri kapsamını görünür kıl | Zaman aralığı, fiyat birimi, son mum zamanı ve veri eksikliği kullanıcıya gösterilir. | ☐ |

@@ -5,6 +5,7 @@ import { fetchTefasLiveDetail } from '@/lib/api/tefas';
 import { cleanSymbol } from '@/lib/utils/symbol';
 import { POPULAR_STOCKS } from '@/lib/constants/stocks';
 import { getLastVerifiedQuote, isVerifiedMarketQuote, recordVerifiedQuotes } from '@/lib/market/lastVerifiedStore';
+import { matchesMarketExchangeFilter } from '@/lib/market/marketSelector';
 import {
   Candle,
   calculateBollingerBands,
@@ -1911,8 +1912,8 @@ export async function getAllStocksLive(filter?: {
     const scoredStocks: { stock: StockMarketInfo; score: number }[] = [];
 
     for (const stock of allStocks) {
-      if (filter.exchange && filter.exchange !== 'ALL') {
-        if (filter.exchange !== stock.exchange) continue;
+      if (!matchesMarketExchangeFilter(stock.exchange, filter.exchange)) {
+        continue;
       }
       if (filter.sector && filter.sector !== 'ALL' && !stock.sector.toLowerCase().includes(filter.sector.toLowerCase())) {
         continue;
@@ -1930,8 +1931,8 @@ export async function getAllStocksLive(filter?: {
   }
 
   return (allStocks.filter((stock) => {
-    if (filter?.exchange && filter.exchange !== 'ALL') {
-      if (filter.exchange !== stock.exchange) return false;
+    if (!matchesMarketExchangeFilter(stock.exchange, filter?.exchange)) {
+      return false;
     }
     if (filter?.sector && filter.sector !== 'ALL' && !stock.sector.toLowerCase().includes(filter.sector.toLowerCase())) {
       return false;
