@@ -243,6 +243,39 @@ test('Scheduled bulletin respects preferences and reports partial provider failu
   assert.deepEqual(accepted, ['ok@example.test', 'fail@example.test']);
 });
 
+test('EPO-02: günlük bülten 51 ve üzeri alıcıyı sınır olmadan partiler halinde işler', async () => {
+  const sentTo = [];
+  const users = Array.from({ length: 65 }, (_, idx) => ({
+    email: `pro-${idx + 1}@example.test`,
+    email_confirmed_at: '2026-01-01T00:00:00Z',
+    app_metadata: { plan: 'pro' },
+  }));
+  const load = loader({
+    '@/lib/email/service': {
+      sendTestEmail: async ({ to }) => {
+        sentTo.push(to);
+        return { success: true, method: 'google_smtp' };
+      },
+    },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 42 }) },
+    '@/lib/supabase/admin': {
+      createAdminClient: () => ({
+        auth: { admin: { listUsers: async () => ({ data: { users } }) } },
+      }),
+    },
+  }, { CRON_SECRET: 'cron-secret' });
+
+  const { POST } = load('src/app/api/cron/daily-report/route.ts');
+  const response = await POST(request({}, { authorization: 'Bearer cron-secret' }));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.success, true);
+  assert.equal(body.recipientsCount, 65);
+  assert.equal(body.successfulCount, 65);
+  assert.equal(body.batchesProcessed, 3);
+  assert.equal(sentTo.length, 65);
+});
+
 test('Daily bulletin shows supplied market prices and omits sample portfolio values', () => {
   const load = loader({ nodemailer: {}, '@supabase/supabase-js': {} });
   const { generateStockMindEmailHtml } = load('src/lib/email/service.ts');

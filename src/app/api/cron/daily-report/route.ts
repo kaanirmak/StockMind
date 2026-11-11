@@ -14,11 +14,34 @@ export async function POST(request: Request) {
   return handleDailyReport(request);
 }
 
+const BULLETIN_BATCH_SIZE = 25;
+
 const sentReportsCache = new Set<string>();
 
 interface ReportRecipient {
   email: string;
   name?: string;
+}
+
+function deduplicateRecipients(recipients: ReportRecipient[]): ReportRecipient[] {
+  const seen = new Set<string>();
+  const unique: ReportRecipient[] = [];
+  for (const r of recipients) {
+    const email = r.email.trim();
+    const key = email.toLowerCase();
+    if (!email || !email.includes('@') || seen.has(key)) continue;
+    seen.add(key);
+    unique.push({ email, name: r.name });
+  }
+  return unique;
+}
+
+function chunkRecipients<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
 }
 
 async function loadConfirmedUsers(): Promise<ReportRecipient[]> {
@@ -90,6 +113,7 @@ async function handleDailyReport(request: Request) {
     // Scheduled runs target confirmed Pro accounts with the bulletin enabled. Manual calls may
     // still provide an explicit recipient list for testing or recovery.
     if (recipients.length === 0) recipients = await loadConfirmedUsers();
+    recipients = deduplicateRecipients(recipients);
 
     if (recipients.length === 0) {
       return NextResponse.json({
@@ -97,6 +121,8 @@ async function handleDailyReport(request: Request) {
         message: 'Bülten gönderilecek aktif Pro abone bulunmuyor.',
         recipientsCount: 0,
         successfulCount: 0,
+        batchesProcessed: 0,
+        batchSize: BULLETIN_BATCH_SIZE,
         results: [],
         timestamp: new Date().toISOString(),
       }, { status: 200 });
@@ -115,28 +141,34 @@ async function handleDailyReport(request: Request) {
     }
 
     const marketData = await getBulletinMarketData();
+    const subjectDate = new Date().toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' });
+    const subject = `StockMind Günlük Piyasa Kapanış Bülteni (18:30) • ${subjectDate}`;
 
-    const results: Array<{ email: string; success: boolean; skipped?: boolean; message?: string }> = [];
+    const results: Array<{ email: string; success: boolean; skipped?: boolean; message?: string; batchIndex?: number }> = [];
+    const batches = chunkRecipients(recipients, BULLETIN_BATCH_SIZE);
 
-    for (const recipient of recipients.slice(0, 50)) {
-      const perUserKey = `${todayStr}:${recipient.email.toLowerCase()}`;
-      if (sentReportsCache.has(perUserKey) && !force) {
-        results.push({ email: recipient.email, success: true, skipped: true, message: 'Bugün için zaten iletildi' });
-        continue;
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+      const batch = batches[batchIndex];
+      for (const recipient of batch) {
+        const perUserKey = `${todayStr}:${recipient.email.toLowerCase()}`;
+        if (sentReportsCache.has(perUserKey) && !force) {
+          results.push({ email: recipient.email, success: true, skipped: true, message: 'Bugün için zaten iletildi', batchIndex });
+          continue;
+        }
+
+        const sendResult = await sendTestEmail({
+          to: recipient.email,
+          userName: recipient.name || 'Değerli Yatırımcı',
+          subject,
+          isDailyReport: true,
+          marketData,
+        });
+
+        if (sendResult.success) {
+          sentReportsCache.add(perUserKey);
+        }
+        results.push({ email: recipient.email, success: sendResult.success, message: sendResult.message, batchIndex });
       }
-
-      const sendResult = await sendTestEmail({
-        to: recipient.email,
-        userName: recipient.name || 'Değerli Yatırımcı',
-        subject: `StockMind Günlük Piyasa Kapanış Bülteni (18:30) • ${new Date().toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul' })}`,
-        isDailyReport: true,
-        marketData,
-      });
-
-      if (sendResult.success) {
-        sentReportsCache.add(perUserKey);
-      }
-      results.push({ email: recipient.email, success: sendResult.success, message: sendResult.message });
     }
 
     const successfulCount = results.filter((r) => r.success).length;
@@ -148,6 +180,8 @@ async function handleDailyReport(request: Request) {
       timestamp: new Date().toISOString(),
       recipientsCount: recipients.length,
       successfulCount,
+      batchesProcessed: batches.length,
+      batchSize: BULLETIN_BATCH_SIZE,
       results,
       marketSummary: marketData,
     }, { status: complete ? 200 : successfulCount > 0 ? 207 : 503 });
