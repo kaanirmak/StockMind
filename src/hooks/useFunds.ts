@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { marketJson } from '@/lib/api/clientCache';
 import { TefasFundInfo } from '@/lib/data/funds';
+import type { SimilarFundRecommendation } from '@/lib/market/fundComparison';
 
 export function useFunds(
   filter?: {
@@ -105,7 +106,12 @@ export function useFunds(
 }
 
 export function useFundDetail(code: string, days: number = 90) {
-  const [fund, setFund] = useState<(TefasFundInfo & { history: { date: string; price: number }[] }) | null>(null);
+  const [fund, setFund] = useState<
+    (TefasFundInfo & {
+      history: { date: string; price: number }[];
+      similarFunds?: SimilarFundRecommendation[];
+    }) | null
+  >(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

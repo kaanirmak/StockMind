@@ -375,3 +375,135 @@ export function buildFundComparisonMatrix(
     },
   };
 }
+
+export type SimilarFundMatchType =
+  | 'same_category_and_risk'
+  | 'same_category'
+  | 'similar_risk';
+
+export interface SimilarFundRecommendation {
+  code: string;
+  name: string;
+  category: string;
+  founder: string;
+  price: number | null;
+  dailyReturn: number | null;
+  yearlyReturn: number | null;
+  riskValue: number | null;
+  managementFee: number | null;
+  matchType: SimilarFundMatchType;
+  matchReasons: string[];
+  matchReasonText: string;
+  score: number;
+}
+
+function isValidRisk(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 1 && value <= 7;
+}
+
+/**
+ * Recommends comparable TEFAS funds matched by identical category and/or similar risk level (±1),
+ * returning an explicit human-readable reason for every match.
+ */
+export function findSimilarFunds(
+  target: Pick<TefasFundInfo, 'code' | 'category' | 'riskValue' | 'founder'>,
+  candidates: readonly TefasFundInfo[],
+  options?: { limit?: number; excludeCodes?: readonly string[] }
+): SimilarFundRecommendation[] {
+  const limit = Math.max(1, Math.min(20, options?.limit ?? 6));
+  const targetCode = (target.code || '').trim().toUpperCase();
+  const excluded = new Set<string>([targetCode, 'SYS_BROADCAST']);
+  for (const extra of options?.excludeCodes ?? []) {
+    const cleaned = extra.trim().toUpperCase();
+    if (cleaned) excluded.add(cleaned);
+  }
+
+  const targetCategory = (target.category || '').trim();
+  const targetCategoryLower = targetCategory.toLocaleLowerCase('tr-TR');
+  const targetRisk = isValidRisk(target.riskValue) ? Math.round(target.riskValue) : null;
+
+  const scored: SimilarFundRecommendation[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of candidates) {
+    const code = (candidate.code || '').trim().toUpperCase();
+    if (!code || excluded.has(code) || seen.has(code)) continue;
+    seen.add(code);
+
+    const candCategory = (candidate.category || '').trim();
+    const sameCategory =
+      Boolean(targetCategoryLower) &&
+      candCategory.toLocaleLowerCase('tr-TR') === targetCategoryLower;
+
+    const candRisk = isValidRisk(candidate.riskValue) ? Math.round(candidate.riskValue) : null;
+    const riskDiff =
+      targetRisk !== null && candRisk !== null ? Math.abs(candRisk - targetRisk) : null;
+    const similarRisk = riskDiff !== null && riskDiff <= 1;
+
+    if (!sameCategory && !similarRisk) continue;
+
+    const matchReasons: string[] = [];
+    let score = 0;
+
+    if (sameCategory) {
+      matchReasons.push(`Aynı kategori (${candCategory})`);
+      score += 40;
+    }
+
+    if (similarRisk && candRisk !== null) {
+      if (riskDiff === 0) {
+        matchReasons.push(`Aynı risk düzeyi (${candRisk}/7)`);
+        score += 35;
+      } else {
+        matchReasons.push(`Benzer risk düzeyi (${candRisk}/7, ±1 fark)`);
+        score += 20;
+      }
+    }
+
+    if (typeof candidate.price === 'number' && Number.isFinite(candidate.price) && candidate.price > 0) {
+      score += 8;
+    }
+    if (typeof candidate.totalValue === 'number' && Number.isFinite(candidate.totalValue) && candidate.totalValue > 0) {
+      score += 5;
+    }
+
+    const matchType: SimilarFundMatchType =
+      sameCategory && similarRisk
+        ? 'same_category_and_risk'
+        : sameCategory
+          ? 'same_category'
+          : 'similar_risk';
+
+    scored.push({
+      code,
+      name: candidate.name,
+      category: candCategory || 'Diğer',
+      founder: candidate.founder,
+      price: typeof candidate.price === 'number' && Number.isFinite(candidate.price) ? candidate.price : null,
+      dailyReturn:
+        candidate.price != null && typeof candidate.dailyReturn === 'number' && Number.isFinite(candidate.dailyReturn)
+          ? candidate.dailyReturn
+          : null,
+      yearlyReturn:
+        candidate.price != null && typeof candidate.yearlyReturn === 'number' && Number.isFinite(candidate.yearlyReturn)
+          ? candidate.yearlyReturn
+          : null,
+      riskValue: candRisk,
+      managementFee:
+        typeof candidate.managementFee === 'number' && Number.isFinite(candidate.managementFee)
+          ? candidate.managementFee
+          : null,
+      matchType,
+      matchReasons,
+      matchReasonText: matchReasons.join(' • '),
+      score,
+    });
+  }
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.code.localeCompare(b.code, 'tr-TR');
+  });
+
+  return scored.slice(0, limit);
+}

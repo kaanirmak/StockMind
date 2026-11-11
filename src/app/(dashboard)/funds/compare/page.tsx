@@ -14,6 +14,7 @@ import {
   MIN_COMPARISON_FUNDS,
   parseComparisonCodesParam,
   type ComparableFundInput,
+  type SimilarFundRecommendation,
 } from '@/lib/market/fundComparison';
 
 const SERIES_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899'];
@@ -185,6 +186,20 @@ function FundCompareInner() {
     [selectedCodes, loadedMap]
   );
 
+  const suggestedPeers = useMemo(() => {
+    const selectedSet = new Set(selectedCodes);
+    const byCode = new Map<string, SimilarFundRecommendation>();
+    for (const f of loadedFunds) {
+      const peers = (f as ComparableFundInput & { similarFunds?: SimilarFundRecommendation[] }).similarFunds;
+      if (!Array.isArray(peers)) continue;
+      for (const peer of peers) {
+        if (selectedSet.has(peer.code) || byCode.has(peer.code)) continue;
+        byCode.set(peer.code, peer);
+      }
+    }
+    return Array.from(byCode.values()).slice(0, 6);
+  }, [loadedFunds, selectedCodes]);
+
   const comparison = useMemo(() => buildFundComparisonMatrix(loadedFunds), [loadedFunds]);
   const failedEntries = useMemo(
     () =>
@@ -323,7 +338,8 @@ function FundCompareInner() {
         </div>
 
         {selectedCodes.length < MAX_COMPARISON_FUNDS && (
-          <div className="relative">
+          <div className="space-y-3">
+            <div className="relative">
             <input
               type="text"
               value={searchQuery}
@@ -365,6 +381,33 @@ function FundCompareInner() {
                       </button>
                     );
                   })}
+              </div>
+            )}
+            </div>
+
+            {suggestedPeers.length > 0 && (
+              <div className="pt-2 border-t border-border/50 space-y-2" data-testid="compare-similar-suggestions">
+                <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wide block">
+                  Benzer Fon Önerileri (Kategori ve Risk Eşleşmesine Göre)
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedPeers.map((peer) => (
+                    <button
+                      key={peer.code}
+                      type="button"
+                      onClick={() => handleAddCode(peer.code)}
+                      className="text-left px-3 py-2 rounded-xl bg-bg-tertiary/70 hover:bg-bg-hover border border-border/60 transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-text-primary">+ {peer.code}</span>
+                        {peer.riskValue != null && (
+                          <Badge variant="info" size="sm">Risk {peer.riskValue}/7</Badge>
+                        )}
+                      </div>
+                      <span className="block text-[11px] text-accent mt-0.5">{peer.matchReasonText}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>

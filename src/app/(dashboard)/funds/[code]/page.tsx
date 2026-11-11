@@ -490,6 +490,78 @@ export default function FundDetailPage({
         </div>
       </div>
 
+      {/* Similar Funds Recommendations */}
+      <div className="glass-card p-5 space-y-4" data-testid="similar-funds-section">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
+          <div>
+            <h3 className="text-base font-semibold text-text-primary">Benzer Fon Önerileri</h3>
+            <p className="text-xs text-text-muted">
+              Aynı kategori ve benzer risk profiline göre filtrelenmiş TEFAS karşılaştırma adayları
+            </p>
+          </div>
+          {Array.isArray(fund.similarFunds) && fund.similarFunds.length > 0 && (
+            <Link
+              href={`/funds/compare?codes=${[code, ...fund.similarFunds.slice(0, 3).map((s) => s.code)].join(',')}`}
+              data-testid="compare-with-similar-link"
+            >
+              <Button variant="secondary" size="sm">
+                Benzerleriyle Yan Yana Karşılaştır
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        {Array.isArray(fund.similarFunds) && fund.similarFunds.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {fund.similarFunds.map((peer) => (
+              <div
+                key={peer.code}
+                className="p-3.5 rounded-xl bg-bg-tertiary/60 border border-border/60 flex flex-col justify-between gap-3"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={`/funds/${peer.code}`} className="font-bold text-sm text-text-primary hover:text-accent transition-colors">
+                      {peer.code}
+                    </Link>
+                    {peer.riskValue != null && (
+                      <Badge variant="info" size="sm">
+                        Risk {peer.riskValue}/7
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary line-clamp-2">{peer.name}</p>
+                  <p
+                    data-testid={`similar-reason-${peer.code}`}
+                    className="text-[11px] font-medium text-accent bg-accent/10 px-2.5 py-1 rounded-lg inline-block"
+                  >
+                    Eşleşme nedeni: {peer.matchReasonText}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+                  <span className="font-mono text-text-muted">
+                    {peer.yearlyReturn != null
+                      ? `1Y: ${peer.yearlyReturn >= 0 ? '+' : ''}${peer.yearlyReturn.toFixed(1)}%`
+                      : peer.managementFee != null
+                        ? `Ücret: %${peer.managementFee.toFixed(2)}`
+                        : peer.category}
+                  </span>
+                  <Link href={`/funds/compare?codes=${code},${peer.code}`}>
+                    <Button variant="ghost" size="sm">
+                      Kıyasla →
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-text-muted">
+            Bu fon için aynı kategori veya benzer risk profiline sahip öneri bulunamadı.
+          </p>
+        )}
+      </div>
+
       {/* Trade Modal */}
       <Modal
         isOpen={isTradeModalOpen}

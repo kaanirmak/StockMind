@@ -1,6 +1,14 @@
 import { after, NextResponse } from 'next/server';
 import { fetchTefasLiveDetail, fetchTefasPriceHistory } from '@/lib/api/tefas';
-import { getFundByCodeFromDatabase, getFundByCode, getSupabaseFundsClient } from '@/lib/data/funds';
+import {
+  getFundByCodeFromDatabase,
+  getFundByCode,
+  getFundsFromDatabase,
+  getSupabaseFundsClient,
+  TEFAS_FUNDS,
+  type TefasFundInfo,
+} from '@/lib/data/funds';
+import { findSimilarFunds } from '@/lib/market/fundComparison';
 export const dynamic = 'force-dynamic';
 
 export async function GET(
@@ -15,11 +23,12 @@ export async function GET(
 
     const supabase = getSupabaseFundsClient();
 
-    // 1. Fetch live detail and price history from official TEFAS API
-    const [liveDetail, realHistory, dbFund] = await Promise.all([
+    // 1. Fetch live detail, price history, DB detail, and candidate peer pool concurrently
+    const [liveDetail, realHistory, dbFund, dbCandidates] = await Promise.all([
       fetchTefasLiveDetail(upperCode),
       fetchTefasPriceHistory(upperCode, days),
       getFundByCodeFromDatabase(upperCode),
+      getFundsFromDatabase({ limit: 200 }),
     ]);
 
     const fund = liveDetail || dbFund || getFundByCode(upperCode);
@@ -99,6 +108,18 @@ export async function GET(
       );
     }
 
+    // Merge DB-enriched funds with base directory so similar recommendations always explain match rationale
+    const mergedByCode = new Map<string, TefasFundInfo>();
+    for (const dirFund of TEFAS_FUNDS) {
+      mergedByCode.set(dirFund.code, dirFund);
+    }
+    for (const dbPeer of dbCandidates) {
+      mergedByCode.set(dbPeer.code, dbPeer);
+    }
+    const similarFunds = findSimilarFunds(fund, Array.from(mergedByCode.values()), {
+      limit: 6,
+    });
+
     // If real history is unavailable from TEFAS or DB cache, do NOT fabricate synthetic history.
     // Return empty history honestly per DATA-01.
 
@@ -107,6 +128,7 @@ export async function GET(
       data: {
         ...fund,
         history,
+        similarFunds,
       },
     });
   } catch (error) {

@@ -5820,6 +5820,87 @@ test('FON-08: two to four funds compare return, risk, fee, allocation, and navDa
   assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/piyasalar/page.tsx'), 'utf8'), /fund-compare-bar/);
 });
 
+test('FON-09: similar fund recommendations match by category and risk with explicit reason', () => {
+  const fundDetailState = load('src/lib/market/fundDetailState.ts');
+  const comp = load('src/lib/market/fundComparison.ts', {
+    require(name) {
+      if (name === '@/lib/market/fundDetailState') return fundDetailState;
+      throw new Error(name);
+    },
+  });
+
+  const target = {
+    code: 'TCD',
+    name: 'Tacirler Değişken Fon',
+    category: 'Değişken Fonlar',
+    founder: 'Tacirler Portföy',
+    riskValue: 6,
+  };
+
+  const peers = comp.findSimilarFunds(target, [
+    target, // must exclude self
+    {
+      code: 'IPB',
+      name: 'İstanbul Portföy Birinci Değişken',
+      category: 'Değişken Fonlar',
+      founder: 'İstanbul Portföy',
+      price: 45.2,
+      dailyReturn: 0.4,
+      yearlyReturn: 60.1,
+      riskValue: 6,
+      totalValue: 1_500_000_000,
+    },
+    {
+      code: 'MAC',
+      name: 'Marmara Hisse Senedi',
+      category: 'Hisse Senedi Fonları',
+      founder: 'Marmara Capital',
+      price: 210,
+      dailyReturn: 1.1,
+      yearlyReturn: 72.5,
+      riskValue: 5, // risk ±1 match
+      totalValue: 900_000_000,
+    },
+    {
+      code: 'EID',
+      name: 'Qinvest Değişken',
+      category: 'Değişken Fonlar',
+      founder: 'Qinvest',
+      price: null,
+      riskValue: null, // same category even without riskValue
+    },
+    {
+      code: 'PPF',
+      name: 'Para Piyasası',
+      category: 'Para Piyasası Fonları',
+      founder: 'X Portföy',
+      price: 2.1,
+      riskValue: 1, // unrelated category and risk
+    },
+  ]);
+
+  assert.equal(peers.length, 3);
+  assert.equal(peers[0].code, 'IPB');
+  assert.equal(peers[0].matchType, 'same_category_and_risk');
+  assert.match(peers[0].matchReasonText, /Aynı kategori/);
+  assert.match(peers[0].matchReasonText, /Aynı risk düzeyi/);
+
+  assert.equal(peers[1].code, 'EID');
+  assert.equal(peers[1].matchType, 'same_category');
+  assert.match(peers[1].matchReasonText, /Aynı kategori/);
+
+  assert.equal(peers[2].code, 'MAC');
+  assert.equal(peers[2].matchType, 'similar_risk');
+  assert.match(peers[2].matchReasonText, /Benzer risk düzeyi/);
+
+  // API and UI wire-up checks
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/api/funds/[code]/route.ts'), 'utf8'), /findSimilarFunds/);
+  const detailSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/funds/[code]/page.tsx'), 'utf8');
+  assert.match(detailSrc, /similar-funds-section/);
+  assert.match(detailSrc, /Eşleşme nedeni:/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/funds/compare/page.tsx'), 'utf8'), /compare-similar-suggestions/);
+});
+
 
 
 
