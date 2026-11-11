@@ -2295,6 +2295,68 @@ test('UX-09 light and dark themes pass WCAG 2.1 AA contrast across text, badges,
   assert.match(heatmapSrc, /text-rose-800 dark:text-rose-400/);
 });
 
+test('UX-10 keyboard and screen-reader flows cover menus, filters, modals, back links, and error messages', () => {
+  const { getNextRovingTabIndex } = load('src/lib/accessibility/keyboard.ts');
+  assert.equal(getNextRovingTabIndex(0, 'ArrowRight', 4), 1);
+  assert.equal(getNextRovingTabIndex(3, 'ArrowRight', 4), 0);
+  assert.equal(getNextRovingTabIndex(0, 'ArrowLeft', 4), 3);
+  assert.equal(getNextRovingTabIndex(2, 'Home', 4), 0);
+  assert.equal(getNextRovingTabIndex(1, 'End', 4), 3);
+  assert.equal(getNextRovingTabIndex(0, 'Enter', 4), null);
+  assert.equal(getNextRovingTabIndex(0, 'ArrowRight', 0), null);
+
+  const tabsSrc = fs.readFileSync(path.join(__dirname, '..', 'src/components/ui/Tabs.tsx'), 'utf8');
+  assert.match(tabsSrc, /role="tablist"/);
+  assert.match(tabsSrc, /role="tab"/);
+  assert.match(tabsSrc, /aria-selected=\{isActive\}/);
+  assert.match(tabsSrc, /getNextRovingTabIndex/);
+
+  const modalSrc = fs.readFileSync(path.join(__dirname, '..', 'src/components/ui/Modal.tsx'), 'utf8');
+  assert.match(modalSrc, /role="dialog"/);
+  assert.match(modalSrc, /aria-modal="true"/);
+  assert.match(modalSrc, /e\.key === 'Tab'/);
+  assert.match(modalSrc, /e\.key === 'Escape'/);
+  assert.match(modalSrc, /previouslyFocusedElementRef\.current\.focus\(\)/);
+
+  const mobileNavSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/layout/MobileNav.tsx'),
+    'utf8'
+  );
+  assert.match(mobileNavSrc, /moreButtonRef\.current\?\.focus\(\)/);
+  assert.match(mobileNavSrc, /aria-haspopup="dialog"/);
+
+  const headerSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/layout/Header.tsx'),
+    'utf8'
+  );
+  assert.match(headerSrc, /if \(e\.key === 'Escape'\)/);
+  assert.match(headerSrc, /aria-label="Kullanıcı menüsü"/);
+  assert.match(headerSrc, /aria-expanded=\{showUserMenu\}/);
+
+  const layoutSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/layout.tsx'),
+    'utf8'
+  );
+  assert.match(layoutSrc, /href="#main-content"/);
+  assert.match(layoutSrc, /Ana içeriğe atla/);
+  assert.match(layoutSrc, /id="main-content"/);
+
+  const stockDetailSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/stocks/[symbol]/page.tsx'),
+    'utf8'
+  );
+  assert.match(stockDetailSrc, /aria-label="Önceki sayfaya dön"/);
+
+  const inputSrc = fs.readFileSync(path.join(__dirname, '..', 'src/components/ui/Input.tsx'), 'utf8');
+  assert.match(inputSrc, /aria-invalid=\{Boolean\(error\)\}/);
+  assert.match(inputSrc, /role="alert"/);
+
+  const toastSrc = fs.readFileSync(path.join(__dirname, '..', 'src/components/ui/Toast.tsx'), 'utf8');
+  assert.match(toastSrc, /role="region"/);
+  assert.match(toastSrc, /aria-live="polite"/);
+  assert.match(toastSrc, /aria-label="Bildirimi kapat"/);
+});
+
 
 
 

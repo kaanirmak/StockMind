@@ -46,10 +46,17 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ToastContext.Provider value={{ toasts, showToast, removeToast }}>
       {children}
-      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-5 left-3 right-3 md:left-auto md:right-5 z-[60] flex flex-col gap-2.5 md:max-w-sm w-auto pointer-events-none">
+      <div
+        role="region"
+        aria-label="Bildirimler"
+        aria-live="polite"
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] md:bottom-5 left-3 right-3 md:left-auto md:right-5 z-[60] flex flex-col gap-2.5 md:max-w-sm w-auto pointer-events-none"
+      >
         {toasts.map((toast) => (
           <div
             key={toast.id}
+            role={toast.type === 'danger' || toast.type === 'warning' ? 'alert' : 'status'}
+            aria-live={toast.type === 'danger' ? 'assertive' : 'polite'}
             className={`pointer-events-auto p-4 rounded-xl border shadow-xl backdrop-blur-md transition-all animate-slide-up flex items-start gap-3 ${
               toast.type === 'success'
                 ? 'bg-success/15 border-success/30 text-text-primary'
@@ -87,8 +94,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               {toast.message && <p className="text-xs text-text-secondary mt-0.5">{toast.message}</p>}
             </div>
             <button
+              type="button"
+              aria-label="Bildirimi kapat"
               onClick={() => removeToast(toast.id)}
-              className="text-text-muted hover:text-text-primary shrink-0 transition-colors"
+              className="text-text-muted hover:text-text-primary shrink-0 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

@@ -174,9 +174,11 @@ export default function StockDetailPage({
       <div className="flex items-center justify-between py-1 gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <button
+            type="button"
             onClick={() => router.back()}
             className="p-2 -ml-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer shrink-0"
             title="Geri"
+            aria-label="Önceki sayfaya dön"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

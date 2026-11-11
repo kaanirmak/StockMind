@@ -122,7 +122,7 @@ export default function Header() {
   const unreadCount = notifications.filter((n) => !n.read && !n.archived).length;
   const displayedNotifications = notifications.filter((n) => Boolean(n.archived) === showArchive && (!filterUnreadOnly || !n.read));
 
-  // Close menus on outside click
+  // Close menus on outside click or Escape
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -132,8 +132,18 @@ export default function Header() {
         setShowNotifications(false);
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setShowUserMenu(false);
+        setShowNotifications(false);
+      }
+    }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
 
@@ -237,6 +247,8 @@ export default function Header() {
             }`}
             title="Bildirimler"
             aria-label={unreadCount > 0 ? `Bildirimler (${unreadCount} okunmamış)` : 'Bildirimler'}
+            aria-expanded={showNotifications}
+            aria-haspopup="true"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -408,6 +420,10 @@ export default function Header() {
         {/* User Menu */}
         <div className="relative" ref={menuRef}>
           <button
+            type="button"
+            aria-label="Kullanıcı menüsü"
+            aria-expanded={showUserMenu}
+            aria-haspopup="menu"
             onClick={() => { setShowNotifications(false); setShowUserMenu(!showUserMenu); }}
             className="flex min-h-11 items-center gap-1 sm:gap-2 px-1.5 sm:px-2 py-1.5 rounded-xl hover:bg-bg-hover transition-all duration-200 cursor-pointer"
           >

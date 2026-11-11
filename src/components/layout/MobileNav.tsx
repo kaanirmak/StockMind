@@ -69,6 +69,7 @@ export default function MobileNav() {
   const [currentHash, setCurrentHash] = useState('');
   useScrollLock(showMore);
   const panelRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const syncHash = () => setCurrentHash(window.location.hash);
@@ -102,7 +103,10 @@ export default function MobileNav() {
   useEffect(() => {
     if (!showMore) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowMore(false);
+      if (event.key === 'Escape') {
+        setShowMore(false);
+        moreButtonRef.current?.focus();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -113,6 +117,7 @@ export default function MobileNav() {
       {/* Backdrop overlay */}
       {showMore && (
         <div
+          aria-hidden="true"
           className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-fade-in"
           onClick={() => setShowMore(false)}
         />
@@ -122,6 +127,8 @@ export default function MobileNav() {
       {showMore && (
         <div
           ref={panelRef}
+          role="dialog"
+          aria-label="Ek navigasyon menüsü"
           className="md:hidden fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 animate-slide-up"
         >
           <div className="glass-purple rounded-2xl p-3.5 space-y-1.5 shadow-2xl border border-border max-h-[min(68dvh,34rem)] overflow-y-auto overscroll-contain">
@@ -232,9 +239,11 @@ export default function MobileNav() {
 
           {/* More Button */}
           <button
+            ref={moreButtonRef}
             type="button"
             aria-label="Diğer menü seçenekleri"
             aria-expanded={showMore}
+            aria-haspopup="dialog"
             onClick={() => setShowMore(!showMore)}
             className={`flex flex-col items-center justify-center gap-1 px-1 py-1 min-w-0 min-h-[48px] rounded-xl transition-all duration-200 relative cursor-pointer ${
               showMore || isMoreActive
