@@ -26,6 +26,12 @@ import {
   type CalendarScopeFilter,
   type CalendarTypeFilter,
 } from '@/lib/market/corporateCalendar';
+import {
+  filterMacroCalendarEvents,
+  formatMacroMetricValue,
+  type MacroEventItem,
+  type MacroRegion,
+} from '@/lib/market/macroCalendar';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 
@@ -47,6 +53,10 @@ export default function NewsPage() {
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarScope, setCalendarScope] = useState<CalendarScopeFilter>('ALL');
   const [calendarTypeFilter, setCalendarTypeFilter] = useState<CalendarTypeFilter>('ALL');
+  const [macroEvents, setMacroEvents] = useState<MacroEventItem[]>([]);
+  const [macroLoading, setMacroLoading] = useState(false);
+  const [macroRegion, setMacroRegion] = useState<MacroRegion>('ALL');
+  const [macroNotice, setMacroNotice] = useState<string>('');
   const [sourceCoverage, setSourceCoverage] = useState<NewsCoverageSummary | null>(null);
   const [showCoverageDetails, setShowCoverageDetails] = useState(false);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
@@ -110,6 +120,37 @@ export default function NewsPage() {
   );
 
   const fetchNews = async (isManualRefresh = false) => {
+    if (selectedCategory === 'MACRO_CALENDAR') {
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
+      setNewsError('');
+      setNewsWarning('');
+      setLoading(false);
+      setMacroLoading(true);
+      if (isManualRefresh) setIsRefreshing(true);
+      try {
+        const res = await fetch('/api/markets/macro-calendar', { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = (await res.json()) as {
+          events?: MacroEventItem[];
+          notice?: string;
+        };
+        if (requestRef.current !== controller) return;
+        setMacroEvents(Array.isArray(payload.events) ? payload.events : []);
+        setMacroNotice(payload.notice || '');
+      } catch {
+        if (requestRef.current !== controller) return;
+        setNewsError('Makroekonomi takvimi yüklenemedi.');
+      } finally {
+        if (requestRef.current === controller) {
+          setMacroLoading(false);
+          setIsRefreshing(false);
+        }
+      }
+      return;
+    }
+
     if (selectedCategory === 'CALENDAR') {
       requestRef.current?.abort();
       const controller = new AbortController();
@@ -299,6 +340,16 @@ export default function NewsPage() {
     );
   }, [news, searchQuery, selectedSymbolFilter, portfolioIdentities, portfolioSymbols, sortOrder]);
 
+  const filteredMacroEvents = useMemo(
+    () =>
+      filterMacroCalendarEvents({
+        events: macroEvents,
+        region: macroRegion,
+        searchQuery,
+      }),
+    [macroEvents, macroRegion, searchQuery]
+  );
+
   const categories = [
     { id: 'ALL', label: 'Tüm Haberler' },
     {
@@ -309,6 +360,7 @@ export default function NewsPage() {
     { id: 'BIST', label: " BIST & Şirketler" },
     { id: 'KAP', label: " KAP Bildirimleri" },
     { id: 'CALENDAR', label: " Bilanço & Temettü" },
+    { id: 'MACRO_CALENDAR', label: " Makro Takvim" },
     { id: 'GLOBAL', label: " Küresel Piyasalar" },
     { id: 'MACRO', label: " Makroekonomi & Emtia" },
   ];
@@ -628,8 +680,108 @@ export default function NewsPage() {
         );
       })()}
 
-      {/* Portfolio Empty State */}
-      {selectedCategory === 'CALENDAR' ? (
+      {/* Macro & Corporate Calendars */}
+      {selectedCategory === 'MACRO_CALENDAR' ? (
+        <div data-testid="macro-calendar-panel" className="space-y-4">
+          <div className="glass-card p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Makro bölge filtresi">
+              {[
+                { id: 'ALL' as const, label: 'Tümü (TR & Küresel)' },
+                { id: 'TR' as const, label: 'Türkiye' },
+                { id: 'GLOBAL' as const, label: 'Küresel' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setMacroRegion(opt.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    macroRegion === opt.id
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-secondary text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[11px] text-text-muted">
+              Mevcut olmayan Önceki / Beklenen / Gerçekleşen değerler tahmin edilmez.
+            </span>
+          </div>
+
+          {macroLoading ? (
+            <StateView
+              kind="loading"
+              title="Makroekonomi takvimi yükleniyor"
+              description="Türkiye ve küresel merkez bankası / istatistik takvimi kontrol ediliyor."
+            />
+          ) : filteredMacroEvents.length === 0 ? (
+            <StateView
+              kind="empty"
+              title="Gösterilecek doğrulanmış makroekonomi olayı bulunamadı"
+              description={macroNotice || 'Seçili bölge için doğrulanmış takvim kaydı henüz bulunmuyor.'}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredMacroEvents.map((ev) => (
+                <div
+                  key={ev.id}
+                  data-testid="macro-calendar-card"
+                  className="glass-card p-4 rounded-2xl border border-border/70 space-y-2.5"
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant={ev.region === 'TR' ? 'info' : 'accent'} size="sm">
+                        {ev.countryLabel}
+                      </Badge>
+                      {ev.importance === 'high' && (
+                        <Badge variant="warning" size="sm">Önemli</Badge>
+                      )}
+                      <span className="font-semibold text-accent">{ev.source}</span>
+                    </div>
+                    <time dateTime={ev.scheduledAt} className="font-mono text-text-primary font-semibold">
+                      {new Date(ev.scheduledAt).toLocaleString('tr-TR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </time>
+                  </div>
+                  <p className="text-sm font-semibold text-text-primary">{ev.title}</p>
+                  <div className="grid grid-cols-3 gap-2 rounded-xl bg-bg-secondary/50 border border-border/60 p-2.5 text-xs">
+                    <div>
+                      <div className="text-[10px] text-text-muted">Önceki</div>
+                      <div className="font-mono font-semibold text-text-primary">
+                        {formatMacroMetricValue(ev.previousValue)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-text-muted">Beklenen</div>
+                      <div className="font-mono font-semibold text-text-primary">
+                        {formatMacroMetricValue(ev.consensusValue)}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-text-muted">Gerçekleşen</div>
+                      <div className="font-mono font-semibold text-accent">
+                        {formatMacroMetricValue(ev.actualValue)}
+                      </div>
+                    </div>
+                  </div>
+                  {ev.sourceUrl && (
+                    <div className="text-right">
+                      <a href={ev.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent hover:underline">
+                        Resmî Kaynak
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : selectedCategory === 'CALENDAR' ? (
         <div data-testid="corporate-calendar-panel" className="space-y-4">
           <div className="glass-card p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Takvim kapsam filtresi">

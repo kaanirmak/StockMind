@@ -6981,6 +6981,96 @@ test('HBR-10: corporate earnings and dividend calendar filters by portfolio or w
   assert.match(newsPageSrc, /Bilanço & Temettü/);
 });
 
+test('HBR-11: macroeconomic calendar displays TR and global events with time, source, and prior/consensus/actual values without fabricating missing numbers', async () => {
+  const macroMod = load('src/lib/market/macroCalendar.ts', { URL, AbortSignal });
+
+  const events = macroMod.parseMacroCalendarPayload({
+    events: [
+      {
+        id: 'tcmb-ppk-nov',
+        region: 'TR',
+        countryLabel: 'Türkiye',
+        title: 'TCMB Para Politikası Kurulu Faiz Kararı',
+        scheduledAt: '2026-11-21T11:00:00Z',
+        source: 'TCMB',
+        sourceUrl: 'https://www.tcmb.gov.tr/wps/wcm/connect/tr/tcmb+tr',
+        importance: 'high',
+        previousValue: '%50,00',
+        consensusValue: '%50,00',
+        actualValue: null,
+        verified: true,
+      },
+      {
+        id: 'us-cpi-nov',
+        region: 'GLOBAL',
+        countryLabel: 'ABD',
+        title: 'ABD Tüketici Fiyat Endeksi (TÜFE Yıllık)',
+        scheduledAt: '2026-11-13T13:30:00Z',
+        source: 'BLS',
+        sourceUrl: 'https://www.bls.gov/cpi/',
+        importance: 'high',
+        previousValue: '%2,4',
+        consensusValue: '%2,6',
+        actualValue: '%2,6',
+        verified: true,
+      },
+      {
+        id: 'unverified-rumor',
+        title: 'Doğrulanmamış söylenti',
+        scheduledAt: '2026-11-14T10:00:00Z',
+        source: 'Bilinmiyor',
+        verified: false,
+      },
+    ],
+  });
+
+  assert.equal(events.length, 2);
+  // Chronologically sorted (Nov 13 before Nov 21)
+  assert.equal(events[0].id, 'us-cpi-nov');
+  assert.equal(events[0].region, 'GLOBAL');
+  assert.equal(events[0].actualValue, '%2,6');
+  assert.equal(events[1].id, 'tcmb-ppk-nov');
+  assert.equal(events[1].region, 'TR');
+  assert.equal(events[1].actualValue, null);
+  assert.equal(macroMod.formatMacroMetricValue(events[1].actualValue), 'Mevcut değil');
+  assert.equal(macroMod.formatMacroMetricValue(events[1].previousValue), '%50,00');
+
+  const trOnly = macroMod.filterMacroCalendarEvents({ events, region: 'TR' });
+  assert.equal(trOnly.length, 1);
+  assert.equal(trOnly[0].source, 'TCMB');
+
+  // API route honors region query param and handles configured feed cleanly
+  const routeMod = load('src/app/api/markets/macro-calendar/route.ts', {
+    URL,
+    AbortSignal,
+    require: (name) =>
+      name === 'next/server'
+        ? { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } }
+        : load('src/lib/market/macroCalendar.ts', {
+            URL,
+            AbortSignal,
+            process: { env: { MACRO_CALENDAR_FEED_URL: 'https://internal.macro.example/calendar.json' } },
+            fetch: async () => ({
+              ok: true,
+              json: async () => ({ events }),
+            }),
+          }),
+    console: { error() {} },
+  });
+
+  const apiTr = await routeMod.GET(new Request('https://example.com/api/markets/macro-calendar?region=TR'));
+  assert.equal(apiTr.status, 200);
+  assert.equal(apiTr.body.configured, true);
+  assert.equal(apiTr.body.events.length, 1);
+  assert.equal(apiTr.body.events[0].source, 'TCMB');
+
+  const newsPageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/news/page.tsx'), 'utf8');
+  assert.match(newsPageSrc, /macro-calendar-panel/);
+  assert.match(newsPageSrc, /macro-calendar-card/);
+  assert.match(newsPageSrc, /Gerçekleşen/);
+});
+
+
 
 
 
