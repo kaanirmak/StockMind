@@ -7,6 +7,7 @@ import { InstrumentLogo, StateView } from '@/components/ui';
 import { Icon } from '@/components/ui/Icon';
 import { formatCurrency, formatPercent, getPnLColor, getPnLSign } from '@/lib/utils/format';
 import { formatContributionPoints } from '@/lib/portfolio/dailyAttribution';
+import { mapNewsFetchErrorToTurkish, parseNewsApiResponse } from '@/lib/news/responseParser';
 import {
   extractDailyContributors,
   selectTopImportantEvent,
@@ -52,17 +53,23 @@ export default function DailyPulseRow() {
           ? `/api/news?symbols=${encodeURIComponent(portfolioSymbolsKey)}`
           : '/api/news';
         const res = await fetch(query, { signal: controller.signal });
-        if (!res.ok) {
-          throw new Error('Önemli olay verisi alınamadı');
+        const parsed = await parseNewsApiResponse<{ data?: DashboardEventArticle[]; stale?: boolean }>(res);
+        if (!parsed.ok || !parsed.payload) {
+          throw new Error(parsed.errorMessage || 'Önemli olay verisi alınamadı');
         }
-        const payload = await res.json();
+        const payload = parsed.payload;
         if (!active || controller.signal.aborted) return;
         const list = Array.isArray(payload?.data) ? payload.data : [];
         setArticles(list);
         setIsStaleNews(Boolean(payload?.stale));
       } catch (err) {
         if (!active || controller.signal.aborted) return;
-        setEventError(err instanceof Error ? err.message : 'Haber akışı alınamadı');
+        setEventError(
+          mapNewsFetchErrorToTurkish(err, {
+            isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+            aborted: controller.signal.aborted,
+          })
+        );
       } finally {
         if (active && !controller.signal.aborted) {
           setEventLoading(false);

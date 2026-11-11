@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { NewsArticle } from '@/app/api/news/route';
+import { parseNewsApiResponse } from '@/lib/news/responseParser';
 import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
 import { Button } from '@/components/ui/Button';
@@ -46,14 +47,16 @@ export const AIBulletinCard: React.FC<AIBulletinCardProps> = ({
       try {
         setNewsLoading(true);
         const res = await fetch(`/api/news?symbol=${encodeURIComponent(symbol)}`);
-        const json = await res.json();
-        if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
+        const parsed = await parseNewsApiResponse<{ success?: boolean; data?: NewsArticle[] }>(res);
+        const json = parsed.payload;
+        if (isMounted && parsed.ok && json?.success && Array.isArray(json.data) && json.data.length > 0) {
           setNews(json.data.slice(0, 4));
         } else if (isMounted) {
           // If no specific symbol news, fetch general market & macro news
           const fallbackRes = await fetch('/api/news?category=ALL');
-          const fallbackJson = await fallbackRes.json();
-          if (isMounted && fallbackJson.success && Array.isArray(fallbackJson.data)) {
+          const fallbackParsed = await parseNewsApiResponse<{ success?: boolean; data?: NewsArticle[] }>(fallbackRes);
+          const fallbackJson = fallbackParsed.payload;
+          if (isMounted && fallbackParsed.ok && fallbackJson?.success && Array.isArray(fallbackJson.data)) {
             setNews(fallbackJson.data.slice(0, 3));
           }
         }

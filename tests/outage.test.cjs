@@ -294,3 +294,64 @@ test('OPS-04 (FX / USDTRY Outage): missing currency feed triggers missingFx part
   assert.equal(merged.valuationStatus.missingFx, true);
   assert.equal(isPartialValuationStatus(merged.valuationStatus, cashWithoutFx.missingRates), true);
 });
+
+test('HBR-01 translates HTML, empty, malformed JSON and timeout responses into Turkish user messages', async () => {
+  const {
+    parseNewsApiResponse,
+    mapNewsFetchErrorToTurkish,
+  } = loadTs('src/lib/news/responseParser.ts');
+
+  // 1. HTML 502 gateway page
+  const htmlGateway = await parseNewsApiResponse({
+    ok: false,
+    status: 502,
+    headers: { get: (k) => (k.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null) },
+    text: async () => '<html><body><h1>502 Bad Gateway</h1></body></html>',
+  });
+  assert.equal(htmlGateway.ok, false);
+  assert.doesNotMatch(htmlGateway.errorMessage, /SyntaxError|Unexpected token|JSON/i);
+  assert.match(htmlGateway.errorMessage, /Haber servisi geçici olarak yanıt veremiyor/);
+
+  // 2. HTML 200 captive portal / fallback page
+  const html200 = await parseNewsApiResponse({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'text/html' },
+    text: async () => '<!DOCTYPE html><html><body>Login</body></html>',
+  });
+  assert.equal(html200.ok, false);
+  assert.match(html200.errorMessage, /HTML sayfası döndürdü/);
+
+  // 3. Empty body
+  const emptyRes = await parseNewsApiResponse({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    text: async () => '   ',
+  });
+  assert.equal(emptyRes.ok, false);
+  assert.match(emptyRes.errorMessage, /boş yanıt döndürdü/);
+
+  // 4. Truncated / invalid JSON
+  const brokenJson = await parseNewsApiResponse({
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    text: async () => '{"success": true, "data": [',
+  });
+  assert.equal(brokenJson.ok, false);
+  assert.doesNotMatch(brokenJson.errorMessage, /SyntaxError|Unexpected end/i);
+  assert.match(brokenJson.errorMessage, /geçersiz biçimde bir yanıt/);
+
+  // 5. Timeout / Abort
+  const timeoutErr = Object.assign(new Error('The operation was aborted due to timeout'), {
+    name: 'TimeoutError',
+  });
+  const timeoutMsg = mapNewsFetchErrorToTurkish(timeoutErr, { aborted: true });
+  assert.match(timeoutMsg, /zaman aşımına uğradı/);
+
+  // 6. SyntaxError thrown externally
+  const syntaxMsg = mapNewsFetchErrorToTurkish(new SyntaxError("Unexpected token '<', \"<html>\" is not valid JSON"));
+  assert.doesNotMatch(syntaxMsg, /Unexpected token|SyntaxError/i);
+  assert.match(syntaxMsg, /beklenen JSON yanıtını döndürmedi/);
+});

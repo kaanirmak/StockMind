@@ -9,6 +9,7 @@ import type { NewsArticle } from '@/app/api/news/route';
 import { calculatePortfolioHoldings } from '@/lib/portfolio/calculations';
 import { mentionsNewsSymbol, normalizeNewsText } from '@/lib/news/symbolMatch';
 import { rankNews } from '@/lib/news/relevance';
+import { mapNewsFetchErrorToTurkish, parseNewsApiResponse } from '@/lib/news/responseParser';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 
 export default function NewsPage() {
@@ -65,14 +66,23 @@ export default function NewsPage() {
       }
 
       const res = await fetch(`/api/news?${params.toString()}`, { signal: controller.signal });
-      const data = await res.json();
-      if (!res.ok || !data.success || !Array.isArray(data.data)) throw new Error(data.error || 'Haberler yüklenemedi.');
+      const parsed = await parseNewsApiResponse<{ success?: boolean; data?: NewsArticle[]; warning?: string; collectedAt?: string; error?: string }>(res);
+      if (!parsed.ok || !parsed.payload || !Array.isArray(parsed.payload.data)) {
+        throw new Error(parsed.errorMessage || 'Haberler yüklenemedi. Lütfen tekrar deneyin.');
+      }
+      const data = parsed.payload;
+      const articles = parsed.payload.data;
       if (requestRef.current !== controller) return;
-      setNews(data.data.map((article: NewsArticle) => ({ ...article, relatedSymbols: article.relatedSymbols?.filter(symbol => mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)) })));
+      setNews(articles.map((article: NewsArticle) => ({ ...article, relatedSymbols: article.relatedSymbols?.filter(symbol => mentionsNewsSymbol(`${article.title} ${article.summary}`, symbol)) })));
       setNewsWarning(data.warning ? `${data.warning}${data.collectedAt ? ` Son güncelleme: ${new Date(data.collectedAt).toLocaleString('tr-TR')}` : ''}` : '');
     } catch (err) {
       if (requestRef.current !== controller) return;
-      setNewsError(!navigator.onLine ? 'İnternet bağlantısı yok. Bağlantınızı kontrol edip tekrar deneyin.' : controller.signal.aborted ? 'Haber sunucusu zamanında yanıt vermedi. Tekrar deneyin.' : err instanceof Error ? err.message : 'Haberler yüklenemedi. Tekrar deneyin.');
+      setNewsError(
+        mapNewsFetchErrorToTurkish(err, {
+          isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+          aborted: controller.signal.aborted,
+        })
+      );
     } finally {
       clearTimeout(timeout);
       if (requestRef.current === controller) { setLoading(false); setIsRefreshing(false); }
