@@ -1002,5 +1002,54 @@ test('OPS-03: APK distribution returns archive headers & SHA-256 checksum alongs
   assert.match(runbook, /Rollback Steps/);
 });
 
+test('EPO-06: bulletin subscription status and verified target address are visible and enforced on next scheduled run', async () => {
+  const load = loader({
+    '@/lib/ai/modelCatalog': { hasProAccess: (meta) => meta?.plan === 'pro' || meta?.plan === 'enterprise' },
+  });
+  const subMod = load('src/lib/email/subscriptionStatus.ts');
+
+  const proActiveUser = {
+    email: 'pro.member@example.com',
+    email_confirmed_at: '2026-10-01T10:00:00Z',
+    app_metadata: { plan: 'pro' },
+    user_metadata: { daily_report_enabled: true },
+  };
+  const activeView = subMod.resolveBulletinSubscriptionView(proActiveUser);
+  assert.equal(activeView.statusKind, 'active');
+  assert.equal(activeView.targetAddress, 'pro.member@example.com');
+  assert.match(activeView.addressLabel, /pro\.member@example\.com \(doğrulanmış\)/);
+  assert.match(activeView.nextRunEffectNote, /pro\.member@example\.com/);
+  assert.equal(subMod.isUserEligibleForScheduledBulletin(proActiveUser), true);
+
+  // User switches preference off -> UI notes paused status & next scheduled run skips them
+  const proPausedUser = {
+    ...proActiveUser,
+    user_metadata: { daily_report_enabled: false },
+  };
+  const pausedView = subMod.resolveBulletinSubscriptionView(proPausedUser);
+  assert.equal(pausedView.statusKind, 'paused');
+  assert.equal(pausedView.isActiveForNextRun, false);
+  assert.match(pausedView.nextRunEffectNote, /gönderilmeyecektir/);
+  assert.equal(subMod.isUserEligibleForScheduledBulletin(proPausedUser), false);
+
+  // Unverified email stays blocked
+  const unverifiedView = subMod.resolveBulletinSubscriptionView({
+    ...proActiveUser,
+    email_confirmed_at: null,
+  });
+  assert.equal(unverifiedView.statusKind, 'unverified');
+  assert.match(unverifiedView.addressLabel, /doğrulanmamış/);
+
+  // Verify settings page renders subscription card + verified address + next-run note
+  const settingsPage = fs.readFileSync(path.join(root, 'src/app/(dashboard)/settings/page.tsx'), 'utf8');
+  assert.match(settingsPage, /data-testid="bulletin-subscription-card"/);
+  assert.match(settingsPage, /data-testid="bulletin-verified-address"/);
+  assert.match(settingsPage, /data-testid="bulletin-subscription-status"/);
+  assert.match(settingsPage, /data-testid="bulletin-next-run-note"/);
+
+  const dailyCronSrc = fs.readFileSync(path.join(root, 'src/app/api/cron/daily-report/route.ts'), 'utf8');
+  assert.match(dailyCronSrc, /isUserEligibleForScheduledBulletin/);
+});
+
 
 

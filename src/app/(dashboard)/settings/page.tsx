@@ -13,6 +13,7 @@ import { Button, Input, Badge, useToast } from '@/components/ui';
 import { ProPlanCard } from '@/components/pro/ProPlanCard';
 import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
+import { resolveBulletinSubscriptionView } from '@/lib/email/subscriptionStatus';
 import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/components/theme/ThemeProvider';
@@ -87,6 +88,7 @@ export default function SettingsPage() {
   const [defaultModel, setDefaultModel] = useState('openrouter/free');
   const [isAdvancedAiOpen, setIsAdvancedAiOpen] = useState(false);
   const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
+  const [savedDailyReportEnabled, setSavedDailyReportEnabled] = useState(true);
 
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingEmailSettings, setIsSavingEmailSettings] = useState(false);
@@ -317,7 +319,9 @@ export default function SettingsPage() {
       if (profile?.avatarUrl) setAvatarUrl(profile.avatarUrl);
     }
 
-    setDailyReportEnabled(user?.user_metadata?.daily_report_enabled !== false);
+    const nextDailyReportEnabled = user?.user_metadata?.daily_report_enabled !== false;
+    setDailyReportEnabled(nextDailyReportEnabled);
+    setSavedDailyReportEnabled(nextDailyReportEnabled);
 
     // Load AI preferences per user
     try {
@@ -499,14 +503,18 @@ export default function SettingsPage() {
     if (!user?.email_confirmed_at) return;
     setIsSavingEmailSettings(true);
     try {
-      const { error } = await createClient().auth.updateUser({
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({
         data: { daily_report_enabled: dailyReportEnabled },
       });
       if (error) throw error;
+      setSavedDailyReportEnabled(dailyReportEnabled);
       showToast({
         type: 'success',
         title: 'Bülten tercihi kaydedildi',
-        message: dailyReportEnabled ? 'Günlük e-posta bülteni açık.' : 'Günlük e-posta bülteni kapalı.',
+        message: dailyReportEnabled
+          ? `Günlük bülten açık (${user.email}). Bir sonraki otomatik çalıştırmada uygulanacaktır.`
+          : `Günlük bülten kapatıldı (${user.email}). Bir sonraki otomatik çalıştırmada gönderilmeyecektir.`,
       });
     } catch {
       showToast({ type: 'danger', title: 'E-posta ayarları kaydedilemedi', message: 'Tekrar deneyin.' });
@@ -1523,17 +1531,67 @@ export default function SettingsPage() {
 
       {/* Email & Notification Settings Card */}
       <div hidden={settingsSection !== 'notifications'} className="settings-panel p-4 sm:p-6 space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-border/60">
-          <div>
-            <h3 className="text-base font-bold text-text-primary">E-posta Bildirimleri</h3>
-            <p className="text-xs text-text-muted">
-              Pro üyeler günlük piyasa bültenini hesaplarındaki doğrulanmış adrese alabilir.
-            </p>
-          </div>
-          <Badge variant="accent" size="sm">
-            E-posta Hattı
-          </Badge>
-        </div>
+        {(() => {
+          const bulletinView = resolveBulletinSubscriptionView(
+            user
+              ? {
+                  ...user,
+                  user_metadata: {
+                    ...(user.user_metadata || {}),
+                    daily_report_enabled: savedDailyReportEnabled,
+                  },
+                }
+              : null,
+            { draftEnabled: dailyReportEnabled }
+          );
+
+          return (
+            <>
+              <div className="flex items-center justify-between pb-4 border-b border-border/60">
+                <div>
+                  <h3 className="text-base font-bold text-text-primary">E-posta Bildirimleri</h3>
+                  <p className="text-xs text-text-muted">
+                    Pro üyeler günlük piyasa bültenini hesaplarındaki doğrulanmış adrese alabilir.
+                  </p>
+                </div>
+                <Badge
+                  data-testid="bulletin-subscription-status"
+                  variant={
+                    bulletinView.statusKind === 'active'
+                      ? 'success'
+                      : bulletinView.statusKind === 'paused'
+                        ? 'default'
+                        : 'warning'
+                  }
+                  size="sm"
+                >
+                  {bulletinView.statusLabel}
+                </Badge>
+              </div>
+
+              <div
+                data-testid="bulletin-subscription-card"
+                className="rounded-xl border border-border/70 bg-bg-tertiary/40 p-3.5 space-y-1.5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-semibold text-text-primary">Gönderilecek doğrulanmış adres</span>
+                  <span
+                    data-testid="bulletin-verified-address"
+                    className="font-mono text-text-secondary"
+                  >
+                    {bulletinView.addressLabel}
+                  </span>
+                </div>
+                <p
+                  data-testid="bulletin-next-run-note"
+                  className="text-xs text-text-muted leading-relaxed"
+                >
+                  {bulletinView.nextRunEffectNote}
+                </p>
+              </div>
+            </>
+          );
+        })()}
 
         <form onSubmit={handleSaveEmailSettings} className="space-y-5">
           <Input
@@ -1541,7 +1599,7 @@ export default function SettingsPage() {
             type="email"
             value={user?.email ?? ''}
             readOnly
-            helperText={user?.email_confirmed_at ? 'Doğrulanmış adres' : 'Gönderim için hesabınızın adresini doğrulayın.'}
+            helperText={user?.email_confirmed_at ? 'Doğrulanmış adres — bülten bu adrese iletilir.' : 'Gönderim için hesabınızın adresini doğrulayın.'}
           />
           <label className="flex items-center justify-between gap-4 rounded-xl border border-border p-3">
             <span className="text-sm font-semibold text-text-primary">İş günlerinde 18:30 piyasa bültenini al</span>

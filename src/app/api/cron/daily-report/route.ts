@@ -8,8 +8,8 @@ import {
   shouldSkipDuplicateDelivery,
   summarizeDeliveryQueue,
 } from '@/lib/email/deliveryQueue';
-import { hasProAccess } from '@/lib/ai/modelCatalog';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { isUserEligibleForScheduledBulletin } from '@/lib/email/subscriptionStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,12 +61,10 @@ async function loadConfirmedUsers(): Promise<ReportRecipient[]> {
     if (error) throw error;
 
     for (const user of data.users) {
-      if (!user.email || !user.email_confirmed_at ||
-          (user.banned_until && Date.parse(user.banned_until) > Date.now()) ||
-          !hasProAccess(user.app_metadata) || user.user_metadata?.daily_report_enabled === false) continue;
+      if (!isUserEligibleForScheduledBulletin(user)) continue;
 
       recipients.push({
-        email: user.email.trim(),
+        email: user.email!.trim(),
         name: user.user_metadata?.full_name || user.user_metadata?.name || undefined,
       });
     }
