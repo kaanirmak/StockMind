@@ -1912,5 +1912,79 @@ test('UX-01 mobile home priority ranks daily contributors and important event fi
   assert.ok(topEvent.priority >= 2);
 });
 
+test('UX-02 portfolio heatmap starts compact with expandable treemap and equivalent asset list', () => {
+  const loadFrom = (entry) => load(entry, {
+    require: (name) => {
+      if (name.startsWith('@/')) return loadFrom(path.join('src', `${name.slice(2)}.ts`));
+      if (name.startsWith('./') || name.startsWith('../')) return loadFrom(path.join(path.dirname(entry), `${name}.ts`));
+      return require(name);
+    },
+  });
+  const {
+    HEATMAP_DEFAULT_EXPANDED,
+    buildHeatmapRows,
+    buildHeatmapCompactSummary,
+  } = loadFrom('src/lib/dashboard/heatmapModel.ts');
+
+  assert.equal(HEATMAP_DEFAULT_EXPANDED, false);
+
+  const heatmapSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/dashboard/PortfolioHeatmap.tsx'),
+    'utf8'
+  );
+  assert.match(heatmapSrc, /useState<boolean>\(HEATMAP_DEFAULT_EXPANDED\)/);
+  assert.match(heatmapSrc, /data-testid="heatmap-compact-summary"/);
+  assert.match(heatmapSrc, /data-testid="heatmap-asset-list"/);
+  assert.match(heatmapSrc, /aria-expanded=\{isExpanded\}/);
+
+  const holdings = [
+    {
+      symbol: 'THYAO',
+      assetType: 'stock',
+      exchange: 'BIST',
+      totalQuantity: 100,
+      averageCost: 280,
+      totalCost: 28000,
+      currentPrice: 300,
+      currentValue: 30000,
+      pnl: 2000,
+      pnlPercent: 7.14,
+      weight: 60,
+      dailyChangePercent: 2.5,
+    },
+    {
+      symbol: 'TI2',
+      assetType: 'fund',
+      exchange: 'TEFAS',
+      totalQuantity: 1000,
+      averageCost: 20,
+      totalCost: 20000,
+      currentPrice: 20,
+      currentValue: 20000,
+      pnl: 0,
+      pnlPercent: -1.5,
+      weight: 40,
+    },
+  ];
+
+  const rows = buildHeatmapRows(holdings, { TI2: { price: 20, changePercent: -1.25 } }, 'daily');
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].symbol, 'THYAO');
+  assert.equal(rows[0].weightPercent, 60);
+  assert.equal(rows[0].metricValue, 2.5);
+  assert.equal(rows[1].symbol, 'TI2');
+  assert.equal(rows[1].href, '/funds/TI2');
+  assert.equal(rows[1].metricValue, -1.25);
+
+  const summary = buildHeatmapCompactSummary(rows);
+  assert.equal(summary.assetCount, 2);
+  assert.equal(summary.positiveCount, 1);
+  assert.equal(summary.negativeCount, 1);
+  assert.equal(summary.topHolding.symbol, 'THYAO');
+  assert.equal(summary.strongestGainer.symbol, 'THYAO');
+  assert.equal(summary.strongestLoser.symbol, 'TI2');
+});
+
+
 
 

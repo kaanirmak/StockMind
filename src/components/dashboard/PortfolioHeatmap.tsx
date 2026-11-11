@@ -6,8 +6,15 @@ import { useRouter } from 'next/navigation';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Holding } from '@/types/portfolio';
 import { formatCurrency, formatPercent, getPnLSign } from '@/lib/utils/format';
+import {
+  buildHeatmapCompactSummary,
+  buildHeatmapRows,
+  HEATMAP_DEFAULT_EXPANDED,
+  type HeatmapMetricType,
+  type HeatmapViewMode,
+} from '@/lib/dashboard/heatmapModel';
 
-type MetricType = 'daily' | 'total';
+type MetricType = HeatmapMetricType;
 
 interface TreemapNode {
   holding: Holding;
@@ -237,14 +244,16 @@ export default function PortfolioHeatmap() {
   const { getSummary, livePrices } = usePortfolioStore();
   const summary = getSummary();
   const [metric, setMetric] = useState<MetricType>('daily');
+  const [isExpanded, setIsExpanded] = useState<boolean>(HEATMAP_DEFAULT_EXPANDED);
+  const [viewMode, setViewMode] = useState<HeatmapViewMode>('treemap');
   const [hoveredNode, setHoveredNode] = useState<TreemapNode | null>(null);
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 360 });
 
-  // Measure container dimensions with mobile-friendly dynamic height
+  // Measure container dimensions with mobile-friendly dynamic height when treemap is visible
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!isExpanded || viewMode !== 'treemap' || !containerRef.current) return;
     const updateDim = () => {
       if (containerRef.current) {
         const w = containerRef.current.clientWidth || 360;
@@ -257,41 +266,36 @@ export default function PortfolioHeatmap() {
     const observer = new ResizeObserver(updateDim);
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [isExpanded, viewMode]);
 
-  // Filter holdings with positive value
-  const filteredHoldings = useMemo(() => {
-    return summary.holdings.filter((h) => h.currentValue > 0);
-  }, [summary.holdings]);
+  const heatmapRows = useMemo(
+    () => buildHeatmapRows(summary.holdings, livePrices, metric),
+    [summary.holdings, livePrices, metric],
+  );
+
+  const compactSummary = useMemo(
+    () => buildHeatmapCompactSummary(heatmapRows),
+    [heatmapRows],
+  );
+
+  const filteredHoldings = useMemo(
+    () => heatmapRows.map((row) => row.holding),
+    [heatmapRows],
+  );
 
   // Compute treemap nodes
   const nodes = useMemo(() => {
-    if (filteredHoldings.length === 0 || dimensions.width === 0) return [];
+    if (heatmapRows.length === 0 || dimensions.width === 0) return [];
 
-    const totalFilteredValue = filteredHoldings.reduce((acc, h) => acc + h.currentValue, 0);
-
-    const items = filteredHoldings
-      .map((h) => {
-        let dailyPct = h.dailyChangePercent;
-        if (dailyPct == null) {
-          const quote = livePrices[h.symbol] || livePrices[h.symbol.toUpperCase()];
-          dailyPct = quote && typeof quote === 'object' ? quote.changePercent || 0 : 0;
-        }
-
-        const metricValue = metric === 'daily' ? dailyPct : h.pnlPercent;
-        const weightPercent = totalFilteredValue > 0 ? (h.currentValue / totalFilteredValue) * 100 : 0;
-
-        return {
-          holding: h,
-          value: Math.max(1, h.currentValue),
-          metricValue,
-          weightPercent,
-        };
-      })
-      .sort((a, b) => b.value - a.value);
+    const items = heatmapRows.map((row) => ({
+      holding: row.holding,
+      value: Math.max(1, row.currentValue),
+      metricValue: row.metricValue,
+      weightPercent: row.weightPercent,
+    }));
 
     return computeTreemap(items, 0, 0, dimensions.width, dimensions.height);
-  }, [filteredHoldings, dimensions, metric, livePrices]);
+  }, [heatmapRows, dimensions]);
 
   // Default selected node to the first/largest holding if none selected
   useEffect(() => {
@@ -382,35 +386,213 @@ export default function PortfolioHeatmap() {
           </div>
         </div>
 
-        {/* Metric Switcher (Compact on mobile) */}
-        <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-bg-secondary border border-border shrink-0">
+        {/* Controls: View Mode + Metric + Expand */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* View Mode Switcher */}
+          <div className="flex items-center p-0.5 rounded-xl bg-bg-secondary border border-border" role="group" aria-label="Görünüm modu">
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('treemap');
+                setIsExpanded(true);
+              }}
+              aria-pressed={isExpanded && viewMode === 'treemap'}
+              className={`px-2 sm:px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                isExpanded && viewMode === 'treemap'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              Harita
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('list');
+                setIsExpanded(true);
+              }}
+              aria-pressed={isExpanded && viewMode === 'list'}
+              className={`px-2 sm:px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                isExpanded && viewMode === 'list'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              Liste
+            </button>
+          </div>
+
+          {/* Metric Switcher (Compact on mobile) */}
+          <div className="flex items-center p-0.5 sm:p-1 rounded-xl bg-bg-secondary border border-border shrink-0">
+            <button
+              type="button"
+              onClick={() => setMetric('daily')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                metric === 'daily'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              Günlük
+            </button>
+            <button
+              type="button"
+              onClick={() => setMetric('total')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                metric === 'total'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-text-muted hover:text-text-primary'
+              }`}
+            >
+              <span className="sm:hidden">Toplam</span>
+              <span className="hidden sm:inline">Toplam K/Z</span>
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setMetric('daily')}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
-              metric === 'daily'
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
+            aria-expanded={isExpanded}
+            onClick={() => setIsExpanded((prev) => !prev)}
+            className="px-2.5 py-1 rounded-xl bg-bg-secondary hover:bg-bg-hover border border-border text-[11px] sm:text-xs font-semibold text-text-primary transition-colors cursor-pointer"
           >
-            Günlük
-          </button>
-          <button
-            type="button"
-            onClick={() => setMetric('total')}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
-              metric === 'total'
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            <span className="sm:hidden">Toplam</span>
-            <span className="hidden sm:inline">Toplam K/Z</span>
+            {isExpanded ? 'Daralt' : 'Genişlet'}
           </button>
         </div>
       </div>
 
+      {/* Compact Initial Summary (collapsed by default) */}
+      {!isExpanded && (
+        <div
+          data-testid="heatmap-compact-summary"
+          className="p-3 sm:p-3.5 rounded-2xl glass-card border border-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+          {compactSummary.assetCount === 0 ? (
+            <div className="flex items-center justify-between gap-3 w-full">
+              <p className="text-xs text-text-muted">Isı haritası için aktif varlık bulunmuyor.</p>
+              <Link
+                href="/portfolio"
+                className="px-2.5 py-1.5 rounded-lg bg-accent/15 text-accent text-xs font-semibold shrink-0"
+              >
+                Varlık Ekle →
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-semibold">
+                  {compactSummary.positiveCount} Artıda
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25 font-semibold">
+                  {compactSummary.negativeCount} Ekside
+                </span>
+                {compactSummary.topHolding && (
+                  <span className="text-text-muted">
+                    En Büyük Pay:{' '}
+                    <strong className="text-text-primary">
+                      {compactSummary.topHolding.symbol} %{compactSummary.topHolding.weightPercent.toFixed(1)}
+                    </strong>
+                  </span>
+                )}
+                {compactSummary.strongestGainer && (
+                  <span className="text-emerald-400 font-semibold">
+                    Lider: {compactSummary.strongestGainer.symbol} +{compactSummary.strongestGainer.metricValue.toFixed(2)}%
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('treemap');
+                    setIsExpanded(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-accent/15 hover:bg-accent/25 border border-accent/30 text-accent text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Haritayı Aç
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewMode('list');
+                    setIsExpanded(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-bg-secondary hover:bg-bg-hover border border-border text-text-primary text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Varlık Listesi ({compactSummary.assetCount})
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Equivalent Accessible Asset List View */}
+      {isExpanded && viewMode === 'list' && (
+        <div
+          data-testid="heatmap-asset-list"
+          className="rounded-2xl glass-card border border-border/70 overflow-hidden"
+        >
+          {heatmapRows.length === 0 ? (
+            <div className="p-6 text-center space-y-2">
+              <p className="text-xs sm:text-sm text-text-muted">Aktif varlık bulunamadı.</p>
+              <Link href="/portfolio" className="inline-block text-xs font-semibold text-accent hover:underline">
+                Varlık Ekle →
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-border/70 text-[11px] uppercase tracking-wider text-text-muted bg-bg-secondary/40">
+                    <th className="py-2.5 px-3 font-semibold">Varlık</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Değer</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Ağırlık</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">
+                      {metric === 'daily' ? 'Günlük %' : 'Toplam K/Z %'}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {heatmapRows.map((row) => (
+                    <tr key={`${row.assetType}-${row.symbol}`} className="hover:bg-bg-hover/60 transition-colors">
+                      <td className="py-2.5 px-3">
+                        <Link href={row.href} className="inline-flex items-center gap-2 font-semibold text-text-primary hover:text-accent">
+                          <span>{row.symbol}</span>
+                          <span className="text-[10px] uppercase font-bold text-text-muted bg-bg-tertiary px-1.5 py-0.5 rounded border border-border">
+                            {row.assetType === 'stock' ? 'Hisse' : 'Fon'}
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-text-secondary">
+                        {formatCurrency(row.currentValue)}
+                      </td>
+                      <td className="py-2.5 px-3 text-right tabular-nums font-medium text-text-primary">
+                        %{row.weightPercent.toFixed(1)}
+                      </td>
+                      <td
+                        className={`py-2.5 px-3 text-right tabular-nums font-bold ${
+                          row.metricValue > 0
+                            ? 'text-emerald-400'
+                            : row.metricValue < 0
+                            ? 'text-rose-400'
+                            : 'text-text-muted'
+                        }`}
+                      >
+                        {getPnLSign(row.metricValue)}{formatPercent(Math.abs(row.metricValue))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Heatmap Area */}
+      {isExpanded && viewMode === 'treemap' && (
+      <>
       <div
         ref={containerRef}
         className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 border-0"
@@ -640,6 +822,8 @@ export default function PortfolioHeatmap() {
           Kutuya dokunarak inceleyin
         </span>
       </div>
+      </>
+      )}
     </div>
   );
 }
