@@ -2,9 +2,9 @@
 
 export interface Candle {
   time: string | number; // timestamp or YYYY-MM-DD
-  open: number;
-  high: number;
-  low: number;
+  open?: number;
+  high?: number;
+  low?: number;
   close: number;
   volume?: number;
 }
@@ -16,17 +16,36 @@ export interface IndicatorResult {
 }
 
 /**
+ * Filter candles down to observations that carry a genuine finite positive close price.
+ * Prevents missing, null, NaN, or zero placeholder closes from entering technical calculations.
+ */
+export function filterValidCloseCandles(data: Candle[]): Candle[] {
+  if (!Array.isArray(data)) return [];
+  return data.filter(
+    (c) =>
+      c != null &&
+      c.time !== undefined &&
+      c.time !== null &&
+      typeof c.close === 'number' &&
+      Number.isFinite(c.close) &&
+      c.close > 0
+  );
+}
+
+/**
  * Simple Moving Average (SMA)
  */
 export function calculateSMA(data: Candle[], period: number = 20): IndicatorResult[] {
+  const valid = filterValidCloseCandles(data);
   const result: IndicatorResult[] = [];
-  for (let i = 0; i < data.length; i++) {
+  if (period <= 0 || valid.length < period) return result;
+  for (let i = 0; i < valid.length; i++) {
     if (i < period - 1) {
       continue;
     }
-    const sum = data.slice(i - period + 1, i + 1).reduce((acc, c) => acc + c.close, 0);
+    const sum = valid.slice(i - period + 1, i + 1).reduce((acc, c) => acc + c.close, 0);
     result.push({
-      time: data[i].time,
+      time: valid[i].time,
       value: Number((sum / period).toFixed(2)),
     });
   }
@@ -37,26 +56,27 @@ export function calculateSMA(data: Candle[], period: number = 20): IndicatorResu
  * Exponential Moving Average (EMA)
  */
 export function calculateEMA(data: Candle[], period: number = 20): IndicatorResult[] {
+  const valid = filterValidCloseCandles(data);
   const result: IndicatorResult[] = [];
-  if (data.length < period) return result;
+  if (period <= 0 || valid.length < period) return result;
 
   const multiplier = 2 / (period + 1);
 
   // Initial SMA as first EMA
   let initialSum = 0;
   for (let i = 0; i < period; i++) {
-    initialSum += data[i].close;
+    initialSum += valid[i].close;
   }
   let prevEMA = initialSum / period;
   result.push({
-    time: data[period - 1].time,
+    time: valid[period - 1].time,
     value: Number(prevEMA.toFixed(2)),
   });
 
-  for (let i = period; i < data.length; i++) {
-    const currentEMA = (data[i].close - prevEMA) * multiplier + prevEMA;
+  for (let i = period; i < valid.length; i++) {
+    const currentEMA = (valid[i].close - prevEMA) * multiplier + prevEMA;
     result.push({
-      time: data[i].time,
+      time: valid[i].time,
       value: Number(currentEMA.toFixed(2)),
     });
     prevEMA = currentEMA;
@@ -69,14 +89,15 @@ export function calculateEMA(data: Candle[], period: number = 20): IndicatorResu
  * Relative Strength Index (RSI)
  */
 export function calculateRSI(data: Candle[], period: number = 14): IndicatorResult[] {
+  const valid = filterValidCloseCandles(data);
   const result: IndicatorResult[] = [];
-  if (data.length <= period) return result;
+  if (period <= 0 || valid.length <= period) return result;
 
   let gains = 0;
   let losses = 0;
 
   for (let i = 1; i <= period; i++) {
-    const diff = data[i].close - data[i - 1].close;
+    const diff = valid[i].close - valid[i - 1].close;
     if (diff >= 0) {
       gains += diff;
     } else {
@@ -91,12 +112,12 @@ export function calculateRSI(data: Candle[], period: number = 14): IndicatorResu
   let rsi = 100 - 100 / (1 + rs);
 
   result.push({
-    time: data[period].time,
+    time: valid[period].time,
     value: Number(rsi.toFixed(2)),
   });
 
-  for (let i = period + 1; i < data.length; i++) {
-    const diff = data[i].close - data[i - 1].close;
+  for (let i = period + 1; i < valid.length; i++) {
+    const diff = valid[i].close - valid[i - 1].close;
     const gain = diff > 0 ? diff : 0;
     const loss = diff < 0 ? -diff : 0;
 
@@ -107,7 +128,7 @@ export function calculateRSI(data: Candle[], period: number = 14): IndicatorResu
     rsi = 100 - 100 / (1 + rs);
 
     result.push({
-      time: data[i].time,
+      time: valid[i].time,
       value: Number(rsi.toFixed(2)),
     });
   }
@@ -130,11 +151,12 @@ export function calculateBollingerBands(
   period: number = 20,
   multiplier: number = 2
 ): BollingerBandsResult[] {
+  const valid = filterValidCloseCandles(data);
   const result: BollingerBandsResult[] = [];
-  if (data.length < period) return result;
+  if (period <= 0 || valid.length < period) return result;
 
-  for (let i = period - 1; i < data.length; i++) {
-    const slice = data.slice(i - period + 1, i + 1);
+  for (let i = period - 1; i < valid.length; i++) {
+    const slice = valid.slice(i - period + 1, i + 1);
     const sum = slice.reduce((acc, c) => acc + c.close, 0);
     const mean = sum / period;
 
@@ -142,7 +164,7 @@ export function calculateBollingerBands(
     const stdDev = Math.sqrt(variance);
 
     result.push({
-      time: data[i].time,
+      time: valid[i].time,
       upper: Number((mean + multiplier * stdDev).toFixed(2)),
       middle: Number(mean.toFixed(2)),
       lower: Number((mean - multiplier * stdDev).toFixed(2)),

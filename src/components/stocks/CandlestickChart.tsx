@@ -208,22 +208,28 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
     chartRef.current = chart;
 
     // Format candle data ensuring standard time resolution for lightweight-charts
-    const formattedCandles = candles.map((c) => ({
-      time: typeof c.time === 'number'
-        ? c.time
-        : (c.time.includes(' ') || c.time.includes(':'))
-          ? Math.floor(new Date(c.time.replace(' ', 'T')).getTime() / 1000)
-          : String(c.time),
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    const formattedCandles = candles
+      .filter((c) => typeof c.close === 'number' && Number.isFinite(c.close) && c.close > 0)
+      .map((c) => ({
+        time: typeof c.time === 'number'
+          ? c.time
+          : (c.time.includes(' ') || c.time.includes(':'))
+            ? Math.floor(new Date(c.time.replace(' ', 'T')).getTime() / 1000)
+            : String(c.time),
+        open: typeof c.open === 'number' && Number.isFinite(c.open) ? c.open : undefined,
+        high: typeof c.high === 'number' && Number.isFinite(c.high) ? c.high : undefined,
+        low: typeof c.low === 'number' && Number.isFinite(c.low) ? c.low : undefined,
+        close: c.close,
+      }));
 
     let mainSeries: any;
 
     try {
-      if (chartType === 'candles') {
+      const fullOhlcCandles = formattedCandles.filter(
+        (c): c is { time: string | number; open: number; high: number; low: number; close: number } =>
+          c.open !== undefined && c.high !== undefined && c.low !== undefined
+      );
+      if (chartType === 'candles' && fullOhlcCandles.length > 0) {
         // Candlestick Series
         if (typeof (chart as any).addCandlestickSeries === 'function') {
           mainSeries = (chart as any).addCandlestickSeries({
@@ -244,8 +250,8 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
             wickDownColor: palette.danger,
           });
         }
-        if (mainSeries && formattedCandles.length > 0) {
-          mainSeries.setData(formattedCandles);
+        if (mainSeries) {
+          mainSeries.setData(fullOhlcCandles);
         }
       } else {
         // Area Series for ultra-clean mobile reading with futuristic glowing gradient
@@ -275,15 +281,20 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       console.error('Error creating main price series:', e);
     }
 
-    // Volume series
-    if (showVolume) {
+    // Volume series (render only bars with genuine positive reported volume)
+    const volumeData = candles
+      .filter((c) => typeof c.volume === 'number' && Number.isFinite(c.volume) && c.volume > 0)
+      .map((c) => ({
+        time: String(c.time),
+        value: c.volume!,
+        color:
+          typeof c.open === 'number' && c.close >= c.open
+            ? 'rgba(16, 185, 129, 0.25)'
+            : 'rgba(239, 68, 68, 0.25)',
+      }));
+    if (showVolume && volumeData.length > 0) {
       try {
         let volumeSeries: any;
-        const volumeData = candles.map((c) => ({
-          time: String(c.time),
-          value: c.volume || 0,
-          color: c.close >= c.open ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)',
-        }));
 
         if (typeof (chart as any).addHistogramSeries === 'function') {
           volumeSeries = (chart as any).addHistogramSeries({

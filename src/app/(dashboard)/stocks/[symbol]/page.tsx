@@ -466,17 +466,21 @@ export default function StockDetailPage({
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-text-muted block">Günlük Aralık</span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
-            {isIndexAsset
-              ? `${stock?.low?.toFixed(2) || '-'} - ${stock?.high?.toFixed(2) || '-'}`
-              : `${currSymbol}${stock?.low?.toFixed(isForexAsset ? 4 : 2) || '-'} - ${currSymbol}${stock?.high?.toFixed(isForexAsset ? 4 : 2) || '-'}`}
+            {typeof stock?.low === 'number' && typeof stock?.high === 'number'
+              ? isIndexAsset
+                ? `${stock.low.toFixed(2)} - ${stock.high.toFixed(2)}`
+                : `${currSymbol}${stock.low.toFixed(isForexAsset ? 4 : 2)} - ${currSymbol}${stock.high.toFixed(isForexAsset ? 4 : 2)}`
+              : '-'}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">
           <span className="text-[11px] text-text-muted block">52H Aralık</span>
           <span className="text-xs sm:text-sm font-semibold font-mono text-text-primary mt-1 block truncate">
-            {isIndexAsset
-              ? `${stock?.low52w?.toFixed(2) || '-'} - ${stock?.high52w?.toFixed(2) || '-'}`
-              : `${currSymbol}${stock?.low52w?.toFixed(isForexAsset ? 4 : 2) || '-'} - ${currSymbol}${stock?.high52w?.toFixed(isForexAsset ? 4 : 2) || '-'}`}
+            {typeof stock?.low52w === 'number' && typeof stock?.high52w === 'number'
+              ? isIndexAsset
+                ? `${stock.low52w.toFixed(2)} - ${stock.high52w.toFixed(2)}`
+                : `${currSymbol}${stock.low52w.toFixed(isForexAsset ? 4 : 2)} - ${currSymbol}${stock.high52w.toFixed(isForexAsset ? 4 : 2)}`
+              : '-'}
           </span>
         </div>
         <div className="glass-card p-3 sm:p-4">

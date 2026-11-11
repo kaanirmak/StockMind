@@ -65,11 +65,11 @@ export interface Stock {
 
 export interface OHLCV {
   time: string; // ISO date string (YYYY-MM-DD)
-  open: number;
-  high: number;
-  low: number;
+  open?: number;
+  high?: number;
+  low?: number;
   close: number;
-  volume: number;
+  volume?: number;
 }
 
 export type TimeInterval =

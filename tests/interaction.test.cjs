@@ -1604,3 +1604,109 @@ test('VER-06: eksik, kaynaksız veya eski fiyatla alarm tetiklenmez; ertelenir v
   assert.equal(fundFresh.source, 'TEFAS');
 });
 
+test('VER-07: eksik hacim, yüksek/düşük ve kapanış alanları boş kalır; teknik analizde varsayılan kullanılmaz', async () => {
+  const loadWithAlias = createAliasedLoader();
+  const indicatorsMod = load('src/lib/indicators/index.ts');
+
+  const stocksMod = loadWithAlias(
+    'src/lib/data/stocks.ts',
+    {
+      '@/lib/indicators': indicatorsMod,
+      '@/lib/data/tefas_funds_directory.json': [],
+      '@/lib/api/tefas': { fetchTefasLiveDetail: async () => null },
+      '@/lib/utils/search': { calculateFuzzyScore: () => 0, normalizeText: (s) => s, POPULAR_ALIASES: {} },
+      '@/lib/utils/symbol': { cleanSymbol: (s) => ({ symbol: String(s).toUpperCase(), assetType: 'stock' }) },
+      '@/lib/constants/stocks': { POPULAR_STOCKS: [] },
+      '@/lib/market/lastVerifiedStore': {
+        getLastVerifiedQuote: async () => null,
+        isVerifiedMarketQuote: () => true,
+        recordVerifiedQuotes: async () => {},
+      },
+    },
+    {
+      fetch: async (url) => {
+        const strUrl = String(url);
+        if (strUrl.includes('query1.finance.yahoo.com/v8/finance/chart/XU100.IS')) {
+          return {
+            ok: true,
+            json: async () => ({
+              chart: {
+                result: [
+                  {
+                    meta: {
+                      regularMarketPrice: 9250,
+                      chartPreviousClose: 9100,
+                      regularMarketTime: 1731312000,
+                      // Intentionally omit regularMarketDayHigh, Low, Open, Volume, 52W High/Low
+                    },
+                    timestamp: [1731139200, 1731225600, 1731312000],
+                    indicators: {
+                      quote: [
+                        {
+                          open: [null, 9080, 9120],
+                          high: [null, null, 9290],
+                          low: [null, 9050, null],
+                          close: [null, 9100, 9250], // first bar has null close -> dropped
+                          volume: [null, null, 0], // zero / missing -> undefined
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            }),
+          };
+        }
+        return { ok: false, status: 404, json: async () => ({}) };
+      },
+    }
+  );
+
+  // 1. Live quote keeps missing intraday high/low/open/volume/52w undefined
+  const indexQuote = await stocksMod.fetchSpecificSymbolLive('XU100');
+  assert.ok(indexQuote);
+  assert.equal(indexQuote.price, 9250);
+  assert.equal(indexQuote.high, undefined);
+  assert.equal(indexQuote.low, undefined);
+  assert.equal(indexQuote.open, undefined);
+  assert.equal(indexQuote.volume, undefined);
+  assert.equal(indexQuote.high52w, undefined);
+  assert.equal(indexQuote.low52w, undefined);
+
+  // 2. Historical candles drop null close bars and leave missing OHLC/volume undefined
+  const candles = await stocksMod.fetchRealHistoricalCandles('XU100', '1M');
+  assert.equal(candles.length, 2);
+  assert.equal(candles[0].close, 9100);
+  assert.equal(candles[0].high, undefined);
+  assert.equal(candles[0].volume, undefined);
+  assert.equal(candles[1].low, undefined);
+  assert.equal(candles[1].volume, undefined);
+
+  // 3. Technical indicators exclude invalid closes and return null instead of fallback defaults (e.g. lastClose/50)
+  const mixedCandles = [
+    { time: '2026-10-01', close: NaN },
+    { time: '2026-10-02', close: 0 },
+    ...Array.from({ length: 16 }, (_, idx) => ({
+      time: `2026-10-${String(idx + 3).padStart(2, '0')}`,
+      close: 100 + idx,
+    })),
+  ];
+
+  // With 16 valid closes (< 20 for SMA20 and < 50 for SMA50), SMA20 & SMA50 must be null (never lastClose!)
+  const analysis = stocksMod.getStockTechnicalAnalysis('TEST', mixedCandles);
+  assert.ok(analysis);
+  assert.equal(analysis.candles.length, 16);
+  assert.ok(typeof analysis.latest.rsi === 'number');
+  assert.equal(analysis.latest.sma20, null);
+  assert.equal(analysis.latest.sma50, null);
+  assert.equal(analysis.latest.macd, null);
+
+  // Too few valid closes (< 14) even with padding 0/NaN bars -> returns null
+  const insufficient = stocksMod.getStockTechnicalAnalysis('TEST', [
+    ...Array.from({ length: 10 }, (_, i) => ({ time: `2026-10-0${i + 1}`, close: 0 })),
+    ...Array.from({ length: 10 }, (_, i) => ({ time: `2026-10-${i + 11}`, close: 50 + i })),
+  ]);
+  assert.equal(insufficient, null);
+});
+
+

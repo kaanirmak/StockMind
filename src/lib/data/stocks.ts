@@ -13,6 +13,7 @@ import {
   calculateRSI,
   calculateSMA,
   calculateStochRSI,
+  filterValidCloseCandles,
 } from '@/lib/indicators';
 
 export type { StockMarketInfo };
@@ -111,11 +112,11 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
             changePercent,
             high: undefined,
             low: undefined,
-            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            open: undefined,
             close: currentPrice,
             previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-            volume: volume || 0,
-            marketCap: marketCap || 0,
+            volume: finitePositiveNumber(volume),
+            marketCap: finitePositiveNumber(marketCap),
             peRatio: pe ? Number(pe.toFixed(1)) : undefined,
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
             high52w: high52 ? Number(high52.toFixed(2)) : undefined,
@@ -182,11 +183,11 @@ async function _fetchAllTradingViewStocksCore(): Promise<{ bist: StockMarketInfo
             changePercent,
             high: undefined,
             low: undefined,
-            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            open: undefined,
             close: currentPrice,
             previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-            volume: volume || 0,
-            marketCap: marketCap || 0,
+            volume: finitePositiveNumber(volume),
+            marketCap: finitePositiveNumber(marketCap),
             peRatio: pe ? Number(pe.toFixed(1)) : undefined,
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
             high52w: high52 ? Number(high52.toFixed(2)) : undefined,
@@ -577,6 +578,13 @@ function finiteMarketNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function finitePositiveNumber(value: unknown, decimals?: number): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+  return decimals !== undefined ? Number(value.toFixed(decimals)) : value;
+}
+
 function normalizeObservationTimestamp(observedAt?: unknown): string | null {
   if (typeof observedAt === 'number' && Number.isFinite(observedAt) && observedAt > 0) {
     const date = new Date(observedAt * 1000);
@@ -720,30 +728,38 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
               const providerChange = finiteMarketNumber(meta?.regularMarketChangePercent) ??
                 (hasPrice && previousClose && previousClose > 0 ? (livePrice / previousClose - 1) * 100 : null);
               const liveChange = providerChange ?? 0;
-              const high = meta?.regularMarketDayHigh || livePrice * 1.01;
-              const low = meta?.regularMarketDayLow || livePrice * 0.99;
-              const high52 = meta?.fiftyTwoWeekHigh || livePrice * 1.3;
-              const low52 = meta?.fiftyTwoWeekLow || livePrice * 0.7;
+              const high = finitePositiveNumber(meta?.regularMarketDayHigh, 2);
+              const low = finitePositiveNumber(meta?.regularMarketDayLow, 2);
+              const open = finitePositiveNumber(meta?.regularMarketOpen, 2);
+              const volume = finitePositiveNumber(meta?.regularMarketVolume);
+              const high52 = finitePositiveNumber(meta?.fiftyTwoWeekHigh, 2);
+              const low52 = finitePositiveNumber(meta?.fiftyTwoWeekLow, 2);
 
               return {
                 ...item,
-                price: Number(livePrice.toFixed(2)),
+                price: hasPrice ? Number(livePrice.toFixed(2)) : item.basePrice,
                 observation: hasPrice ? marketObservation('Yahoo Finance', providerChange, meta?.regularMarketTime) : undefined,
                 changePercent: Number(liveChange.toFixed(2)),
-                high: Number(high.toFixed(2)),
-                low: Number(low.toFixed(2)),
-                high52w: Number(high52.toFixed(2)),
-                low52w: Number(low52.toFixed(2)),
+                high,
+                low,
+                open,
+                close: hasPrice ? Number(livePrice.toFixed(2)) : undefined,
+                volume,
+                high52w: high52,
+                low52w: low52,
               };
             } catch {
               return {
                 ...item,
                 price: item.basePrice,
                 changePercent: 0,
-                high: Number((item.basePrice * 1.01).toFixed(2)),
-                low: Number((item.basePrice * 0.99).toFixed(2)),
-                high52w: Number((item.basePrice * 1.3).toFixed(2)),
-                low52w: Number((item.basePrice * 0.7).toFixed(2)),
+                high: undefined,
+                low: undefined,
+                open: undefined,
+                close: undefined,
+                volume: undefined,
+                high52w: undefined,
+                low52w: undefined,
               };
             }
           })
@@ -773,30 +789,38 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
               const providerChange = finiteMarketNumber(meta?.regularMarketChangePercent) ??
                 (hasPrice && previousClose && previousClose > 0 ? (livePrice / previousClose - 1) * 100 : null);
               const liveChange = providerChange ?? 0;
-              const high = meta?.regularMarketDayHigh || livePrice * 1.01;
-              const low = meta?.regularMarketDayLow || livePrice * 0.99;
-              const high52 = meta?.fiftyTwoWeekHigh || livePrice * 1.25;
-              const low52 = meta?.fiftyTwoWeekLow || livePrice * 0.75;
+              const high = finitePositiveNumber(meta?.regularMarketDayHigh, 2);
+              const low = finitePositiveNumber(meta?.regularMarketDayLow, 2);
+              const open = finitePositiveNumber(meta?.regularMarketOpen, 2);
+              const volume = finitePositiveNumber(meta?.regularMarketVolume);
+              const high52 = finitePositiveNumber(meta?.fiftyTwoWeekHigh, 2);
+              const low52 = finitePositiveNumber(meta?.fiftyTwoWeekLow, 2);
 
               return {
                 ...item,
-                price: Number(livePrice.toFixed(2)),
+                price: hasPrice ? Number(livePrice.toFixed(2)) : item.basePrice,
                 observation: hasPrice ? marketObservation('Yahoo Finance', providerChange, meta?.regularMarketTime) : undefined,
                 changePercent: Number(liveChange.toFixed(2)),
-                high: Number(high.toFixed(2)),
-                low: Number(low.toFixed(2)),
-                high52w: Number(high52.toFixed(2)),
-                low52w: Number(low52.toFixed(2)),
+                high,
+                low,
+                open,
+                close: hasPrice ? Number(livePrice.toFixed(2)) : undefined,
+                volume,
+                high52w: high52,
+                low52w: low52,
               };
             } catch {
               return {
                 ...item,
                 price: item.basePrice,
                 changePercent: 0,
-                high: Number((item.basePrice * 1.01).toFixed(2)),
-                low: Number((item.basePrice * 0.99).toFixed(2)),
-                high52w: Number((item.basePrice * 1.25).toFixed(2)),
-                low52w: Number((item.basePrice * 0.75).toFixed(2)),
+                high: undefined,
+                low: undefined,
+                open: undefined,
+                close: undefined,
+                volume: undefined,
+                high52w: undefined,
+                low52w: undefined,
               };
             }
           })
@@ -830,12 +854,12 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         price: currentPrice,
         change: changeAmt,
         changePercent,
-        high: Number((currentPrice * 1.02).toFixed(currentPrice < 1 ? 4 : 2)),
-        low: Number((currentPrice * 0.98).toFixed(currentPrice < 1 ? 4 : 2)),
-        open: Number((currentPrice - changeAmt).toFixed(currentPrice < 1 ? 4 : 2)),
+        high: undefined,
+        low: undefined,
+        open: undefined,
         close: currentPrice,
         previousClose: Number((currentPrice - changeAmt).toFixed(currentPrice < 1 ? 4 : 2)),
-        volume: volume || 0,
+        volume: finitePositiveNumber(volume),
         marketCap,
         high52w: high52 ? Number(high52.toFixed(2)) : undefined,
         low52w: low52 ? Number(low52.toFixed(2)) : undefined,
@@ -886,12 +910,12 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         price: currentPrice,
         change: changeAmt,
         changePercent,
-        high: Number((currentPrice * 1.005).toFixed(4)),
-        low: Number((currentPrice * 0.995).toFixed(4)),
-        open: Number((currentPrice - changeAmt).toFixed(4)),
+        high: undefined,
+        low: undefined,
+        open: undefined,
         close: currentPrice,
         previousClose: Number((currentPrice - changeAmt).toFixed(4)),
-        volume: 50000000,
+        volume: undefined,
         marketCap: FOREX_MARKET_CAPS[name] || 0,
         high52w: high52 ? Number(high52.toFixed(4)) : undefined,
         low52w: low52 ? Number(low52.toFixed(4)) : undefined,
@@ -924,12 +948,12 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         price: item.price,
         change: changeAmt,
         changePercent: item.changePercent,
-        high: item.high || Number((item.price * 1.01).toFixed(2)),
-        low: item.low || Number((item.price * 0.99).toFixed(2)),
-        open: Number((item.price - changeAmt).toFixed(2)),
-        close: item.price,
+        high: finitePositiveNumber(item.high),
+        low: finitePositiveNumber(item.low),
+        open: finitePositiveNumber(item.open),
+        close: item.close,
         previousClose: Number((item.price - changeAmt).toFixed(2)),
-        volume: 100000000,
+        volume: finitePositiveNumber(item.volume),
         marketCap: item.marketCap || 0,
         high52w: item.high52w,
         low52w: item.low52w,
@@ -1042,15 +1066,15 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         price: tg.price,
         change: chgAmt,
         changePercent: chgPct,
-        high: Number((tg.price * 1.01).toFixed(2)),
-        low: Number((tg.price * 0.99).toFixed(2)),
-        open: Number((tg.price - chgAmt).toFixed(2)),
+        high: undefined,
+        low: undefined,
+        open: undefined,
         close: tg.price,
         previousClose: Number((tg.price - chgAmt).toFixed(2)),
-        volume: 25000000,
+        volume: undefined,
         marketCap: tg.marketCap,
-        high52w: Number((tg.price * 1.3).toFixed(2)),
-        low52w: Number((tg.price * 0.7).toFixed(2)),
+        high52w: undefined,
+        low52w: undefined,
         timestamp: new Date().toISOString(),
       } as any);
     });
@@ -1072,12 +1096,12 @@ async function _fetchAlternativeMarketsCore(): Promise<AlternativeMarketsData> {
         price: item.price,
         change: chgAmt,
         changePercent: item.changePercent,
-        high: item.high || Number((item.price * 1.01).toFixed(2)),
-        low: item.low || Number((item.price * 0.99).toFixed(2)),
-        open: Number((item.price - chgAmt).toFixed(2)),
-        close: item.price,
+        high: finitePositiveNumber(item.high),
+        low: finitePositiveNumber(item.low),
+        open: finitePositiveNumber(item.open),
+        close: item.close,
         previousClose: Number((item.price - chgAmt).toFixed(2)),
-        volume: 15000000,
+        volume: finitePositiveNumber(item.volume),
         marketCap: item.marketCap || 0,
         high52w: item.high52w,
         low52w: item.low52w,
@@ -1180,15 +1204,15 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         price: Number(currentPrice.toFixed(2)),
         change: Number(changeAmt.toFixed(2)),
         changePercent: Number(changePercent.toFixed(2)),
-        high: meta?.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : Number((currentPrice * 1.01).toFixed(2)),
-        low: meta?.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : Number((currentPrice * 0.99).toFixed(2)),
-        open: meta?.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : Number((currentPrice - changeAmt).toFixed(2)),
-        close: Number(currentPrice.toFixed(2)),
+        high: finitePositiveNumber(meta?.regularMarketDayHigh, 2),
+        low: finitePositiveNumber(meta?.regularMarketDayLow, 2),
+        open: finitePositiveNumber(meta?.regularMarketOpen, 2),
+        close: hasLivePrice ? Number(currentPrice.toFixed(2)) : undefined,
         previousClose: Number(prevClose.toFixed(2)),
-        volume: meta?.regularMarketVolume || 100000000,
+        volume: finitePositiveNumber(meta?.regularMarketVolume),
         marketCap: indexDef.marketCap,
-        high52w: meta?.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : Number((currentPrice * 1.25).toFixed(2)),
-        low52w: meta?.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : Number((currentPrice * 0.75).toFixed(2)),
+        high52w: finitePositiveNumber(meta?.fiftyTwoWeekHigh, 2),
+        low52w: finitePositiveNumber(meta?.fiftyTwoWeekLow, 2),
         timestamp: fetchedAt,
         ...(hasLivePrice
           ? {
@@ -1217,15 +1241,15 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         price: indexDef.basePrice,
         change: 0,
         changePercent: 0,
-        high: Number((indexDef.basePrice * 1.01).toFixed(2)),
-        low: Number((indexDef.basePrice * 0.99).toFixed(2)),
-        open: indexDef.basePrice,
-        close: indexDef.basePrice,
+        high: undefined,
+        low: undefined,
+        open: undefined,
+        close: undefined,
         previousClose: indexDef.basePrice,
-        volume: 100000000,
+        volume: undefined,
         marketCap: indexDef.marketCap,
-        high52w: Number((indexDef.basePrice * 1.25).toFixed(2)),
-        low52w: Number((indexDef.basePrice * 0.75).toFixed(2)),
+        high52w: undefined,
+        low52w: undefined,
         timestamp: new Date().toISOString(),
       } as any;
     }
@@ -1345,15 +1369,15 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           price: currentPrice,
           change: changeAmt,
           changePercent,
-          high: Number((currentPrice * 1.01).toFixed(2)),
-          low: Number((currentPrice * 0.99).toFixed(2)),
-          open: Number((currentPrice - changeAmt).toFixed(2)),
+          high: undefined,
+          low: undefined,
+          open: undefined,
           close: currentPrice,
           previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-          volume: 25000000,
+          volume: undefined,
           marketCap: commDef.marketCap,
-          high52w: Number((currentPrice * 1.3).toFixed(2)),
-          low52w: Number((currentPrice * 0.7).toFixed(2)),
+          high52w: undefined,
+          low52w: undefined,
           timestamp: fetchedAt,
           ...(combinedSource
             ? {
@@ -1400,15 +1424,15 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           price: Number(currentPrice.toFixed(2)),
           change: Number(changeAmt.toFixed(2)),
           changePercent: Number(changePercent.toFixed(2)),
-          high: meta?.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : Number((currentPrice * 1.01).toFixed(2)),
-          low: meta?.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : Number((currentPrice * 0.99).toFixed(2)),
-          open: meta?.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : Number((currentPrice - changeAmt).toFixed(2)),
-          close: Number(currentPrice.toFixed(2)),
+          high: finitePositiveNumber(meta?.regularMarketDayHigh, 2),
+          low: finitePositiveNumber(meta?.regularMarketDayLow, 2),
+          open: finitePositiveNumber(meta?.regularMarketOpen, 2),
+          close: hasLivePrice ? Number(currentPrice.toFixed(2)) : undefined,
           previousClose: Number(prevClose.toFixed(2)),
-          volume: meta?.regularMarketVolume || 15000000,
+          volume: finitePositiveNumber(meta?.regularMarketVolume),
           marketCap: commDef.marketCap,
-          high52w: meta?.fiftyTwoWeekHigh ? Number(meta.fiftyTwoWeekHigh.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
-          low52w: meta?.fiftyTwoWeekLow ? Number(meta.fiftyTwoWeekLow.toFixed(2)) : Number((currentPrice * 0.7).toFixed(2)),
+          high52w: finitePositiveNumber(meta?.fiftyTwoWeekHigh, 2),
+          low52w: finitePositiveNumber(meta?.fiftyTwoWeekLow, 2),
           timestamp: fetchedAt,
           ...(hasLivePrice
             ? {
@@ -1460,13 +1484,13 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
           price: fundDetail.price,
           change: Number(((fundDetail.price * fundDetail.dailyReturn) / 100).toFixed(4)),
           changePercent: fundDetail.dailyReturn,
-          high: Number((fundDetail.price * 1.01).toFixed(4)),
-          low: Number((fundDetail.price * 0.99).toFixed(4)),
-          open: fundDetail.price,
+          high: undefined,
+          low: undefined,
+          open: undefined,
           close: fundDetail.price,
           previousClose: fundDetail.price,
-          volume: (fundDetail.investorCount || 1000) * 100,
-          marketCap: fundDetail.totalValue || 100000000,
+          volume: undefined,
+          marketCap: finitePositiveNumber(fundDetail.totalValue),
           timestamp: fetchedAt,
           observation,
         } as any;
@@ -1521,15 +1545,15 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
               price: currentPrice,
               change: changeAmt,
               changePercent,
-              high: Number((currentPrice * 1.005).toFixed(4)),
-              low: Number((currentPrice * 0.995).toFixed(4)),
-              open: Number((currentPrice - changeAmt).toFixed(4)),
+              high: undefined,
+              low: undefined,
+              open: undefined,
               close: currentPrice,
               previousClose: Number((currentPrice - changeAmt).toFixed(4)),
-              volume: 80000000,
-              marketCap: 0,
-              high52w: high52 ? Number(high52.toFixed(4)) : Number((currentPrice * 1.15).toFixed(4)),
-              low52w: low52 ? Number(low52.toFixed(4)) : Number((currentPrice * 0.85).toFixed(4)),
+              volume: undefined,
+              marketCap: undefined,
+              high52w: finitePositiveNumber(high52, 4),
+              low52w: finitePositiveNumber(low52, 4),
               timestamp: fetchedAt,
               observation: marketObservation('TradingView', change, null, fetchedAt),
             } as any;
@@ -1545,14 +1569,14 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           filter: [{ left: 'name', operation: 'in_range', right: [sym, sym + 'T', sym.replace('USD', 'USDT')] }],
-          columns: ['name', 'close', 'change', 'description', 'High.All', 'Low.All'],
+          columns: ['name', 'close', 'change', 'volume', 'description', 'High.All', 'Low.All'],
         }),
       });
 
       if (cryptoRes.ok) {
         const cryptoData = await cryptoRes.json();
         if (cryptoData.data && cryptoData.data.length > 0) {
-          const [name, close, change, desc, high52, low52] = cryptoData.data[0].d;
+          const [name, close, change, volume, desc, high52, low52] = cryptoData.data[0].d;
           const validClose = finiteMarketNumber(close);
           if (validClose !== null && validClose > 0) {
             const currentPrice = Number(validClose.toFixed(2));
@@ -1579,15 +1603,15 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
               price: currentPrice,
               change: changeAmt,
               changePercent,
-              high: Number((currentPrice * 1.02).toFixed(2)),
-              low: Number((currentPrice * 0.98).toFixed(2)),
-              open: Number((currentPrice - changeAmt).toFixed(2)),
+              high: undefined,
+              low: undefined,
+              open: undefined,
               close: currentPrice,
               previousClose: Number((currentPrice - changeAmt).toFixed(2)),
-              volume: 450000000,
+              volume: finitePositiveNumber(volume),
               marketCap: currentPrice * 19000000,
-              high52w: high52 ? Number(high52.toFixed(2)) : Number((currentPrice * 1.3).toFixed(2)),
-              low52w: low52 ? Number(low52.toFixed(2)) : Number((currentPrice * 0.6).toFixed(2)),
+              high52w: finitePositiveNumber(high52, 2),
+              low52w: finitePositiveNumber(low52, 2),
               timestamp: fetchedAt,
               observation: marketObservation('TradingView', change, null, fetchedAt),
             } as any;
@@ -1642,11 +1666,11 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
             changePercent,
             high: undefined,
             low: undefined,
-            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            open: undefined,
             close: currentPrice,
             previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-            volume: volume || undefined,
-            marketCap: marketCap || undefined,
+            volume: finitePositiveNumber(volume),
+            marketCap: finitePositiveNumber(marketCap),
             peRatio: pe ? Number(pe.toFixed(1)) : undefined,
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
             high52w: high52 ? Number(high52.toFixed(2)) : undefined,
@@ -1707,11 +1731,11 @@ export async function fetchSpecificSymbolLive(symbol: string, allowSynthetic: bo
             changePercent,
             high: undefined,
             low: undefined,
-            open: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
+            open: undefined,
             close: currentPrice,
             previousClose: changeAmt !== undefined ? Number((currentPrice - changeAmt).toFixed(2)) : undefined,
-            volume: volume || undefined,
-            marketCap: marketCap || undefined,
+            volume: finitePositiveNumber(volume),
+            marketCap: finitePositiveNumber(marketCap),
             peRatio: pe ? Number(pe.toFixed(1)) : undefined,
             dividendYield: divYield ? Number(divYield.toFixed(2)) : undefined,
             high52w: high52 ? Number(high52.toFixed(2)) : undefined,
@@ -2049,23 +2073,25 @@ export async function fetchRealHistoricalCandles(
 
       const candles: Candle[] = [];
       for (let i = 0; i < timestamps.length; i++) {
-        const open = quote.open?.[i];
-        const high = quote.high?.[i];
-        const low = quote.low?.[i];
-        const close = quote.close?.[i];
-        const volume = quote.volume?.[i] || 0;
+        const close = finitePositiveNumber(quote.close?.[i], 4);
+        if (close === undefined) continue;
 
-        if (open != null && high != null && low != null && close != null && !isNaN(close)) {
-          const d = new Date(timestamps[i] * 1000);
-          candles.push({
-            time: interval.includes('m') ? d.toISOString().replace('T', ' ').slice(0, 16) : d.toISOString().split('T')[0],
-            open: Number(open.toFixed(2)),
-            high: Number(high.toFixed(2)),
-            low: Number(low.toFixed(2)),
-            close: Number(close.toFixed(2)),
-            volume: Math.round(volume),
-          });
-        }
+        const open = finitePositiveNumber(quote.open?.[i], 4);
+        const high = finitePositiveNumber(quote.high?.[i], 4);
+        const low = finitePositiveNumber(quote.low?.[i], 4);
+        const rawVol = finitePositiveNumber(quote.volume?.[i]);
+
+        const d = new Date(timestamps[i] * 1000);
+        if (!Number.isFinite(d.getTime())) continue;
+
+        candles.push({
+          time: interval.includes('m') ? d.toISOString().replace('T', ' ').slice(0, 16) : d.toISOString().split('T')[0],
+          open,
+          high,
+          low,
+          close,
+          volume: rawVol !== undefined ? Math.round(rawVol) : undefined,
+        });
       }
 
       if (candles.length > 0) {
@@ -2074,9 +2100,9 @@ export async function fetchRealHistoricalCandles(
           if (lastCandleClose > 0) {
             const factor = scaleTarget / lastCandleClose;
             for (let i = 0; i < candles.length; i++) {
-              candles[i].open = Number((candles[i].open * factor).toFixed(2));
-              candles[i].high = Number((candles[i].high * factor).toFixed(2));
-              candles[i].low = Number((candles[i].low * factor).toFixed(2));
+              if (candles[i].open !== undefined) candles[i].open = Number((candles[i].open! * factor).toFixed(2));
+              if (candles[i].high !== undefined) candles[i].high = Number((candles[i].high! * factor).toFixed(2));
+              if (candles[i].low !== undefined) candles[i].low = Number((candles[i].low! * factor).toFixed(2));
               candles[i].close = Number((candles[i].close * factor).toFixed(2));
             }
           }
@@ -2087,9 +2113,9 @@ export async function fetchRealHistoricalCandles(
           // Scale proportionately across all candles so chart continuity is preserved without artificial single-candle spike
           if (ratio > 0.8 && ratio < 1.25 && Math.abs(ratio - 1) > 0.002) {
             for (let i = 0; i < candles.length; i++) {
-              candles[i].open = Number((candles[i].open * ratio).toFixed(2));
-              candles[i].high = Number((candles[i].high * ratio).toFixed(2));
-              candles[i].low = Number((candles[i].low * ratio).toFixed(2));
+              if (candles[i].open !== undefined) candles[i].open = Number((candles[i].open! * ratio).toFixed(2));
+              if (candles[i].high !== undefined) candles[i].high = Number((candles[i].high! * ratio).toFixed(2));
+              if (candles[i].low !== undefined) candles[i].low = Number((candles[i].low! * ratio).toFixed(2));
               candles[i].close = Number((candles[i].close * ratio).toFixed(2));
             }
           }
@@ -2118,10 +2144,10 @@ export function generateCandles(
 }
 
 export function getStockTechnicalAnalysis(symbol: string, candles?: Candle[]) {
-  if (!candles || candles.length < 14) {
+  const data = filterValidCloseCandles(candles || []);
+  if (data.length < 14) {
     return null;
   }
-  const data = candles;
   const rsi = calculateRSI(data, 14);
   const macd = calculateMACD(data);
   const bb = calculateBollingerBands(data, 20, 2);
@@ -2131,22 +2157,27 @@ export function getStockTechnicalAnalysis(symbol: string, candles?: Candle[]) {
   const ema20 = calculateEMA(data, 20);
   const stochRsi = calculateStochRSI(data);
 
-  const lastRSI = rsi[rsi.length - 1]?.value || 50;
-  const lastMACD = macd[macd.length - 1];
-  const lastClose = data[data.length - 1]?.close || 100;
-  const lastSMA20 = sma20[sma20.length - 1]?.value || lastClose;
-  const lastSMA50 = sma50[sma50.length - 1]?.value || lastClose;
+  const rawRsi = rsi.length > 0 ? rsi[rsi.length - 1]?.value : undefined;
+  const lastRSI = typeof rawRsi === 'number' && Number.isFinite(rawRsi) ? rawRsi : null;
+  const lastMACD = macd.length > 0 ? macd[macd.length - 1] : null;
+  const lastClose = data.length > 0 ? data[data.length - 1].close : null;
+  const rawSma20 = sma20.length > 0 ? sma20[sma20.length - 1]?.value : undefined;
+  const lastSMA20 = typeof rawSma20 === 'number' && Number.isFinite(rawSma20) ? rawSma20 : null;
+  const rawSma50 = sma50.length > 0 ? sma50[sma50.length - 1]?.value : undefined;
+  const lastSMA50 = typeof rawSma50 === 'number' && Number.isFinite(rawSma50) ? rawSma50 : null;
 
   let score = 0;
-  if (lastRSI < 30) score += 2;
-  else if (lastRSI > 70) score -= 2;
-  else if (lastRSI > 50) score += 1;
+  if (lastRSI !== null) {
+    if (lastRSI < 30) score += 2;
+    else if (lastRSI > 70) score -= 2;
+    else if (lastRSI > 50) score += 1;
+  }
 
   if (lastMACD && lastMACD.histogram > 0) score += 2;
   else if (lastMACD && lastMACD.histogram < 0) score -= 2;
 
-  if (lastClose > lastSMA20) score += 1;
-  if (lastSMA20 > lastSMA50) score += 1;
+  if (lastClose !== null && lastSMA20 !== null && lastClose > lastSMA20) score += 1;
+  if (lastSMA20 !== null && lastSMA50 !== null && lastSMA20 > lastSMA50) score += 1;
 
   let overallSignal: 'STRONG_BUY' | 'BUY' | 'NEUTRAL' | 'SELL' | 'STRONG_SELL' = 'NEUTRAL';
   if (score >= 4) overallSignal = 'STRONG_BUY';
@@ -2156,7 +2187,7 @@ export function getStockTechnicalAnalysis(symbol: string, candles?: Candle[]) {
 
   return {
     symbol,
-    candles,
+    candles: data,
     indicators: {
       rsi,
       macd,

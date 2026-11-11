@@ -56,20 +56,28 @@ export const TechnicalIndicatorsPanel: React.FC<TechnicalIndicatorsPanelProps> =
             <span className="text-xs font-medium text-text-secondary">RSI (14)</span>
             <span
               className={`text-xs font-bold ${
-                rsi > 70 ? 'text-danger' : rsi < 30 ? 'text-success' : 'text-text-primary'
+                rsi == null
+                  ? 'text-text-muted'
+                  : rsi > 70
+                  ? 'text-danger'
+                  : rsi < 30
+                  ? 'text-success'
+                  : 'text-text-primary'
               }`}
             >
-              {rsi?.toFixed(1)}
+              {typeof rsi === 'number' ? rsi.toFixed(1) : '-'}
             </span>
           </div>
           {/* Visual Bar */}
           <div className="w-full bg-bg-input rounded-full h-2 relative overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${
-                rsi > 70 ? 'bg-danger' : rsi < 30 ? 'bg-success' : 'bg-accent'
-              }`}
-              style={{ width: `${Math.min(Math.max(rsi, 0), 100)}%` }}
-            />
+            {typeof rsi === 'number' && (
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  rsi > 70 ? 'bg-danger' : rsi < 30 ? 'bg-success' : 'bg-accent'
+                }`}
+                style={{ width: `${Math.min(Math.max(rsi, 0), 100)}%` }}
+              />
+            )}
           </div>
           <div className="flex justify-between text-[10px] text-text-muted">
             <span>Aşırı Satım (&lt;30)</span>
@@ -81,18 +89,22 @@ export const TechnicalIndicatorsPanel: React.FC<TechnicalIndicatorsPanelProps> =
         <div className="bg-bg-tertiary/60 border border-border/60 rounded-xl p-4 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-text-secondary">MACD (12, 26, 9)</span>
-            <Badge variant={macd?.histogram >= 0 ? 'success' : 'danger'} size="sm">
-              {macd?.histogram >= 0 ? 'Boğa / Pozitif' : 'Ayı / Negatif'}
-            </Badge>
+            {macd ? (
+              <Badge variant={macd.histogram >= 0 ? 'success' : 'danger'} size="sm">
+                {macd.histogram >= 0 ? 'Boğa / Pozitif' : 'Ayı / Negatif'}
+              </Badge>
+            ) : (
+              <Badge variant="default" size="sm">Veri Yok</Badge>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs pt-1">
             <div>
               <span className="text-text-muted text-[10px] block">MACD Çizgisi</span>
-              <span className="font-semibold text-text-primary">{macd?.macd?.toFixed(2) || '0.00'}</span>
+              <span className="font-semibold text-text-primary">{typeof macd?.macd === 'number' ? macd.macd.toFixed(2) : '-'}</span>
             </div>
             <div>
               <span className="text-text-muted text-[10px] block">Sinyal Çizgisi</span>
-              <span className="font-semibold text-text-primary">{macd?.signal?.toFixed(2) || '0.00'}</span>
+              <span className="font-semibold text-text-primary">{typeof macd?.signal === 'number' ? macd.signal.toFixed(2) : '-'}</span>
             </div>
           </div>
         </div>
@@ -102,17 +114,21 @@ export const TechnicalIndicatorsPanel: React.FC<TechnicalIndicatorsPanelProps> =
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-text-secondary">Hareketli Ortalamalar</span>
             <span className="text-[10px] font-bold text-accent">
-              {currentPrice > sma20 ? 'Fiyat > SMA20' : 'Fiyat < SMA20'}
+              {typeof sma20 === 'number' && currentPrice > 0
+                ? currentPrice > sma20
+                  ? 'Fiyat > SMA20'
+                  : 'Fiyat < SMA20'
+                : 'Yetersiz Veri'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs pt-1">
             <div>
               <span className="text-text-muted text-[10px] block">SMA 20</span>
-              <span className="font-semibold text-warning">{sma20?.toFixed(2)}</span>
+              <span className="font-semibold text-warning">{typeof sma20 === 'number' ? sma20.toFixed(2) : '-'}</span>
             </div>
             <div>
               <span className="text-text-muted text-[10px] block">SMA 50</span>
-              <span className="font-semibold text-info">{sma50?.toFixed(2)}</span>
+              <span className="font-semibold text-info">{typeof sma50 === 'number' ? sma50.toFixed(2) : '-'}</span>
             </div>
           </div>
         </div>
@@ -126,15 +142,15 @@ export const TechnicalIndicatorsPanel: React.FC<TechnicalIndicatorsPanelProps> =
           <div className="grid grid-cols-3 gap-1 text-xs pt-1 text-center">
             <div className="bg-bg-secondary/70 p-1 rounded">
               <span className="text-text-muted text-[9px] block">Alt</span>
-              <span className="text-[11px] font-mono text-text-primary">{latestBB?.lower?.toFixed(1)}</span>
+              <span className="text-[11px] font-mono text-text-primary">{typeof latestBB?.lower === 'number' ? latestBB.lower.toFixed(1) : '-'}</span>
             </div>
             <div className="bg-bg-secondary/70 p-1 rounded">
               <span className="text-text-muted text-[9px] block">Orta</span>
-              <span className="text-[11px] font-mono text-text-primary">{latestBB?.middle?.toFixed(1)}</span>
+              <span className="text-[11px] font-mono text-text-primary">{typeof latestBB?.middle === 'number' ? latestBB.middle.toFixed(1) : '-'}</span>
             </div>
             <div className="bg-bg-secondary/70 p-1 rounded">
               <span className="text-text-muted text-[9px] block">Üst</span>
-              <span className="text-[11px] font-mono text-text-primary">{latestBB?.upper?.toFixed(1)}</span>
+              <span className="text-[11px] font-mono text-text-primary">{typeof latestBB?.upper === 'number' ? latestBB.upper.toFixed(1) : '-'}</span>
             </div>
           </div>
         </div>
