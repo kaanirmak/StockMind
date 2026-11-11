@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Holding } from '@/types/portfolio';
 import { Button, InstrumentLogo } from '@/components/ui';
+import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
 import { getAssetTypeLabel } from '@/lib/utils/symbol';
 
 function HoldingPriceFlag({ holding }: { holding: Holding }) {
@@ -43,10 +44,19 @@ export interface HoldingsTableProps {
   holdings: Holding[];
   cashBalances?: { currency: string; amount: number; value: number | null }[];
   onAddTransaction: () => void;
+  onImportExcel?: () => void;
+  onExploreSamplePortfolio?: () => void;
   onTrade?: (symbol: string) => void;
 }
 
-export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBalances = [], onAddTransaction, onTrade }) => {
+export const HoldingsTable: React.FC<HoldingsTableProps> = ({
+  holdings,
+  cashBalances = [],
+  onAddTransaction,
+  onImportExcel,
+  onExploreSamplePortfolio,
+  onTrade,
+}) => {
   const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(new Set());
 
   const toggleExpand = (sym: string) => {
@@ -60,18 +70,11 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, cashBala
 
   if (holdings.length === 0 && cashBalances.length === 0) {
     return (
-      <div className="glass-card p-8 sm:p-12 text-center text-text-muted space-y-3">
-        <svg className="w-12 h-12 mx-auto text-text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-        <p className="text-base font-semibold text-text-primary">Portföyünüzde henüz varlık bulunmuyor</p>
-        <p className="text-xs max-w-sm mx-auto">İlk alım işleminizi ekleyerek varlıklarınızı, maliyetinizi ve kar/zararınızı anlık takip edin.</p>
-        <div className="pt-2">
-          <Button variant="primary" size="sm" onClick={onAddTransaction}>
-            + İlk İşlemi Ekle
-          </Button>
-        </div>
-      </div>
+      <EmptyPortfolioOnboarding
+        onAddTransaction={onAddTransaction}
+        onImportExcel={onImportExcel}
+        onExploreSamplePortfolio={onExploreSamplePortfolio}
+      />
     );
   }
 

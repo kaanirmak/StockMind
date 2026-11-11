@@ -16,6 +16,9 @@ import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
+import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
+import { shouldShowEmptyOnboarding } from '@/lib/portfolio/emptyOnboarding';
+import { getSamplePortfolioSnapshot } from '@/lib/portfolio/samplePortfolio';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, StateView } from '@/components/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { ProRequestModal } from '@/components/pro/ProRequestModal';
@@ -33,6 +36,8 @@ export default function PortfolioPage() {
     getSummary,
     fetchPortfoliosAndTransactions,
     fetchLivePrices,
+    livePrices,
+    loading,
     isRefreshingPrices,
   } = usePortfolioStore();
 
@@ -57,6 +62,7 @@ export default function PortfolioPage() {
   const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+  const [isSamplePreview, setIsSamplePreview] = useState(false);
 
   const { user, profile } = useAuth();
   const [showProModal, setShowProModal] = useState(false);
@@ -120,15 +126,28 @@ export default function PortfolioPage() {
     };
   }, [fetchLivePrices]);
 
-  const summary = getSummary();
-  const activePortfolio = portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
-  let activeTransactions = transactions.filter((t) => t.portfolioId === activePortfolioId);
+  const liveSummary = getSummary();
+  const sampleSnapshot = isSamplePreview ? getSamplePortfolioSnapshot(livePrices) : null;
+  const summary = sampleSnapshot ? sampleSnapshot.summary : liveSummary;
+  const activePortfolio = sampleSnapshot
+    ? sampleSnapshot.portfolio
+    : portfolios.find((p) => p.id === activePortfolioId) || portfolios[0];
+  let activeTransactions = sampleSnapshot
+    ? sampleSnapshot.transactions
+    : transactions.filter((t) => t.portfolioId === activePortfolioId);
   // Fallback if transaction portfolioId is slightly mismatched or only one portfolio exists
-  if (activeTransactions.length === 0 && transactions.length > 0) {
+  if (!sampleSnapshot && activeTransactions.length === 0 && transactions.length > 0) {
     if (portfolios.length <= 1 || !portfolios.some((p) => transactions.some((t) => t.portfolioId === p.id))) {
       activeTransactions = transactions;
     }
   }
+
+  const showEmptyOnboarding = !isSamplePreview && shouldShowEmptyOnboarding({
+    loading,
+    holdingsCount: liveSummary.holdings.length,
+    transactionsCount: activeTransactions.length,
+    hasCash: Boolean(liveSummary.cash?.configured && liveSummary.cash.balances.length > 0),
+  });
 
   const filteredTransactions = activeTransactions
     .filter((tx) => {
@@ -332,6 +351,57 @@ export default function PortfolioPage() {
         </div>
       </div>
 
+      {/* Sample Preview Isolation Banner */}
+      {isSamplePreview && (
+        <div
+          data-testid="sample-portfolio-banner"
+          className="p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+          <div className="space-y-0.5">
+            <p className="text-xs sm:text-sm font-bold text-amber-300">
+              Örnek Portföy Önizlemesi (Salt Okunur)
+            </p>
+            <p className="text-[11px] sm:text-xs text-text-secondary">
+              Şu anda tanıtım verilerini inceliyorsunuz. Bu kayıtlar kendi portföyünüze eklenmez.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setIsSamplePreview(false);
+                setTradeModalSymbol(undefined);
+                setTradeModalMode('broker');
+                setIsTradeModalOpen(true);
+              }}
+            >
+              İlk İşlemimi Kaydet
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsSamplePreview(false)}
+            >
+              Önizlemeden Çık
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Unified Empty Portfolio Onboarding */}
+      {showEmptyOnboarding && (
+        <EmptyPortfolioOnboarding
+          onAddTransaction={() => {
+            setTradeModalSymbol(undefined);
+            setTradeModalMode('broker');
+            setIsTradeModalOpen(true);
+          }}
+          onImportExcel={() => setIsExcelModalOpen(true)}
+          onExploreSamplePortfolio={() => setIsSamplePreview(true)}
+        />
+      )}
+
       {/* Partial Valuation Banner when live market prices or FX rates are unavailable */}
       <PartialValuationBanner
         valuationStatus={summary.valuationStatus}
@@ -430,7 +500,7 @@ export default function PortfolioPage() {
             {([['holdings', 'Varlıklar'], ['heatmap', 'Isı Haritası'], ['activity', 'Aktivite'], ['transactions', 'İşlemler']] as const).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`min-w-0 min-h-11 px-1 rounded-lg text-[11px] sm:text-sm font-semibold ${activeTab === tab ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-secondary'}`}>{label}</button>)}
           </div>
 
-          {activeTab === 'transactions' && activeTransactions.length > 0 && (
+          {activeTab === 'transactions' && !isSamplePreview && activeTransactions.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <Button
                 variant="outline"
@@ -451,20 +521,28 @@ export default function PortfolioPage() {
         </div>
 
         {activeTab === 'holdings' ? (
-          <HoldingsTable
-            holdings={summary.holdings}
-            cashBalances={summary.cash?.configured ? summary.cash.balances : []}
-            onAddTransaction={() => {
-              setTradeModalSymbol(undefined);
-              setTradeModalMode('stock');
-              setIsTradeModalOpen(true);
-            }}
-            onTrade={(sym) => {
-              setTradeModalSymbol(sym);
-              setTradeModalMode('broker');
-              setIsTradeModalOpen(true);
-            }}
-          />
+          showEmptyOnboarding ? null : (
+            <HoldingsTable
+              holdings={summary.holdings}
+              cashBalances={summary.cash?.configured ? summary.cash.balances : []}
+              onAddTransaction={() => {
+                setTradeModalSymbol(undefined);
+                setTradeModalMode('stock');
+                setIsTradeModalOpen(true);
+              }}
+              onImportExcel={() => setIsExcelModalOpen(true)}
+              onExploreSamplePortfolio={() => setIsSamplePreview(true)}
+              onTrade={
+                isSamplePreview
+                  ? undefined
+                  : (sym) => {
+                      setTradeModalSymbol(sym);
+                      setTradeModalMode('broker');
+                      setIsTradeModalOpen(true);
+                    }
+              }
+            />
+          )
         ) : activeTab === 'heatmap' ? (
           <PortfolioHeatmap />
         ) : activeTab === 'activity' ? (
@@ -588,18 +666,20 @@ export default function PortfolioPage() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDeleteTarget({ id: tx.id, symbol: tx.symbol });
-                          }}
-                          className="p-2 rounded-xl text-text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-colors cursor-pointer"
-                          title="İşlemi Sil"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                        {!isSamplePreview && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeleteTarget({ id: tx.id, symbol: tx.symbol });
+                            }}
+                            className="p-2 rounded-xl text-text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-colors cursor-pointer"
+                            title="İşlemi Sil"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
 
                       {/* Middle: Details Box */}
@@ -715,18 +795,20 @@ export default function PortfolioPage() {
                             {tx.notes || '-'}
                           </td>
                           <td className="py-3.5 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDeleteTarget({ id: tx.id, symbol: tx.symbol });
-                              }}
-                              className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
-                              title="İşlemi Sil"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+                            {!isSamplePreview && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeleteTarget({ id: tx.id, symbol: tx.symbol });
+                                }}
+                                className="p-1.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                                title="İşlemi Sil"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))

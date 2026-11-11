@@ -1985,6 +1985,47 @@ test('UX-02 portfolio heatmap starts compact with expandable treemap and equival
   assert.equal(summary.strongestLoser.symbol, 'TI2');
 });
 
+test('UX-03 empty portfolio onboarding exposes trade, excel import, and sample portfolio in one screen', () => {
+  const {
+    EMPTY_PORTFOLIO_ACTIONS,
+    shouldShowEmptyOnboarding,
+  } = load('src/lib/portfolio/emptyOnboarding.ts');
+
+  assert.deepEqual(
+    Array.from(EMPTY_PORTFOLIO_ACTIONS, (a) => a.id),
+    ['first_trade', 'excel_import', 'sample_portfolio']
+  );
+
+  assert.equal(
+    shouldShowEmptyOnboarding({ loading: true, holdingsCount: 0, transactionsCount: 0, hasCash: false }),
+    false
+  );
+  assert.equal(
+    shouldShowEmptyOnboarding({ loading: false, holdingsCount: 0, transactionsCount: 0, hasCash: false }),
+    true
+  );
+  assert.equal(
+    shouldShowEmptyOnboarding({ loading: false, holdingsCount: 1, transactionsCount: 1, hasCash: false }),
+    false
+  );
+
+  const onboardingSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/components/portfolio/EmptyPortfolioOnboarding.tsx'),
+    'utf8'
+  );
+  assert.match(onboardingSrc, /data-testid="empty-portfolio-onboarding"/);
+  assert.match(onboardingSrc, /empty-action-\$\{action\.id\}/);
+
+  const portfolioPageSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/portfolio/page.tsx'),
+    'utf8'
+  );
+  assert.match(portfolioPageSrc, /<EmptyPortfolioOnboarding/);
+  assert.match(portfolioPageSrc, /onImportExcel=\{\(\) => setIsExcelModalOpen\(true\)\}/);
+  assert.match(portfolioPageSrc, /onExploreSamplePortfolio=\{\(\) => setIsSamplePreview\(true\)\}/);
+});
+
+
 
 
 
