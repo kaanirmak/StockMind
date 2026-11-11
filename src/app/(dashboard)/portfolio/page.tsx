@@ -39,6 +39,8 @@ export default function PortfolioPage() {
     livePrices,
     loading,
     isRefreshingPrices,
+    isSampleMode,
+    setSampleMode,
   } = usePortfolioStore();
 
   const [performancePeriod, setPerformancePeriod] = useState<PerformancePeriod>('daily');
@@ -62,7 +64,8 @@ export default function PortfolioPage() {
   const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
-  const [isSamplePreview, setIsSamplePreview] = useState(false);
+  const isSamplePreview = isSampleMode;
+  const setIsSamplePreview = setSampleMode;
 
   const { user, profile } = useAuth();
   const [showProModal, setShowProModal] = useState(false);

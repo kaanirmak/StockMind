@@ -412,6 +412,13 @@ test('portfolio publishes ready quotes while a slower asset is still loading', a
       } };
       if (name === '@/lib/portfolio/calculations') return { normalizeSymbolKey: s => s, cleanSymbol: s => ({ symbol: s, assetType: 'stock' }) };
       if (name === '@/lib/portfolio/cash') return {};
+      if (name === '@/lib/portfolio/samplePortfolio') return {
+        getSamplePortfolioSnapshot: () => ({ summary: {} }),
+        readSampleModeSession: () => false,
+        writeSampleModeSession: () => {},
+        stripSampleRecords: items => items,
+        SAMPLE_TRANSACTIONS: [],
+      };
       if (name === '@/lib/supabase/client') return {};
       throw new Error(name);
     },
@@ -2024,6 +2031,65 @@ test('UX-03 empty portfolio onboarding exposes trade, excel import, and sample p
   assert.match(portfolioPageSrc, /onImportExcel=\{\(\) => setIsExcelModalOpen\(true\)\}/);
   assert.match(portfolioPageSrc, /onExploreSamplePortfolio=\{\(\) => setIsSamplePreview\(true\)\}/);
 });
+
+test('UX-04 sample portfolio preview isolates sample records from user persistence', () => {
+  const loadFrom = (entry) => {
+    if (entry.endsWith('.json')) {
+      return JSON.parse(fs.readFileSync(entry, 'utf8'));
+    }
+    return load(entry, {
+      require: (name) => {
+        if (name.endsWith('.json')) {
+          const resolved = name.startsWith('@/')
+            ? path.join('src', name.slice(2))
+            : path.join(path.dirname(entry), name);
+          return JSON.parse(fs.readFileSync(resolved, 'utf8'));
+        }
+        if (name.startsWith('./') || name.startsWith('../')) {
+          return loadFrom(path.join(path.dirname(entry), `${name}.ts`));
+        }
+        if (name.startsWith('@/')) {
+          return loadFrom(path.join('src', `${name.slice(2)}.ts`));
+        }
+        return require(name);
+      },
+    });
+  };
+
+  const sampleMod = loadFrom('src/lib/portfolio/samplePortfolio.ts');
+  const snapshot = sampleMod.getSamplePortfolioSnapshot();
+  assert.equal(snapshot.portfolio.id, sampleMod.SAMPLE_PORTFOLIO_ID);
+  assert.ok(snapshot.transactions.length >= 4);
+  assert.ok(snapshot.summary.holdings.length >= 4);
+  assert.ok(snapshot.summary.totalValue > 0);
+  assert.equal(sampleMod.isSampleRecordId('sample-tx-1'), true);
+  assert.equal(sampleMod.isSampleRecordId('tx-123'), false);
+
+  const mixed = [
+    ...snapshot.transactions,
+    { id: 'user-tx-1', portfolioId: 'p-default', userId: 'guest' },
+  ];
+  const stripped = sampleMod.stripSampleRecords(mixed);
+  assert.equal(stripped.length, 1);
+  assert.equal(stripped[0].id, 'user-tx-1');
+
+  const storeSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/store/usePortfolioStore.ts'),
+    'utf8'
+  );
+  assert.match(storeSrc, /isSampleMode:/);
+  assert.match(storeSrc, /setSampleMode:/);
+  assert.match(storeSrc, /stripSampleRecords\(state\.transactions\)/);
+  assert.match(storeSrc, /if \(isSampleMode\) \{\s*return getSamplePortfolioSnapshot\(livePrices\)\.summary;/);
+
+  const dashboardSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'src/app/(dashboard)/dashboard/page.tsx'),
+    'utf8'
+  );
+  assert.match(dashboardSrc, /data-testid="dashboard-sample-invite"/);
+  assert.match(dashboardSrc, /data-testid="dashboard-sample-banner"/);
+});
+
 
 
 

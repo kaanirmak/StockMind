@@ -4,6 +4,13 @@ import { create } from 'zustand';
 import { Portfolio, Transaction, PortfolioSummary, CashMovement } from '@/types/portfolio';
 import { calculatePortfolioSummary, normalizeSymbolKey, cleanSymbol, PriceQuote } from '@/lib/portfolio/calculations';
 import { calculateCashLedger, includeCashInSummary } from '@/lib/portfolio/cash';
+import {
+  getSamplePortfolioSnapshot,
+  readSampleModeSession,
+  SAMPLE_TRANSACTIONS,
+  stripSampleRecords,
+  writeSampleModeSession,
+} from '@/lib/portfolio/samplePortfolio';
 import { createClient } from '@/lib/supabase/client';
 
 interface PortfolioState {
@@ -19,6 +26,8 @@ interface PortfolioState {
   loading: boolean;
   error: string | null;
   currentUserId: string | null;
+  isSampleMode: boolean;
+  setSampleMode: (enabled: boolean) => void;
   fetchPortfoliosAndTransactions: () => Promise<void>;
   fetchLivePrices: () => Promise<void>;
   setActivePortfolioId: (id: string) => void;
@@ -112,7 +121,7 @@ function loadLocalState(userId?: string | null): { portfolios: Portfolio[]; acti
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
-      const rawTxs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+      const rawTxs = Array.isArray(parsed.transactions) ? stripSampleRecords(parsed.transactions) : [];
       const normalizedTxs: Transaction[] = rawTxs.map((t: any) => {
         const { symbol, assetType, exchange } = cleanSymbol(t.symbol);
         const effectiveEx = exchange || t.exchange || (assetType === 'fund' ? 'TEFAS' : 'BIST');
@@ -127,7 +136,8 @@ function loadLocalState(userId?: string | null): { portfolios: Portfolio[]; acti
         };
       });
 
-      const rawPortfolios = Array.isArray(parsed.portfolios) && parsed.portfolios.length > 0 ? parsed.portfolios : (userId ? [] : INITIAL_PORTFOLIOS);
+      const sanitizedPortfolios = Array.isArray(parsed.portfolios) ? stripSampleRecords<Portfolio>(parsed.portfolios) : [];
+      const rawPortfolios: Portfolio[] = sanitizedPortfolios.length > 0 ? sanitizedPortfolios : (userId ? [] : INITIAL_PORTFOLIOS);
       const activeId = parsed.activePortfolioId && rawPortfolios.some((p: any) => p.id === parsed.activePortfolioId)
         ? parsed.activePortfolioId
         : rawPortfolios[0]?.id || (userId ? '' : 'p-default');
@@ -152,7 +162,12 @@ function saveLocalState(userId: string | null | undefined, state: { portfolios: 
   if (typeof window === 'undefined') return;
   try {
     const key = getLocalStorageKey(userId);
-    localStorage.setItem(key, JSON.stringify(state));
+    const sanitizedState = {
+      portfolios: stripSampleRecords(state.portfolios),
+      activePortfolioId: state.activePortfolioId,
+      transactions: stripSampleRecords(state.transactions),
+    };
+    localStorage.setItem(key, JSON.stringify(sanitizedState));
   } catch (e) {
     console.warn('Failed to save local portfolio state:', e);
   }
@@ -310,9 +325,19 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     loading: false,
     error: null,
     currentUserId: null,
+    isSampleMode: readSampleModeSession(),
+
+    setSampleMode: (enabled) => {
+      writeSampleModeSession(enabled);
+      set({ isSampleMode: enabled });
+      if (enabled) {
+        get().fetchLivePrices();
+      }
+    },
 
     resetStore: () => {
       fetchGeneration++;
+      writeSampleModeSession(false);
       const local = loadLocalState(null);
       set({
         portfolios: local.portfolios,
@@ -322,6 +347,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
         cashError: null,
         currentUserId: null,
         error: null,
+        isSampleMode: false,
       });
     },
 
@@ -336,11 +362,12 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     },
 
     fetchLivePrices: async () => {
-      const { transactions, cashMovements } = get();
-      if (!transactions.length && !cashMovements.length) return;
+      const { transactions, cashMovements, isSampleMode } = get();
+      const txList = isSampleMode && transactions.length === 0 ? SAMPLE_TRANSACTIONS : transactions;
+      if (!txList.length && !cashMovements.length) return;
 
       const assetMap = new Map<string, { symbol: string; rawSymbol: string; assetType: 'stock' | 'fund' }>();
-      for (const t of transactions) {
+      for (const t of txList) {
         const { symbol: cleanSym, assetType: cleanType } = cleanSymbol(t.symbol);
         const effectiveType = t.assetType === 'fund' || cleanType === 'fund' ? 'fund' : 'stock';
         if (cleanSym) {
@@ -843,6 +870,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           });
 
           if (insertedDbTx) {
+            writeSampleModeSession(false);
             set((state) => {
               const updated = [insertedDbTx, ...state.transactions];
               saveLocalState(user.id, {
@@ -850,7 +878,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
                 activePortfolioId: state.activePortfolioId,
                 transactions: updated,
               });
-              return { transactions: updated, error: null };
+              return { transactions: updated, error: null, isSampleMode: false };
             });
             get().fetchLivePrices();
             return insertedDbTx;
@@ -872,6 +900,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           createdAt: new Date().toISOString(),
         };
 
+        writeSampleModeSession(false);
         set((state) => {
           const updated = [fallbackTx, ...state.transactions];
           saveLocalState('guest', {
@@ -879,7 +908,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             activePortfolioId: state.activePortfolioId,
             transactions: updated,
           });
-          return { transactions: updated };
+          return { transactions: updated, isSampleMode: false };
         });
 
         get().fetchLivePrices();
@@ -959,6 +988,7 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           createdAt: new Date().toISOString(),
         }));
 
+        writeSampleModeSession(false);
         set((state) => {
           const updated = [...fallbackTxs, ...state.transactions];
           saveLocalState('guest', {
@@ -966,7 +996,11 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
             activePortfolioId: targetPort?.id || targetPortfolioId || 'p-default',
             transactions: updated,
           });
-          return { transactions: updated, activePortfolioId: targetPort?.id || targetPortfolioId || 'p-default' };
+          return {
+            transactions: updated,
+            activePortfolioId: targetPort?.id || targetPortfolioId || 'p-default',
+            isSampleMode: false,
+          };
         });
 
         get().fetchLivePrices();
@@ -1185,7 +1219,8 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
           item = { ...movement, userId: 'guest', id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         }
         if (get().currentUserId !== owner) return true;
-        set((state) => { const cashMovements = [...state.cashMovements, item]; if (!user) saveGuestCash(cashMovements); return { cashMovements, cashError: null }; });
+        writeSampleModeSession(false);
+        set((state) => { const cashMovements = [...state.cashMovements, item]; if (!user) saveGuestCash(cashMovements); return { cashMovements, cashError: null, isSampleMode: false }; });
         return true;
       } catch { set({ cashError: 'Nakit hareketi kaydedilemedi. Lütfen tekrar deneyin.' }); return false; }
     },
@@ -1202,7 +1237,10 @@ export const usePortfolioStore = create<PortfolioState>((set, get) => {
     },
 
     getSummary: () => {
-      const { transactions, activePortfolioId, livePrices, portfolios } = get();
+      const { transactions, activePortfolioId, livePrices, portfolios, isSampleMode } = get();
+      if (isSampleMode) {
+        return getSamplePortfolioSnapshot(livePrices).summary;
+      }
       const effectiveActiveId = activePortfolioId || portfolios[0]?.id || 'p-default';
       let filtered = transactions.filter((t) => t.portfolioId === effectiveActiveId);
       if (filtered.length === 0 && transactions.length > 0 && portfolios.length <= 1) {

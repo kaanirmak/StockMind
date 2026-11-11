@@ -4,6 +4,44 @@ import { calculateCashLedger, includeCashInSummary } from './cash';
 
 export const SAMPLE_PORTFOLIO_ID = 'sample-preview';
 export const SAMPLE_USER_ID = 'sample-preview';
+export const SAMPLE_MODE_SESSION_KEY = 'stockmind_sample_preview_mode';
+
+export function isSampleRecordId(id?: string | null): boolean {
+  return typeof id === 'string' && id.startsWith('sample-');
+}
+
+export function stripSampleRecords<T extends { id?: string | null; portfolioId?: string | null; userId?: string | null }>(
+  items: readonly T[],
+): T[] {
+  return items.filter(
+    (item) =>
+      !isSampleRecordId(item.id) &&
+      !isSampleRecordId(item.portfolioId) &&
+      item.userId !== SAMPLE_USER_ID,
+  );
+}
+
+export function readSampleModeSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(SAMPLE_MODE_SESSION_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function writeSampleModeSession(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (enabled) {
+      window.sessionStorage.setItem(SAMPLE_MODE_SESSION_KEY, 'true');
+    } else {
+      window.sessionStorage.removeItem(SAMPLE_MODE_SESSION_KEY);
+    }
+  } catch {
+    // Ignore sessionStorage errors
+  }
+}
 
 export const SAMPLE_PORTFOLIO: Portfolio = {
   id: SAMPLE_PORTFOLIO_ID,
