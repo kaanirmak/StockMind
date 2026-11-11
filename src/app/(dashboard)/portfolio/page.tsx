@@ -16,6 +16,10 @@ import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { TransactionModal } from '@/components/portfolio/TransactionModal';
 import { ExcelImportModal } from '@/components/portfolio/ExcelImportModal';
+import {
+  exportTransactionsToExcel,
+  exportTransactionsToCsv,
+} from '@/lib/portfolio/excelParser';
 import { EmptyPortfolioOnboarding } from '@/components/portfolio/EmptyPortfolioOnboarding';
 import { getSamplePortfolioSnapshot } from '@/lib/portfolio/samplePortfolio';
 import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
@@ -624,6 +628,29 @@ export default function PortfolioPage() {
                       ✕
                     </button>
                   )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      exportTransactionsToCsv(activeTransactions, activePortfolio?.name || 'Portfoy')
+                    }
+                  >
+                    CSV Dışa Aktar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      exportTransactionsToExcel(activeTransactions, activePortfolio?.name || 'Portfoy')
+                    }
+                  >
+                    Excel Dışa Aktar
+                  </Button>
                 </div>
               </div>
             )}

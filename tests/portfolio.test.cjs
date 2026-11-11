@@ -1342,6 +1342,100 @@ test('POR-05: import preview reports valid, invalid, duplicate counts and exact 
   assert.match(modalSrc, /data-testid="import-invalid-reasons-banner"/);
 });
 
+test('POR-06: end-to-end Excel and CSV export -> re-import round-trip preserves amounts and dates', async () => {
+  const {
+    buildTransactionsExcelBuffer,
+    buildTransactionsCsvContent,
+    parseExcelTransactions,
+  } = loadModule('src/lib/portfolio/excelParser.ts');
+
+  const sampleTransactions = [
+    {
+      symbol: 'THYAO',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 125,
+      price: 294.75,
+      currency: 'TRY',
+      exchangeRate: 1,
+      transactionDate: '2026-03-15',
+      exchange: 'BIST',
+      notes: 'Ana hisse alımı',
+    },
+    {
+      symbol: 'THF',
+      assetType: 'fund',
+      transactionType: 'buy',
+      quantity: 13328,
+      price: 2.923361,
+      currency: 'TRY',
+      exchangeRate: 1,
+      transactionDate: '2026-02-20T09:30:00Z',
+      exchange: 'TEFAS',
+      notes: 'TEFAS fon; çeyrek değerlendirme',
+    },
+    {
+      symbol: 'AAPL',
+      assetType: 'stock',
+      transactionType: 'buy',
+      quantity: 7.5,
+      price: 224.8,
+      currency: 'USD',
+      exchangeRate: 36.45,
+      transactionDate: '2026-04-02',
+      exchange: 'NASDAQ',
+      notes: 'ABD teknolojisi "uzun vade"',
+    },
+    {
+      symbol: 'EREGL',
+      assetType: 'stock',
+      transactionType: 'sell',
+      quantity: 50,
+      price: 52.8,
+      currency: 'TRY',
+      exchangeRate: 1,
+      transactionDate: '2026-04-10',
+      exchange: 'BIST',
+      notes: 'Kar realizasyonu',
+    },
+  ];
+
+  // 1. Excel (.xlsx) round-trip
+  const xlsxBuffer = buildTransactionsExcelBuffer(sampleTransactions);
+  const reimportedXlsx = await parseExcelTransactions(xlsxBuffer);
+  assert.equal(reimportedXlsx.invalidRows.length, 0);
+  assert.equal(reimportedXlsx.validRows.length, sampleTransactions.length);
+
+  // 2. CSV (.csv) round-trip
+  const csvText = buildTransactionsCsvContent(sampleTransactions);
+  const csvBuffer = new TextEncoder().encode(csvText).buffer;
+  const reimportedCsv = await parseExcelTransactions(csvBuffer);
+  assert.equal(reimportedCsv.invalidRows.length, 0);
+  assert.equal(reimportedCsv.validRows.length, sampleTransactions.length);
+
+  for (const parsed of [reimportedXlsx, reimportedCsv]) {
+    sampleTransactions.forEach((orig, idx) => {
+      const row = parsed.validRows[idx].data;
+      assert.equal(row.symbol, orig.symbol);
+      assert.equal(row.transactionType, orig.transactionType);
+      assert.equal(row.transactionDate, orig.transactionDate.slice(0, 10));
+      assert.equal(row.currency, orig.currency);
+      assert.ok(Math.abs(row.quantity - orig.quantity) < 1e-6);
+      assert.ok(Math.abs(row.price - orig.price) < 1e-6);
+      assert.ok(Math.abs(row.quantity * row.price - orig.quantity * orig.price) < 1e-4);
+      assert.equal(row.exchangeRate, orig.exchangeRate);
+    });
+  }
+
+  const portfolioSrc = fs.readFileSync(
+    path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'),
+    'utf8'
+  );
+  assert.match(portfolioSrc, /exportTransactionsToCsv/);
+  assert.match(portfolioSrc, /exportTransactionsToExcel/);
+});
+
+
 
 
 

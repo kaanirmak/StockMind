@@ -567,11 +567,13 @@ export async function parseExcelTransactions(file: File | ArrayBuffer): Promise<
     );
 
     const notesParts: string[] = [];
-    if (rawNotes && String(rawNotes).trim().length > 0) {
-      notesParts.push(String(rawNotes).trim());
+    const trimmedNotes = rawNotes ? String(rawNotes).trim() : '';
+    const trimmedBroker = rawBroker ? String(rawBroker).trim() : '';
+    if (trimmedNotes.length > 0) {
+      notesParts.push(trimmedNotes);
     }
-    if (rawBroker && String(rawBroker).trim().length > 0) {
-      notesParts.push(`[${String(rawBroker).trim()}]`);
+    if (trimmedBroker.length > 0 && !trimmedNotes.includes(`[${trimmedBroker}]`)) {
+      notesParts.push(`[${trimmedBroker}]`);
     }
     const notes = notesParts.join(' ');
 
@@ -751,25 +753,60 @@ export function downloadCsvTemplate() {
   downloadBlob(blob, 'StockMind_Portfoy_Sablonu.csv');
 }
 
+const EXPORT_COLUMN_HEADERS = [
+  'Tarih',
+  'Hisse Kodu (Sembol)',
+  'İşlem Türü',
+  'Döviz Türü',
+  'Döviz Kuru (USD/TRY)',
+  'Miktar (Adet)',
+  'Birim Fiyat',
+  'Toplam Tutar',
+  'Notlar',
+  'Aracı Kurum / Kanal',
+] as const;
+
+function mapTransactionsToExportRows(transactions: any[]) {
+  return transactions.map((t) => {
+    const qty = Number(t.quantity || 0);
+    const unitPrice = Number(t.price || 0);
+    const currency =
+      t.currency || (t.exchange === 'NASDAQ' || t.exchange === 'NYSE' ? 'USD' : 'TRY');
+    const fxRate =
+      t.exchangeRate && Number(t.exchangeRate) > 0
+        ? Number(t.exchangeRate)
+        : currency === 'TRY'
+        ? 1
+        : '';
+
+    return {
+      'Tarih': parseCleanDate(t.transactionDate),
+      'Hisse Kodu (Sembol)': String(t.symbol || '').trim().toUpperCase(),
+      'İşlem Türü': t.transactionType === 'sell' ? 'Satış' : 'Alış',
+      'Döviz Türü': currency,
+      'Döviz Kuru (USD/TRY)': fxRate,
+      'Miktar (Adet)': qty,
+      'Birim Fiyat': unitPrice,
+      'Toplam Tutar': Number((qty * unitPrice).toFixed(6)),
+      'Notlar': t.notes || '',
+      'Aracı Kurum / Kanal': t.exchange || 'BIST',
+    };
+  });
+}
+
+function escapeCsvCell(value: unknown): string {
+  const str = String(value ?? '');
+  if (str.includes(';') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 /**
- * Exports transaction history to formatted Excel file (.xlsx)
+ * Serializes transaction history into a formatted Excel (.xlsx) ArrayBuffer for export and verification.
  */
-export function exportTransactionsToExcel(transactions: any[], portfolioName: string = 'Portfoy') {
-  if (typeof window === 'undefined') return;
-
-  const exportData = transactions.map((t) => ({
-    'Tarih': t.transactionDate,
-    'Hisse Kodu (Sembol)': t.symbol,
-    'İşlem Türü': t.transactionType === 'buy' ? 'Alış' : 'Satış',
-    'Döviz Türü': t.currency || (t.exchange === 'NASDAQ' || t.exchange === 'NYSE' ? 'USD' : 'TRY'),
-    'Döviz Kuru (USD/TRY)': t.exchangeRate || (t.currency === 'USD' || t.exchange === 'NASDAQ' ? 34.50 : 1.00),
-    'Miktar (Adet)': t.quantity,
-    'Birim Fiyat': t.price,
-    'Toplam Tutar': Number((t.quantity * t.price).toFixed(2)),
-    'Notlar': t.notes || '',
-    'Aracı Kurum / Kanal': t.exchange || 'BIST',
-  }));
-
+export function buildTransactionsExcelBuffer(transactions: any[]): ArrayBuffer {
+  const exportData = mapTransactionsToExportRows(transactions);
   const worksheet = XLSX.utils.json_to_sheet(exportData);
   worksheet['!cols'] = [
     { wch: 14 },
@@ -787,12 +824,47 @@ export function exportTransactionsToExcel(transactions: any[], portfolioName: st
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'İşlem Geçmişi');
 
-  const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const out = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as Uint8Array | ArrayBuffer;
+  if (out instanceof ArrayBuffer) return out;
+  return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) as ArrayBuffer;
+}
+
+/**
+ * Serializes transaction history into a UTF-8 semicolon CSV string preserving amounts, FX rates, and ISO dates.
+ */
+export function buildTransactionsCsvContent(transactions: any[]): string {
+  const exportData = mapTransactionsToExportRows(transactions);
+  const headerLine = EXPORT_COLUMN_HEADERS.map(escapeCsvCell).join(';');
+  const lines = exportData.map((row) =>
+    EXPORT_COLUMN_HEADERS.map((col) => escapeCsvCell((row as Record<string, unknown>)[col])).join(';')
+  );
+  return '\uFEFF' + [headerLine, ...lines].join('\n') + '\n';
+}
+
+/**
+ * Exports transaction history to formatted Excel file (.xlsx)
+ */
+export function exportTransactionsToExcel(transactions: any[], portfolioName: string = 'Portfoy') {
+  if (typeof window === 'undefined') return;
+
+  const wbout = buildTransactionsExcelBuffer(transactions);
   const blob = new Blob([wbout], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
   downloadBlob(blob, `${portfolioName}_Islem_Gecmisi_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+/**
+ * Exports transaction history to UTF-8 CSV file (.csv) compatible with round-trip restore
+ */
+export function exportTransactionsToCsv(transactions: any[], portfolioName: string = 'Portfoy') {
+  if (typeof window === 'undefined') return;
+
+  const csvContent = buildTransactionsCsvContent(transactions);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+  downloadBlob(blob, `${portfolioName}_Islem_Gecmisi_${new Date().toISOString().split('T')[0]}.csv`);
 }
 
 function downloadBlob(blob: Blob, fileName: string) {
