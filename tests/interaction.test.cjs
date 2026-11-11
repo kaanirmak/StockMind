@@ -3900,6 +3900,49 @@ test('VER-10: market session and holiday status distinguish open, closed, and ho
   assert.match(stockPage, /lastCloseText/);
 });
 
+test('VER-11: data provider policies and markdown documentation capture markets, delay, display, and redistribution terms', () => {
+  const loadWithAlias = createAliasedLoader();
+  const policyMod = loadWithAlias('src/lib/market/providerPolicies.ts');
+
+  const policies = policyMod.listProviderPolicies();
+  assert.equal(policies.length >= 5, true);
+
+  const expectedIds = ['tradingview', 'yahoo-finance', 'tefas', 'rss-news', 'openrouter'];
+  for (const id of expectedIds) {
+    const policy = policyMod.getProviderPolicy(id);
+    assert.ok(policy, `Missing provider policy for ${id}`);
+    assert.equal(policy.coveredMarkets.length > 0, true, `${id} coveredMarkets missing`);
+    assert.equal(policy.coveredInstruments.length > 0, true, `${id} coveredInstruments missing`);
+    assert.match(policy.delayDisclosure, /\S+/);
+    assert.match(policy.displayConditions, /\S+/);
+    assert.match(policy.redistributionTerms, /\S+/);
+    assert.equal(policy.referenceDocPath, 'docs/veri-saglayici-kosullari.md');
+  }
+
+  assert.equal(policyMod.getProviderPolicy('TradingView Scanner')?.id, 'tradingview');
+  assert.equal(policyMod.getProviderPolicy('Yahoo Finance')?.id, 'yahoo-finance');
+  assert.equal(policyMod.getProviderPolicy('TEFAS')?.id, 'tefas');
+  assert.match(policyMod.getProviderComplianceSummary('TEFAS'), /TEFAS/);
+
+  const docContent = fs.readFileSync(
+    path.join(process.cwd(), 'docs/veri-saglayici-kosullari.md'),
+    'utf8',
+  );
+  assert.match(docContent, /Kapsanan Pazarlar/);
+  assert.match(docContent, /Gecikme/);
+  assert.match(docContent, /Gösterim/);
+  assert.match(docContent, /Yeniden Dağıtım/);
+  for (const id of expectedIds) {
+    assert.match(docContent, new RegExp(id));
+  }
+
+  const badgeSource = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/ui/PriceStatusBadge.tsx'),
+    'utf8',
+  );
+  assert.match(badgeSource, /getProviderComplianceSummary/);
+});
+
 
 
 

@@ -25,7 +25,7 @@ Durum işaretleri ☐ sırada, ◐ yerelde doğrulandı, ☑ canlıda doğruland
 | VER-08 | P1 | Varlık türünü ve işlem birimini düzelt | Hisse, ETF, fon, endeks, döviz ve emtia ayrı etiketlenir. Endeks puanla, gram altın TL/gram ile gösterilir. | ◐ |
 | VER-09 | P1 | Borsa ve sembol eşleşmelerini doğrula | Aynı sembole sahip farklı borsalar karışmaz. Endeks ve ETF eşlemeleri örnek varlıklarla test edilir. | ◐ |
 | VER-10 | P1 | Piyasa seansını ve son kapanışı göster | Açık piyasa, kapalı piyasa ve tatil durumları veri saatine göre ayırt edilir. | ◐ |
-| VER-11 | P1 | Sağlayıcı koşullarını ve veri kapsamını belgeye bağla | Her kaynak için kapsanan pazar, gecikme, gösterim ve yeniden dağıtım koşulları kaydedilir. | ☐ |
+| VER-11 | P1 | Sağlayıcı koşullarını ve veri kapsamını belgeye bağla | Her kaynak için kapsanan pazar, gecikme, gösterim ve yeniden dağıtım koşulları kaydedilir. | ◐ |
 
 ## 2. TEFAS, fon keşfi ve karşılaştırma
 

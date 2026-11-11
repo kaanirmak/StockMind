@@ -3,6 +3,7 @@
 import React from 'react';
 import { Badge } from './Badge';
 import type { PriceStatusInfo } from '@/lib/market/priceStatus';
+import { getProviderComplianceSummary } from '@/lib/market/providerPolicies';
 
 const trDateTime = new Intl.DateTimeFormat('tr-TR', {
   timeZone: 'Europe/Istanbul',
@@ -44,6 +45,10 @@ export const PriceStatusBadge: React.FC<PriceStatusBadgeProps> = ({
 }) => {
   const formattedTime = formatObservationTime(statusInfo.observedAt);
   const metaLabel = statusInfo.asOf ? 'Veri' : 'Alındı';
+  const complianceSummary = statusInfo.source ? getProviderComplianceSummary(statusInfo.source) : null;
+  const badgeTooltip = complianceSummary
+    ? `${statusInfo.description} — ${complianceSummary}`
+    : statusInfo.description;
 
   return (
     <span className={`inline-flex flex-wrap items-center gap-1.5 ${className}`}>
@@ -51,13 +56,13 @@ export const PriceStatusBadge: React.FC<PriceStatusBadgeProps> = ({
         variant={statusInfo.badgeVariant}
         size={size}
         dot
-        title={statusInfo.description}
+        title={badgeTooltip}
         data-price-status={statusInfo.status}
       >
         {statusInfo.label}
       </Badge>
       {showMeta && statusInfo.source && (
-        <span className="text-[11px] text-text-muted">
+        <span className="text-[11px] text-text-muted" title={complianceSummary ?? undefined}>
           {statusInfo.source}
           {formattedTime && (
             <>
