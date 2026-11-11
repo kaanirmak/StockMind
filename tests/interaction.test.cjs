@@ -6635,6 +6635,134 @@ test('ALR-11: portfolio movement notifications persist user threshold/frequency,
   assert.match(watcherSrc, /evaluatePortfolioMoveAlerts/);
 });
 
+test('ALR-12: KAP and calendar alerts verify authorized sources, match portfolio/watchlist assets, and respect per-type subscriptions', () => {
+  const {
+    isAuthorizedCalendarSource,
+    readKapCalendarSubscriptionPrefs,
+    writeKapCalendarSubscriptionPrefs,
+    evaluateKapCalendarAlerts,
+  } = load('src/lib/notifications/kapCalendarAlerts.ts', { URL });
+
+  assert.equal(
+    isAuthorizedCalendarSource({
+      eventType: 'kap_disclosure',
+      sourceName: 'KAP',
+      sourceUrl: 'https://www.kap.org.tr/tr/Bildirim/1357900',
+    }).authorized,
+    true,
+  );
+  assert.equal(
+    isAuthorizedCalendarSource({
+      eventType: 'kap_disclosure',
+      sourceName: 'Piyasa Blogu',
+      sourceUrl: 'https://random-blog.example/kap-haberi',
+    }).authorized,
+    false,
+  );
+
+  const store = new Map();
+  const mockStorage = {
+    getItem(k) { return store.has(k) ? store.get(k) : null; },
+    setItem(k, v) { store.set(k, v); },
+  };
+
+  const saved = writeKapCalendarSubscriptionPrefs(
+    {
+      enabled: true,
+      trackedSymbolsOnly: true,
+      subscriptions: {
+        kap_disclosure: true,
+        earnings: true,
+        dividend: false,
+        macro_calendar: true,
+      },
+    },
+    'u-kap-1',
+    mockStorage,
+  );
+  const loaded = readKapCalendarSubscriptionPrefs('u-kap-1', mockStorage);
+  assert.equal(loaded.subscriptions.dividend, false);
+  assert.equal(loaded.subscriptions.macro_calendar, true);
+
+  const trackedAssets = [
+    { symbol: 'THYAO.IS', name: 'Türk Hava Yolları', assetType: 'stock', exchange: 'BIST' },
+  ];
+
+  const events = [
+    {
+      id: 'kap-1357900',
+      eventType: 'kap_disclosure',
+      title: 'Türk Hava Yolları yeni uçak siparişi özel durum açıklaması',
+      sourceName: 'Kamuyu Aydınlatma Platformu (KAP)',
+      sourceUrl: 'https://www.kap.org.tr/tr/Bildirim/1357900',
+      publishedAt: '2026-11-11T09:30:00.000Z',
+    },
+    {
+      id: 'fake-kap-1',
+      eventType: 'kap_disclosure',
+      title: 'THYAO söylenti haberi',
+      sourceName: 'Rastgele Haber',
+      sourceUrl: 'https://gossip.example/thyao',
+      publishedAt: '2026-11-11T09:35:00.000Z',
+    },
+    {
+      id: 'div-thyao-1',
+      eventType: 'dividend',
+      symbol: 'THYAO.IS',
+      title: 'THYAO Temettü Takvimi',
+      sourceName: 'KAP',
+      sourceUrl: 'https://www.kap.org.tr/tr/Bildirim/1357905',
+      publishedAt: '2026-11-11T10:00:00.000Z',
+    },
+    {
+      id: 'earn-asels-1',
+      eventType: 'earnings',
+      symbol: 'ASELS.IS',
+      title: 'ASELS Bilanço Açıklaması',
+      sourceName: 'KAP',
+      sourceUrl: 'https://www.kap.org.tr/tr/Bildirim/1357910',
+      publishedAt: '2026-11-11T10:15:00.000Z',
+    },
+    {
+      id: 'macro-tcmb-1',
+      eventType: 'macro_calendar',
+      title: 'TCMB Para Politikası Kurulu Faiz Kararı',
+      sourceName: 'TCMB',
+      sourceUrl: 'https://www.tcmb.gov.tr/wps/wcm/connect/tr/tcmb+tr',
+      publishedAt: '2026-11-11T11:00:00.000Z',
+    },
+  ];
+
+  const firstRun = evaluateKapCalendarAlerts({
+    prefs: saved,
+    events,
+    trackedAssets,
+    seenIds: [],
+  });
+
+  assert.equal(firstRun.triggered.length, 2);
+  assert.equal(firstRun.triggered[0].matchedSymbol, 'THYAO.IS');
+  assert.equal(firstRun.triggered[0].route, '/stocks/THYAO.IS');
+  assert.equal(firstRun.triggered[1].eventId, 'macro-tcmb-1');
+  assert.equal(firstRun.rejectedUnauthorized[0].id, 'fake-kap-1');
+  assert.equal(firstRun.skippedDisabledType[0].id, 'div-thyao-1');
+  assert.equal(firstRun.skippedUnmatchedAsset[0].id, 'earn-asels-1');
+
+  // Repeat check skips already-seen events cleanly
+  const secondRun = evaluateKapCalendarAlerts({
+    prefs: saved,
+    events,
+    trackedAssets,
+    seenIds: firstRun.updatedSeenIds,
+  });
+  assert.equal(secondRun.triggered.length, 0);
+  assert.equal(secondRun.skippedDuplicate.length, 2);
+
+  const alertsSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/alerts/page.tsx'), 'utf8');
+  assert.match(alertsSrc, /kap-calendar-alert-panel/);
+  assert.match(alertsSrc, /KAP_CALENDAR_EVENT_META/);
+});
+
 
 
 

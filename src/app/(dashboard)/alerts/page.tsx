@@ -43,6 +43,14 @@ import {
   type PortfolioMoveFrequency,
 } from '@/lib/notifications/portfolioMoves';
 import { sendPushNotification } from '@/lib/notifications/pushNotification';
+import {
+  DEFAULT_KAP_CALENDAR_PREFS,
+  KAP_CALENDAR_EVENT_META,
+  readKapCalendarSubscriptionPrefs,
+  writeKapCalendarSubscriptionPrefs,
+  type KapCalendarEventType,
+  type KapCalendarSubscriptionPrefs,
+} from '@/lib/notifications/kapCalendarAlerts';
 
 function formatTelemetryTime(iso?: string): string {
   if (!iso) return 'Henüz yok';
@@ -168,6 +176,29 @@ export default function AllAlertsPage() {
         message: skipMap[skipReason] || `Durum: ${skipReason}`,
       });
     }
+  };
+
+  const [kapPrefs, setKapPrefs] = useState<KapCalendarSubscriptionPrefs>(
+    DEFAULT_KAP_CALENDAR_PREFS,
+  );
+
+  useEffect(() => {
+    setKapPrefs(readKapCalendarSubscriptionPrefs(currentUserId));
+  }, [currentUserId]);
+
+  const handleSaveKapPrefs = (next: KapCalendarSubscriptionPrefs) => {
+    const saved = writeKapCalendarSubscriptionPrefs(next, currentUserId);
+    setKapPrefs(saved);
+    const activeTypes = (Object.keys(saved.subscriptions) as KapCalendarEventType[]).filter(
+      (k) => saved.subscriptions[k],
+    ).length;
+    showToast({
+      type: 'success',
+      title: 'KAP & Takvim Abonelikleri Kaydedildi',
+      message: saved.enabled
+        ? `${activeTypes} olay türü etkin (${saved.trackedSymbolsOnly ? 'Yalnızca takip/portföy varlıkları' : 'Tüm yetkili duyurular'}).`
+        : 'KAP ve takvim uyarıları duraklatıldı.',
+    });
   };
 
   useEffect(() => {
@@ -447,6 +478,89 @@ export default function AllAlertsPage() {
             Hareket Kuralını Kaydet
           </Button>
         </div>
+      </div>
+
+      {/* KAP & Calendar Subscriptions (ALR-12) */}
+      <div
+        data-testid="kap-calendar-alert-panel"
+        className="glass-card p-4 space-y-3 border border-border/60"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-text-primary">
+              KAP &amp; Takvim Uyarıları
+            </h2>
+            <p className="text-xs text-text-muted mt-0.5">
+              Yalnızca yetkili kurumsal kaynaklardan (KAP, SEC, TCMB, Fed, ECB, borsa takvimi) gelen ve varlıklarınızla eşleşen olaylar bildirilir.
+            </p>
+          </div>
+          <label className="inline-flex items-center gap-2 text-xs font-medium text-text-primary cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={kapPrefs.enabled}
+              onChange={(e) =>
+                handleSaveKapPrefs({ ...kapPrefs, enabled: e.target.checked })
+              }
+              className="w-4 h-4 accent-accent"
+            />
+            <span>Olay Bildirimleri Açık</span>
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+          {(Object.keys(KAP_CALENDAR_EVENT_META) as KapCalendarEventType[]).map((evType) => {
+            const meta = KAP_CALENDAR_EVENT_META[evType];
+            const active = kapPrefs.subscriptions[evType];
+            return (
+              <label
+                key={evType}
+                className={`p-3 rounded-xl border transition-colors flex items-start gap-2.5 cursor-pointer ${
+                  active && kapPrefs.enabled
+                    ? 'bg-accent/10 border-accent/40'
+                    : 'bg-bg-secondary/50 border-border/50 opacity-80'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={active}
+                  disabled={!kapPrefs.enabled}
+                  onChange={(e) =>
+                    handleSaveKapPrefs({
+                      ...kapPrefs,
+                      subscriptions: {
+                        ...kapPrefs.subscriptions,
+                        [evType]: e.target.checked,
+                      },
+                    })
+                  }
+                  className="mt-0.5 w-4 h-4 accent-accent"
+                />
+                <div>
+                  <span className="font-semibold text-text-primary block">{meta.label}</span>
+                  <span className="text-[11px] text-text-muted leading-snug block mt-0.5">
+                    {meta.description}
+                  </span>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        <label className="inline-flex items-center gap-2 text-xs text-text-secondary cursor-pointer pt-1">
+          <input
+            type="checkbox"
+            checked={kapPrefs.trackedSymbolsOnly}
+            disabled={!kapPrefs.enabled}
+            onChange={(e) =>
+              handleSaveKapPrefs({
+                ...kapPrefs,
+                trackedSymbolsOnly: e.target.checked,
+              })
+            }
+            className="w-4 h-4 accent-accent"
+          />
+          <span>Şirket olaylarını yalnızca portföyümdeki ve takip listemdeki varlıklarla sınırla</span>
+        </label>
       </div>
 
       {/* Filter & Search Bar */}
