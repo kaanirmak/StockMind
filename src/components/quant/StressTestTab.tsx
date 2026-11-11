@@ -34,6 +34,10 @@ import {
   deleteMonteCarloScenario,
   type SavedMonteCarloScenario,
 } from '@/lib/quant/monteCarloScenarios';
+import {
+  calculatePortfolioStressTest,
+  type PortfolioShockMode,
+} from '@/lib/quant/portfolioStress';
 import { Holding } from '@/types/portfolio';
 
 interface StressTestTabProps {
@@ -58,6 +62,8 @@ export default function StressTestTab({
   const [fxShockPercent, setFxShockPercent] = useState<number>(DEFAULT_STRESS_SHOCKS.fxShockPercent);
   const [rateShockBps, setRateShockBps] = useState<number>(DEFAULT_STRESS_SHOCKS.rateShockBps);
   const [demandShockPercent, setDemandShockPercent] = useState<number>(DEFAULT_STRESS_SHOCKS.demandShockPercent);
+  const [portfolioShockMode, setPortfolioShockMode] = useState<PortfolioShockMode>('combined');
+  const [portfolioMarketShockPercent, setPortfolioMarketShockPercent] = useState<number>(-15);
   const [fxExposureInput, setFxExposureInput] = useState<string>('');
   const [demandBetaInput, setDemandBetaInput] = useState<string>('');
 
@@ -143,6 +149,18 @@ export default function StressTestTab({
     parsedFxExposure,
     parsedDemandBeta,
   ]);
+
+  const portfolioStress = useMemo(
+    () =>
+      calculatePortfolioStressTest({
+        holdings: portfolioStocks,
+        mode: portfolioShockMode,
+        fxShockPercent,
+        rateShockBps,
+        marketShockPercent: portfolioMarketShockPercent,
+      }),
+    [portfolioStocks, portfolioShockMode, fxShockPercent, rateShockBps, portfolioMarketShockPercent]
+  );
 
   const handleSaveScenario = () => {
     const next = saveMonteCarloScenario({
@@ -778,6 +796,167 @@ export default function StressTestTab({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Portfolio-Wide Stress Test (QNT-10) */}
+      <div
+        data-testid="portfolio-stress-section"
+        className="glass-card p-5 sm:p-6 rounded-2xl border border-border space-y-5"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
+              <Layers className="w-4 h-4 text-accent" />
+              Portföy Bazında Stres Testi &amp; Pozisyon Katkıları
+            </h3>
+            <p className="text-xs text-text-muted mt-0.5">
+              Seçilen kur, faiz veya piyasa şokunu aktif portföy pozisyonlarınıza uygular; her pozisyonun TL ve puan katkısını açıklar.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            {(
+              [
+                ['combined', 'Birleşik Şok'],
+                ['fx', 'Kur Şoku'],
+                ['rate', 'Faiz Şoku'],
+                ['market', 'Piyasa Şoku'],
+              ] as const
+            ).map(([modeId, modeLabel]) => (
+              <button
+                key={modeId}
+                type="button"
+                data-testid={`portfolio-stress-mode-${modeId}`}
+                onClick={() => setPortfolioShockMode(modeId)}
+                className={`px-3 py-1.5 rounded-xl font-bold border transition-colors cursor-pointer ${
+                  portfolioShockMode === modeId
+                    ? 'bg-accent text-white border-accent'
+                    : 'bg-bg-secondary text-text-secondary border-border hover:text-text-primary'
+                }`}
+              >
+                {modeLabel}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-bg-secondary/50 border border-border space-y-1">
+            <label htmlFor="portfolio-market-shock" className="block text-[11px] font-bold text-text-secondary">
+              Piyasa / Endeks Şoku (%)
+            </label>
+            <input
+              id="portfolio-market-shock"
+              type="number"
+              min={-60}
+              max={60}
+              step={1}
+              value={portfolioMarketShockPercent}
+              onChange={(e) => setPortfolioMarketShockPercent(Number(e.target.value) || 0)}
+              className="w-full px-3 py-1.5 rounded-xl bg-bg-input border border-border font-mono font-bold text-text-primary"
+            />
+          </div>
+
+          <div className="p-3 rounded-xl bg-bg-secondary/50 border border-border">
+            <span className="text-[11px] text-text-muted block">Mevcut Portföy Değeri</span>
+            <span className="text-base font-black text-text-primary font-mono">
+              ₺{portfolioStress.totalCurrentValueTry.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-bg-secondary/50 border border-border">
+            <span className="text-[11px] text-text-muted block">Stres Sonrası Değer</span>
+            <span className="text-base font-black text-text-primary font-mono">
+              ₺{portfolioStress.totalStressedValueTry.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-bg-secondary/50 border border-border">
+            <span className="text-[11px] text-text-muted block">Net Portföy Etkisi</span>
+            <span
+              className={`text-base font-black font-mono ${
+                portfolioStress.totalImpactTry >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            >
+              {portfolioStress.totalImpactTry >= 0 ? '+' : ''}
+              ₺{portfolioStress.totalImpactTry.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} (
+              {portfolioStress.totalImpactPercent >= 0 ? '+' : ''}
+              {portfolioStress.totalImpactPercent}%)
+            </span>
+          </div>
+        </div>
+
+        <ul
+          data-testid="portfolio-stress-assumptions"
+          className="rounded-xl bg-bg-secondary/40 border border-border/80 p-3 space-y-1 text-[11px] text-text-secondary"
+        >
+          <li className="font-bold text-text-primary uppercase text-[10px] tracking-wider">
+            Uygulanan Şoklar &amp; Portföy Varsayımları
+          </li>
+          {portfolioStress.portfolioAssumptions.map((item, idx) => (
+            <li key={idx}>• {item}</li>
+          ))}
+        </ul>
+
+        {portfolioStress.positions.length === 0 ? (
+          <div className="p-4 rounded-xl bg-bg-secondary/40 border border-border text-xs text-text-muted">
+            Portföy stres katkısı hesaplanabilmesi için portföyünüzde fiyatı doğrulanmış en az bir pozisyon bulunmalıdır.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-border text-text-muted text-[11px]">
+                  <th className="py-2 px-2">Pozisyon</th>
+                  <th className="py-2 px-2 text-right">Ağırlık</th>
+                  <th className="py-2 px-2 text-right">Şok Etkisi</th>
+                  <th className="py-2 px-2 text-right">Portföye Katkı</th>
+                  <th className="py-2 px-2 text-right">Stres Sonrası Değer</th>
+                  <th className="py-2 px-2">Varsayımlar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {portfolioStress.positions.map((pos) => (
+                  <tr key={pos.symbol} data-testid={`portfolio-stress-row-${pos.symbol}`}>
+                    <td className="py-2.5 px-2 font-bold text-text-primary">
+                      {pos.symbol}{' '}
+                      <span className="text-[10px] font-normal text-text-muted">
+                        ({pos.exchange} • {pos.currency})
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 text-right font-mono text-text-secondary">
+                      %{pos.weightPercent.toFixed(1)}
+                    </td>
+                    <td
+                      className={`py-2.5 px-2 text-right font-mono font-bold ${
+                        pos.shockImpactPercent >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {pos.shockImpactPercent >= 0 ? '+' : ''}
+                      {pos.shockImpactPercent.toFixed(2)}%
+                    </td>
+                    <td
+                      className={`py-2.5 px-2 text-right font-mono font-bold ${
+                        pos.contributionTry >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      }`}
+                    >
+                      {pos.contributionTry >= 0 ? '+' : ''}
+                      ₺{pos.contributionTry.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} (
+                      {pos.portfolioImpactPp >= 0 ? '+' : ''}
+                      {pos.portfolioImpactPp.toFixed(2)} p)
+                    </td>
+                    <td className="py-2.5 px-2 text-right font-mono text-text-primary">
+                      ₺{pos.stressedValueTry.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="py-2.5 px-2 text-[11px] text-text-muted max-w-xs">
+                      {pos.assumptions.join(' • ')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

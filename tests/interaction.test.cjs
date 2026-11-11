@@ -7507,6 +7507,55 @@ test('QNT-09: Monte Carlo scenarios record horizon, volatility, drift, run count
   assert.match(stressTabSrc, /data-testid="mc-saved-scenarios"/);
 });
 
+test('QNT-10: portfolio stress test applies FX, rate, and market shocks across holdings with assumptions and contributions', () => {
+  const portfolioStressMod = load('src/lib/quant/portfolioStress.ts');
+
+  const holdings = [
+    { symbol: 'THYAO', assetType: 'stock', exchange: 'BIST', originalCurrency: 'TRY', currentValue: 100000 },
+    { symbol: 'NVDA', assetType: 'stock', exchange: 'NASDAQ', originalCurrency: 'USD', currentValue: 100000 },
+    { symbol: 'SASA', assetType: 'stock', exchange: 'BIST', originalCurrency: 'TRY', currentValue: 50000, priceMissing: true },
+  ];
+
+  const fxReport = portfolioStressMod.calculatePortfolioStressTest({
+    holdings,
+    mode: 'fx',
+    fxShockPercent: 20,
+    rateShockBps: 500,
+    marketShockPercent: -15,
+  });
+
+  assert.equal(fxReport.totalCurrentValueTry, 200000);
+  assert.deepEqual(Array.from(fxReport.unpricedSymbols), ['SASA']);
+  assert.equal(fxReport.positions.length, 2);
+  // Sum of per-position contributions equals total impact
+  const contribSum = Number(
+    Array.from(fxReport.positions).reduce((s, p) => s + p.contributionTry, 0).toFixed(2)
+  );
+  assert.equal(contribSum, fxReport.totalImpactTry);
+  // USD position benefits directly from +20% FX translation
+  const nvdaPos = Array.from(fxReport.positions).find((p) => p.symbol === 'NVDA');
+  assert.ok(nvdaPos && nvdaPos.shockImpactPercent > 15 && nvdaPos.assumptions.length >= 1);
+
+  const marketReport = portfolioStressMod.calculatePortfolioStressTest({
+    holdings,
+    mode: 'market',
+    fxShockPercent: 20,
+    rateShockBps: 500,
+    marketShockPercent: -20,
+  });
+  assert.ok(marketReport.totalImpactTry < 0);
+  assert.ok(Array.from(marketReport.portfolioAssumptions).some((a) => /Piyasa şoku/i.test(a)));
+
+  const stressTabSrc = fs.readFileSync(
+    path.join(process.cwd(), 'src/components/quant/StressTestTab.tsx'),
+    'utf8'
+  );
+  assert.match(stressTabSrc, /calculatePortfolioStressTest/);
+  assert.match(stressTabSrc, /data-testid="portfolio-stress-section"/);
+  assert.match(stressTabSrc, /data-testid="portfolio-stress-assumptions"/);
+  assert.match(stressTabSrc, /data-testid=\{`portfolio-stress-row-\$\{pos\.symbol\}`\}/);
+});
+
 
 
 
