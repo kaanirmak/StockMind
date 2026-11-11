@@ -236,6 +236,12 @@ export default function FundDetailPage({
               <span className="hidden sm:inline">{hasAlert ? 'Alarm Aktif' : 'Alarm Kur'}</span>
             </button>
 
+            <Link href={`/funds/compare?codes=${code}`} data-testid="fund-compare-link">
+              <Button variant="secondary" size="sm">
+                Karşılaştır
+              </Button>
+            </Link>
+
             <Link href={`/ai-assistant?prompt=${encodeURIComponent(`${code} TEFAS fonu hakkında detaylı analiz yap, getirilerini ve risk profilini değerlendir.`)}`}>
               <Button variant="secondary" size="sm" leftIcon={
                 <svg className="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">

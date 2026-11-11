@@ -40,7 +40,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | FON-05 | P0 | TEFAS kapsama göstergesi ekle | Güncel, eski, eksik ve başarısız fon sayıları her çalıştırmada raporlanır. | ◐ |
 | FON-06 | P1 | Fon detayındaki veri eksikliği durumlarını tamamla | Ücret, risk, portföy dağılımı veya geçmiş fiyat eksikse ilgili alan anlaşılır bir durum gösterir. | ◐ |
 | FON-07 | P1 | Fon listesinin filtrelerini genişlet | Kategori, risk, yönetim ücreti ve seçili dönem getirisi birlikte filtrelenebilir. | ◐ |
-| FON-08 | P2 | İki ila dört fonu karşılaştır | Ortak tarih aralığında getiri, risk, ücret, dağılım ve son değerleme tarihi yan yana gösterilir. | ☐ |
+| FON-08 | P2 | İki ila dört fonu karşılaştır | Ortak tarih aralığında getiri, risk, ücret, dağılım ve son değerleme tarihi yan yana gösterilir. | ◐ |
 | FON-09 | P2 | Benzer fon önerileri ekle | Karşılaştırma listesi aynı kategoriye veya benzer risk düzeyine göre oluşturulur. Eşleşme nedeni görünür. | ☐ |
 
 ## 3. Ana ekran, mobil navigasyon ve erişilebilirlik

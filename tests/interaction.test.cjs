@@ -5704,6 +5704,122 @@ test('OPS-12: usage metrics measure funnel milestones while strictly excluding p
   assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/api/admin/stats/route.ts'), 'utf8'), /usageMetrics/);
 });
 
+test('FON-08: two to four funds compare return, risk, fee, allocation, and navDate over common range', () => {
+  const fundDetailState = load('src/lib/market/fundDetailState.ts');
+  const comp = load('src/lib/market/fundComparison.ts', {
+    require(name) {
+      if (name === '@/lib/market/fundDetailState') return fundDetailState;
+      throw new Error(name);
+    },
+  });
+
+  // 1. Parse codes caps cleanly at 4 and deduplicates
+  assert.deepEqual(
+    Array.from(comp.parseComparisonCodesParam('tcd, mac, tcd, aft, yas, ipv')),
+    ['TCD', 'MAC', 'AFT', 'YAS']
+  );
+
+  // 2. Requires at least 2 funds
+  const single = comp.buildFundComparisonMatrix([
+    { code: 'TCD', name: 'Tacirler', category: 'Hisse', founder: 'Tacirler', price: 10 }
+  ]);
+  assert.equal(single.readyToCompare, false);
+  assert.ok(single.countError);
+
+  // 3. Computes intersection common date range across 3 funds with differing start/end dates
+  const matrix = comp.buildFundComparisonMatrix([
+    {
+      code: 'TCD',
+      name: 'Tacirler Değişken',
+      category: 'Değişken Fonlar',
+      founder: 'Tacirler',
+      price: 120,
+      dailyReturn: 1.5,
+      monthlyReturn: 6.2,
+      yearlyReturn: 85.4,
+      riskValue: 6,
+      managementFee: 2.5,
+      navDate: '2026-10-15',
+      assetAllocation: [
+        { category: 'Hisse Senedi', percentage: 78 },
+        { category: 'Takasbank Para Piyasası', percentage: 22 },
+      ],
+      history: [
+        { date: '2026-10-01', price: 90 },
+        { date: '2026-10-05', price: 100 },
+        { date: '2026-10-10', price: 110 },
+        { date: '2026-10-15', price: 120 },
+      ],
+    },
+    {
+      code: 'MAC',
+      name: 'Marmara Hisse',
+      category: 'Hisse Senedi Fonları',
+      founder: 'Marmara',
+      price: 220,
+      dailyReturn: 0.8,
+      monthlyReturn: 4.1,
+      yearlyReturn: 71.2,
+      riskValue: 6,
+      managementFee: 2.0,
+      navDate: '2026-10-14',
+      assetAllocation: [
+        { category: 'Hisse Senedi', percentage: 92 },
+        { category: 'Ters Repo', percentage: 8 },
+      ],
+      history: [
+        { date: '2026-10-05', price: 200 },
+        { date: '2026-10-10', price: 210 },
+      ],
+    },
+    {
+      code: 'IPB',
+      name: 'İstanbul Portföy',
+      category: 'Değişken Fonlar',
+      founder: 'İstanbul',
+      price: 52,
+      dailyReturn: -0.2,
+      monthlyReturn: 2.0,
+      yearlyReturn: 45.0,
+      riskValue: 4,
+      managementFee: 1.8,
+      navDate: '2026-10-15',
+      assetAllocation: [
+        { category: 'Hisse Senedi', percentage: 40 },
+        { category: 'Özel Sektör Tahvili', percentage: 60 },
+      ],
+      history: [
+        { date: '2026-10-03', price: 48 },
+        { date: '2026-10-05', price: 50 },
+        { date: '2026-10-10', price: 52.5 },
+        { date: '2026-10-15', price: 54 },
+      ],
+    },
+  ]);
+
+  assert.equal(matrix.readyToCompare, true);
+  assert.equal(matrix.commonDateRange.hasCommonRange, true);
+  assert.equal(matrix.commonDateRange.startDate, '2026-10-05');
+  assert.equal(matrix.commonDateRange.endDate, '2026-10-10');
+  assert.equal(matrix.columns.length, 3);
+  assert.equal(matrix.columns[0].commonPeriodReturnPct, 10); // TCD: 100 -> 110
+  assert.equal(matrix.columns[1].commonPeriodReturnPct, 5);  // MAC: 200 -> 210
+  assert.equal(matrix.columns[2].commonPeriodReturnPct, 5);  // IPB: 50 -> 52.5
+  assert.equal(matrix.summaryLeaders.bestCommonReturnCode, 'TCD');
+  assert.equal(matrix.summaryLeaders.lowestRiskCode, 'IPB');
+  assert.equal(matrix.summaryLeaders.lowestFeeCode, 'IPB');
+  assert.ok(matrix.columns.every((c) => Boolean(c.navDateDisplay) && !c.navDateDisplay.includes('bilinmiyor')));
+  assert.equal(matrix.allocationRows[0].category, 'Hisse Senedi');
+  assert.equal(matrix.allocationRows[0].percentagesByCode.MAC, 92);
+
+  // 4. UI routes and comparison triggers exist
+  const comparePageSrc = fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/funds/compare/page.tsx'), 'utf8');
+  assert.match(comparePageSrc, /buildFundComparisonMatrix/);
+  assert.match(comparePageSrc, /Ortak Tarih Aralığı/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/funds/[code]/page.tsx'), 'utf8'), /\/funds\/compare\?codes=/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/piyasalar/page.tsx'), 'utf8'), /fund-compare-bar/);
+});
+
 
 
 
