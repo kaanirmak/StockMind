@@ -76,7 +76,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | POR-10 | P2 | Portföy değerini ve net yatırılan tutarı grafikle göster | Geçmiş değer serisi ile para giriş ve çıkışları ayrı çizilir. Eksik tarihçenin kapsamı belirtilir. | ◐ |
 | POR-11 | P2 | Temettü görünümü ekle | Gerçekleşmiş ödemeler, ilan edilen gelecek ödemeler ve varsa tahminler ayrı gösterilir. | ◐ |
 | POR-12 | P2 | Nakit akışı görünümü ekle | Para girişleri, çıkışları, temettü ve ücretler dönem ve para birimine göre filtrelenebilir. | ◐ |
-| POR-13 | P2 | Yoğunlaşma ve çeşitlilik analizi ekle | En büyük pozisyonlar ile sektör, ülke ve varlık türü dağılımı tek raporda görülebilir. | ☐ |
+| POR-13 | P2 | Yoğunlaşma ve çeşitlilik analizi ekle | En büyük pozisyonlar ile sektör, ülke ve varlık türü dağılımı tek raporda görülebilir. | ◐ |
 | POR-14 | P2 | Dönem ve para birimini dışa aktarıma taşı | PDF/yazdırma ve CSV, seçili portföyü, dönemi, para birimini ve verinin tarihini taşır. | ☐ |
 | POR-15 | P3 | Salt okunur aracı kurum bağlantısını değerlendir | Öncelikli kurumlar, bağlantı koşulları, maliyet, izinler ve veri silme akışı belgelenir. | ☐ |
 | POR-16 | P3 | Salt okunur hesap eşitlemesini dene | Desteklenen ilk kurumda alım satım yetkisi istenmeden ekstre eşitlenir ve mükerrer işlem oluşmaz. | ☐ |

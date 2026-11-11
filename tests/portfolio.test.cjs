@@ -2167,6 +2167,104 @@ test('POR-12: cash flow view filters inflows, outflows, dividends, and fees by p
   assert.match(portSrc, /CashFlowOverviewCard/);
 });
 
+test('POR-13: concentration report combines largest positions, sector, country, and asset type breakdowns', () => {
+  const concMod = loadModule('src/lib/portfolio/concentrationReport.ts');
+
+  const report = concMod.buildPortfolioConcentrationReport({
+    summary: {
+      totalValue: 100_000,
+      totalCost: 85_000,
+      totalPnL: 15_000,
+      totalPnLPercent: 17.6,
+      dailyPnL: 500,
+      dailyPnLPercent: 0.5,
+      unrealizedPnL: 15_000,
+      realizedPnL: 0,
+      totalVolume: 85_000,
+      buyVolume: 85_000,
+      sellVolume: 0,
+      holdings: [
+        {
+          symbol: 'THYAO',
+          assetType: 'stock',
+          exchange: 'BIST',
+          totalQuantity: 100,
+          averageCost: 400,
+          totalCost: 40_000,
+          currentPrice: 500,
+          currentValue: 50_000, // 50%
+          pnl: 10_000,
+          pnlPercent: 25,
+          weight: 50,
+        },
+        {
+          symbol: 'NVDA',
+          assetType: 'stock',
+          exchange: 'NASDAQ',
+          totalQuantity: 10,
+          averageCost: 2_500,
+          totalCost: 25_000,
+          currentPrice: 3_000,
+          currentValue: 30_000, // 30%
+          pnl: 5_000,
+          pnlPercent: 20,
+          weight: 30,
+        },
+        {
+          symbol: 'TCD',
+          assetType: 'fund',
+          exchange: 'TEFAS',
+          totalQuantity: 200,
+          averageCost: 50,
+          totalCost: 10_000,
+          currentPrice: 50,
+          currentValue: 10_000, // 10%
+          pnl: 0,
+          pnlPercent: 0,
+          weight: 10,
+        },
+      ],
+      allocation: [],
+      cash: {
+        configured: true,
+        historicalDeficit: false,
+        balances: [{ currency: 'TRY', amount: 10_000, value: 10_000 }], // 10%
+        totalValue: 10_000,
+        netContributions: 10_000,
+        missingRates: [],
+        hasDeficit: false,
+        dailyFxPnL: 0,
+        todayNetFlows: 0,
+      },
+      valuationStatus: { isComplete: true, missingFx: false, missingPrices: [] },
+    },
+    metadata: {
+      getStockSector: (sym) =>
+        sym === 'THYAO' ? 'Ulaştırma' : sym === 'NVDA' ? 'Teknoloji' : null,
+      getFundCategory: (code) => (code === 'TCD' ? 'Değişken Fonlar' : null),
+    },
+  });
+
+  assert.equal(report.totalAnalyzedValue, 100_000);
+  assert.equal(report.top1WeightPct, 50);
+  assert.equal(report.top3WeightPct, 90);
+  assert.equal(report.concentrationLevel, 'high');
+  assert.equal(report.topPositions[0].symbol, 'THYAO');
+  assert.equal(report.topPositions[0].sector, 'Ulaştırma');
+  assert.equal(report.topPositions[1].country, 'ABD');
+
+  // Verify Sector / Country / Asset Type dimensions all present in same report
+  assert.equal(report.sectorBreakdown.find((s) => s.label === 'Ulaştırma').weightPct, 50);
+  assert.equal(report.sectorBreakdown.find((s) => s.label === 'Teknoloji').weightPct, 30);
+  assert.equal(report.countryBreakdown.find((c) => c.label === 'Türkiye').weightPct, 70); // THYAO 50 + TCD 10 + TRY Cash 10
+  assert.equal(report.countryBreakdown.find((c) => c.label === 'ABD').weightPct, 30);
+  assert.equal(report.assetTypeBreakdown.find((a) => a.label === 'TEFAS Fonu').weightPct, 10);
+  assert.ok(report.warnings.some((w) => w.includes('THYAO')));
+
+  const portSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
+  assert.match(portSrc, /ConcentrationAnalysisCard/);
+});
+
 
 
 
