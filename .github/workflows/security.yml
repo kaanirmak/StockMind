@@ -104,7 +104,7 @@ jobs:
         uses: trufflesecurity/trufflehog@ea68ca03c865c5f324e86e849ced20ed3cf9dbbb # v3.99.8
         with:
           path: ./
-          version: 3.99.4
+          version: 3.99.8
           # Let the action select SHA ranges for PR/push events and the full
           # history for scheduled/manual runs. A local "main" ref need not exist.
           extra_args: --results=verified,unknown --fail-on-scan-errors
