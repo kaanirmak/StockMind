@@ -1067,3 +1067,56 @@ test('VER-05: eksik fiyat ve kur durumu kısmi değerlemeyi, etkilenen pozisyonl
   assert.equal(withCashGap.valuationStatus.missingFx, true);
 });
 
+test('ALR-01: Android background stock alert evaluates threshold and opens exact /stocks/<SYMBOL> route', () => {
+  const { isPriceAlertTriggered } = loadModule('src/store/useWatchlistStore.ts');
+  const engineSource = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/WatchlistAlertEngine.java'),
+    'utf8'
+  );
+  const workerSource = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/StockPriceWorker.java'),
+    'utf8'
+  );
+  const mainActivitySource = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/MainActivity.java'),
+    'utf8'
+  );
+  const notifHelperSource = fs.readFileSync(
+    path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/NotificationHelper.java'),
+    'utf8'
+  );
+
+  // WatchlistAlertEngine must use API-safe URLEncoder("UTF-8") and resolve asset-specific routes
+  assert.match(engineSource, /URLEncoder\.encode\(normalized,\s*"UTF-8"\)/);
+  assert.match(engineSource, /if\s*\("fund"\.equalsIgnoreCase\(assetType\)\)\s*\{\s*return\s+"\/funds\/"\s*\+\s*encoded;/);
+  assert.match(engineSource, /return\s+"\/stocks\/"\s*\+\s*encoded;/);
+
+  // StockPriceWorker runs WorkManager check -> evaluates threshold -> shows notification with evaluation.assetRoute
+  assert.match(workerSource, /public class StockPriceWorker extends Worker/);
+  assert.match(workerSource, /WatchlistAlertEngine\.evaluateThreshold/);
+  assert.match(workerSource, /NotificationHelper\.showNotification\(\s*context,\s*evaluation\.notifTitle,\s*evaluation\.notifBody,\s*evaluation\.assetRoute\)/);
+  assert.doesNotMatch(workerSource, /NotificationHelper\.showNotification\([^;]*notifTitle[^;]*"\/watchlist"\)/);
+
+  // NotificationHelper attaches target_route extra and MainActivity consumes it on cold start & warm resume
+  assert.match(notifHelperSource, /intent\.putExtra\("target_route",\s*route\)/);
+  assert.match(mainActivitySource, /intent\.hasExtra\("target_route"\)/);
+  assert.match(mainActivitySource, /intent\.removeExtra\("target_route"\)/);
+  assert.match(mainActivitySource, /onNewIntent\(Intent intent\)/);
+
+  // Shared threshold parity with WebView watchlist alerts
+  const stockAlert = {
+    id: 'alr-stock-1',
+    symbol: 'THYAO',
+    name: 'Türk Hava Yolları',
+    assetType: 'stock',
+    price: 300,
+    targetPrice: 320,
+    alertBasePrice: 300,
+    alertType: 'price',
+  };
+  assert.equal(isPriceAlertTriggered(stockAlert, 319.5).triggered, false);
+  const triggered = isPriceAlertTriggered(stockAlert, 320.5);
+  assert.equal(triggered.triggered, true);
+});
+
+

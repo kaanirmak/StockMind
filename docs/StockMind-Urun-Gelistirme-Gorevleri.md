@@ -101,7 +101,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| ALR-01 | P0 | Kapalı Android’de hisse alarmını doğrula | Test cihazında uygulama ön planda olmadan eşik işlenir ve bildirim doğru varlık ekranını açar. | ☐ |
+| ALR-01 | P0 | Kapalı Android’de hisse alarmını doğrula | Test cihazında uygulama ön planda olmadan eşik işlenir ve bildirim doğru varlık ekranını açar. | ◐ |
 | ALR-02 | P0 | Kapalı Android’de TEFAS alarmını doğrula | Geçerli fon değerlemesiyle tetikleme ve eksik veriyle erteleme ayrı test edilir. | ☐ |
 | ALR-03 | P0 | Bildirim izni ve teslimat durumunu ayır | İzin kapalıyken test sonucu bunu gösterir. İzin açık durumda kanalın sonucu ayrı kaydedilir. | ☐ |
 | ALR-04 | P1 | Varlık detayından hızlı alarm kurma ekle | Fiyat veya yüzde eşiği, yön ve para birimi anlaşılır biçimde seçilebilir. | ☐ |

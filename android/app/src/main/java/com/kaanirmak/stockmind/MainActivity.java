@@ -526,6 +526,7 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra("target_route")) {
             String route = intent.getStringExtra("target_route");
+            intent.removeExtra("target_route");
             if (route != null && !route.isEmpty() && !route.contains(".apk") && !route.contains("download/apk")) {
                 targetUrl = currentServerUrl.replaceAll("/$", "") + (route.startsWith("/") ? route : "/" + route);
             }
