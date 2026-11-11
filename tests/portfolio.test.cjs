@@ -1933,6 +1933,124 @@ test('POR-10: net invested timeline separates inflows/outflows and discloses mis
   assert.match(portSrc, /NetInvestedChartCard/);
 });
 
+test('POR-11: dividend view strictly separates realized payments, announced events, and estimates', () => {
+  const divMod = loadModule('src/lib/portfolio/dividendView.ts');
+
+  const report = divMod.buildDividendOverviewReport({
+    transactions: [
+      {
+        id: 'div1',
+        portfolioId: 'p1',
+        userId: 'u1',
+        symbol: 'EREGL',
+        assetType: 'stock',
+        transactionType: 'dividend',
+        quantity: 1,
+        price: 1200,
+        currency: 'TRY',
+        commission: 0,
+        transactionDate: '2026-04-10',
+        exchange: 'BIST',
+        notes: '2025 yılı nakit temettü',
+        createdAt: '2026-04-10T09:00:00Z',
+      },
+      {
+        id: 'div2',
+        portfolioId: 'p1',
+        userId: 'u1',
+        symbol: 'AAPL',
+        assetType: 'stock',
+        transactionType: 'dividend',
+        quantity: 1,
+        price: 50,
+        currency: 'USD',
+        exchangeRate: 38,
+        commission: 0,
+        transactionDate: '2026-05-15',
+        exchange: 'NASDAQ',
+        notes: null,
+        createdAt: '2026-05-15T09:00:00Z',
+      },
+    ],
+    holdings: [
+      {
+        symbol: 'EREGL',
+        assetType: 'stock',
+        exchange: 'BIST',
+        totalQuantity: 500,
+        averageCost: 45,
+        totalCost: 22_500,
+        currentPrice: 50,
+        currentValue: 25_000,
+        pnl: 2_500,
+        pnlPercent: 11.1,
+        weight: 50,
+      },
+      {
+        symbol: 'FROTO',
+        assetType: 'stock',
+        exchange: 'BIST',
+        totalQuantity: 100,
+        averageCost: 900,
+        totalCost: 90_000,
+        currentPrice: 1_000,
+        currentValue: 100_000,
+        pnl: 10_000,
+        pnlPercent: 11.1,
+        weight: 50,
+      },
+    ],
+    upcomingEventsBySymbol: {
+      FROTO: [
+        {
+          id: 'ev1',
+          symbol: 'FROTO',
+          type: 'dividend',
+          typeLabel: 'Temettü Ödeme',
+          title: 'FROTO Nakit Temettü Ödemesi',
+          eventDate: '2026-10-15',
+          source: 'Yahoo Finance',
+          verified: true,
+        },
+        {
+          id: 'ev2',
+          symbol: 'FROTO',
+          type: 'dividend',
+          typeLabel: 'Tahmin',
+          title: 'Doğrulanmamış Olay',
+          eventDate: '2026-11-01',
+          source: 'Sample',
+          verified: false,
+        },
+      ],
+    },
+    dividendYieldBySymbol: {
+      FROTO: 4.5, // 100,000 * 4.5% = 4,500 estimate
+    },
+    unavailableSymbols: ['AAPL'],
+    today: '2026-09-01',
+  });
+
+  // 1. Realized section matches confirmed past dividends only (1200 + 50*38 = 3100)
+  assert.equal(report.realized.entries.length, 2);
+  assert.equal(report.realized.totalTry, 3100);
+
+  // 2. Announced section includes only verified upcoming dividend events
+  assert.equal(report.announced.entries.length, 1);
+  assert.equal(report.announced.entries[0].symbol, 'FROTO');
+  assert.equal(report.announced.entries[0].eventDate, '2026-10-15');
+  assert.deepEqual(Array.from(report.announced.sourcesUnavailable), ['AAPL']);
+
+  // 3. Estimates section separates market-yield and trailing projections with explicit disclaimer
+  assert.equal(report.estimates.entries.length, 2);
+  assert.equal(report.estimates.entries.find((e) => e.symbol === 'FROTO').estimatedAnnualTry, 4500);
+  assert.equal(report.estimates.entries.find((e) => e.symbol === 'EREGL').estimatedAnnualTry, 1200);
+  assert.match(report.estimates.disclaimer, /garanti|kesinleşmiş/i);
+
+  const portSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
+  assert.match(portSrc, /DividendOverviewCard/);
+});
+
 
 
 
