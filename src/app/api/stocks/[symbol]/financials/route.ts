@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getStockBySymbolLive } from '@/lib/data/stocks';
 import {
   buildFinancialStatementsReport,
+  extractYahooRawNumber,
   type YahooFinancialStatementsPayload,
 } from '@/lib/market/financialStatements';
 import { resolveEquityYahooTicker } from '@/lib/market/upcomingEvents';
@@ -18,6 +19,8 @@ const STATEMENT_MODULES = [
   'cashflowStatementHistory',
   'cashflowStatementHistoryQuarterly',
   'financialData',
+  'defaultKeyStatistics',
+  'summaryDetail',
   'price',
 ].join(',');
 
@@ -54,6 +57,15 @@ async function fetchYahooFinancialStatements(yahooTicker: string): Promise<{
             : null,
         priceCurrency:
           typeof result?.price?.currency === 'string' ? result.price.currency : null,
+        valuationSnapshot: {
+          trailingPE:
+            extractYahooRawNumber(result?.summaryDetail?.trailingPE) ??
+            extractYahooRawNumber(result?.defaultKeyStatistics?.trailingPE),
+          forwardPE:
+            extractYahooRawNumber(result?.summaryDetail?.forwardPE) ??
+            extractYahooRawNumber(result?.defaultKeyStatistics?.forwardPE),
+          priceToBook: extractYahooRawNumber(result?.defaultKeyStatistics?.priceToBook),
+        },
         incomeStatementHistory: result.incomeStatementHistory,
         incomeStatementHistoryQuarterly: result.incomeStatementHistoryQuarterly,
         balanceSheetHistory: result.balanceSheetHistory,

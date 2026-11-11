@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   STATEMENT_LABELS,
   formatStatementCompactNumber,
@@ -9,6 +9,10 @@ import {
   type StatementKind,
   type StatementPeriodType,
 } from '@/lib/market/financialStatements';
+import {
+  buildFinancialRatioHistoryReport,
+  formatRatioMetricValue,
+} from '@/lib/market/financialRatios';
 import { Badge, Button, Skeleton } from '@/components/ui';
 
 export interface FinancialStatementsCardProps {
@@ -63,6 +67,14 @@ export const FinancialStatementsCard: React.FC<FinancialStatementsCardProps> = (
       cancelled = true;
     };
   }, [symbol, isNonEquity, reloadTick]);
+
+  const ratiosReport = useMemo(
+    () =>
+      report
+        ? buildFinancialRatioHistoryReport(report, periodType, report.valuationSnapshot)
+        : null,
+    [report, periodType]
+  );
 
   if (isNonEquity) return null;
 
@@ -256,6 +268,97 @@ export const FinancialStatementsCard: React.FC<FinancialStatementsCardProps> = (
           <p className="text-[11px] text-text-muted">
             Birimler şirket bilançosunda açıklanan para birimi ({activeSection.currency}) cinsindendir. Eksik kalemler tahmin edilmez ve — ile gösterilir.
           </p>
+        </div>
+      )}
+
+      {/* Historical Financial Ratios & Method Disclosure (PIY-07) */}
+      {!loading && report && report.status !== 'unavailable' && ratiosReport && (
+        <div
+          data-testid="financial-ratios-history"
+          className="pt-4 border-t border-border/70 space-y-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-text-primary">
+                Finansal Oran Geçmişi ve Hesaplama Yöntemi
+              </h3>
+              <p className="text-[11px] text-text-muted">
+                Net kâr marjı, ROE, borç/özsermaye ve serbest nakit akışı marjının {periodType === 'annual' ? 'yıllık' : 'çeyreklik'} serisi
+              </p>
+            </div>
+            <Badge variant="default" size="sm">
+              {periodType === 'annual' ? 'Yıllık Seri' : 'Çeyreklik Seri'}
+            </Badge>
+          </div>
+
+          {ratiosReport.valuationMetrics.some((m) => m.value !== null) && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              {ratiosReport.valuationMetrics.map((metric) => (
+                <div
+                  key={metric.key}
+                  className="p-2.5 rounded-xl bg-bg-secondary/65 border border-border/60 space-y-1"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-text-secondary">{metric.label}</span>
+                    <span className="text-sm font-bold font-mono text-text-primary">
+                      {metric.value !== null ? `${metric.value.toFixed(2)}×` : '—'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-mono text-text-muted">{metric.formula}</p>
+                  <p className="text-[10px] text-text-muted">{metric.methodNote}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {ratiosReport.rows.length > 0 && ratiosReport.periods.length > 0 ? (
+            <div className="overflow-x-auto rounded-xl border border-border/70">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-bg-secondary/90 text-text-muted uppercase border-b border-border/70">
+                  <tr>
+                    <th className="py-2.5 px-3 font-semibold min-w-[175px]">Finansal Oran</th>
+                    {ratiosReport.periods.map((period) => (
+                      <th key={period.id} className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">
+                        <span className="block text-text-primary">{period.label}</span>
+                      </th>
+                    ))}
+                    <th className="py-2.5 px-3 font-semibold min-w-[210px]">Formül / Yöntem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {ratiosReport.rows.map((row) => (
+                    <tr key={row.key} className="hover:bg-bg-hover/40 transition-colors align-top">
+                      <td className="py-2.5 px-3 font-medium text-text-primary">{row.label}</td>
+                      {ratiosReport.periods.map((period) => {
+                        const val = row.values[period.id] ?? null;
+                        const isNeg = typeof val === 'number' && val < 0;
+                        return (
+                          <td
+                            key={period.id}
+                            className={`py-2.5 px-3 text-right font-mono font-semibold whitespace-nowrap ${
+                              val === null
+                                ? 'text-text-muted'
+                                : isNeg
+                                ? 'text-danger'
+                                : 'text-text-primary'
+                            }`}
+                          >
+                            {formatRatioMetricValue(val, row.unit)}
+                          </td>
+                        );
+                      })}
+                      <td className="py-2.5 px-3 text-[11px] text-text-muted">
+                        <span className="block font-mono text-text-secondary">{row.formula}</span>
+                        <span className="block mt-0.5">{row.methodNote}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted">{ratiosReport.notice}</p>
+          )}
         </div>
       )}
     </section>

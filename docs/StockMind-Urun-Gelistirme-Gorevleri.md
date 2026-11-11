@@ -91,7 +91,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | PIY-04 | P1 | Hisse grafiğinde veri kapsamını görünür kıl | Zaman aralığı, fiyat birimi, son mum zamanı ve veri eksikliği kullanıcıya gösterilir. | ◐ |
 | PIY-05 | P1 | Hisse detayında yaklaşan olayları göster | Doğrulanmış bilanço, temettü ve diğer ilanlı olaylar tarih ve kaynakla listelenir. | ◐ |
 | PIY-06 | P2 | Kaynaklı finansal tabloları bağla | Bilanço, gelir tablosu ve nakit akışı, dönem, para birimi ve kaynak bağlantısıyla gösterilir. | ◐ |
-| PIY-07 | P2 | Finansal oran geçmişi ekle | Temel oranların dönem serisi ve kullanılan hesaplama yöntemi görünür. | ☐ |
+| PIY-07 | P2 | Finansal oran geçmişi ekle | Temel oranların dönem serisi ve kullanılan hesaplama yöntemi görünür. | ◐ |
 | PIY-08 | P2 | BIST için kaydedilebilir tarayıcı oluştur | Kullanıcı temel ve fiyat filtrelerini kaydedebilir, adlandırabilir ve tekrar açabilir. | ☐ |
 | PIY-09 | P2 | TEFAS için kaydedilebilir filtre seti ekle | Fon kategorisi, risk, ücret ve getiri koşulları kaydedilebilir. | ☐ |
 | PIY-10 | P2 | Tarayıcı sütunlarını ve CSV aktarımını ekle | Sütun seçimi ile sıralama kaydedilir. CSV, seçili filtre ve sütunlarla dışa aktarılır. | ☐ |

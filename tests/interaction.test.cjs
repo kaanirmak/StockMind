@@ -5991,6 +5991,107 @@ test('PIY-06: sourced financial statements connect balance sheet, income stateme
   assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/stocks/[symbol]/page.tsx'), 'utf8'), /FinancialStatementsCard/);
 });
 
+test('PIY-07: financial ratio history computes period series with explicit formulas and calculation methods', () => {
+  const { buildFinancialStatementsReport } = load('src/lib/market/financialStatements.ts');
+  const { buildFinancialRatioHistoryReport, formatRatioMetricValue } = load('src/lib/market/financialRatios.ts');
+
+  const statements = buildFinancialStatementsReport({
+    symbol: 'TUPRS',
+    exchange: 'BIST',
+    payload: {
+      financialCurrency: 'TRY',
+      valuationSnapshot: { trailingPE: 7.42, forwardPE: 6.1, priceToBook: 1.85 },
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          {
+            endDate: { fmt: '2025-12-31' },
+            totalRevenue: { raw: 500_000 },
+            grossProfit: { raw: 150_000 },
+            operatingIncome: { raw: 100_000 },
+            netIncome: { raw: 75_000 },
+          },
+          {
+            endDate: { fmt: '2024-12-31' },
+            totalRevenue: { raw: 400_000 },
+            grossProfit: { raw: 100_000 },
+            operatingIncome: { raw: 60_000 },
+            netIncome: { raw: 40_000 },
+          },
+        ],
+      },
+      balanceSheetHistory: {
+        balanceSheetStatements: [
+          {
+            endDate: { fmt: '2025-12-31' },
+            totalAssets: { raw: 600_000 },
+            totalCurrentAssets: { raw: 300_000 },
+            totalCurrentLiabilities: { raw: 150_000 },
+            shortLongTermDebt: { raw: 50_000 },
+            longTermDebt: { raw: 100_000 },
+            totalStockholderEquity: { raw: 250_000 },
+          },
+          {
+            endDate: { fmt: '2024-12-31' },
+            totalAssets: { raw: 500_000 },
+            totalCurrentAssets: { raw: 200_000 },
+            totalCurrentLiabilities: { raw: 125_000 },
+            shortLongTermDebt: { raw: 40_000 },
+            longTermDebt: { raw: 120_000 },
+            totalStockholderEquity: { raw: 200_000 },
+          },
+        ],
+      },
+      cashflowStatementHistory: {
+        cashflowStatements: [
+          {
+            endDate: { fmt: '2025-12-31' },
+            totalCashFromOperatingActivities: { raw: 120_000 },
+            capitalExpenditures: { raw: -20_000 },
+          },
+        ],
+      },
+    },
+  });
+
+  const ratioReport = buildFinancialRatioHistoryReport(statements, 'annual', statements.valuationSnapshot);
+  assert.equal(ratioReport.hasAnyRatio, true);
+  assert.equal(ratioReport.periods.length, 2);
+
+  const netMargin = ratioReport.rows.find((r) => r.key === 'netProfitMargin');
+  assert.equal(netMargin.values['2025-12-31'], 15);
+  assert.equal(netMargin.values['2024-12-31'], 10);
+  assert.match(netMargin.formula, /Net Dönem Kârı/i);
+  assert.ok(netMargin.methodNote.length > 10);
+
+  const roe = ratioReport.rows.find((r) => r.key === 'roe');
+  assert.equal(roe.values['2025-12-31'], 30);
+  assert.equal(roe.values['2024-12-31'], 20);
+
+  const de = ratioReport.rows.find((r) => r.key === 'debtToEquity');
+  assert.equal(de.values['2025-12-31'], 0.6);
+  assert.equal(de.values['2024-12-31'], 0.8);
+
+  const cr = ratioReport.rows.find((r) => r.key === 'currentRatio');
+  assert.equal(cr.values['2025-12-31'], 2);
+
+  const fcfMargin = ratioReport.rows.find((r) => r.key === 'fcfMargin');
+  assert.equal(fcfMargin.values['2025-12-31'], 20);
+  assert.equal(fcfMargin.values['2024-12-31'], null); // missing cashflow for 2024 stays null
+
+  assert.equal(formatRatioMetricValue(15.2, 'percent'), '%15.2');
+  assert.equal(formatRatioMetricValue(-3.4, 'percent'), '-%3.4');
+  assert.equal(formatRatioMetricValue(1.85, 'multiple'), '1.85×');
+  assert.equal(formatRatioMetricValue(null, 'multiple'), '—');
+
+  assert.equal(ratioReport.valuationMetrics.find((m) => m.key === 'trailingPE').value, 7.42);
+  assert.equal(ratioReport.valuationMetrics.find((m) => m.key === 'priceToBook').value, 1.85);
+
+  const cardSrc = fs.readFileSync(path.join(process.cwd(), 'src/components/stocks/FinancialStatementsCard.tsx'), 'utf8');
+  assert.match(cardSrc, /financial-ratios-history/);
+  assert.match(cardSrc, /Formül \/ Yöntem/);
+});
+
+
 
 
 

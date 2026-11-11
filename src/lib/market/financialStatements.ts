@@ -25,6 +25,12 @@ export interface FinancialStatementSection {
   rows: FinancialStatementRow[];
 }
 
+export interface ValuationSnapshotData {
+  trailingPE: number | null;
+  forwardPE: number | null;
+  priceToBook: number | null;
+}
+
 export interface FinancialStatementsReport {
   symbol: string;
   yahooTicker: string;
@@ -38,6 +44,7 @@ export interface FinancialStatementsReport {
   notice: string | null;
   annual: Record<StatementKind, FinancialStatementSection>;
   quarterly: Record<StatementKind, FinancialStatementSection>;
+  valuationSnapshot?: ValuationSnapshotData;
 }
 
 export type YahooStatementRecord = Record<string, unknown>;
@@ -45,6 +52,7 @@ export type YahooStatementRecord = Record<string, unknown>;
 export interface YahooFinancialStatementsPayload {
   financialCurrency?: string | null;
   priceCurrency?: string | null;
+  valuationSnapshot?: ValuationSnapshotData;
   incomeStatementHistory?: { incomeStatementHistory?: YahooStatementRecord[] };
   incomeStatementHistoryQuarterly?: { incomeStatementHistory?: YahooStatementRecord[] };
   balanceSheetHistory?: { balanceSheetStatements?: YahooStatementRecord[] };
@@ -317,6 +325,7 @@ export function buildFinancialStatementsReport(input: {
     notice,
     annual,
     quarterly,
+    valuationSnapshot: input.payload?.valuationSnapshot,
   };
 }
 
