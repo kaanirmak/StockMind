@@ -5901,6 +5901,97 @@ test('FON-09: similar fund recommendations match by category and risk with expli
   assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/funds/compare/page.tsx'), 'utf8'), /compare-similar-suggestions/);
 });
 
+test('PIY-06: sourced financial statements connect balance sheet, income statement and cash flow with period, currency and source links', () => {
+  const {
+    buildFinancialStatementsReport,
+    computeFreeCashFlow,
+    formatStatementCompactNumber,
+    isSafeSourceUrl,
+  } = load('src/lib/market/financialStatements.ts');
+
+  assert.equal(computeFreeCashFlow(5_000_000_000, -1_200_000_000), 3_800_000_000);
+  assert.equal(formatStatementCompactNumber(12_500_000_000, 'TRY'), '₺12.50 Mr');
+  assert.equal(isSafeSourceUrl('https://finance.yahoo.com/quote/THYAO.IS/financials/'), true);
+  assert.equal(isSafeSourceUrl('javascript:alert(1)'), false);
+
+  const report = buildFinancialStatementsReport({
+    symbol: 'THYAO',
+    exchange: 'BIST',
+    payload: {
+      financialCurrency: 'TRY',
+      incomeStatementHistory: {
+        incomeStatementHistory: [
+          {
+            endDate: { fmt: '2025-12-31' },
+            totalRevenue: { raw: 720_000_000_000 },
+            grossProfit: { raw: 180_000_000_000 },
+            operatingIncome: { raw: 95_000_000_000 },
+            netIncome: { raw: 78_000_000_000 },
+          },
+          {
+            endDate: { fmt: '2024-12-31' },
+            totalRevenue: { raw: 580_000_000_000 },
+            netIncome: { raw: 61_000_000_000 },
+          },
+        ],
+      },
+      balanceSheetHistory: {
+        balanceSheetStatements: [
+          {
+            endDate: { fmt: '2025-12-31' },
+            totalAssets: { raw: 1_100_000_000_000 },
+            totalLiab: { raw: 540_000_000_000 },
+            shortLongTermDebt: { raw: 100_000_000_000 },
+            longTermDebt: { raw: 250_000_000_000 },
+            totalStockholderEquity: { raw: 560_000_000_000 },
+          },
+        ],
+      },
+      cashflowStatementHistory: {
+        cashflowStatements: [
+          {
+            endDate: { fmt: '2025-12-31' },
+            totalCashFromOperatingActivities: { raw: 110_000_000_000 },
+            capitalExpenditures: { raw: -45_000_000_000 },
+          },
+        ],
+      },
+      incomeStatementHistoryQuarterly: {
+        incomeStatementHistory: [
+          {
+            endDate: { fmt: '2025-09-30' },
+            totalRevenue: { raw: 210_000_000_000 },
+            netIncome: { raw: 24_000_000_000 },
+          },
+        ],
+      },
+    },
+  });
+
+  assert.equal(report.yahooTicker, 'THYAO.IS');
+  assert.equal(report.currency, 'TRY');
+  assert.equal(report.sourceUrl, 'https://finance.yahoo.com/quote/THYAO.IS/financials/');
+  assert.match(report.secondarySourceUrl, /kap\.org\.tr/);
+  assert.equal(report.annual.income.periods[0].label, 'FY 2025');
+  assert.equal(report.annual.income.rows.find((r) => r.key === 'totalRevenue').values['2025-12-31'], 720_000_000_000);
+  assert.equal(report.annual.balance.rows.find((r) => r.key === 'totalDebt').values['2025-12-31'], 350_000_000_000);
+  assert.equal(report.annual.cashflow.rows.find((r) => r.key === 'freeCashFlow').values['2025-12-31'], 65_000_000_000);
+  assert.equal(report.quarterly.income.periods[0].label, '2025 Ç3');
+
+  const failedReport = buildFinancialStatementsReport({
+    symbol: 'AAPL',
+    exchange: 'NASDAQ',
+    providerFailed: true,
+    payload: null,
+  });
+  assert.equal(failedReport.status, 'unavailable');
+  assert.match(failedReport.sourceUrl, /finance\.yahoo\.com\/quote\/AAPL\/financials/);
+
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/api/stocks/[symbol]/financials/route.ts'), 'utf8'), /buildFinancialStatementsReport/);
+  assert.match(fs.readFileSync(path.join(process.cwd(), 'src/app/(dashboard)/stocks/[symbol]/page.tsx'), 'utf8'), /FinancialStatementsCard/);
+});
+
+
 
 
 

@@ -10,6 +10,7 @@ import { CandlestickChart } from '@/components/stocks/CandlestickChart';
 import { TechnicalIndicatorsPanel } from '@/components/stocks/TechnicalIndicatorsPanel';
 import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
 import { UpcomingEventsCard } from '@/components/stocks/UpcomingEventsCard';
+import { FinancialStatementsCard } from '@/components/stocks/FinancialStatementsCard';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
 import { classifyStockPriceStatus } from '@/lib/market/priceStatus';
 import { getMarketSessionStatus } from '@/lib/market/marketSession';
@@ -586,6 +587,12 @@ export default function StockDetailPage({
 
       {/* Verified Upcoming Corporate Events (Earnings, Dividends, Official Disclosures) */}
       <UpcomingEventsCard
+        symbol={symbol}
+        isNonEquity={isIndexAsset || isCommodityAsset || isForexAsset || stock?.exchange === 'CRYPTO'}
+      />
+
+      {/* Sourced Financial Statements (Balance Sheet, Income Statement, Cash Flow) */}
+      <FinancialStatementsCard
         symbol={symbol}
         isNonEquity={isIndexAsset || isCommodityAsset || isForexAsset || stock?.exchange === 'CRYPTO'}
       />
