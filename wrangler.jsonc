@@ -7,6 +7,12 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "triggers": {
+    "crons": [
+      "0 17 * * 1-5",
+      "*/15 7-17 * * 1-5"
+    ]
+  },
   "vars": {
     "EMAIL_TRANSPORT": "gmail"
   },
