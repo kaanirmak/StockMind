@@ -50,8 +50,8 @@ Yazar: Antigravity AI & StockMind Engineering Team
 | **FIN-01** | **P0** | `src/lib/portfolio/calculations.ts` | **FIFO Lot Eritme & Gerçekleşen Kâr:** Kısmi satışlarda en eski alım lotu baz alınarak gerçekleşen kâr hesaplanmalı; kalan lotların özgün maliyet bazı ve kuru korunmalı. | ✅ |
 | **FIN-02** | **P0** | `src/lib/portfolio/calculations.ts` | **Kur ve Varlık Kârı Ayrıştırması (FIN-04):** Yabancı hisselerde kazanç; döviz kurundaki artış (`fxPnL`) ve hisse fiyatındaki artış (`assetPnL`) olarak kuruşu kuruşuna ayrıştırılmalı. | ✅ |
 | **FIN-03** | **P0** | `src/lib/portfolio/calculations.ts` | **Deterministik İşlem Sıralaması:** Aynı gün içinde girilen işlemler `Split (1) -> Buy (2) -> Dividend (3) -> Sell (4) -> Fee (5)` sırasıyla işlenmeli. | ✅ |
-| **FIN-04** | **P0** | `src/lib/portfolio/taxReport.ts` | **GVK Uyumlu Yıllık Vergi Raporu:** BIST için Geçici 67 (%0 stopaj, beyan dışı), ABD hisseleri için Değer Artış Kazancı (yıllık yabancı zarar mahsubu ile net matrah) ve yabancı temettü stopaj mahsubu hesaplanmalı. | ✅ |
-| **FIN-05** | **P1** | `src/lib/portfolio/taxReport.ts` | **Vergi Raporu CSV Dışa Aktarımı:** Muhasebe ve mali müşavir incelemesine uygun noktalı virgüllü UTF-8 BOM CSV formatında matrah ve işlem dökümü üretilmeli. | ✅ |
+| **FIN-04** | **P0** | `src/lib/portfolio/taxReport.ts`, `src/components/portfolio/TaxReportCard.tsx` | **GVK Uyumlu Yıllık Vergi Raporu:** BIST için Geçici 67 (%0 stopaj, beyan dışı), ABD hisseleri için Değer Artış Kazancı (yıllık yabancı zarar mahsubu ile net matrah) ve yabancı temettü stopaj mahsubu hesaplanıp `/reports` ekranında sunulmalı. | ✅ |
+| **FIN-05** | **P1** | `src/lib/portfolio/taxReport.ts`, `src/app/(dashboard)/reports/page.tsx` | **Vergi Raporu CSV Dışa Aktarımı:** Muhasebe ve mali müşavir incelemesine uygun noktalı virgüllü UTF-8 BOM CSV formatında matrah ve işlem dökümü `/reports` üzerinden indirilebilmeli. | ✅ |
 | **FIN-06** | **P1** | `src/components/portfolio/PartialValuationBanner.tsx` | **Kısmi Değerleme & Eksik Kur Koruması:** Canlı USD/TRY kuru bulunamazsa asla keyfi kur (38.5 / 1.0) uydurulmamalı; `missingFx` rozeti ve banner'ı gösterilmeli. | ✅ |
 | **FIN-07** | **P1** | `src/components/portfolio/HoldingsTable.tsx` | **Pozisyon Bazında Kur/Fiyat Uyarısı:** Portföy tablosunda fiyatı eksik veya canlı kuru bulunamayan yabancı varlıklar için `Fiyat eksik` ve `Kur eksik` rozetleri gösterilmeli. | ✅ |
 | **FIN-08** | **P1** | `src/lib/portfolio/dailyAttribution.ts` | **Günlük Varlık Katkısı (Attribution):** Gün içi nakit girişleri kâr sayılmamalı; portföyün günlük toplam getirisine her hissenin net TL ve % katkısı ayrıştırılmalı. | ✅ |
@@ -160,7 +160,12 @@ npm run lint:budget
 
 # 3. Yük testi simülasyonu
 npm run perf:api-load
+
+# 4. Production Next.js derlemesi
+npm run build:next
 ```
+
+> **Yerel Doğrulama Durumu (Tamamlandı ✅):** `typecheck` (0 hata), `lint:budget` (`447/455` uyarı, `0` hata), `npm test` (303/303 test geçti), `perf:api-load` (%0 hata oranı) ve `build:next` (41/41 sayfa derlendi) başarıyla doğrulandı.
 
 ### Aşama 2: Veritabanı Hazırlığı (Supabase)
 1. Supabase Dashboard -> **SQL Editor** üzerinden `supabase/migrations/` altındaki migration dosyalarının sırayla uygulandığını teyit edin.
@@ -188,3 +193,4 @@ Cloudflare Dashboard -> Workers & Pages -> `stockmind` -> **Settings** -> **Vari
 5. [ ] Vergi raporu sekmesinden yıllık matrah hesaplaması ve CSV dışa aktarımı.
 6. [ ] Fiyat alarmı ve RSI gösterge alarmı kurulumu.
 7. [ ] Android cihaz üzerinden `StockMind.apk` indirilmesi ve giriş yapılması.
+
