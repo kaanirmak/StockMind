@@ -17,6 +17,9 @@ public class TrustedUrlsTest {
         if (TrustedUrls.isTrusted(null, origin, false)) throw new AssertionError("Accepted null");
         for (String url : new String[] {origin, origin + "/dashboard", origin + ":443/api/download/apk"}) {
             if (!TrustedUrls.isTrusted(url, origin, false)) throw new AssertionError("Rejected production URL");
+        if (!TrustedUrls.isTrusted("https://backup.stockmind.example/", "https://backup.stockmind.example", false)) {
+            throw new AssertionError("Rejected configured HTTPS origin");
+        }
         }
         String dev = "http://10.0.2.2:3000";
         if (!TrustedUrls.isTrusted(dev + "/dashboard", dev, true)) throw new AssertionError("Rejected development origin");

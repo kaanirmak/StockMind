@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { ApplicationLogsPanel } from '@/components/admin/ApplicationLogsPanel';
 
 interface AdminStats {
   totalUsers: number;
@@ -132,7 +133,7 @@ export default function AdminConsolePage() {
   const [totpSecret, setTotpSecret] = useState('');
 
   // Tab & Console State
-  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'crons' | 'stats'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'crons' | 'stats' | 'logs'>('users');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [proRequests, setProRequests] = useState<ProRequest[]>([]);
@@ -398,7 +399,7 @@ export default function AdminConsolePage() {
         fetchOverviewData();
       } else {
         setCronLogs((prev) => [
-          { timestamp: new Date().toLocaleTimeString('tr-TR'), text: `❌ [${jobName}] HATA: ${data.error || 'Görev tamamlanamadı.'}`, status: 'error' },
+          { timestamp: new Date().toLocaleTimeString('tr-TR'), text: `❌ [${jobName}] HATA: ${data.error || data.message || 'Görev tamamlanamadı.'}`, status: 'error' },
           ...prev,
         ]);
       }
@@ -409,6 +410,7 @@ export default function AdminConsolePage() {
       ]);
     } finally {
       setIsTriggeringCron(null);
+      void fetchOverviewData();
     }
   };
 
@@ -694,6 +696,11 @@ export default function AdminConsolePage() {
             <span>⏱️</span> Arka Plan Görevleri & Cron
           </button>
 
+          <button type="button" onClick={() => setActiveTab('logs')}
+            className={`rounded-xl px-4 py-2 text-xs font-bold ${activeTab === 'logs' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-900'}`}>
+            Uygulama Logları
+          </button>
+
           <button
             type="button"
             onClick={() => setActiveTab('stats')}
@@ -706,6 +713,8 @@ export default function AdminConsolePage() {
             <span>🛡️</span> Donanım & Biyometri Bilgisi
           </button>
         </div>
+
+        {activeTab === 'logs' && <ApplicationLogsPanel />}
 
         {/* Tab 1: All Users Management */}
         {activeTab === 'users' && (

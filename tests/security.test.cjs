@@ -740,8 +740,9 @@ test('Gmail mode uses the authenticated sender and skips configured HTTP email p
   assert.equal(calls.http, 0);
   assert.equal(calls.mail.from, 'StockMind <sender@gmail.com>');
   assert.equal(calls.options.host, 'smtp.gmail.com');
-  assert.equal(calls.options.port, 465);
-  assert.equal(calls.options.secure, true);
+  assert.equal(calls.options.port, 587);
+  assert.equal(calls.options.secure, false);
+  assert.equal(calls.options.requireTLS, true);
 });
 
 test('EPO-01: Gmail gönderici doğrulaması kaanrmak7@gmail.com kimliğini ve kabul bilgilerini döner', async () => {

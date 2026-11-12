@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { recordApplicationLog } from '@/lib/ops/applicationLogs';
 
 export type ProtectedAction = 'ai_chat' | 'ai_committee' | 'test_email';
 
@@ -9,7 +10,12 @@ export class ApiError extends Error {
   }
 }
 
-export function apiErrorResponse(error: unknown) {
+export async function apiErrorResponse(error: unknown) {
+  if (!(error instanceof ApiError) || error.status >= 500) {
+    await recordApplicationLog({ level: 'error', area: 'api', event: 'request_failed',
+      message: error instanceof ApiError ? error.message : 'Sunucu işlemi tamamlanamadı.',
+      context: { status: error instanceof ApiError ? error.status : 503, errorType: error instanceof Error ? error.name : typeof error } });
+  }
   if (error instanceof ApiError) {
     return NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status });
   }

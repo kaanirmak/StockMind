@@ -591,17 +591,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showErrorState(String description) {
-        // Auto-heal if the error was due to an old or unreachable server URL
-        if (!PRODUCTION_URL.equals(currentServerUrl) && !currentServerUrl.contains("10.0.2.2")) {
-            currentServerUrl = PRODUCTION_URL;
-            if (prefs != null) {
-                prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
-            }
-            Toast.makeText(this, "Canlı sunucuya (Cloudflare) geçiş yapılıyor...", Toast.LENGTH_SHORT).show();
-            loadAppUrl();
-            return;
-        }
-
         swipeRefreshLayout.setRefreshing(false);
         progressBar.setVisibility(View.GONE);
         errorView.setVisibility(View.VISIBLE);
@@ -610,7 +599,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showChangeUrlDialog() {
-        if (!BuildConfig.DEBUG) return;
         final EditText input = new EditText(this);
         input.setText(currentServerUrl);
         input.setSelection(currentServerUrl.length());
@@ -621,7 +609,9 @@ public class MainActivity extends AppCompatActivity {
 
         new AlertDialog.Builder(this, R.style.Theme_StockMind)
                 .setTitle("Sunucu URL'sini Girin")
-                .setMessage("Yerel geliştirme (örn: http://192.168.1.105:3000) veya canlı yayın adresinizi yazın:")
+                .setMessage(BuildConfig.DEBUG
+                        ? "Yerel geliştirme veya canlı yayın adresinizi yazın:"
+                        : "Canlı sunucunun HTTPS adresini yazın:")
                 .setView(input)
                 .setPositiveButton("Kaydet & Aç", (dialog, which) -> {
                     String newUrl = input.getText().toString().trim();
@@ -629,7 +619,7 @@ public class MainActivity extends AppCompatActivity {
                         if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
                             newUrl = "http://" + newUrl;
                         }
-                        if (!TrustedUrls.isTrusted(newUrl, newUrl, true)) {
+                        if (!TrustedUrls.isTrusted(newUrl, newUrl, BuildConfig.DEBUG)) {
                             Toast.makeText(this, "Geçerli bir geliştirme adresi girin.", Toast.LENGTH_SHORT).show();
                             return;
                         }

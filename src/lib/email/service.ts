@@ -4,6 +4,7 @@ import { MONTE_CARLO_SIMULATIONS } from '@/lib/quant/constants';
 import type { BulletinMarketDataPayload, BulletinMarketKey } from '@/lib/email/marketData';
 import type { PersonalizedBulletinSection } from '@/lib/email/personalizedBulletin';
 import nodemailer from 'nodemailer';
+import { recordApplicationLog, redactLogValue } from '@/lib/ops/applicationLogs';
 
 export interface EmailPayload {
   to: string;
@@ -347,45 +348,53 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
   const smtpFrom = (!gmailOnly && (from || smtpOverride?.from || process.env.SMTP_FROM)?.trim()) ||
     `StockMind <${smtpUser}>`;
   let gmailAuthFailed = false;
+  let smtpFailureCode = '';
+  let smtpFailureReason = '';
 
   if (smtpUser && smtpPass) {
-    try {
-      const isGmail = gmailOnly || smtpService === 'gmail' || smtpHost.toLowerCase() === 'smtp.gmail.com';
-      const configuredPort = smtpOverride?.port || Number(process.env.SMTP_PORT) || 587;
-      const port = gmailOnly || (isGmail && configuredPort !== 587) ? 465 : configuredPort;
+    const isGmail = gmailOnly || smtpService === 'gmail' || smtpHost.toLowerCase() === 'smtp.gmail.com';
+    const configuredPort = smtpOverride?.port || Number(process.env.SMTP_PORT);
+    const port = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65535
+      ? configuredPort : isGmail ? 465 : 587;
+    // Retry only a connection-stage failure, never an ambiguous AUTH/DATA result.
+    const ports = isGmail && [465, 587].includes(port) ? [port, port === 465 ? 587 : 465] : [port];
+    for (let attempt = 0; attempt < ports.length; attempt++) {
+      const attemptPort = ports[attempt];
       const transporter = nodemailer.createTransport({
         host: isGmail ? 'smtp.gmail.com' : smtpHost,
-        port,
-        secure: port === 465,
-        requireTLS: isGmail,
+        port: attemptPort,
+        secure: attemptPort === 465,
+        requireTLS: isGmail || attemptPort !== 465,
         auth: { user: smtpUser, pass: isGmail ? smtpPass.replace(/\s+/g, '') : smtpPass },
         connectionTimeout: 6_000,
         greetingTimeout: 6_000,
         socketTimeout: 8_000,
-        tls: { rejectUnauthorized: true },
+        tls: { rejectUnauthorized: true, servername: isGmail ? 'smtp.gmail.com' : smtpHost },
       });
-
-      const normalizedFrom = smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`;
-      const info = await transporter.sendMail({
-        from: normalizedFrom,
-        to,
-        subject,
-        html,
-      });
-
-      if (info.accepted?.length === 0) throw new Error('SMTP recipient rejected');
-      return {
-        success: true,
-        message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
-        method: isGmail ? 'google_smtp' : 'custom_smtp',
-        from: normalizedFrom,
-        senderAddress: smtpUser,
-        accepted: Array.isArray(info.accepted) ? info.accepted.map(String) : [to],
-        messageId: info.messageId ? String(info.messageId) : undefined,
-      };
-    } catch (err: any) {
-      gmailAuthFailed = gmailOnly && err?.code === 'EAUTH';
-      console.warn('SMTP transport attempt failed', { code: err?.code, responseCode: err?.responseCode });
+      try {
+        const normalizedFrom = smtpFrom.includes('<') ? smtpFrom : `StockMind Bildirimleri <${smtpFrom}>`;
+        const info = await transporter.sendMail({ from: normalizedFrom, to, subject, html });
+        if (info.accepted?.length === 0) throw new Error('SMTP recipient rejected');
+        await recordApplicationLog({ level: 'info', area: 'email', event: 'smtp_accepted',
+          message: 'SMTP sağlayıcısı e-postayı kabul etti.', context: { provider: isGmail ? 'gmail' : 'smtp', port: attemptPort } });
+        return { success: true, message: 'E-posta, gönderim için servis sağlayıcısı tarafından kabul edildi.',
+          method: isGmail ? 'google_smtp' : 'custom_smtp', from: normalizedFrom, senderAddress: smtpUser,
+          accepted: Array.isArray(info.accepted) ? info.accepted.map(String) : [to],
+          messageId: info.messageId ? String(info.messageId) : undefined };
+      } catch (err: unknown) {
+        const failure = err as { code?: string; originalCode?: string; command?: string; message?: string; responseCode?: number };
+        smtpFailureCode = failure.code || 'SMTP_ERROR';
+        smtpFailureReason = String(redactLogValue(failure.message || 'SMTP bağlantısı tamamlanamadı.'));
+        gmailAuthFailed = isGmail && failure.code === 'EAUTH';
+        await recordApplicationLog({ level: 'error', area: 'email', event: 'smtp_failed',
+          message: 'SMTP gönderimi başarısız.', context: { code: smtpFailureCode, originalCode: failure.originalCode,
+            command: failure.command, responseCode: failure.responseCode, port: attemptPort, reason: smtpFailureReason } });
+        console.warn('SMTP transport attempt failed', { code: failure.code, originalCode: failure.originalCode, command: failure.command, responseCode: failure.responseCode });
+        const safeToRetry = failure.command === 'CONN' && ['ESOCKET', 'ECONNECTION', 'ETIMEDOUT'].includes(smtpFailureCode);
+        if (!safeToRetry) break;
+      } finally {
+        transporter.close?.();
+      }
     }
   }
 
@@ -410,6 +419,8 @@ export async function sendEmailTransport(options: SendEmailOptions): Promise<Sen
   let errorDetails = 'E-posta sağlayıcısı gönderimi tamamlayamadı. Lütfen daha sonra tekrar deneyin.';
   if (gmailAuthFailed) {
     errorDetails = 'Gmail gönderici hesabının uygulama parolasını kabul etmedi.';
+  } else if (['ESOCKET', 'ECONNECTION', 'ETIMEDOUT', 'EDNS', 'ETLS'].includes(smtpFailureCode)) {
+    errorDetails = `SMTP bağlantısı kurulamadı (${smtpFailureCode}). Yönetici panelindeki E-posta loglarını kontrol edin.`;
   } else if (gmailOnly && !hasProvider) {
     errorDetails = 'Gmail gönderici hesabı veya uygulama parolası sunucuda eksik.';
   } else if (senderVerificationFailed) {
