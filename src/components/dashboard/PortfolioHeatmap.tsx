@@ -596,9 +596,17 @@ export default function PortfolioHeatmap() {
       {/* Heatmap Area */}
       {isExpanded && viewMode === 'treemap' && (
       <>
+      <div className="flex items-center justify-between gap-3 px-1 text-[11px] text-text-muted">
+        <span>{metric === 'daily' ? 'Bugünkü değişim' : 'Toplam kâr / zarar'}</span>
+        <div className="flex items-center gap-2" aria-label="Isı haritası renk açıklaması">
+          <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Kayıp</span>
+          <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full bg-slate-500" /> Nötr</span>
+          <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Kazanç</span>
+        </div>
+      </div>
       <div
         ref={containerRef}
-        className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-black/40 border-0"
+        className="relative w-full rounded-xl sm:rounded-2xl overflow-hidden bg-slate-950/90 border border-white/10 shadow-inner"
         style={{ height: dimensions.height }}
       >
         {nodes.length === 0 ? (

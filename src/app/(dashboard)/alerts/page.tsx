@@ -83,6 +83,7 @@ export default function AllAlertsPage() {
   const [telemetryMap, setTelemetryMap] = useState<AlertTelemetryMap>({});
   const [editingRule, setEditingRule] = useState<WatchlistItem | null>(null);
   const [moveConfig, setMoveConfig] = useState<PortfolioMoveAlertConfig>(DEFAULT_PORTFOLIO_MOVE_CONFIG);
+  const [showAdvancedAlerts, setShowAdvancedAlerts] = useState(false);
 
   useEffect(() => {
     setMoveConfig(readPortfolioMoveConfig(currentUserId));
@@ -487,19 +488,22 @@ export default function AllAlertsPage() {
       </div>
 
       {/* KAP & Calendar Subscriptions (ALR-12) */}
-      <div
+      <section
         data-testid="kap-calendar-alert-panel"
-        className="glass-card p-4 space-y-3 border border-border/60"
+        className="glass-card border border-border/60 overflow-hidden"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <button type="button" onClick={() => setShowAdvancedAlerts((value) => !value)} className="w-full p-4 flex items-center justify-between gap-3 text-left hover:bg-bg-hover/50 transition-colors">
           <div>
-            <h2 className="text-sm font-bold text-text-primary">
-              KAP &amp; Takvim Uyarıları
-            </h2>
+            <h2 className="text-sm font-bold text-text-primary">KAP &amp; Takvim Uyarıları</h2>
             <p className="text-xs text-text-muted mt-0.5">
-              Yalnızca yetkili kurumsal kaynaklardan (KAP, SEC, TCMB, Fed, ECB, borsa takvimi) gelen ve varlıklarınızla eşleşen olaylar bildirilir.
+              İleri seviye olay bildirimleri ve kaynak filtreleri
             </p>
           </div>
+          <span className="text-xs font-semibold text-accent shrink-0">{showAdvancedAlerts ? 'Gizle' : 'Aç'} <span aria-hidden="true">{showAdvancedAlerts ? '↑' : '↓'}</span></span>
+        </button>
+        {showAdvancedAlerts && <div className="p-4 pt-0 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <p className="text-xs text-text-muted">Yalnızca yetkili kurumsal kaynaklardan gelen ve varlıklarınızla eşleşen olaylar bildirilir.</p>
           <label className="inline-flex items-center gap-2 text-xs font-medium text-text-primary cursor-pointer shrink-0">
             <input
               type="checkbox"
@@ -567,7 +571,8 @@ export default function AllAlertsPage() {
           />
           <span>Şirket olaylarını yalnızca portföyümdeki ve takip listemdeki varlıklarla sınırla</span>
         </label>
-      </div>
+        </div>}
+      </section>
 
       {/* Filter & Search Bar */}
       <div className="glass-card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

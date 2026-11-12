@@ -305,7 +305,8 @@ public class MainActivity extends AppCompatActivity {
 
         if (btnDownloadUpdate != null) {
             btnDownloadUpdate.setOnClickListener(v -> {
-                startApkDownload(PRODUCTION_URL + "/StockMind.apk");
+                // Avoid a stale CDN/download-manager copy of the previous APK.
+                startApkDownload(PRODUCTION_URL + "/api/download/apk?source=android&ts=" + System.currentTimeMillis());
             });
         }
 

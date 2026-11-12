@@ -16,18 +16,18 @@ export interface AndroidReleaseMetadata {
 
 export const ANDROID_RELEASE_METADATA: AndroidReleaseMetadata = {
   packageId: 'com.kaanirmak.stockmind',
-  version: '1.5.1',
-  versionCode: 12,
+  version: '2.0.0',
+  versionCode: 20,
   apkFilename: 'StockMind.apk',
   downloadUrl: '/api/download/apk',
   directApkUrl: '/StockMind.apk',
-  previousVersion: '1.4.1',
-  previousVersionCode: 11,
+  previousVersion: '1.5.1',
+  previousVersionCode: 12,
   previousSha256: '72677be35a633c22b6d77de19156a1f31e916e319de082c7997293772e12d39f',
   publishedAt: '2026-11-11',
   minAndroidVersion: '7.0 (Nougat) ve üzeri',
   releaseNotes:
-    'Kapalı Android arka plan hisse ve TEFAS fon alarmları doğrudan varlık detay ekranına bağlandı, bildirim izni/kanal teslimat teşhisi ayrıldı ve sürüm 12 (v1.5.1) hazırlandı.',
+    'StockMind 2.0: yenilenen ana ekran, sadeleştirilmiş alarm merkezi, birleşik ayarlar ve daha okunaklı portföy ısı haritası.',
   rollbackSteps: [
     'Son kararlı imzalı StockMind.apk dosyasını (v1.4.1, versionCode 11) public/StockMind.apk konumuna geri yükle ve SHA-256 özetini (72677be35a633c22b6d77de19156a1f31e916e319de082c7997293772e12d39f) doğrula.',
     'src/lib/app/releaseMetadata.ts ve package.json sürüm bilgisini önceki kararlı sürüme döndür ve Cloudflare Worker dağıtımını yeniden yayınla.',

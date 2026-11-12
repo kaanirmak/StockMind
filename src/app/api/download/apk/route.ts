@@ -39,5 +39,12 @@ export async function GET(request: NextRequest) {
 
   // 2. On Cloudflare Workers & Edge runtime: redirect directly to static CDN asset
   const targetUrl = new URL('/StockMind.apk', request.url);
-  return NextResponse.redirect(targetUrl, 307);
+  targetUrl.searchParams.set('release', String(ANDROID_RELEASE_METADATA.versionCode));
+  return NextResponse.redirect(targetUrl, {
+    status: 307,
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+    },
+  });
 }
