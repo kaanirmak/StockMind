@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Button, Badge, useToast, InstrumentLogo } from '@/components/ui';
 import { DailyAttributionCard } from '@/components/portfolio/DailyAttributionCard';
 import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
+import { TaxReportCard } from '@/components/portfolio/TaxReportCard';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { maskDisplayValue } from '@/lib/privacy';
@@ -680,6 +681,12 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+
+      <TaxReportCard
+        transactions={activeTransactions}
+        usdTryRate={usdTryRate}
+        isPrivacyMode={isPrivacyMode}
+      />
     </div>
   );
 }
