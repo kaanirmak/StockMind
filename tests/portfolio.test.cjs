@@ -2526,6 +2526,140 @@ test('POR-16: read-only Midas statement sync rejects write scopes and prevents d
   assert.deepEqual(Array.from(detached.remainingTransactionIds), ['manual-1']);
 });
 
+test('TAX-01: generateAnnualTaxReport produces FIFO-based capital gain and tax summaries for GVK compliance', () => {
+  const taxMod = loadModule('src/lib/portfolio/taxReport.ts');
+
+  const transactions = [
+    // 2025 alımları (FIFO lotları)
+    {
+      id: 'tx-bist-1',
+      portfolioId: 'p-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      exchange: 'BIST',
+      currency: 'TRY',
+      transactionType: 'buy',
+      quantity: 100,
+      price: 200,
+      commission: 10,
+      transactionDate: '2025-10-01T10:00:00Z',
+    },
+    {
+      id: 'tx-us-1',
+      portfolioId: 'p-1',
+      symbol: 'AAPL',
+      assetType: 'stock',
+      exchange: 'NASDAQ',
+      currency: 'USD',
+      transactionType: 'buy',
+      quantity: 10,
+      price: 150,
+      exchangeRate: 30, // 10 * 150 * 30 = 45,000 TL
+      commission: 2, // 2 * 30 = 60 TL
+      transactionDate: '2025-11-01T10:00:00Z',
+    },
+    // 2026 alımı
+    {
+      id: 'tx-bist-2',
+      portfolioId: 'p-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      exchange: 'BIST',
+      currency: 'TRY',
+      transactionType: 'buy',
+      quantity: 50,
+      price: 250,
+      commission: 5,
+      transactionDate: '2026-02-01T10:00:00Z',
+    },
+    // 2026 BIST Satışı (120 adet satıldı: 100 tanesi ilk lottan 200 TL, 20 tanesi 2. lottan 250 TL)
+    {
+      id: 'tx-bist-sell',
+      portfolioId: 'p-1',
+      symbol: 'THYAO',
+      assetType: 'stock',
+      exchange: 'BIST',
+      currency: 'TRY',
+      transactionType: 'sell',
+      quantity: 120,
+      price: 300, // Hasılat = 120 * 300 = 36,000 TL
+      commission: 20,
+      transactionDate: '2026-03-01T10:00:00Z',
+    },
+    // 2026 ABD Satışı (10 adet AAPL 200 USD'den satıldı, kur 35)
+    {
+      id: 'tx-us-sell',
+      portfolioId: 'p-1',
+      symbol: 'AAPL',
+      assetType: 'stock',
+      exchange: 'NASDAQ',
+      currency: 'USD',
+      transactionType: 'sell',
+      quantity: 10,
+      price: 200,
+      exchangeRate: 35, // Hasılat = 10 * 200 * 35 = 70,000 TL
+      commission: 3, // Komisyon = 3 * 35 = 105 TL
+      transactionDate: '2026-04-01T10:00:00Z',
+    },
+    // 2026 ABD Temettüsü
+    {
+      id: 'tx-us-div',
+      portfolioId: 'p-1',
+      symbol: 'AAPL',
+      assetType: 'stock',
+      exchange: 'NASDAQ',
+      currency: 'USD',
+      transactionType: 'dividend',
+      quantity: 1,
+      price: 50,
+      exchangeRate: 35, // 50 * 35 = 1,750 TL
+      transactionDate: '2026-05-01T10:00:00Z',
+    },
+  ];
+
+  const report = taxMod.generateAnnualTaxReport(transactions, {
+    taxYear: 2026,
+    taxpayerType: 'individual_tr',
+  });
+
+  assert.equal(report.taxYear, 2026);
+  assert.equal(report.taxpayerType, 'individual_tr');
+
+  // BIST: 120 adet satıldı.
+  // İlk lot (100 adet): Maliyet = 100 * 200 + 10 = 20,010 TL
+  // İkinci lot (20 adet): Maliyet = (50 * 250 + 5) * (20/50) = 12,505 * 0.4 = 5,002 TL
+  // Toplam BIST maliyet = 25,012 TL
+  // BIST hasılat = 36,000 TL. Komisyon = 20 TL. Net proceeds = 35,980 TL.
+  // BIST net kâr = 35,980 - 25,012 = 10,968 TL
+  assert.equal(report.summary.bistGrossProceedsTry, 36000);
+  assert.equal(report.summary.bistCostBasisTry, 25012);
+  assert.equal(report.summary.bistNetGainTry, 10968);
+  assert.equal(report.summary.bistWithholdingTaxTry, 0);
+
+  // ABD Hisse (AAPL):
+  // Maliyet = 10 * 150 * 30 + 60 = 45,060 TL
+  // Hasılat = 10 * 200 * 35 = 70,000 TL
+  // Komisyon = 105 TL. Net hasılat = 69,895 TL.
+  // Net Kazanç = 69,895 - 45,060 = 24,835 TL
+  assert.equal(report.summary.foreignGrossProceedsTry, 70000);
+  assert.equal(report.summary.foreignCostBasisTry, 45060);
+  assert.equal(report.summary.foreignGrossGainTry, 24835);
+  assert.equal(report.summary.foreignNetTaxableCapitalGainTry, 24835);
+
+  // ABD Temettü (1750 TL, %20 stopaj = 350 TL)
+  assert.equal(report.summary.foreignDividendsGrossTry, 1750);
+  assert.equal(report.summary.foreignDividendsWithholdingPaidTry, 350);
+  assert.equal(report.summary.foreignDividendsNetReceivedTry, 1400);
+
+  // Line items check
+  assert.equal(report.lineItems.length, 3);
+  const bistItem = report.lineItems.find((i) => i.symbol === 'THYAO');
+  assert.equal(bistItem.isTaxReturnSubject, false);
+  const aaplSell = report.lineItems.find((i) => i.symbol === 'AAPL' && i.transactionType === 'sell');
+  assert.equal(aaplSell.isTaxReturnSubject, true);
+});
+
+
 
 
 
