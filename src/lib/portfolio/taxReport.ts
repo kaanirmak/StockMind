@@ -294,3 +294,48 @@ export function generateAnnualTaxReport(
     notes,
   };
 }
+
+/**
+ * Serializes the AnnualTaxReport to CSV format (semicolon separated with UTF-8 BOM).
+ */
+export function generateTaxReportCsv(report: AnnualTaxReport): string {
+  const lines: string[] = [];
+  lines.push(`StockMind Yıllık Vergi ve Değer Artış Kazancı Raporu - ${report.taxYear}`);
+  lines.push(`Mükellefiyet Türü;${report.taxpayerType === 'individual_tr' ? 'Tam Mükellef Gerçek Kişi' : 'Kurumlar Vergisi Mükellefi'}`);
+  lines.push(`Oluşturulma Tarihi;${report.generatedAt}`);
+  lines.push('');
+  lines.push('ÖZET VERGİ MATRAHI (TL);Tutar');
+  lines.push(`BIST Brüt Hasılat;${report.summary.bistGrossProceedsTry.toFixed(2)}`);
+  lines.push(`BIST Maliyet Bazı;${report.summary.bistCostBasisTry.toFixed(2)}`);
+  lines.push(`BIST Net Kazanç (GVK Geçici 67 - %0 Stopaj);${report.summary.bistNetGainTry.toFixed(2)}`);
+  lines.push(`Yabancı Hisse Brüt Hasılat;${report.summary.foreignGrossProceedsTry.toFixed(2)}`);
+  lines.push(`Yabancı Hisse Maliyet Bazı;${report.summary.foreignCostBasisTry.toFixed(2)}`);
+  lines.push(`Yabancı Hisse Brüt Kazanç;${report.summary.foreignGrossGainTry.toFixed(2)}`);
+  lines.push(`Yabancı Hisse Mahsup Edilebilir Zarar;${report.summary.foreignGrossLossTry.toFixed(2)}`);
+  lines.push(`Yabancı Hisse Net Vergilendirilebilir Matrah (Beyana Tabi);${report.summary.foreignNetTaxableCapitalGainTry.toFixed(2)}`);
+  lines.push(`Yabancı Temettü Brüt Hasılat;${report.summary.foreignDividendsGrossTry.toFixed(2)}`);
+  lines.push(`Yabancı Temettü Kesilen ABD Stopajı (%20);${report.summary.foreignDividendsWithholdingPaidTry.toFixed(2)}`);
+  lines.push(`Toplam Düşülen Komisyon ve Giderler;${report.summary.totalCommissionsDeductedTry.toFixed(2)}`);
+  lines.push('');
+  lines.push('İŞLEM DETAYLARI');
+  lines.push('Tarih;Sembol;Tür;Borsa;Kategori;İşlem;Adet;Hasılat (TL);Maliyet (TL);Komisyon (TL);Net Kazanç (TL);Stopaj (TL);Vergi Mevzuatı;Beyannameye Tabi mi?');
+  for (const item of report.lineItems) {
+    lines.push([
+      item.date.slice(0, 10),
+      item.symbol,
+      item.assetType,
+      item.exchange,
+      item.category,
+      item.transactionType,
+      item.quantity,
+      item.proceedsTry.toFixed(2),
+      item.costBasisTry.toFixed(2),
+      item.commissionTry.toFixed(2),
+      item.netGainTry.toFixed(2),
+      item.withholdingTaxPaidTry.toFixed(2),
+      `"${item.taxTreatment.replace(/"/g, '""')}"`,
+      item.isTaxReturnSubject ? 'EVET' : 'HAYIR',
+    ].join(';'));
+  }
+  return `\uFEFF${lines.join('\n')}\n`;
+}

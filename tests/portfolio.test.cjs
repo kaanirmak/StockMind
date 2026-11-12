@@ -2657,6 +2657,12 @@ test('TAX-01: generateAnnualTaxReport produces FIFO-based capital gain and tax s
   assert.equal(bistItem.isTaxReturnSubject, false);
   const aaplSell = report.lineItems.find((i) => i.symbol === 'AAPL' && i.transactionType === 'sell');
   assert.equal(aaplSell.isTaxReturnSubject, true);
+
+  // CSV serialization test
+  const csv = taxMod.generateTaxReportCsv(report);
+  assert.ok(csv.startsWith('\uFEFF'), 'CSV must have UTF-8 BOM');
+  assert.ok(csv.includes('Yabancı Hisse Net Vergilendirilebilir Matrah (Beyana Tabi);24835.00'));
+  assert.ok(csv.includes('THYAO;stock;BIST;BIST;sell;120;36000.00;25012.00;20.00;10968.00;0.00'));
 });
 
 
