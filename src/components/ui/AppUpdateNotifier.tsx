@@ -12,10 +12,17 @@ interface VersionInfo {
   releaseNotes: string;
 }
 
+function persistUpdateDismissal(versionCode: number) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('stockmind_update_dismissed_version_code', String(versionCode));
+  localStorage.setItem('stockmind_update_dismissed_until', String(Date.now() + 24 * 60 * 60 * 1000));
+}
+
 export function AppUpdateNotifier() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null);
   const [currentVersion, setCurrentVersion] = useState<string>('1.0.0');
+  const [currentVersionCode, setCurrentVersionCode] = useState<number>(1);
   const [dismissed, setDismissed] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -40,6 +47,7 @@ export function AppUpdateNotifier() {
           }
         }
         setCurrentVersion(localVersionName);
+        setCurrentVersionCode(localVersionCode);
 
         const res = await fetch(`/api/app/version?_t=${Date.now()}`, {
           cache: 'no-store',
@@ -74,20 +82,6 @@ export function AppUpdateNotifier() {
                 '/settings'
               );
               if (delivered) localStorage.setItem(notifSentKey, 'true');
-            }
-          } else if (!isAndroid && typeof window !== 'undefined') {
-            // Also check if on Android browser and dismissed
-            const isMobileAndroid = /android/i.test(navigator.userAgent);
-            if (isMobileAndroid) {
-              const dismissedVersion = localStorage.getItem('stockmind_update_dismissed_version_code');
-              const dismissedUntil = localStorage.getItem('stockmind_update_dismissed_until');
-              const isDismissed =
-                dismissedVersion === String(data.versionCode) &&
-                dismissedUntil &&
-                Number(dismissedUntil) > Date.now();
-              if (!isDismissed) {
-                setUpdateAvailable(true);
-              }
             }
           } else {
             // Up to date — clear only stale update dismissal markers, preserving session & portfolio data
@@ -159,12 +153,22 @@ export function AppUpdateNotifier() {
       } catch (_) {}
     }
 
+    // Snooze the banner for this version once user initiates update
+    if (versionInfo) {
+      persistUpdateDismissal(versionInfo.versionCode);
+    }
+
     // Always display the update helper modal so user is never left without guidance
     setShowModal(true);
 
     setTimeout(() => {
       setIsDownloading(false);
     }, 2500);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setDismissed(true);
   };
 
   const handleCopyDownloadUrl = () => {
@@ -183,10 +187,8 @@ export function AppUpdateNotifier() {
   const handleDismiss = () => {
     setDismissed(true);
     if (versionInfo) {
-      localStorage.setItem('stockmind_update_dismissed_version_code', String(versionInfo.versionCode));
+      persistUpdateDismissal(versionInfo.versionCode);
     }
-    // Dismiss for 24 hours
-    localStorage.setItem('stockmind_update_dismissed_until', String(Date.now() + 24 * 60 * 60 * 1000));
   };
 
   return (
@@ -263,11 +265,16 @@ export function AppUpdateNotifier() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
+                onClick={handleCloseModal}
                 className="p-1 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors text-lg"
               >
                 ✕
               </button>
+            </div>
+
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-bg-secondary/70 border border-border/60 text-[11px] font-mono">
+              <span className="text-text-muted">Yüklü: v{currentVersion} (Build {currentVersionCode})</span>
+              <span className="text-accent font-semibold">Hedef: v{versionInfo.version} (Build {versionInfo.versionCode})</span>
             </div>
 
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 space-y-1">
@@ -327,7 +334,7 @@ export function AppUpdateNotifier() {
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
+                onClick={handleCloseModal}
                 className="w-full py-2 rounded-xl bg-bg-hover text-text-secondary text-xs font-semibold hover:text-text-primary transition-colors cursor-pointer"
               >
                 Kapat
