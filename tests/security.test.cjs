@@ -944,8 +944,8 @@ test('OPS-03: APK distribution returns archive headers & SHA-256 checksum alongs
   const sha = apkRes.headers.get('x-stockmind-sha256');
   assert.match(sha || '', /^[a-f0-9]{64}$/);
   assert.equal(apkRes.headers.get('etag'), `"${sha}"`);
-  assert.equal(apkRes.headers.get('x-stockmind-version'), '2.0.0');
-  assert.equal(apkRes.headers.get('x-stockmind-versioncode'), '20');
+  assert.equal(apkRes.headers.get('x-stockmind-version'), '2.1.0');
+  assert.equal(apkRes.headers.get('x-stockmind-versioncode'), '21');
 
   const versionRoute = load('src/app/api/app/version/route.ts');
   const versionPayload = await (await versionRoute.GET()).json();

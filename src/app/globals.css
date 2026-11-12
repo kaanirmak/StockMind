@@ -98,18 +98,18 @@ body {
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
   border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-card);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), var(--shadow-card);
   border-radius: var(--radius-xl);
-  transition: all var(--transition-base);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
 }
 
 .glass-card:hover {
   border-color: rgba(124, 58, 237, 0.35);
-  box-shadow: var(--shadow-glow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), var(--shadow-glow);
   transform: translateY(-1px);
 }
 
@@ -150,16 +150,16 @@ html.dark .glass {
 }
 
 html.dark .glass-card {
-  background: rgba(18, 20, 30, 0.90);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(180deg, rgba(22, 24, 36, 0.92), rgba(14, 16, 24, 0.94));
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
   border: 1px solid rgba(255, 255, 255, 0.11);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.70), 0 1px 3px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 28px rgba(0, 0, 0, 0.65), 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 html.dark .glass-card:hover {
-  border-color: rgba(139, 92, 246, 0.28);
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.10), 0 6px 24px rgba(0, 0, 0, 0.75);
+  border-color: rgba(139, 92, 246, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 0 20px rgba(139, 92, 246, 0.14), 0 10px 30px rgba(0, 0, 0, 0.72);
 }
 
 html.dark .glass-subtle {
@@ -905,4 +905,109 @@ button, a {
 .settings-page > nav[aria-label="Ayar bölümleri"] { top: 3.5rem; }
 @media (min-width: 640px) {
   .settings-page > nav[aria-label="Ayar bölümleri"] { top: 4rem; }
+}
+
+/* ═══════════════════════════════════════════
+   Premium Semantic Loading Spinner (<progress>)
+   ═══════════════════════════════════════════ */
+@property --arc-start {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --arc-end {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --progress-dash-animation {
+  syntax: "*";
+  inherits: false;
+  initial-value: , stockmind-progress-dash 2.4s ease-in-out infinite;
+}
+
+progress.stockmind-loading-spinner:indeterminate::-webkit-progress-bar,
+progress.stockmind-loading-spinner:indeterminate::-webkit-progress-value,
+progress.stockmind-loading-spinner:indeterminate::-moz-progress-bar {
+  display: none;
+  background: none;
+}
+
+progress.stockmind-loading-spinner:indeterminate {
+  --_from: calc(90deg + var(--arc-start, 0deg));
+  --_to: calc(90deg + var(--arc-end, 158deg));
+  --size: 5.5rem;
+  --thickness: 3px;
+  --spinner-color: #8b5cf6;
+  --track-color: rgba(139, 92, 246, 0.16);
+  --spinner-duration: 1.4s;
+  --_used-spinner-duration: var(--spinner-duration);
+
+  position: relative;
+  display: block;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  appearance: none;
+  border: 0;
+  background: conic-gradient(
+      from var(--_from),
+      var(--spinner-color) calc(var(--_to) - var(--_from)),
+      transparent 0
+    )
+    var(--track-color);
+
+  @supports (background-clip: border-area) {
+    background-clip: border-area;
+    border: var(--thickness) solid transparent;
+    background-origin: border-box;
+  }
+
+  @supports not (background-clip: border-area) {
+    --clip-boundary: calc(100% - var(--thickness));
+    mask-image: radial-gradient(
+      farthest-side,
+      transparent var(--clip-boundary),
+      black var(--clip-boundary)
+    );
+  }
+
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    --spinner-color: CanvasText;
+    --track-color: Canvas;
+  }
+
+  animation:
+    stockmind-progress-spin var(--_used-spinner-duration) linear infinite
+    var(--progress-dash-animation, );
+
+  @media (prefers-reduced-motion: reduce) {
+    --_used-spinner-duration: 6s;
+    --progress-dash-animation: ;
+    --arc-end: 158deg;
+    animation-duration: 6s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+@keyframes stockmind-progress-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@keyframes stockmind-progress-dash {
+  from {
+    --arc-start: 0deg;
+    --arc-end: 6deg;
+  }
+  50% {
+    --arc-start: 105deg;
+    --arc-end: 350deg;
+  }
+  to {
+    --arc-start: 360deg;
+    --arc-end: 366deg;
+  }
 }

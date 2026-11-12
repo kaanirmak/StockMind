@@ -9,37 +9,57 @@ interface BrainLogoLoaderProps {
   className?: string;
 }
 
+const TELEMETRY_PILLS = ['BIST 100', 'NASDAQ', 'TEFAS', 'GVK FIFO'];
+
 export function BrainLogoLoader({
   size = 'fullscreen',
   message = 'StockMind Yükleniyor...',
-  subMessage = 'BIST & TEFAS piyasa verileri senkronize ediliyor',
+  subMessage = 'BIST, ABD & TEFAS piyasa verileri senkronize ediliyor',
   className = '',
 }: BrainLogoLoaderProps) {
   const isFullscreen = size === 'fullscreen';
 
   const logoDimension = {
-    sm: 'w-10 h-10',
-    md: 'w-16 h-16',
-    lg: 'w-24 h-24',
-    fullscreen: 'w-20 h-20 sm:w-24 sm:h-24',
+    sm: 'w-9 h-9',
+    md: 'w-14 h-14',
+    lg: 'w-16 h-16',
+    fullscreen: 'w-16 h-16 sm:w-20 sm:h-20',
+  }[size];
+
+  const spinnerScale = {
+    sm: 'scale-50',
+    md: 'scale-75',
+    lg: 'scale-100',
+    fullscreen: 'scale-110 sm:scale-125',
   }[size];
 
   const content = (
-    <div className={`flex flex-col items-center justify-center select-none ${className}`}>
-      {/* Central Animated Brain Logo Container */}
+    <div
+      role="status"
+      aria-live="polite"
+      className={`relative flex flex-col items-center justify-center select-none ${className}`}
+    >
+      {/* Ambient Radial Spotlight */}
+      {(isFullscreen || size === 'lg') && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-12 h-56 w-56 rounded-full bg-gradient-to-tr from-violet-600/25 via-fuchsia-500/20 to-indigo-500/25 blur-3xl animate-aura-expand"
+        />
+      )}
+
+      {/* Central Emblem + Semantic Indeterminate Spinner */}
       <div className="relative flex items-center justify-center">
-        {/* Expanding Ring Waves */}
-        <div className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-violet-500/40 animate-ring-wave-1 pointer-events-none" />
-        <div className="absolute inset-0 m-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-fuchsia-500/30 animate-ring-wave-2 pointer-events-none" />
+        <div className={`pointer-events-none flex items-center justify-center ${spinnerScale}`}>
+          <progress
+            aria-label={message || 'StockMind Yükleniyor'}
+            className="stockmind-loading-spinner"
+          />
+        </div>
 
-        {/* Dynamic Gradient Breathing Aura */}
-        <div className="absolute -inset-4 sm:-inset-6 rounded-full bg-gradient-to-tr from-violet-600/40 via-fuchsia-500/35 to-indigo-600/40 blur-2xl animate-aura-expand pointer-events-none" />
-
-        {/* Gradient Shimmer Disc */}
-        <div className="absolute -inset-2 rounded-3xl bg-gradient-to-br from-violet-500/20 via-purple-500/10 to-indigo-500/20 border border-violet-500/30 backdrop-blur-md animate-pulse-glow" />
-
-        {/* The Brain Logo with Pulse Animation */}
-        <div className={`relative ${logoDimension} flex items-center justify-center p-2.5 z-10 animate-brain-pulse`}>
+        {/* Frosted Inner Medallion */}
+        <div
+          className={`absolute flex items-center justify-center rounded-2xl bg-bg-card/90 border border-violet-500/25 shadow-[0_8px_32px_rgba(124,58,237,0.22)] backdrop-blur-md p-2.5 ${logoDimension}`}
+        >
           <img
             src="/icon-brain-light.png"
             alt="StockMind"
@@ -53,15 +73,15 @@ export function BrainLogoLoader({
         </div>
       </div>
 
-      {/* Brand Title with Gradient Shift Animation */}
+      {/* Brand Wordmark, Status & Market Telemetry Strip */}
       {(isFullscreen || size === 'lg') && (
-        <div className="mt-6 flex flex-col items-center text-center space-y-1.5 z-10">
+        <div className="mt-7 flex flex-col items-center text-center space-y-2 z-10 px-4">
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent animate-gradient-shift">
               StockMind
             </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-violet-500/15 text-violet-300 border border-violet-500/30">
-              AI
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-violet-500/15 text-violet-400 border border-violet-500/30">
+              AI v2.1
             </span>
           </div>
 
@@ -72,14 +92,23 @@ export function BrainLogoLoader({
           )}
 
           {subMessage && (
-            <p className="text-xs text-text-muted max-w-xs px-4">
+            <p className="text-xs text-text-muted max-w-xs leading-relaxed">
               {subMessage}
             </p>
           )}
 
-          {/* Animated Gradient Progress Line */}
-          <div className="w-36 sm:w-44 h-1 mt-3 rounded-full bg-bg-tertiary overflow-hidden border border-border/40 relative">
-            <div className="h-full w-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-400 to-indigo-500 animate-gradient-shift shadow-[0_0_8px_rgba(139,92,246,0.6)]" />
+          <div
+            aria-hidden="true"
+            className="pt-2 flex flex-wrap items-center justify-center gap-1.5"
+          >
+            {TELEMETRY_PILLS.map((label) => (
+              <span
+                key={label}
+                className="px-2 py-0.5 rounded-md text-[10px] font-mono font-medium text-text-muted bg-bg-tertiary/70 border border-border/60"
+              >
+                {label}
+              </span>
+            ))}
           </div>
         </div>
       )}
