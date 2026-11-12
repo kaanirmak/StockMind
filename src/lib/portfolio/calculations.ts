@@ -428,6 +428,7 @@ function processPortfolioTransactions(
         weight: 0,
         priceMissing: !priceRes.isLive,
         priceStale: priceRes.isStale,
+        fxMissing: isUsd && !liveUsdTry,
         lots: item.lots.map((l) => ({
           shares: l.shares,
           costTry: l.costTry,

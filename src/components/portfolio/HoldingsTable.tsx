@@ -20,6 +20,16 @@ function HoldingPriceFlag({ holding }: { holding: Holding }) {
       </span>
     );
   }
+  if (holding.fxMissing) {
+    return (
+      <span
+        className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0"
+        title="Canlı USD/TRY kuru alınamadı; yabancı varlık değerlemesinde son bilinen kur kullanılıyor."
+      >
+        Kur eksik
+      </span>
+    );
+  }
   if (holding.priceStale) {
     return (
       <span

@@ -60,6 +60,7 @@ export interface Holding {
   weight: number; // percentage of portfolio
   priceMissing?: boolean;
   priceStale?: boolean;
+  fxMissing?: boolean;
   dailyChangePercent?: number;
   dailyPnL?: number; // Includes intraday trades and FX in TRY.
   dailyReturnPercent?: number;
