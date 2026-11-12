@@ -3116,10 +3116,47 @@ test('ALR-04: asset detail quick alert creation supports price/percent threshold
 
   assert.match(modalSource, /data-testid="alert-currency-selector"/);
   assert.match(modalSource, /data-testid="alert-fixed-direction"/);
+  assert.match(modalSource, /data-testid="alert-mode-indicator"/);
+  assert.match(modalSource, /data-testid="alert-indicator-panel"/);
   assert.match(stockPageSource, /data-testid="asset-quick-alert-btn"/);
   assert.match(stockPageSource, /currency: stock\.currency/);
   assert.match(fundPageSource, /data-testid="asset-quick-alert-btn"/);
   assert.match(fundPageSource, /<PriceAlertModal/);
+
+  // Indicator alert configuration tests
+  const rsiAlert = buildQuickAlertConfig({
+    symbol: 'THYAO',
+    currentPrice: 280,
+    assetType: 'stock',
+    nativeCurrency: 'TRY',
+    selectedCurrency: 'TRY',
+    mode: 'indicator',
+    direction: 'down',
+    percentValue: 0,
+    targetPriceInput: '',
+    indicatorKind: 'rsi_below',
+    indicatorThreshold: 30,
+  });
+  assert.equal(rsiAlert.ok, true);
+  assert.equal(rsiAlert.alertType, 'indicator_rsi_below');
+  assert.equal(rsiAlert.targetPrice, 30);
+  assert.match(rsiAlert.descriptionText, /RSI\(14\) < 30/);
+
+  const smaAlert = buildQuickAlertConfig({
+    symbol: 'THYAO',
+    currentPrice: 280,
+    assetType: 'stock',
+    nativeCurrency: 'TRY',
+    selectedCurrency: 'TRY',
+    mode: 'indicator',
+    direction: 'up',
+    percentValue: 0,
+    targetPriceInput: '',
+    indicatorKind: 'sma_cross_above',
+  });
+  assert.equal(smaAlert.ok, true);
+  assert.equal(smaAlert.alertType, 'indicator_sma_cross_above');
+  assert.match(smaAlert.descriptionText, /Golden Cross/);
 });
 
 test('ALR-05: All Alerts screen partitions active vs paused rules, describes thresholds, and supports pausing/editing', () => {

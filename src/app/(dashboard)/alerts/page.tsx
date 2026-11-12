@@ -18,6 +18,7 @@ import {
   describeAlertRule,
   isAlertPaused,
   partitionAlertRules,
+  type AlertRuleLike,
   type AlertRuleStatusFilter,
 } from '@/lib/market/alertRules';
 import {
@@ -290,7 +291,7 @@ export default function AllAlertsPage() {
     };
   }, [quoteTargets]);
 
-  const handleTogglePause = (rule: WatchlistItem) => {
+  const handleTogglePause = (rule: AlertRuleLike) => {
     const currentlyPaused = isAlertPaused(rule);
     if (currentlyPaused && !isPro && activeRules.length >= 3) {
       showToast({
@@ -309,7 +310,7 @@ export default function AllAlertsPage() {
     });
   };
 
-  const handleDeleteRule = (rule: WatchlistItem) => {
+  const handleDeleteRule = (rule: AlertRuleLike) => {
     removeAlert(rule.symbol);
     showToast({
       type: 'info',
@@ -759,7 +760,7 @@ export default function AllAlertsPage() {
                       setEditingRule({
                         ...rule,
                         price: displayPrice > 0 ? displayPrice : rule.alertBasePrice || 0,
-                        changePercent: live?.changePercent ?? rule.changePercent,
+                        changePercent: live?.changePercent ?? rule.changePercent ?? 0,
                       })
                     }
                   >

@@ -6,6 +6,16 @@ import {
 
 export type AlertRuleStatusFilter = 'all' | 'active' | 'paused';
 
+export type AlertRuleType =
+  | 'price'
+  | 'percent_up'
+  | 'percent_down'
+  | 'percent_both'
+  | 'indicator_rsi_below'
+  | 'indicator_rsi_above'
+  | 'indicator_sma_cross_above'
+  | 'indicator_sma_cross_below';
+
 export interface AlertRuleLike {
   id: string;
   symbol: string;
@@ -15,7 +25,7 @@ export interface AlertRuleLike {
   changePercent?: number;
   exchange?: string;
   targetPrice?: number;
-  alertType?: 'price' | 'percent_up' | 'percent_down' | 'percent_both';
+  alertType?: AlertRuleType;
   alertPercent?: number;
   alertBasePrice?: number;
   alertCurrency?: AlertCurrencyCode;
@@ -31,8 +41,9 @@ export interface AlertRuleDescription {
 }
 
 export function hasConfiguredAlert(
-  item: Pick<AlertRuleLike, 'targetPrice' | 'alertPercent'>,
+  item: Pick<AlertRuleLike, 'targetPrice' | 'alertPercent' | 'alertType'>,
 ): boolean {
+  if (item.alertType?.startsWith('indicator_')) return true;
   return Boolean(
     (typeof item.targetPrice === 'number' && Number.isFinite(item.targetPrice) && item.targetPrice > 0) ||
       (typeof item.alertPercent === 'number' && Number.isFinite(item.alertPercent) && item.alertPercent > 0),
@@ -127,6 +138,42 @@ export function describeAlertRule(item: AlertRuleLike): AlertRuleDescription {
         basePrice > 0
           ? `±%${item.alertPercent} sapma (Baz: ${formatAlertPrice(basePrice, currency, item.assetType)})`
           : `±%${item.alertPercent} çift yönlü sapma`,
+    };
+  }
+
+  if (item.alertType === 'indicator_rsi_below') {
+    return {
+      modeLabel: 'Teknik Gösterge',
+      directionLabel: 'Aşırı Satım (<)',
+      currency,
+      conditionText: `RSI(14) < ${item.targetPrice || 30}`,
+    };
+  }
+
+  if (item.alertType === 'indicator_rsi_above') {
+    return {
+      modeLabel: 'Teknik Gösterge',
+      directionLabel: 'Aşırı Alım (>)',
+      currency,
+      conditionText: `RSI(14) > ${item.targetPrice || 70}`,
+    };
+  }
+
+  if (item.alertType === 'indicator_sma_cross_above') {
+    return {
+      modeLabel: 'Teknik Gösterge',
+      directionLabel: 'Kesişim (↗)',
+      currency,
+      conditionText: 'SMA(20) / SMA(50) Golden Cross',
+    };
+  }
+
+  if (item.alertType === 'indicator_sma_cross_below') {
+    return {
+      modeLabel: 'Teknik Gösterge',
+      directionLabel: 'Kesişim (↘)',
+      currency,
+      conditionText: 'SMA(20) / SMA(50) Death Cross',
     };
   }
 

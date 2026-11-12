@@ -17,6 +17,7 @@ import {
   type AlertCurrencyCode,
   type AlertDirection,
   type AlertThresholdMode,
+  type IndicatorAlertKind,
 } from '@/lib/market/alertForm';
 import { sendPushNotification } from '@/lib/notifications/pushNotification';
 import { useAuth } from '@/hooks/useAuth';
@@ -78,6 +79,8 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
   const [selectedPercent, setSelectedPercent] = useState<number>(2);
   const [customPercent, setCustomPercent] = useState<string>('');
   const [targetPriceInput, setTargetPriceInput] = useState<string>('');
+  const [indicatorKind, setIndicatorKind] = useState<IndicatorAlertKind>('rsi_below');
+  const [indicatorThreshold, setIndicatorThreshold] = useState<number>(30);
 
   const currentPrice = stock?.price || 0;
 
@@ -94,7 +97,14 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
     setSelectedCurrency(existingItem?.alertCurrency || inferredCurr);
 
     const stockCurrentPrice = stock.price || 0;
-    if (existingItem?.alertType && existingItem.alertType !== 'price' && existingItem.alertPercent) {
+    if (existingItem?.alertType?.startsWith('indicator_')) {
+      setMode('indicator');
+      const kind = existingItem.alertType.replace('indicator_', '') as IndicatorAlertKind;
+      setIndicatorKind(kind);
+      if (existingItem.targetPrice) {
+        setIndicatorThreshold(existingItem.targetPrice);
+      }
+    } else if (existingItem?.alertType && existingItem.alertType !== 'price' && existingItem.alertPercent) {
       setMode('percent');
       setSelectedPercent(existingItem.alertPercent);
       setCustomPercent(PERCENT_PRESETS.includes(existingItem.alertPercent) ? '' : existingItem.alertPercent.toString());
@@ -170,6 +180,8 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
       direction,
       percentValue: activePercent,
       targetPriceInput,
+      indicatorKind,
+      indicatorThreshold,
     });
 
     if (!built.ok) {
@@ -313,19 +325,19 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
         </div>
 
         {/* Mode Selector Tabs */}
-        <div className="grid grid-cols-2 p-1 rounded-xl bg-bg-secondary border border-border text-xs font-semibold">
+        <div className="grid grid-cols-3 p-1 rounded-xl bg-bg-secondary border border-border text-xs font-semibold">
           <button
             type="button"
             data-testid="alert-mode-percent"
             onClick={() => setMode('percent')}
-            className={`py-2 px-3 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
               mode === 'percent'
                 ? 'bg-accent text-white shadow-md shadow-accent/20'
                 : 'text-text-muted hover:text-text-primary'
             }`}
           >
             <span><UIIcon name="chart" className="w-4 h-4" /></span>
-            <span>Yüzdesel Değişim (%)</span>
+            <span className="truncate">Yüzde (%)</span>
           </button>
           <button
             type="button"
@@ -336,14 +348,27 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                 setDirection(fixedPriceNum > 0 && fixedPriceNum < currentPrice ? 'down' : 'up');
               }
             }}
-            className={`py-2 px-3 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
               mode === 'price'
                 ? 'bg-accent text-white shadow-md shadow-accent/20'
                 : 'text-text-muted hover:text-text-primary'
             }`}
           >
             <span><UIIcon name="sparkles" className="w-4 h-4" /></span>
-            <span>Hedef Fiyat ({getAlertCurrencySymbol(selectedCurrency)})</span>
+            <span className="truncate">Hedef Fiyat</span>
+          </button>
+          <button
+            type="button"
+            data-testid="alert-mode-indicator"
+            onClick={() => setMode('indicator')}
+            className={`py-2 px-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              mode === 'indicator'
+                ? 'bg-accent text-white shadow-md shadow-accent/20'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <span><UIIcon name="chart" className="w-4 h-4" /></span>
+            <span className="truncate">Gösterge</span>
           </button>
         </div>
 
@@ -569,6 +594,128 @@ export function PriceAlertModal({ isOpen, onClose, stock }: PriceAlertModalProps
                   {fixedPriceDiffPercent >= 0 ? '+' : ''}
                   {fixedPriceDiffPercent.toFixed(2)}% ({direction === 'down' ? 'Aşağı yönlü' : 'Yukarı yönlü'})
                 </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODE 3: TECHNICAL INDICATOR */}
+        {mode === 'indicator' && (
+          <div className="space-y-3 animate-fade-in" data-testid="alert-indicator-panel">
+            <label className="block text-xs font-semibold text-text-secondary mb-1">
+              Teknik Gösterge Kuralı
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIndicatorKind('rsi_below');
+                  setIndicatorThreshold(30);
+                }}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  indicatorKind === 'rsi_below'
+                    ? 'border-accent bg-accent/15 text-text-primary shadow-sm'
+                    : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-xs text-text-primary">
+                    RSI(14) &lt; {indicatorKind === 'rsi_below' ? indicatorThreshold : 30}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold">
+                    Aşırı Satım
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-secondary">
+                  Fiyat aşırı satım bölgesine indiğinde tepki alımı takibi için uyarır.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIndicatorKind('rsi_above');
+                  setIndicatorThreshold(70);
+                }}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  indicatorKind === 'rsi_above'
+                    ? 'border-accent bg-accent/15 text-text-primary shadow-sm'
+                    : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-xs text-text-primary">
+                    RSI(14) &gt; {indicatorKind === 'rsi_above' ? indicatorThreshold : 70}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-semibold">
+                    Aşırı Alım
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-secondary">
+                  Fiyat aşırı alım bölgesine ulaştığında kâr satışı takibi için uyarır.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIndicatorKind('sma_cross_above')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  indicatorKind === 'sma_cross_above'
+                    ? 'border-accent bg-accent/15 text-text-primary shadow-sm'
+                    : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-xs text-text-primary">SMA 20/50 Kesişimi</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-semibold">
+                    Golden Cross
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-secondary">
+                  SMA(20) hareketli ortalaması SMA(50)&apos;yi yukarı kestiğinde güçlü alım sinyali.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIndicatorKind('sma_cross_below')}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  indicatorKind === 'sma_cross_below'
+                    ? 'border-accent bg-accent/15 text-text-primary shadow-sm'
+                    : 'border-border bg-bg-card hover:bg-bg-secondary text-text-muted'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-xs text-text-primary">SMA 20/50 Kesişimi</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-semibold">
+                    Death Cross
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-secondary">
+                  SMA(20) hareketli ortalaması SMA(50)&apos;yi aşağı kestiğinde düzeltme/satış sinyali.
+                </p>
+              </button>
+            </div>
+
+            {(indicatorKind === 'rsi_below' || indicatorKind === 'rsi_above') && (
+              <div className="p-3 rounded-xl bg-bg-secondary border border-border">
+                <label className="block text-xs font-semibold text-text-secondary mb-1">
+                  RSI Eşik Değeri
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="10"
+                    max="90"
+                    step="5"
+                    value={indicatorThreshold}
+                    onChange={(e) => setIndicatorThreshold(Number(e.target.value))}
+                    className="w-full accent-accent cursor-pointer"
+                  />
+                  <span className="font-mono font-bold text-sm text-text-primary min-w-[36px] text-right">
+                    {indicatorThreshold}
+                  </span>
+                </div>
               </div>
             )}
           </div>

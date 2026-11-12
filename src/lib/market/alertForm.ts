@@ -1,7 +1,8 @@
 export type AlertCurrencyCode = 'TRY' | 'USD' | 'EUR';
-export type AlertThresholdMode = 'percent' | 'price';
+export type AlertThresholdMode = 'percent' | 'price' | 'indicator';
 export type AlertDirection = 'up' | 'down' | 'both';
 export type FixedPriceDirection = 'up' | 'down';
+export type IndicatorAlertKind = 'rsi_below' | 'rsi_above' | 'sma_cross_above' | 'sma_cross_below';
 
 const CURRENCY_SYMBOLS: Record<AlertCurrencyCode, string> = {
   TRY: '₺',
@@ -73,18 +74,29 @@ export interface BuildQuickAlertInput {
   targetPriceInput: string;
   /** Optional exchange rate such that 1 unit of selectedCurrency equals exchangeRateToNative units of nativeCurrency */
   exchangeRateToNative?: number | null;
+  indicatorKind?: IndicatorAlertKind;
+  indicatorThreshold?: number;
 }
 
 export type QuickAlertBuildResult =
   | {
       ok: true;
-      alertType: 'price' | 'percent_up' | 'percent_down' | 'percent_both';
+      alertType:
+        | 'price'
+        | 'percent_up'
+        | 'percent_down'
+        | 'percent_both'
+        | 'indicator_rsi_below'
+        | 'indicator_rsi_above'
+        | 'indicator_sma_cross_above'
+        | 'indicator_sma_cross_below';
       targetPrice: number;
       alertPercent?: number;
       alertBasePrice: number;
       alertCurrency: AlertCurrencyCode;
       alertDirection: AlertDirection;
       descriptionText: string;
+      indicatorKind?: IndicatorAlertKind;
     }
   | {
       ok: false;
@@ -103,6 +115,42 @@ export function buildQuickAlertConfig(input: BuildQuickAlertInput): QuickAlertBu
 
   const assetType = input.assetType || 'stock';
   const decimals = assetType === 'fund' ? 4 : input.currentPrice < 1 ? 4 : 2;
+
+  if (input.mode === 'indicator') {
+    const kind = input.indicatorKind || 'rsi_below';
+    let alertType: Extract<QuickAlertBuildResult, { ok: true }>['alertType'];
+    let descriptionText = '';
+    let targetPrice = input.indicatorThreshold || 30;
+
+    if (kind === 'rsi_below') {
+      alertType = 'indicator_rsi_below';
+      targetPrice = input.indicatorThreshold ?? 30;
+      descriptionText = `RSI(14) < ${targetPrice} aşırı satım bölgesine indiğinde`;
+    } else if (kind === 'rsi_above') {
+      alertType = 'indicator_rsi_above';
+      targetPrice = input.indicatorThreshold ?? 70;
+      descriptionText = `RSI(14) > ${targetPrice} aşırı alım bölgesine ulaştığında`;
+    } else if (kind === 'sma_cross_above') {
+      alertType = 'indicator_sma_cross_above';
+      targetPrice = 0;
+      descriptionText = 'SMA(20) ortalaması SMA(50) ortalamasını yukarı kestiğinde (Golden Cross)';
+    } else {
+      alertType = 'indicator_sma_cross_below';
+      targetPrice = 0;
+      descriptionText = 'SMA(20) ortalaması SMA(50) ortalamasını aşağı kestiğinde (Death Cross)';
+    }
+
+    return {
+      ok: true,
+      alertType,
+      targetPrice,
+      alertBasePrice: input.currentPrice,
+      alertCurrency: input.nativeCurrency,
+      alertDirection: kind.includes('above') ? 'up' : 'down',
+      descriptionText,
+      indicatorKind: kind,
+    };
+  }
 
   if (input.mode === 'percent') {
     if (!Number.isFinite(input.percentValue) || input.percentValue <= 0 || input.percentValue > 1000) {

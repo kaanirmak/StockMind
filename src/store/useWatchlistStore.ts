@@ -15,7 +15,15 @@ import {
 import { clearAlertTelemetry } from '@/lib/market/alertTelemetry';
 import { trackUsageEvent } from '@/lib/analytics/usageMetrics';
 
-export type PriceAlertType = 'price' | 'percent_up' | 'percent_down' | 'percent_both';
+export type PriceAlertType =
+  | 'price'
+  | 'percent_up'
+  | 'percent_down'
+  | 'percent_both'
+  | 'indicator_rsi_below'
+  | 'indicator_rsi_above'
+  | 'indicator_sma_cross_above'
+  | 'indicator_sma_cross_below';
 
 export interface WatchlistAlertConfig {
   targetPrice?: number;
@@ -165,6 +173,30 @@ export function isPriceAlertTriggered(
         };
       }
     }
+  } else if (alertType === 'indicator_rsi_below') {
+    return {
+      triggered: false,
+      title: `📊 RSI(14) < ${item.targetPrice || 30} Alarmı: ${sym}`,
+      message: `${name} için RSI(14) aşırı satım izlemesi aktif.`,
+    };
+  } else if (alertType === 'indicator_rsi_above') {
+    return {
+      triggered: false,
+      title: `📊 RSI(14) > ${item.targetPrice || 70} Alarmı: ${sym}`,
+      message: `${name} için RSI(14) aşırı alım izlemesi aktif.`,
+    };
+  } else if (alertType === 'indicator_sma_cross_above') {
+    return {
+      triggered: false,
+      title: `✨ SMA 20/50 Golden Cross: ${sym}`,
+      message: `${name} için SMA(20)/SMA(50) yukarı kesişim izlemesi aktif.`,
+    };
+  } else if (alertType === 'indicator_sma_cross_below') {
+    return {
+      triggered: false,
+      title: `⚠️ SMA 20/50 Death Cross: ${sym}`,
+      message: `${name} için SMA(20)/SMA(50) aşağı kesişim izlemesi aktif.`,
+    };
   }
 
   return { triggered: false, title: '', message: '' };
