@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ApiError } from '@/lib/api/security';
 
 /** Only server configuration or administrator-controlled claims grant access. */
-export async function requireProAdmin() {
+export async function requireProAdmin(requireMfa = true) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new ApiError(401, 'Önce giriş yapın.');
@@ -11,6 +11,13 @@ export async function requireProAdmin() {
   const configuredAdmin = Boolean(adminEmail && user.email_confirmed_at && user.email?.toLowerCase() === adminEmail);
   if (!configuredAdmin && user.app_metadata?.role !== 'admin') {
     throw new ApiError(403, 'Bu bölüm yalnızca yöneticiye açıktır.');
+  }
+  if (requireMfa) {
+    // getClaims verifies the JWT signature; browser storage is never an entitlement.
+    const { data: verified, error: claimError } = await supabase.auth.getClaims();
+    if (claimError || verified?.claims?.sub !== user.id || verified.claims.aal !== 'aal2') {
+      throw new ApiError(403, 'Yönetim işlemleri için ikinci faktörle doğrulayın.', 'ADMIN_MFA_REQUIRED');
+    }
   }
   return user;
 }

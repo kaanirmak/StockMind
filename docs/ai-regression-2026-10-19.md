@@ -69,7 +69,7 @@ All free text-only catalog options were tested using a generic RSI question with
 
 ## Rollout requirements and remaining limits
 
-Apply `supabase/migrations/20261019165130_durable_ai_hourly_quota.sql` **before deploying** the application. Without the migration, quota operations deliberately fail closed. Policy defaults preserve the current 5/20 per-hour product tiers and can be changed centrally in `private.ai_quota_policy`.
+Apply `supabase/migrations/20261112002822_durable_ai_hourly_quota.sql` **before deploying** the application. Without the migration, quota operations deliberately fail closed. Policy defaults preserve the current 5/20 per-hour product tiers and can be changed centrally in `private.ai_quota_policy`.
 
 Server-only optional settings are documented in `.env.example`: `AI_PROVIDER_TIMEOUT_MS`, `AI_CHAT_MAX_TOKENS`, `AI_COMMITTEE_MAX_TOKENS`, `AI_CHAT_BRIEF_WORD_TARGET`, `AI_CHAT_RESPONSE_STYLE` and `AI_COMMITTEE_MODEL`. Protocol identifiers, schema enums, bounded input limits and default configuration values remain intentional constants; model names, company-specific answers and phrase-based length hacks are not used.
 

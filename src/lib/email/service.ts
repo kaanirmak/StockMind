@@ -451,12 +451,11 @@ export interface ProRequestEmailParams {
   userEmail: string;
   userId: string;
   requestNote?: string;
-  approveUrl: string;
-  rejectUrl: string;
+  reviewUrl: string;
 }
 
 export async function sendProRequestAdminEmail(params: ProRequestEmailParams): Promise<SendEmailResult> {
-  const { adminEmail, userName, userEmail, userId, requestNote, approveUrl, rejectUrl } = params;
+  const { adminEmail, userName, userEmail, userId, requestNote, reviewUrl } = params;
   const dateStr = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
 
   const safeUserName = escapeHtml(userName);
@@ -496,7 +495,7 @@ export async function sendProRequestAdminEmail(params: ProRequestEmailParams): P
 
       <div class="title">Yeni Bir Kullanıcı Pro Hesap İstiyor!</div>
       <p style="font-size: 14px; color: #94a3b8; line-height: 1.5;">
-        Aşağıdaki kullanıcı hesabını StockMind Pro'ya yükseltmek için talepte bulundu. Onaylamak için aşağıdaki bağlantıya tıklayabilirsiniz:
+        Aşağıdaki kullanıcı hesabını StockMind Pro'ya yükseltmek için talepte bulundu. Talebi incelemek için yönetim konsoluna gidin ve ikinci faktörle doğrulayın:
       </p>
 
       <div class="info-box">
@@ -507,11 +506,10 @@ export async function sendProRequestAdminEmail(params: ProRequestEmailParams): P
         ${safeRequestNote ? `<div class="info-row" style="flex-direction: column; gap: 4px;"><span class="info-label">Kullanıcı Notu:</span><span class="info-val" style="font-style: italic; color: #cbd5e1;">"${safeRequestNote}"</span></div>` : ''}
       </div>
 
-      <a href="${approveUrl}" class="btn-approve">✅ Pro Hesabı Onayla ve Aktif Et</a>
-      <a href="${rejectUrl}" class="btn-reject">❌ Talebi Reddet</a>
+      <a href="${escapeHtml(reviewUrl)}" class="btn-approve">Yönetim Konsolunda İncele</a>
 
       <p style="text-align: center; font-size: 11px; color: #64748b; margin-top: 24px;">
-        Bu e-posta sadece StockMind yöneticisine iletilmiştir. Onay linki 30 gün geçerlidir.
+        Bu e-posta sadece StockMind yöneticisine iletilmiştir. Bağlantıyı açmak talep durumunu değiştirmez.
       </p>
     </div>
   </div>

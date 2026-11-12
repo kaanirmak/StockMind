@@ -7,6 +7,17 @@ const nextConfig: NextConfig = {
   compress: true,
   // Remove X-Powered-By header (minor security + bandwidth improvement)
   poweredByHeader: false,
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [
+        // Native Android bridges are exposed to frames: do not load third-party frames.
+        { key: 'Content-Security-Policy', value: "frame-src 'self'; object-src 'none'; base-uri 'self'" },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      ],
+    }];
+  },
 };
 
 export default nextConfig;

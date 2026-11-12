@@ -105,7 +105,7 @@ Sıradan portföy takip araçlarının aksine StockMind; **FIFO lot tabanlı kes
 - **Taşınabilir iFrame Bileşenleri**: StockMind portföy ve piyasa ısı haritası widget'larını herhangi bir web sitesine veya bloga tek satır `<iframe>` ile yerleştirme.
 
 ### 🛡️ Kurumsal Güvenlik & Biyometrik Giriş
-- **Passkeys / WebAuthn (FIDO2)**: Touch ID, Face ID veya Windows Hello ile parolasız donanım destekli güvenli oturum.
+- **Yönetici MFA**: Yönetim API’leri sunucuda doğrulanan AAL2 oturumu ister. Konsolda Auth servisi destekliyorsa WebAuthn anahtarı veya TOTP doğrulama uygulaması kullanılabilir.
 - **PostgreSQL RLS**: Supabase seviyesinde her kullanıcının verisini mutlak biçimde izole eden güvenlik kuralları.
 - **Pro Token İmzası**: Kurcalamaya karşı korumalı (tamper-proof) yetki doğrulaması.
 - **Fiyat Alarmları & E-Posta Bülteni**: Yüzdesel eşik bildirimleri ve günlük idempotent HTML portföy bülteni.
@@ -145,7 +145,7 @@ graph LR
 | **Framework** | [Next.js](https://nextjs.org) | `16.4.2` | App Router, React Server Components ve Edge optimizasyonu |
 | **Kullanıcı Arayüzü** | [React](https://react.dev) | `19.3.1` | Modern reaktif bileşen mimarisi |
 | **Stil & Tasarım** | [Tailwind CSS](https://tailwindcss.com) | `4.x` | Modern karanlık cam (glassmorphism) tasarım dili |
-| **Veritabanı & Kimlik** | [Supabase](https://supabase.com) | `v2` | PostgreSQL, Row Level Security (RLS) ve WebAuthn biyometrik auth |
+| **Veritabanı & Kimlik** | [Supabase](https://supabase.com) | `v2` | PostgreSQL, Row Level Security (RLS) ve yönetici MFA |
 | **Kenar Dağıtım** | [Cloudflare Workers](https://workers.cloudflare.com) | `@opennextjs/cloudflare` | Sıfır soğuk başlangıçlı, ultra düşük gecikmeli global sunucusuz dağıtım |
 | **Durum Yönetimi** | [Zustand](https://github.com/pmndrs/zustand) | `5.0.x` | Hafif, performanslı ve reaktif istemci durum mağazası |
 | **Grafik Motoru** | [TradingView Lightweight Charts](https://www.tradingview.com/lightweight-charts/) | `5.2.1` | Canvas tabanlı akıcı hisse mum ve indikatör grafikleri |
@@ -337,7 +337,7 @@ StockMind/
 │   │   │   ├── portfolio/       # FIFO lot takibi, işlem geçmişi & Excel aktarımı
 │   │   │   ├── quant-lab/       # DCF, Stres Testleri ve Sanal Yatırım Komitesi
 │   │   │   ├── reports/         # Performans raporları ve P&L ısı haritası
-│   │   │   ├── settings/        # Kullanıcı tercihleri, kota & WebAuthn biyometri
+│   │   │   ├── settings/        # Kullanıcı tercihleri ve kota
 │   │   │   ├── stocks/          # Hisse detay, TradingView grafiği ve alarmlar
 │   │   │   ├── watchlist/       # Özelleştirilebilir takip listesi
 │   │   │   └── widgets/         # Widget embed kod üretici ve önizleme paneli
@@ -403,7 +403,7 @@ StockMind/
 ## 🔒 Güvenlik & Gizlilik İlkeleri
 
 - **Veri İzolasyonu (Row Level Security)**: Veritabanı katmanında etkinleştirilmiş PostgreSQL RLS ile her kullanıcı yalnızca kendi portföyünü, işlemlerini ve ayarlarını görebilir ve değiştirebilir.
-- **Biyometrik Kimlik Doğrulama**: FIDO2 / WebAuthn standardıyla Touch ID, Face ID veya Windows Hello ile parolasız giriş.
+- **Yönetici İkinci Faktörü**: Yönetici kimliğine ek olarak sunucuda doğrulanmış MFA oturumu gerekir. Tarayıcı depolamasındaki bir bayrak yönetim yetkisi vermez.
 - **CSRF & Origin Doğrulaması**: Tüm mutasyon API rotalarında kaynak ve başlık doğrulama kontrolleri.
 - **Güvenli Arka Plan Görevleri**: Cron endpoint'leri yalnızca gizli `CRON_SECRET` Bearer token ile tetiklenebilir; URL üzerinden sızıntı imkanı engellenmiştir.
 - **XSS & HTML İnjeksiyon Koruması**: E-posta şablonları ve kullanıcı girdileri katı şekilde sanitize edilir.

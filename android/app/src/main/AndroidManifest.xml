@@ -19,7 +19,7 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.StockMind"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="${allowCleartextTraffic}"
         tools:targetApi="31">
 
         <provider

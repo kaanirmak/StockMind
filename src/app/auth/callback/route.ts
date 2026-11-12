@@ -17,24 +17,20 @@ export async function GET(request: Request) {
   if (type === 'recovery' && next === '/dashboard') {
     next = '/reset-password';
   }
-  // Sanitize next to avoid open redirect vulnerabilities
-  if (!next.startsWith('/') || next.startsWith('//')) {
+  // Resolve paths against a configured origin; forwarded headers are untrusted.
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.NODE_ENV === 'production'
+      ? 'https://stockmind.kaanrmak7.workers.dev'
+      : requestUrl.origin);
+  const appOrigin = new URL(configuredUrl).origin;
+  try {
+    const destination = new URL(next, appOrigin);
+    if (!next.startsWith('/') || /[\\\r\n\0]/.test(next) || destination.origin !== appOrigin) {
+      next = '/dashboard';
+    }
+  } catch {
     next = '/dashboard';
   }
-
-  // Determine real external origin (handles Cloudflare / reverse proxy headers)
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
-  let appOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : requestUrl.origin;
-
-  // Guard against internal/localhost origins in production environments
-  if ((!appOrigin || appOrigin.includes('localhost')) && process.env.NODE_ENV === 'production') {
-    const envUrl = process.env.NEXT_PUBLIC_APP_URL;
-    appOrigin = envUrl && !envUrl.includes('localhost') ? envUrl : 'https://stockmind.kaanrmak7.workers.dev';
-  }
-
-  // Ensure no trailing slash on origin
-  appOrigin = appOrigin.replace(/\/$/, '');
 
   const supabase = await createClient();
   let authSuccess = false;

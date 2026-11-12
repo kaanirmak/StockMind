@@ -23,6 +23,7 @@ interface AdminStats {
   };
   emailQueueSummary?: {
     pending: number;
+    processing: number;
     accepted: number;
     failed: number;
     retryScheduled: number;
@@ -122,10 +123,13 @@ export default function AdminConsolePage() {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isDesktop, setIsDesktop] = useState(true);
-  const [isBiometricUnlocked, setIsBiometricUnlocked] = useState(false);
+  const [isMfaVerified, setIsMfaVerified] = useState(false);
   const [biometricError, setBiometricError] = useState<string | null>(null);
   const [isAuthenticatingBiometric, setIsAuthenticatingBiometric] = useState(false);
-  const [hasPlatformAuthenticator, setHasPlatformAuthenticator] = useState(true);
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [totpQr, setTotpQr] = useState('');
+  const [totpSecret, setTotpSecret] = useState('');
 
   // Tab & Console State
   const [activeTab, setActiveTab] = useState<'users' | 'requests' | 'crons' | 'stats'>('users');
@@ -164,33 +168,14 @@ export default function AdminConsolePage() {
   useEffect(() => {
     async function checkAdminUser() {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        const response = await fetch('/api/admin/session', { cache: 'no-store' });
+        if (!response.ok) {
           router.replace('/not-found');
           return;
         }
-
-        const email = user.email?.toLowerCase() || '';
-        const isAdmin = user.app_metadata?.role === 'admin' || email === 'kaanrmak7@gmail.com';
-
-        if (!isAdmin) {
-          router.replace('/not-found');
-          return;
-        }
-
-        setCurrentUserEmail(email);
-
-        // Check if biometric session is already active in sessionStorage
-        const savedSession = sessionStorage.getItem('stockmind_admin_biometric_unlocked');
-        if (savedSession === 'true') {
-          setIsBiometricUnlocked(true);
-        }
-
-        // Check WebAuthn platform authenticator availability (Touch ID / Windows Hello)
-        if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false);
-          setHasPlatformAuthenticator(available);
-        }
+        const session = await response.json();
+        setCurrentUserEmail(session.email);
+        setIsMfaVerified(session.mfaVerified === true);
       } catch (err) {
         console.error('Admin check error:', err);
       } finally {
@@ -201,108 +186,87 @@ export default function AdminConsolePage() {
     checkAdminUser();
   }, [router, supabase]);
 
-  // 3. Biometric Unlock Handler (WebAuthn Platform Authenticator)
+  // The Auth service creates challenges and verifies signatures/codes. Only an
+  // independently verified AAL2 session can call the administrative APIs.
+  const confirmAdminMfa = async () => {
+    const response = await fetch('/api/admin/session', { cache: 'no-store' });
+    const session = await response.json();
+    if (!response.ok || session.mfaVerified !== true) throw new Error('Sunucu ikinci faktörü doğrulayamadı.');
+    setIsMfaVerified(true);
+    setTotpQr('');
+    setTotpSecret('');
+    setTotpCode('');
+  };
+
   const triggerBiometricUnlock = async () => {
     setIsAuthenticatingBiometric(true);
     setBiometricError(null);
-
     try {
-      if (typeof window === 'undefined' || !window.PublicKeyCredential) {
-        throw new Error('Tarayıcınız Web Authentication (WebAuthn) standardını desteklemiyor.');
-      }
-
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-
-      const storedCredId = localStorage.getItem('stockmind_admin_touchid_cred_id');
-
-      const registerNewCredential = async () => {
-        const userIdBytes = new TextEncoder().encode(currentUserEmail || 'admin');
-        const newCred = (await navigator.credentials.create({
-          publicKey: {
-            challenge,
-            rp: { name: 'StockMind Güvenli Yönetici Konsolu', id: window.location.hostname },
-            user: {
-              id: userIdBytes,
-              name: currentUserEmail || 'admin',
-              displayName: 'StockMind Yönetici',
-            },
-            pubKeyCredParams: [
-              { alg: -7, type: 'public-key' }, // ES256
-              { alg: -257, type: 'public-key' }, // RS256
-            ],
-            authenticatorSelection: {
-              authenticatorAttachment: 'platform', // Enforce Touch ID / Windows Hello
-              userVerification: 'required',
-              residentKey: 'preferred',
-            },
-            timeout: 60000,
-          },
-        })) as PublicKeyCredential;
-
-        if (newCred && newCred.rawId) {
-          const rawIdStr = btoa(String.fromCharCode(...new Uint8Array(newCred.rawId)));
-          localStorage.setItem('stockmind_admin_touchid_cred_id', rawIdStr);
-        }
-      };
-
-      if (storedCredId) {
-        // Authenticate existing credential with Touch ID / Face ID
-        const credIdBuffer = Uint8Array.from(atob(storedCredId), (c) => c.charCodeAt(0));
-
-        try {
-          await navigator.credentials.get({
-            publicKey: {
-              challenge,
-              rpId: window.location.hostname,
-              allowCredentials: [
-                {
-                  id: credIdBuffer,
-                  type: 'public-key',
-                  transports: ['internal'],
-                },
-              ],
-              userVerification: 'required',
-              timeout: 60000,
-            },
-          });
-        } catch (getErr: any) {
-          // If user explicitly cancelled or timed out, report it
-          if (getErr.name === 'NotAllowedError') {
-            throw getErr;
-          }
-          // If stored credential was invalid/removed, automatically re-register
-          localStorage.removeItem('stockmind_admin_touchid_cred_id');
-          await registerNewCredential();
-        }
-      } else {
-        // First-time biometric registration on this Mac / PC
-        await registerNewCredential();
-      }
-
-      // Biometric check succeeded!
-      sessionStorage.setItem('stockmind_admin_biometric_unlocked', 'true');
-      setIsBiometricUnlocked(true);
-    } catch (err: any) {
-      console.warn('Biometric verification error:', err);
-      if (err.name === 'NotAllowedError') {
-        setBiometricError('Biyometrik doğrulama iptal edildi veya parmak izi eşleşmedi. Tekrar deneyin.');
-      } else {
-        setBiometricError(err.message || 'Biyometrik donanım sensörüne erişilemedi.');
-      }
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      const factor = data.all.find((f) => f.factor_type === 'webauthn' && f.status === 'verified');
+      const result = factor
+        ? await supabase.auth.mfa.webauthn.authenticate({ factorId: factor.id })
+        : await supabase.auth.mfa.webauthn.register({ friendlyName: 'StockMind Yönetici' });
+      if (result.error) throw result.error;
+      await confirmAdminMfa();
+    } catch {
+      setBiometricError('Biyometrik doğrulama tamamlanamadı. Tekrar deneyin veya doğrulama uygulamasını kullanın.');
     } finally {
       setIsAuthenticatingBiometric(false);
     }
   };
 
-  const lockConsole = () => {
-    sessionStorage.removeItem('stockmind_admin_biometric_unlocked');
-    setIsBiometricUnlocked(false);
+  const prepareTotp = async () => {
+    setIsAuthenticatingBiometric(true);
+    setBiometricError(null);
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+      const factor = data.totp.find((f) => f.status === 'verified');
+      if (factor) {
+        setMfaFactorId(factor.id);
+      } else {
+        const enrolled = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: `StockMind-${Date.now()}` });
+        if (enrolled.error) throw enrolled.error;
+        setMfaFactorId(enrolled.data.id);
+        setTotpQr(enrolled.data.totp.qr_code);
+        setTotpSecret(enrolled.data.totp.secret);
+      }
+    } catch {
+      setBiometricError('İkinci faktör hazırlanamadı. Hesap doğrulama ayarlarını kontrol edin.');
+    } finally {
+      setIsAuthenticatingBiometric(false);
+    }
+  };
+
+  const verifyTotp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsAuthenticatingBiometric(true);
+    setBiometricError(null);
+    try {
+      const result = await supabase.auth.mfa.challengeAndVerify({ factorId: mfaFactorId, code: totpCode });
+      if (result.error) throw result.error;
+      await confirmAdminMfa();
+    } catch {
+      setBiometricError('Doğrulama kodu kabul edilmedi. Güncel kodla tekrar deneyin.');
+    } finally {
+      setIsAuthenticatingBiometric(false);
+    }
+  };
+
+  const lockConsole = async () => {
+    setIsMfaVerified(false);
+    setStats(null);
+    setUsers([]);
+    setProRequests([]);
+    await supabase.auth.signOut({ scope: 'local' });
+    router.replace('/login');
   };
 
   // 4. Fetch System Data once unlocked
   const fetchOverviewData = useCallback(async () => {
-    if (!isBiometricUnlocked) return;
+    if (!isMfaVerified) return;
 
     try {
       const statsRes = await fetch('/api/admin/stats');
@@ -319,10 +283,10 @@ export default function AdminConsolePage() {
     } catch (err) {
       console.error('Error fetching admin overview:', err);
     }
-  }, [isBiometricUnlocked]);
+  }, [isMfaVerified]);
 
   const fetchUsers = useCallback(async () => {
-    if (!isBiometricUnlocked) return;
+    if (!isMfaVerified) return;
     setIsLoadingUsers(true);
     try {
       const queryParam = searchQuery ? `&query=${encodeURIComponent(searchQuery)}` : '';
@@ -338,14 +302,14 @@ export default function AdminConsolePage() {
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [isBiometricUnlocked, page, searchQuery, userFilter]);
+  }, [isMfaVerified, page, searchQuery, userFilter]);
 
   useEffect(() => {
-    if (isBiometricUnlocked) {
+    if (isMfaVerified) {
       fetchOverviewData();
       fetchUsers();
     }
-  }, [isBiometricUnlocked, fetchOverviewData, fetchUsers]);
+  }, [isMfaVerified, fetchOverviewData, fetchUsers]);
 
   // User Actions
   const handleTogglePlan = async (userId: string, currentIsPro: boolean) => {
@@ -532,7 +496,7 @@ export default function AdminConsolePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-accent font-bold">✓</span>
-              <span>Giriş sırasında parmak izi / biyometrik sensör ile doğrulanır.</span>
+              <span>Giriş sırasında ikinci faktörle doğrulanır.</span>
             </div>
           </div>
 
@@ -547,96 +511,35 @@ export default function AdminConsolePage() {
     );
   }
 
-  // View 2: Biometric Hardware Lock Gate
-  if (!isBiometricUnlocked) {
+  if (!isMfaVerified) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#04060d] p-6 text-center select-none">
-        <div className="relative max-w-lg w-full rounded-3xl border border-indigo-500/30 bg-gradient-to-b from-[#0c1326] via-[#090d1c] to-[#05070e] p-10 shadow-2xl shadow-indigo-500/10 overflow-hidden">
-          {/* Ambient Radar Glow */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 h-48 w-48 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
-
-          {/* Biometric Scanner Visual Icon */}
-          <div className="relative mx-auto mb-6 flex h-24 w-24 items-center justify-center">
-            <div className="absolute inset-0 rounded-full border border-indigo-500/30 animate-ping opacity-40" />
-            <div className="absolute inset-2 rounded-full border border-indigo-400/40 animate-pulse" />
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600/30 to-cyan-500/30 border border-indigo-400/50 shadow-inner text-4xl">
-              <svg className="w-10 h-10 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004 11m0 0a8 8 0 00.957 3.824" />
-              </svg>
-            </div>
-          </div>
-
-          <div className="inline-block rounded-full border border-indigo-500/40 bg-indigo-500/15 px-3.5 py-1 text-[11px] font-bold text-indigo-300 uppercase tracking-wider mb-3">
-            🔒 Biyometrik Donanım Koruması
-          </div>
-
-          <h1 className="text-2xl font-extrabold text-white tracking-tight mb-2">
-            StockMind Yönetici Konsolu
-          </h1>
-          <p className="text-xs text-slate-400 leading-relaxed mb-6">
-            Yönetim konsolu sadece yetkili yöneticinin donanım biyometrik verisi (<strong>Touch ID / Face ID / Windows Hello</strong>) ile açılabilir.
-          </p>
-
-          <div className="rounded-2xl border border-white/5 bg-slate-900/70 p-4 text-xs text-left mb-6 space-y-2">
-            <div className="flex justify-between text-slate-400">
-              <span>Yetkili Hesap:</span>
-              <span className="font-mono font-bold text-slate-200">{currentUserEmail}</span>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Doğrulama Yöntemi:</span>
-              <span className="font-semibold text-emerald-400">FIDO2 / WebAuthn Platform Biyometriği</span>
-            </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Masaüstü Durumu:</span>
-              <span className="font-semibold text-emerald-400">Doğrulandı (İş İstasyonu)</span>
-            </div>
-          </div>
-
-          {biometricError && (
-            <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
-              {biometricError}
-            </div>
+      <main className="flex min-h-screen items-center justify-center bg-[#04060d] p-6 text-slate-200">
+        <div className="w-full max-w-lg space-y-5 rounded-3xl border border-indigo-500/30 bg-slate-900 p-8">
+          <h1 className="text-xl font-bold">Yönetici doğrulaması</h1>
+          <p className="text-sm text-slate-300">{currentUserEmail} hesabını ikinci faktörle doğrulayın.</p>
+          <button type="button" onClick={triggerBiometricUnlock} disabled={isAuthenticatingBiometric}
+            className="w-full rounded-xl bg-indigo-600 p-3 font-semibold disabled:opacity-50">
+            Biyometrik anahtarla doğrula
+          </button>
+          <button type="button" onClick={prepareTotp} disabled={isAuthenticatingBiometric}
+            className="w-full rounded-xl border border-slate-500 p-3 disabled:opacity-50">
+            Doğrulama uygulaması kullan
+          </button>
+          {mfaFactorId && (
+            <form onSubmit={verifyTotp} className="space-y-3">
+              {totpQr && <img src={totpQr} alt="Doğrulama uygulaması için kurulum QR kodu" className="mx-auto h-48 w-48 bg-white" />}
+              {totpSecret && <p className="break-all text-sm">QR kodu tarayın veya kurulum anahtarını girin: <code>{totpSecret}</code></p>}
+              <label htmlFor="admin-mfa-code" className="block text-sm">Altı haneli doğrulama kodu</label>
+              <input id="admin-mfa-code" value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" required
+                className="w-full rounded-lg border border-slate-500 bg-slate-950 p-3" />
+              <button disabled={isAuthenticatingBiometric || totpCode.length !== 6} className="w-full rounded-xl bg-indigo-600 p-3 disabled:opacity-50">Doğrula</button>
+            </form>
           )}
-
-          <button
-            type="button"
-            onClick={triggerBiometricUnlock}
-            disabled={isAuthenticatingBiometric}
-            className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-indigo-500 via-indigo-600 to-cyan-500 py-3.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/25 hover:opacity-95 transition disabled:opacity-50 cursor-pointer"
-          >
-            {isAuthenticatingBiometric ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>Biyometrik Sensör Bekleniyor...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004 11m0 0a8 8 0 00.957 3.824" />
-                </svg>
-                <span>Touch ID ile Doğrula ve Konsolu Aç</span>
-              </>
-            )}
-          </button>
-
-          <div className="mt-5 text-[11px] text-slate-500">
-            Apple Mac Touch ID veya Windows Hello donanım parmak izinizi doğrulamak için butona tıklayın.
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                localStorage.removeItem('stockmind_admin_touchid_cred_id');
-                setBiometricError('Kayıtlı biyometrik anahtar temizlendi. Yeni parmak izi tanımlamak için yukarıdaki butona tıklayın.');
-              }
-            }}
-            className="mt-3 text-[11px] text-indigo-400/70 hover:text-indigo-300 underline transition cursor-pointer"
-          >
-            Farklı veya Yeni Parmak İzi Tanımla
-          </button>
+          {biometricError && <p role="alert" className="text-sm text-red-300">{biometricError}</p>}
+          <Link href="/dashboard" className="block text-sm underline">Uygulamaya dön</Link>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -657,7 +560,7 @@ export default function AdminConsolePage() {
                   CANLI
                 </span>
                 <span className="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[10px] font-bold text-indigo-300 flex items-center gap-1">
-                  <span>🛡️</span> Touch ID Yetkili
+                  <span>🛡️</span> MFA Doğrulandı
                 </span>
               </div>
               <p className="text-[10px] text-slate-400 font-mono">
@@ -672,7 +575,7 @@ export default function AdminConsolePage() {
               onClick={lockConsole}
               className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-900/80 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition"
             >
-              <span>🔒</span> Paneli Kilitle
+              <span>🔒</span> Oturumu Kapat
             </button>
             <Link
               href="/dashboard"
@@ -1162,6 +1065,13 @@ export default function AdminConsolePage() {
                 </div>
               </div>
 
+              {(stats?.emailQueueSummary?.processing ?? 0) > 0 && (
+                <p role="status" className="text-xs text-amber-300">
+                  İşleniyor veya teslimat doğrulaması bekliyor: {stats?.emailQueueSummary?.processing}.
+                  Kesilen gönderimler tekrar gönderilmeden önce sağlayıcı kayıtlarından kontrol edilmelidir.
+                </p>
+              )}
+
               {stats?.emailQueueSummary && !stats.emailQueueSummary.available && (
                 <p className="text-[11px] text-amber-400/90">
                   Kalıcı kuyruk tablosu henüz etkinleştirilmedi veya bugün için kayıt bulunmuyor.
@@ -1375,30 +1285,30 @@ export default function AdminConsolePage() {
         {activeTab === 'stats' && (
           <div className="max-w-3xl space-y-4">
             <div className="rounded-2xl border border-white/10 bg-[#070b16] p-6 space-y-4">
-              <h3 className="text-sm font-bold text-white">Donanım ve Biyometrik Doğrulama Protokolü</h3>
+              <h3 className="text-sm font-bold text-white">Yönetici Doğrulama Protokolü</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Bu konsol, StockMind Güvenlik Standartları uyarınca çok katmanlı donanım korumasına sahiptir:
               </p>
 
               <div className="space-y-3 text-xs">
                 <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3.5 space-y-1">
-                  <div className="font-bold text-indigo-300">1. Donanım Biyometriği (Apple Touch ID / Windows Hello)</div>
+                  <div className="font-bold text-indigo-300">1. Sunucuda doğrulanan ikinci faktör</div>
                   <div className="text-slate-400 text-[11px]">
-                    FIDO2 ve Web Authentication API (WebAuthn) üzerinden parmak izi kriptografik olarak cihazınızın Secure Enclave donanımında saklanır ve doğrulanır.
+                    Biyometrik anahtar veya doğrulama uygulaması Auth servisi tarafından doğrulanır. Yönetim API’leri imzası doğrulanmış AAL2 oturumu ister.
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3.5 space-y-1">
-                  <div className="font-bold text-indigo-300">2. Masaüstü Donanım Sınırı</div>
+                  <div className="font-bold text-indigo-300">2. Masaüstü görünümü</div>
                   <div className="text-slate-400 text-[11px]">
-                    Mobil veya tablet ekranlarından (veya User-Agent'larından) yapılan tüm istekler sunucu ve istemci tarafında engellenir.
+                    Masaüstü kullanım tercihi cihaz başlıklarıyla uygulanır; güvenlik yetkisi yönetici kimliğine ve ikinci faktöre dayanır.
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3.5 space-y-1">
                   <div className="font-bold text-indigo-300">3. Oturum Güvenliği</div>
                   <div className="text-slate-400 text-[11px]">
-                    Biyometrik oturum tarayıcı kapatıldığında sıfırlanır; "Paneli Kilitle" butonuyla anında kapatılabilir.
+                    Oturumu Kapat düğmesi bu cihazdaki Auth oturumunu sonlandırır.
                   </div>
                 </div>
               </div>
@@ -1406,14 +1316,10 @@ export default function AdminConsolePage() {
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    localStorage.removeItem('stockmind_admin_touchid_cred_id');
-                    sessionStorage.removeItem('stockmind_admin_biometric_unlocked');
-                    setIsBiometricUnlocked(false);
-                  }}
+                  onClick={lockConsole}
                   className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/20 transition cursor-pointer"
                 >
-                  Biyometrik Eşleşmeyi Sıfırla ve Yeniden Kilitle
+                  Yönetici oturumunu kapat
                 </button>
               </div>
             </div>

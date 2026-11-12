@@ -42,6 +42,57 @@ function loader(stubs = {}, env = {}, globals = {}) {
   return load;
 }
 
+// Shared durable queue boundary. Claims execute atomically, as the SQL UPDATE does.
+function queueAdmin(users, rows = new Map()) {
+  return {
+    auth: { admin: { listUsers: async () => ({ data: { users } }) } },
+    rpc: async (name, args) => {
+      if (name === 'claim_bulletin_delivery') {
+        const key = `${args.p_bulletin_date}:daily_bulletin:${args.p_recipient_email}`;
+        const row = rows.get(key);
+        if (!row || row.status === 'processing' || (!args.p_force && (
+          !['pending', 'retry_scheduled'].includes(row.status) || row.attempt_count >= row.max_attempts ||
+          (row.next_retry_at && Date.parse(row.next_retry_at) > Date.now())
+        ))) return { data: null, error: null };
+        const updated = { ...row, status: 'processing', claim_token: args.p_claim_token, attempt_count: row.attempt_count + 1 };
+        rows.set(key, updated);
+        return { data: updated, error: null };
+      }
+      if (name === 'complete_bulletin_delivery') {
+        const entry = [...rows.entries()].find(([, r]) => r.status === 'processing' && r.claim_token === args.p_claim_token);
+        if (!entry) return { data: null, error: null };
+        const updated = { ...entry[1], ...args.p_result, claim_token: null };
+        rows.set(entry[0], updated);
+        return { data: updated, error: null };
+      }
+      throw new Error(`Unexpected RPC ${name}`);
+    },
+    from: (table) => {
+      if (table !== 'email_delivery_queue') throw new Error('Optional telemetry table not present');
+      return {
+        select: () => {
+          const filters = [];
+          const query = {
+            eq(k, v) { filters.push([k, v]); return this; },
+            order() { return this; }, limit() { return this; },
+            then(resolve) { return Promise.resolve({ data: [...rows.values()].filter(r => filters.every(([k,v]) => r[k] === v)), error: null }).then(resolve); },
+          };
+          return query;
+        },
+        upsert: (payload, opts = {}) => {
+          const saved = [];
+          for (const item of (Array.isArray(payload) ? payload : [payload])) {
+            const key = `${item.bulletin_date}:${item.job_type}:${item.recipient_email}`;
+            if (!(opts.ignoreDuplicates && rows.has(key))) rows.set(key, { ...item });
+            saved.push(rows.get(key));
+          }
+          return { select: async () => ({ data: saved, error: null }), then: resolve => Promise.resolve({ data: saved, error: null }).then(resolve) };
+        },
+      };
+    },
+  };
+}
+
 function fixture(options = {}) {
   const calls = { quota: 0, ai: 0, mail: 0, quote: 0, write: 0, hourly: [] };
   const userMetadata = options.pro ? { plan: 'pro', is_pro: true } : (options.app_metadata || (options.plan ? { plan: options.plan } : {}));
@@ -232,9 +283,7 @@ test('Scheduled bulletin respects preferences and reports partial provider failu
       return { success: to === 'ok@example.test' };
     } },
     '@/lib/email/marketData': { getBulletinMarketData: async () => ({}) },
-    '@/lib/supabase/admin': { createAdminClient: () => ({
-      auth: { admin: { listUsers: async () => ({ data: { users } }) } },
-    }) },
+    '@/lib/supabase/admin': { createAdminClient: () => queueAdmin(users) },
   }, { CRON_SECRET: 'cron-secret' });
   const { POST } = load('src/app/api/cron/daily-report/route.ts');
   const response = await POST(request({}, { authorization: 'Bearer cron-secret' }));
@@ -259,9 +308,7 @@ test('EPO-02: günlük bülten 51 ve üzeri alıcıyı sınır olmadan partiler 
     },
     '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 42 }) },
     '@/lib/supabase/admin': {
-      createAdminClient: () => ({
-        auth: { admin: { listUsers: async () => ({ data: { users } }) } },
-      }),
+      createAdminClient: () => queueAdmin(users),
     },
   }, { CRON_SECRET: 'cron-secret' });
 
@@ -278,38 +325,7 @@ test('EPO-02: günlük bülten 51 ve üzeri alıcıyı sınır olmadan partiler 
 
 test('EPO-03: kalıcı e-posta kuyruğu iş yarıda kesilse bile yeniden başlatmadan sonra bekleyen ve tamamlanan alıcıları ayırt eder', async () => {
   const queueStore = new Map();
-  const buildAdminMock = (users) => ({
-    auth: { admin: { listUsers: async () => ({ data: { users } }) } },
-    from: (table) => {
-      assert.equal(table, 'email_delivery_queue');
-      return {
-        select: () => ({
-          eq: (_col, val) => {
-            const rows = Array.from(queueStore.values()).filter((r) => r.bulletin_date === val || r.job_type === val);
-            return {
-              eq: (_c2, v2) => Promise.resolve({ data: rows.filter((r) => r.job_type === v2), error: null }),
-              order: () => ({ limit: () => Promise.resolve({ data: rows, error: null }) }),
-            };
-          },
-        }),
-        upsert: (payload, opts = {}) => {
-          const items = Array.isArray(payload) ? payload : [payload];
-          const saved = [];
-          for (const item of items) {
-            const key = `${item.bulletin_date}:${item.job_type}:${item.recipient_email}`;
-            if (!(opts.ignoreDuplicates && queueStore.has(key))) {
-              queueStore.set(key, { ...item });
-            }
-            saved.push(queueStore.get(key));
-          }
-          return {
-            select: () => Promise.resolve({ data: saved, error: null }),
-            then: (resolve) => resolve({ data: saved, error: null }),
-          };
-        },
-      };
-    },
-  });
+  const buildAdminMock = users => queueAdmin(users, queueStore);
 
   const users = [
     { email: 'a@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
@@ -341,7 +357,7 @@ test('EPO-03: kalıcı e-posta kuyruğu iş yarıda kesilse bile yeniden başlat
   const rowsAfterCrash = Array.from(queueStore.values());
   assert.equal(rowsAfterCrash.length, 2, 'Both recipients must exist in persistent queue before dispatch');
   assert.equal(rowsAfterCrash.find((r) => r.recipient_email === 'a@example.test').status, 'accepted');
-  assert.equal(rowsAfterCrash.find((r) => r.recipient_email === 'b@example.test').status, 'pending');
+  assert.equal(rowsAfterCrash.find((r) => r.recipient_email === 'b@example.test').status, 'processing');
 
   // Run 2 (fresh module load -> simulated process restart with empty sentReportsCache)
   const run2Sent = [];
@@ -359,44 +375,16 @@ test('EPO-03: kalıcı e-posta kuyruğu iş yarıda kesilse bile yeniden başlat
   const recoverRes = await loadRun2('src/app/api/cron/daily-report/route.ts').POST(
     request({}, { authorization: 'Bearer cron-secret' })
   );
-  assert.equal(recoverRes.status, 200);
+  assert.equal(recoverRes.status, 207);
   const recoverBody = await recoverRes.json();
-  assert.deepEqual(run2Sent, ['b@example.test'], 'Only pending recipient must be sent after restart');
-  assert.equal(recoverBody.queueSummary.accepted, 2);
-  assert.equal(recoverBody.queueSummary.pending, 0);
+  assert.deepEqual(run2Sent, [], 'Ambiguous SMTP outcome must not be automatically resent');
+  assert.equal(recoverBody.queueSummary.accepted, 1);
+  assert.equal(recoverBody.queueSummary.processing, 1);
 });
 
 test('EPO-04: aynı bülten günü ve alıcı için yeniden deneme veya tekrar tetiklemede çift gönderim oluşmaz', async () => {
   const queueStore = new Map();
-  const buildAdminMock = (users) => ({
-    auth: { admin: { listUsers: async () => ({ data: { users } }) } },
-    from: () => ({
-      select: () => ({
-        eq: (_col, val) => {
-          const rows = Array.from(queueStore.values()).filter((r) => r.bulletin_date === val || r.job_type === val);
-          return {
-            eq: (_c2, v2) => Promise.resolve({ data: rows.filter((r) => r.job_type === v2), error: null }),
-            order: () => ({ limit: () => Promise.resolve({ data: rows, error: null }) }),
-          };
-        },
-      }),
-      upsert: (payload, opts = {}) => {
-        const items = Array.isArray(payload) ? payload : [payload];
-        const saved = [];
-        for (const item of items) {
-          const key = `${item.bulletin_date}:${item.job_type}:${item.recipient_email}`;
-          if (!(opts.ignoreDuplicates && queueStore.has(key))) {
-            queueStore.set(key, { ...item });
-          }
-          saved.push(queueStore.get(key));
-        }
-        return {
-          select: () => Promise.resolve({ data: saved, error: null }),
-          then: (resolve) => resolve({ data: saved, error: null }),
-        };
-      },
-    }),
-  });
+  const buildAdminMock = users => queueAdmin(users, queueStore);
 
   const users = [
     { email: 'ok@example.test', email_confirmed_at: '2026-01-01T00:00:00Z', app_metadata: { plan: 'pro' } },
@@ -427,6 +415,7 @@ test('EPO-04: aynı bülten günü ve alıcı için yeniden deneme veya tekrar t
   assert.equal(body1.queueSummary.accepted, 1);
   assert.equal(body1.queueSummary.retryScheduled, 1);
 
+  for (const row of queueStore.values()) if (row.status === 'retry_scheduled') row.next_retry_at = new Date(0).toISOString();
   // Run 2 (fresh worker): flaky succeeds; ok (even with uppercase casing) must NOT be sent again
   const run2Sent = [];
   const loadRun2 = loader({
@@ -641,10 +630,10 @@ test('Pro admin rejects spoofed metadata and unverified configured email', async
 
 test('Pro admin accepts verified configured email or trusted admin claim', async () => {
   for (const user of [
-    { email: 'ADMIN@example.com', email_confirmed_at: '2026-01-01', app_metadata: {} },
-    { email: 'other@example.com', app_metadata: { role: 'admin' } },
+    { id: 'admin-id', email: 'ADMIN@example.com', email_confirmed_at: '2026-01-01', app_metadata: {} },
+    { id: 'admin-id', email: 'other@example.com', app_metadata: { role: 'admin' } },
   ]) {
-    const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user } }) } }) } }, { ADMIN_EMAIL: 'admin@example.com' });
+    const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: { getUser: async () => ({ data: { user } }), getClaims: async () => ({ data: { claims: { sub: user.id, aal: 'aal2' } } }) } }) } }, { ADMIN_EMAIL: 'admin@example.com' });
     assert.equal(await load('src/lib/pro/admin.ts').requireProAdmin(), user);
   }
 });
@@ -816,8 +805,7 @@ test('SEC-01: sendProRequestAdminEmail sanitizes user note, name and email again
     userEmail: 'user<hack>@example.com',
     userId: '12345',
     requestNote: '<script>evil()</script><a href="phish">Click</a>',
-    approveUrl: 'https://stockmind.test/approve',
-    rejectUrl: 'https://stockmind.test/reject',
+    reviewUrl: 'https://stockmind.test/admin',
   });
 
   assert.equal(capturedHtml.includes('<script>evil()</script>'), false);
@@ -827,46 +815,13 @@ test('SEC-01: sendProRequestAdminEmail sanitizes user note, name and email again
   assert.equal(capturedHtml.includes('user&lt;hack&gt;@example.com'), true);
 });
 
-test('SEC-02: Pro approval rejects replay when pro_request_status is not pending', async () => {
-  const makeLoader = (requestStatus) => loader({
-    '@/lib/pro/tokens': {
-      verifyProActionToken: () => ({ valid: true, action: 'approve', userId: 'user-42', email: 'investor@example.com' }),
-    },
-    '@/lib/supabase/admin': {
-      createAdminClient: () => ({
-        auth: {
-          admin: {
-            getUserById: async () => ({
-              data: {
-                user: {
-                  id: 'user-42',
-                  email: 'investor@example.com',
-                  app_metadata: {},
-                  user_metadata: { pro_request_status: requestStatus },
-                },
-              },
-              error: null,
-            }),
-            updateUserById: async () => ({ error: null }),
-          },
-        },
-        from: () => ({ update: () => ({ eq: async () => ({}) }) }),
-      }),
-    },
-    '@/lib/email/service': { sendProApprovedUserEmail: async () => ({ success: true }) },
-  });
-
-  // Replay attempt on an already-approved user must be rejected with 400
-  const approvedRoute = makeLoader('approved')('src/app/api/admin/pro-request/approve/route.ts');
-  const replayRes = await approvedRoute.GET(new Request('https://stockmind.test/api/admin/pro-request/approve?userId=user-42&token=valid.token'));
-  assert.equal(replayRes.status, 400);
-  const replayBody = await replayRes.text();
-  assert.match(replayBody, /daha önce sonuçlandırılmış veya beklemede değil/);
-
-  // Fresh pending request must succeed with 200
-  const pendingRoute = makeLoader('pending')('src/app/api/admin/pro-request/approve/route.ts');
-  const validRes = await pendingRoute.GET(new Request('https://stockmind.test/api/admin/pro-request/approve?userId=user-42&token=valid.token'));
-  assert.equal(validRes.status, 200);
+test('Legacy approval/rejection links only open the admin console and never mutate privileges', async () => {
+  for (const action of ['approve', 'reject']) {
+    const route = loader()(`src/app/api/admin/pro-request/${action}/route.ts`);
+    const response = await route.GET(new Request(`https://stockmind.test/api/admin/pro-request/${action}?userId=target&token=old-token`));
+    assert.ok([302, 307].includes(response.status));
+    assert.equal(response.headers.get('location'), 'https://stockmind.kaanrmak7.workers.dev/admin');
+  }
 });
 
 test('SEC-04: trigger-cron fails closed when CRON_SECRET is not configured in environment', async () => {
@@ -1182,7 +1137,7 @@ test('EPO-08: scheduled bulletin records scheduled/start times, duration, delay,
     '@/lib/email/marketData': { getBulletinMarketData: async () => ({ usdtry: 34.2 }) },
     '@/lib/email/deliveryQueue': {
       enqueueBulletinRecipients: async () => ({ persisted: true, existingByEmail: new Map() }),
-      hasAcceptedDeliveryForDay: async () => false,
+      claimBulletinDelivery: async () => ({ status: 'processing', attempt_count: 1, max_attempts: 3 }),
       recordDeliveryOutcome: async () => ({ status: 'accepted' }),
       shouldSkipDuplicateDelivery: () => false,
       summarizeDeliveryQueue: async () => ({ pending: 0, accepted: 1, failed: 0, retryScheduled: 0, total: 1, available: true, bulletinDate: '2026-11-11', recentItems: [] }),
@@ -1312,7 +1267,7 @@ test('EPO-09: personalized daily bulletin includes only matched portfolio events
       },
     },
     from(table) {
-      if (table === 'portfolio_transactions') {
+      if (table === 'transactions') {
         return {
           select() { return this; },
           eq: async () => ({ data: [{ symbol: 'THYAO.IS', asset_type: 'stock' }], error: null }),
@@ -1351,7 +1306,7 @@ test('EPO-09: personalized daily bulletin includes only matched portfolio events
     },
     '@/lib/email/deliveryQueue': {
       enqueueBulletinRecipients: async () => ({ persisted: true, existingByEmail: new Map() }),
-      hasAcceptedDeliveryForDay: async () => false,
+      claimBulletinDelivery: async () => ({ status: 'processing', attempt_count: 1, max_attempts: 3 }),
       recordDeliveryOutcome: async () => ({ status: 'accepted' }),
       shouldSkipDuplicateDelivery: () => false,
       summarizeDeliveryQueue: async () => ({ pending: 0, accepted: 2, failed: 0, retryScheduled: 0, total: 2, available: true, bulletinDate: '2026-11-11', recentItems: [] }),
@@ -1381,3 +1336,109 @@ test('EPO-09: personalized daily bulletin includes only matched portfolio events
 
 
 
+
+test('Admin APIs require signed AAL2 claims belonging to the verified admin', async () => {
+  const user = { id: 'admin-user', email: 'admin@example.com', email_confirmed_at: '2026-01-01', app_metadata: {} };
+  for (const claims of [{ sub: user.id, aal: 'aal1' }, { sub: 'other-user', aal: 'aal2' }, { sub: user.id, aal: 'aal2' }]) {
+    const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: {
+      getUser: async () => ({ data: { user } }),
+      getClaims: async () => ({ data: { claims } }),
+    } }) } }, { ADMIN_EMAIL: 'admin@example.com' });
+    if (claims.sub === user.id && claims.aal === 'aal2') assert.equal(await load('src/lib/pro/admin.ts').requireProAdmin(), user);
+    else await assert.rejects(load('src/lib/pro/admin.ts').requireProAdmin(), error => error.code === 'ADMIN_MFA_REQUIRED');
+  }
+  const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: {
+    getUser: async () => ({ data: { user } }),
+    getClaims: async () => ({ data: null, error: new Error('Invalid signature') }),
+  } }) } }, { ADMIN_EMAIL: 'admin@example.com' });
+  await assert.rejects(load('src/lib/pro/admin.ts').requireProAdmin(), error => error.code === 'ADMIN_MFA_REQUIRED');
+});
+
+test('Auth callback ignores spoofed forwarded headers and rejects cross-origin next paths', async () => {
+  const load = loader({ '@/lib/supabase/server': { createClient: async () => ({ auth: {
+    exchangeCodeForSession: async () => ({ error: null }),
+    getUser: async () => ({ data: { user: { user_metadata: {} } } }),
+  } }) } }, { NODE_ENV: 'production', NEXT_PUBLIC_APP_URL: 'https://stockmind.test' });
+  const route = load('src/app/auth/callback/route.ts');
+  for (const next of ['//attacker.example/', '/\\attacker.example/', '/\n/attacker.example/', 'https://attacker.example/', '/dashboard?tab=holdings']) {
+    const response = await route.GET(new Request(`https://internal.invalid/auth/callback?code=code&next=${encodeURIComponent(next)}`, {
+      headers: { 'x-forwarded-host': 'attacker.example', 'x-forwarded-proto': 'http' },
+    }));
+    const target = new URL(response.headers.get('location'));
+    assert.equal(target.origin, 'https://stockmind.test');
+    assert.equal(target.pathname, '/dashboard');
+    assert.equal(target.search, next === '/dashboard?tab=holdings' ? '?tab=holdings' : '');
+  }
+});
+
+test('Two bulletin workers cannot send the same recipient concurrently or after restart', async () => {
+  const users = [{ email: 'owner@example.test', email_confirmed_at: '2026-01-01', app_metadata: { plan: 'pro' } }];
+  const rows = new Map();
+  const admin = queueAdmin(users, rows);
+  let sent = 0;
+  let release, started;
+  const gate = new Promise(resolve => { release = resolve; });
+  const providerStarted = new Promise(resolve => { started = resolve; });
+  const makeRoute = () => loader({
+    '@/lib/supabase/admin': { createAdminClient: () => admin },
+    '@/lib/email/marketData': { getBulletinMarketData: async () => ({}) },
+    '@/lib/email/service': { sendTestEmail: async () => { sent++; started(); await gate; return { success: true }; } },
+  }, { CRON_SECRET: 'cron-secret' })('src/app/api/cron/daily-report/route.ts');
+  const makeRequest = () => request({}, { authorization: 'Bearer cron-secret' });
+  const first = makeRoute().POST(makeRequest());
+  await providerStarted;
+  try {
+    const second = await makeRoute().POST(makeRequest());
+    assert.equal(second.status, 503);
+    assert.equal(sent, 1);
+  } finally { release(); }
+  assert.equal((await first).status, 200);
+  assert.equal((await makeRoute().POST(makeRequest())).status, 200);
+  assert.equal(sent, 1);
+  assert.equal([...rows.values()][0].status, 'accepted');
+});
+
+test('A missing durable mail queue or claim RPC never reaches the email provider', async () => {
+  for (const missing of ['table', 'rpc']) {
+    let sent = 0;
+    const users = [{ email: 'owner@example.test', email_confirmed_at: '2026-01-01', app_metadata: { plan: 'pro' } }];
+    const admin = queueAdmin(users);
+    if (missing === 'table') admin.from = () => { throw new Error('Missing table'); };
+    else admin.rpc = async () => ({ data: null, error: { code: 'PGRST202' } });
+    const route = loader({
+      '@/lib/supabase/admin': { createAdminClient: () => admin },
+      '@/lib/email/marketData': { getBulletinMarketData: async () => ({}) },
+      '@/lib/email/service': { sendTestEmail: async () => { sent++; return { success: true }; } },
+    }, { CRON_SECRET: 'cron-secret' })('src/app/api/cron/daily-report/route.ts');
+    const response = await route.POST(request({}, { authorization: 'Bearer cron-secret' }));
+    assert.ok([500, 503].includes(response.status));
+    assert.equal(sent, 0);
+  }
+});
+
+test('Admin mutation origin validation runs before administrator lookup', async () => {
+  let lookups = 0;
+  const load = loader({ '@/lib/pro/admin': { requireProAdmin: async () => { lookups++; return { id: 'admin' }; } }, '@/lib/supabase/server': {} });
+  const { requireDesktopAdmin } = load('src/lib/admin/desktopGuard.ts');
+  for (const origin of [undefined, 'https://attacker.example']) {
+    await assert.rejects(requireDesktopAdmin(request({}, origin ? { origin } : {})), error => error.code === 'FORBIDDEN_ORIGIN');
+  }
+  assert.equal(lookups, 0);
+  await requireDesktopAdmin(request({}, { origin: 'https://stockmind.test' }));
+  assert.equal(lookups, 1);
+});
+
+test('Android origin policy rejects prefix, credential, protocol and port bypasses in real Java', (t) => {
+  const { execFileSync, spawnSync } = require('node:child_process');
+  const os = require('node:os');
+  const candidates = [process.env.JAVA_HOME, '/Applications/Android Studio.app/Contents/jbr/Contents/Home', '/opt/homebrew/opt/openjdk@21'];
+  const javaHome = candidates.find(p => p && fs.existsSync(path.join(p, 'bin', 'javac')));
+  const javac = javaHome ? path.join(javaHome, 'bin', 'javac') : 'javac';
+  const java = javaHome ? path.join(javaHome, 'bin', 'java') : 'java';
+  if (spawnSync(javac, ['-version']).status !== 0) { t.skip('A JDK is required for the native origin policy test'); return; }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stockmind-origin-test-'));
+  try {
+    execFileSync(javac, ['-d', dir, path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/TrustedUrls.java'), path.join(root, 'tests/android/TrustedUrlsTest.java')]);
+    assert.match(execFileSync(java, ['-cp', dir, 'TrustedUrlsTest'], { encoding: 'utf8' }), /checks passed/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

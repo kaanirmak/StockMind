@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createProActionToken } from '@/lib/pro/tokens';
 import { sendProRequestAdminEmail } from '@/lib/email/service';
 import { hasProAccess } from '@/lib/ai/modelCatalog';
 import { ApiError, apiErrorResponse, optionalText, readJsonObject } from '@/lib/api/security';
@@ -55,13 +54,8 @@ export async function POST(request: Request) {
       'StockMind Kullanıcısı';
     const userEmail = user.email || '';
 
-    // Generate secure 30-day tokens
-    const approveToken = createProActionToken(user.id, userEmail, 'approve', 30);
-    const rejectToken = createProActionToken(user.id, userEmail, 'reject', 30);
-
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stockmind.kaanrmak7.workers.dev';
-    const approveUrl = `${baseUrl}/api/admin/pro-request/approve?userId=${encodeURIComponent(user.id)}&token=${encodeURIComponent(approveToken)}`;
-    const rejectUrl = `${baseUrl}/api/admin/pro-request/reject?userId=${encodeURIComponent(user.id)}&token=${encodeURIComponent(rejectToken)}`;
+    const reviewUrl = new URL('/admin', baseUrl).href;
 
     // Update user metadata to mark pending
     try {
@@ -131,8 +125,7 @@ export async function POST(request: Request) {
       userEmail,
       userId: user.id,
       requestNote: note,
-      approveUrl,
-      rejectUrl,
+      reviewUrl,
     });
 
     if (emailResult.success) {

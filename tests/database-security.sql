@@ -31,7 +31,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.portfolios, public.transactions T
 \ir ../supabase/migrations/006_api_quotas.sql
 \ir ../supabase/migrations/007_broadcasts.sql
 \ir ../supabase/migrations/008_transactions_rls.sql
-\ir ../supabase/migrations/20261019165130_durable_ai_hourly_quota.sql
+\ir ../supabase/migrations/20261112002822_durable_ai_hourly_quota.sql
 
 BEGIN;
 INSERT INTO auth.users (id) VALUES ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');

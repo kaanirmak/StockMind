@@ -18,6 +18,10 @@ export function isMobileRequest(request: Request): boolean {
  * AND is running on an authorized desktop workstation (not mobile/tablet).
  */
 export async function requireDesktopAdmin(request: Request) {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
+      request.headers.get('origin') !== new URL(request.url).origin) {
+    throw new ApiError(403, 'Geçersiz istek kaynağı.', 'FORBIDDEN_ORIGIN');
+  }
   if (isMobileRequest(request)) {
     throw new ApiError(
       403,

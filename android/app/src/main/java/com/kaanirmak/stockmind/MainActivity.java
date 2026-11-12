@@ -99,7 +99,8 @@ public class MainActivity extends AppCompatActivity {
         currentServerUrl = prefs.getString(KEY_SERVER_URL, getDefaultUrl());
 
         // Auto-migrate if previously stuck on local development IP, old domain or invalid URL
-        if (currentServerUrl == null ||
+        if (!TrustedUrls.isTrusted(currentServerUrl, currentServerUrl, BuildConfig.DEBUG) ||
+                currentServerUrl == null ||
                 currentServerUrl.contains("192.168.1.") ||
                 currentServerUrl.contains("stock-mind-bay") ||
                 currentServerUrl.contains("stockmind-finora.vercel.app") ||
@@ -259,11 +260,11 @@ public class MainActivity extends AppCompatActivity {
 
     private String getDefaultUrl() {
         // Detect if running inside standard Android Emulator
-        if (Build.FINGERPRINT.startsWith("generic")
+        if (BuildConfig.DEBUG && (Build.FINGERPRINT.startsWith("generic")
                 || Build.FINGERPRINT.startsWith("unknown")
                 || Build.MODEL.contains("google_sdk")
                 || Build.MODEL.contains("Emulator")
-                || Build.MODEL.contains("Android SDK built for x86")) {
+                || Build.MODEL.contains("Android SDK built for x86"))) {
             return DEFAULT_EMULATOR_URL;
         }
         return PRODUCTION_URL;
@@ -392,7 +393,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         // Security: Block direct file scheme access and disallow mixed HTTP/HTTPS content (AND-01, AND-02)
         settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(true);
+        settings.setAllowContentAccess(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setSupportZoom(false);
@@ -473,21 +474,13 @@ public class MainActivity extends AppCompatActivity {
                     } catch (Exception ignored) {}
                 }
 
-                // Security: Enforce HTTPS host whitelist to keep untrusted external pages from accessing the native bridge (AND-01)
-                String host = uri.getHost();
-                boolean isTrustedHost = host != null && (
-                        host.equalsIgnoreCase("stockmind.kaanrmak7.workers.dev") ||
-                        host.equalsIgnoreCase("10.0.2.2") ||
-                        host.equalsIgnoreCase("localhost") ||
-                        (currentServerUrl != null && urlStr.startsWith(currentServerUrl))
-                );
-
-                if (!isTrustedHost && (scheme == null || scheme.equals("http") || scheme.equals("https"))) {
-                    try {
-                        Intent externalIntent = new Intent(Intent.ACTION_VIEW, uri);
-                        startActivity(externalIntent);
-                        return true;
-                    } catch (Exception ignored) {}
+                if (!TrustedUrls.isTrusted(urlStr, currentServerUrl, BuildConfig.DEBUG)) {
+                    if ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme)) {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                        } catch (Exception ignored) {}
+                    }
+                    return true; // Never fall through when launching an external URL fails.
                 }
 
                 return false;
@@ -496,6 +489,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+                if (!TrustedUrls.isTrusted(url, currentServerUrl, BuildConfig.DEBUG)) {
+                    view.stopLoading();
+                    view.removeJavascriptInterface("StockMindAndroid");
+                    return;
+                }
                 errorView.setVisibility(View.GONE);
             }
 
@@ -538,6 +536,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadAppUrl() {
+        if (!TrustedUrls.isTrusted(currentServerUrl, currentServerUrl, BuildConfig.DEBUG)) {
+            currentServerUrl = PRODUCTION_URL;
+        }
         errorView.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         swipeRefreshLayout.setRefreshing(true);
@@ -609,6 +610,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showChangeUrlDialog() {
+        if (!BuildConfig.DEBUG) return;
         final EditText input = new EditText(this);
         input.setText(currentServerUrl);
         input.setSelection(currentServerUrl.length());
@@ -626,6 +628,10 @@ public class MainActivity extends AppCompatActivity {
                     if (!newUrl.isEmpty()) {
                         if (!newUrl.startsWith("http://") && !newUrl.startsWith("https://")) {
                             newUrl = "http://" + newUrl;
+                        }
+                        if (!TrustedUrls.isTrusted(newUrl, newUrl, true)) {
+                            Toast.makeText(this, "Geçerli bir geliştirme adresi girin.", Toast.LENGTH_SHORT).show();
+                            return;
                         }
                         currentServerUrl = newUrl;
                         prefs.edit().putString(KEY_SERVER_URL, currentServerUrl).apply();
@@ -688,15 +694,7 @@ public class MainActivity extends AppCompatActivity {
                     fullUrl = currentServerUrl.replaceAll("/$", "") + (fullUrl.startsWith("/") ? fullUrl : "/" + fullUrl);
                 }
 
-                // Security: Validate download URL domain to prevent malicious payload installations (AND-02)
-                Uri dlUri = Uri.parse(fullUrl);
-                String dlHost = dlUri.getHost();
-                boolean isAllowedHost = dlHost != null && (
-                        dlHost.equalsIgnoreCase("stockmind.kaanrmak7.workers.dev") ||
-                        dlHost.equalsIgnoreCase("github.com") ||
-                        dlHost.equalsIgnoreCase("raw.githubusercontent.com") ||
-                        (currentServerUrl != null && fullUrl.startsWith(currentServerUrl))
-                );
+                boolean isAllowedHost = TrustedUrls.isTrusted(fullUrl, currentServerUrl, BuildConfig.DEBUG);
 
                 if (!isAllowedHost) {
                     Toast.makeText(this, "Güvenlik uyarısı: Güvenilmeyen kaynaktan APK indirmesi engellendi.", Toast.LENGTH_LONG).show();

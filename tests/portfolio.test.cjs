@@ -474,7 +474,7 @@ test('AND-01 & AND-02: Android WebView dosya erişimi kapalı, mixed content yas
   const mainActivityCode = fs.readFileSync(path.join(root, 'android/app/src/main/java/com/kaanirmak/stockmind/MainActivity.java'), 'utf8');
   assert.match(mainActivityCode, /settings\.setAllowFileAccess\(false\)/, 'setAllowFileAccess must be false');
   assert.match(mainActivityCode, /settings\.setMixedContentMode\(WebSettings\.MIXED_CONTENT_NEVER_ALLOW\)/, 'Mixed content must be NEVER_ALLOW');
-  assert.match(mainActivityCode, /isTrustedHost/, 'Host whitelist check must be present');
+  assert.match(mainActivityCode, /TrustedUrls\.isTrusted/, 'Host whitelist check must be present');
   assert.match(mainActivityCode, /isAllowedHost/, 'APK download domain validation must be present');
 });
 

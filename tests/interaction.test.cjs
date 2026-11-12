@@ -640,30 +640,17 @@ test('A timeout while reading provider JSON remains a timeout, rather than an in
   await assert.rejects(callOpenRouter([{ role: 'user', content: 'test' }]), error => error.code === 'AI_TIMEOUT');
 });
 
-test('Hourly quota gracefully falls back to in-memory sliding window when RPC is missing from schema cache', async () => {
-  const { getHourlyChatQuota, checkAndConsumeHourlyChatQuota, refundHourlyChatQuota } = load('src/lib/ai/hourlyQuota.ts', {
-    require: name => name === '@/lib/supabase/server' ? ({
-      createClient: async () => ({
-        rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.ai_hourly_quota(p_mode) in the schema cache' } })
-      })
-    }) : {}
-  });
-
-  const inspect = await getHourlyChatQuota('user-fallback-test', false);
-  assert.equal(inspect.limit, 5);
-  assert.equal(inspect.used, 0);
-  assert.equal(inspect.remaining, 5);
-  assert.equal(inspect.allowed, true);
-
-  const consumed = await checkAndConsumeHourlyChatQuota('req-1', 'user-fallback-test', false);
-  assert.equal(consumed.limit, 5);
-  assert.equal(consumed.used, 1);
-  assert.equal(consumed.remaining, 4);
-  assert.equal(consumed.allowed, true);
-
-  const refunded = await refundHourlyChatQuota('req-1', 'user-fallback-test', false);
-  assert.equal(refunded.used, 0);
-  assert.equal(refunded.remaining, 5);
+test('Hourly quota fails closed when RPC is missing, including on a fresh worker', async () => {
+  for (let worker = 0; worker < 2; worker++) {
+    const quota = load('src/lib/ai/hourlyQuota.ts', {
+      require: () => ({ createClient: async () => ({
+        rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'RPC missing' } }),
+      }) }),
+    });
+    await assert.rejects(quota.getHourlyChatQuota('same-user', false), /doğrulanamadı/);
+    await assert.rejects(quota.checkAndConsumeHourlyChatQuota('req-1', 'same-user', false), /doğrulanamadı/);
+    await assert.rejects(quota.refundHourlyChatQuota('req-1', 'same-user', false), /doğrulanamadı/);
+  }
 });
 
 test('AI response parser rejects safety classifier outputs and model catalog filters out classifier models', async () => {

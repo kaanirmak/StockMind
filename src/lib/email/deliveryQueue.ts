@@ -1,7 +1,8 @@
-export type EmailDeliveryStatus = 'pending' | 'accepted' | 'failed' | 'retry_scheduled';
+export type EmailDeliveryStatus = 'pending' | 'processing' | 'accepted' | 'failed' | 'retry_scheduled';
 
 export interface EmailDeliveryQueueRecord {
   id?: string;
+  claim_token?: string | null;
   bulletin_date: string;
   job_type: string;
   recipient_email: string;
@@ -32,6 +33,7 @@ export interface EnqueueResult {
 
 export interface DeliveryQueueSummary {
   pending: number;
+  processing: number;
   accepted: number;
   failed: number;
   retryScheduled: number;
@@ -74,31 +76,22 @@ export function shouldSkipDuplicateDelivery(
   return existingRow?.status === 'accepted' || inMemoryAlreadySent;
 }
 
-/**
- * Re-verifies durable queue status right before dispatching SMTP/API mail to avoid
- * duplicate sends when triggers overlap or retry.
- */
-export async function hasAcceptedDeliveryForDay(
+/** Atomically reserve the recipient before touching an external mail provider. */
+export async function claimBulletinDelivery(
   admin: any,
   bulletinDate: string,
   recipientEmail: string,
-  jobType = 'daily_bulletin'
-): Promise<boolean> {
-  if (!hasTableSupport(admin)) return false;
-  try {
-    const normalizedEmail = recipientEmail.trim().toLowerCase();
-    const res = await admin
-      .from('email_delivery_queue')
-      .select('status')
-      .eq('bulletin_date', bulletinDate)
-      .eq('job_type', jobType);
-    if (res?.error) return false;
-    const rows: any[] = Array.isArray(res?.data) ? res.data : [];
-    const match = rows.find((r) => String(r?.recipient_email || '').trim().toLowerCase() === normalizedEmail);
-    return match?.status === 'accepted';
-  } catch {
-    return false;
-  }
+  claimToken: string,
+  force = false,
+): Promise<EmailDeliveryQueueRecord | null> {
+  const { data, error } = await admin.rpc('claim_bulletin_delivery', {
+    p_bulletin_date: bulletinDate,
+    p_recipient_email: recipientEmail.trim().toLowerCase(),
+    p_claim_token: claimToken,
+    p_force: force,
+  });
+  if (error) throw new Error('Bülten gönderim kilidi alınamadı.');
+  return data || null;
 }
 
 /**
@@ -206,6 +199,7 @@ export async function recordDeliveryOutcome(
     previousAttemptCount?: number;
     maxAttempts?: number;
     success: boolean;
+    claimToken: string;
     senderAddress?: string | null;
     method?: string | null;
     messageId?: string | null;
@@ -215,7 +209,7 @@ export async function recordDeliveryOutcome(
   const jobType = params.jobType || 'daily_bulletin';
   const normalizedEmail = params.recipientEmail.trim().toLowerCase();
   const maxAttempts = params.maxAttempts ?? DEFAULT_MAX_DELIVERY_ATTEMPTS;
-  const nextAttemptCount = Math.max(1, (params.previousAttemptCount ?? 0) + 1);
+  const nextAttemptCount = Math.max(1, params.previousAttemptCount ?? 1);
   const now = new Date();
   const nowIso = now.toISOString();
 
@@ -249,25 +243,12 @@ export async function recordDeliveryOutcome(
     sent_at: params.success ? nowIso : null,
   };
 
-  if (!hasTableSupport(admin)) {
-    return record;
-  }
-
-  try {
-    const res = await admin
-      .from('email_delivery_queue')
-      .upsert(record, { onConflict: 'bulletin_date,job_type,recipient_email' });
-    if (res?.error) {
-      if (!isMissingTableError(res.error)) {
-        console.warn('email_delivery_queue update failed:', res.error);
-      }
-      return null;
-    }
-    return record;
-  } catch (err) {
-    console.warn('email_delivery_queue outcome persistence error:', err);
-    return null;
-  }
+  const { data, error } = await admin.rpc('complete_bulletin_delivery', {
+    p_claim_token: params.claimToken,
+    p_result: record,
+  });
+  if (error || !data) throw new Error('Bülten sonucu kalıcı kaydedilemedi; gönderim otomatik tekrarlanmayacak.');
+  return data as EmailDeliveryQueueRecord;
 }
 
 export async function summarizeDeliveryQueue(
@@ -277,6 +258,7 @@ export async function summarizeDeliveryQueue(
   const targetDate = bulletinDate || new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' });
   const empty: DeliveryQueueSummary = {
     pending: 0,
+    processing: 0,
     accepted: 0,
     failed: 0,
     retryScheduled: 0,
@@ -303,12 +285,14 @@ export async function summarizeDeliveryQueue(
 
     const rows: EmailDeliveryQueueRecord[] = Array.isArray(res?.data) ? res.data : [];
     let pending = 0;
+    let processing = 0;
     let accepted = 0;
     let failed = 0;
     let retryScheduled = 0;
 
     for (const row of rows) {
       if (row.status === 'pending') pending += 1;
+      else if (row.status === 'processing') processing += 1;
       else if (row.status === 'accepted') accepted += 1;
       else if (row.status === 'failed') failed += 1;
       else if (row.status === 'retry_scheduled') retryScheduled += 1;
@@ -316,6 +300,7 @@ export async function summarizeDeliveryQueue(
 
     return {
       pending,
+      processing,
       accepted,
       failed,
       retryScheduled,

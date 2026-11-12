@@ -31,8 +31,11 @@ android {
         }
     }
 
+    buildFeatures { buildConfig true }
+
     buildTypes {
         release {
+            manifestPlaceholders = [allowCleartextTraffic: "false"]
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             if (System.getenv("KEYSTORE_PATH")) {
@@ -40,6 +43,7 @@ android {
             }
         }
         debug {
+            manifestPlaceholders = [allowCleartextTraffic: "true"]
             applicationIdSuffix ""
             debuggable true
         }

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'StockMind Yönetici Konsolu • Biyometrik Masaüstü',
-  description: 'StockMind Donanım ve Biyometri Korumalı Yönetim Merkezi',
+  title: 'StockMind Yönetici Konsolu • İkinci Faktör Doğrulaması',
+  description: 'StockMind İkinci Faktör Korumalı Yönetim Merkezi',
   robots: {
     index: false,
     follow: false,

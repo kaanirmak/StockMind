@@ -3,7 +3,7 @@ import { sendTestEmail } from '@/lib/email/service';
 import { getBulletinMarketData } from '@/lib/email/marketData';
 import {
   enqueueBulletinRecipients,
-  hasAcceptedDeliveryForDay,
+  claimBulletinDelivery,
   recordDeliveryOutcome,
   shouldSkipDuplicateDelivery,
   summarizeDeliveryQueue,
@@ -205,6 +205,10 @@ async function handleDailyReport(request: Request) {
       jobType: 'daily_bulletin',
     });
 
+    if (!enqueueState.persisted) {
+      return NextResponse.json({ success: false, error: 'Kalıcı bülten kuyruğu kullanılamıyor; gönderim başlatılmadı.' }, { status: 503 });
+    }
+
     const results: Array<{
       email: string;
       success: boolean;
@@ -222,22 +226,15 @@ async function handleDailyReport(request: Request) {
         const normalizedEmail = recipient.email.toLowerCase();
         const perUserKey = `${todayStr}:${normalizedEmail}`;
         const existingQueueRow = enqueueState.existingByEmail.get(normalizedEmail);
-        const alreadyAcceptedInDb =
-          !force &&
-          (existingQueueRow?.status === 'accepted' ||
-            (await hasAcceptedDeliveryForDay(admin, todayStr, normalizedEmail, 'daily_bulletin')));
-
-        if (shouldSkipDuplicateDelivery(alreadyAcceptedInDb ? { status: 'accepted' } : existingQueueRow, sentReportsCache.has(perUserKey), force)) {
-          sentReportsCache.add(perUserKey);
-          results.push({
-            email: recipient.email,
-            success: true,
-            skipped: true,
-            duplicatePrevented: true,
-            status: 'accepted',
-            message: 'Bugün için zaten iletildi (çift gönderim engellendi)',
-            batchIndex,
-          });
+        if (shouldSkipDuplicateDelivery(existingQueueRow, sentReportsCache.has(perUserKey), force)) {
+          results.push({ email: recipient.email, success: true, skipped: true, duplicatePrevented: true, status: 'accepted', batchIndex });
+          continue;
+        }
+        const claimToken = crypto.randomUUID();
+        const claimed = await claimBulletinDelivery(admin, todayStr, normalizedEmail, claimToken, force);
+        if (!claimed) {
+          // An in-flight or delayed delivery is not a completed delivery.
+          results.push({ email: recipient.email, success: false, skipped: true, status: 'pending', message: 'Başka bir çalışan işliyor veya yeniden deneme zamanı bekleniyor.', batchIndex });
           continue;
         }
 
@@ -245,7 +242,7 @@ async function handleDailyReport(request: Request) {
         if (recipient.personalizedPrefs?.enabled && recipient.id) {
           try {
             const { data: txRows } = await admin
-              .from('portfolio_transactions')
+              .from('transactions')
               .select('symbol, asset_type')
               .eq('user_id', recipient.id);
             const symbolSet = new Set<string>();
@@ -286,8 +283,9 @@ async function handleDailyReport(request: Request) {
           recipientEmail: recipient.email,
           recipientName: recipient.name,
           jobType: 'daily_bulletin',
-          previousAttemptCount: existingQueueRow?.attempt_count ?? 0,
-          maxAttempts: existingQueueRow?.max_attempts,
+          previousAttemptCount: claimed.attempt_count,
+          claimToken,
+          maxAttempts: claimed.max_attempts,
           success: sendResult.success,
           senderAddress: sendResult.senderAddress,
           method: sendResult.method,

@@ -18,7 +18,7 @@ Durum işaretleri ☐ sırada, ◐ yerelde doğrulandı, ☑ canlıda doğruland
 | VER-01 | P0 | Piyasa özetindeki sabit fiyatları kaldır | Sağlayıcı kesintisi testinde BIST 100, kur, altın ve diğer kartlar kaynaklı son değeri veya veri yok durumunu döndürür. | ◐ |
 | VER-02 | P0 | Fiyat kaynağını ve gözlem zamanını API’ye ekle | Her geçerli fiyat sağlayıcı, veri zamanı ve alınma zamanı alanlarını taşır. (`observation`: `source`, `asOf`, `fetchedAt` hisse, endeks, döviz, emtia, kripto, TEFAS ve geçmiş/gösterge API’lerinde doğrulandı.) | ◐ |
 | VER-03 | P0 | Fiyat durumlarını arayüzde tutarlı göster | Güncel, gecikmeli, son kapanış, eski ve eksik değerler kartta ve detayda ayrı etiketlenir. (`classifyPriceStatus` ve `PriceStatusBadge` ile piyasa özeti, piyasalar, hisse ve fon detayında 5 durum doğrulandı.) | ◐ |
-| VER-04 | P0 | Son doğrulanmış fiyatı sakla | Sağlayıcı kesilince son gerçek değer özgün zaman damgasıyla görünür. İlk veri yoksa boş durum gösterilir. (`lastVerifiedStore`, `market_quote_cache` şeması ve `MarketOverview` yerel önbelleği ile doğrulandı.) | ◐ |
+| VER-04 | P0 | Son doğrulanmış fiyatı sakla | Sağlayıcı kesilince son gerçek değer özgün zaman damgasıyla görünür. İlk veri yoksa boş durum gösterilir. (`lastVerifiedStore`, `market_quote_cache` şeması ve `MarketOverview` yerel önbelleği ile doğrulandı.) | ☐ |
 | VER-05 | P0 | Eksik fiyatın portföy toplamına etkisini göster | Kısmi değerleme etiketlenir ve fiyatı eksik pozisyonlar listelenir. (`ValuationStatus.isPartialValuation`, `missingPositions`, `unpricedCostTotal`, `PartialValuationBanner` ve `HoldingsTable` pozisyon rozetleri doğrulandı.) | ◐ |
 | VER-06 | P0 | Eksik veya eski fiyatla alarm tetiklenmesini önle | Kaynak ve tazelik kontrolünden geçmeyen fiyat için alarm ertelenir ve nedeni kaydedilir. (`evaluateAlertPriceFreshness`, `recordDeferredAlert`, `WatchlistAlertWatcher` erteleme koruması ve izleme listesi rozeti doğrulandı.) | ◐ |
 | VER-07 | P0 | Gerçek hacim ve gün içi fiyat alanlarını doğrula | Eksik hacim, yüksek/düşük ve kapanış alanları boş kalır. Varsayılan değerler teknik hesaplamaya girmez. (`stocks.ts`, `indicators/index.ts`, `CandlestickChart.tsx` ve `TechnicalIndicatorsPanel.tsx` içindeki sentetik hacim/gün içi aralık/RSI/SMA varsayılanları kaldırıldı; eksik veriler boş bırakılarak doğrulandı.) | ◐ |
@@ -79,7 +79,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | POR-13 | P2 | Yoğunlaşma ve çeşitlilik analizi ekle | En büyük pozisyonlar ile sektör, ülke ve varlık türü dağılımı tek raporda görülebilir. | ◐ |
 | POR-14 | P2 | Dönem ve para birimini dışa aktarıma taşı | PDF/yazdırma ve CSV, seçili portföyü, dönemi, para birimini ve verinin tarihini taşır. | ◐ |
 | POR-15 | P3 | Salt okunur aracı kurum bağlantısını değerlendir | Öncelikli kurumlar, bağlantı koşulları, maliyet, izinler ve veri silme akışı belgelenir. | ◐ |
-| POR-16 | P3 | Salt okunur hesap eşitlemesini dene | Desteklenen ilk kurumda alım satım yetkisi istenmeden ekstre eşitlenir ve mükerrer işlem oluşmaz. | ◐ |
+| POR-16 | P3 | Salt okunur hesap eşitlemesini dene | Desteklenen ilk kurumda alım satım yetkisi istenmeden ekstre eşitlenir ve mükerrer işlem oluşmaz. | ☐ |
 
 ## 5. Piyasalar, hisse detayları ve tarayıcı
 
@@ -101,16 +101,16 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| ALR-01 | P0 | Kapalı Android’de hisse alarmını doğrula | Test cihazında uygulama ön planda olmadan eşik işlenir ve bildirim doğru varlık ekranını açar. | ◐ |
-| ALR-02 | P0 | Kapalı Android’de TEFAS alarmını doğrula | Geçerli fon değerlemesiyle tetikleme ve eksik veriyle erteleme ayrı test edilir. | ◐ |
+| ALR-01 | P0 | Kapalı Android’de hisse alarmını doğrula | Test cihazında uygulama ön planda olmadan eşik işlenir ve bildirim doğru varlık ekranını açar. | ☐ |
+| ALR-02 | P0 | Kapalı Android’de TEFAS alarmını doğrula | Geçerli fon değerlemesiyle tetikleme ve eksik veriyle erteleme ayrı test edilir. | ☐ |
 | ALR-03 | P0 | Bildirim izni ve teslimat durumunu ayır | İzin kapalıyken test sonucu bunu gösterir. İzin açık durumda kanalın sonucu ayrı kaydedilir. | ◐ |
 | ALR-04 | P1 | Varlık detayından hızlı alarm kurma ekle | Fiyat veya yüzde eşiği, yön ve para birimi anlaşılır biçimde seçilebilir. | ◐ |
 | ALR-05 | P1 | Tüm Alarmlar ekranı oluştur | Aktif ve duraklatılmış kurallar listelenir. Kullanıcı düzenleyebilir ve duraklatabilir. | ◐ |
 | ALR-06 | P1 | Alarmın son kontrolünü ve tetiklenmesini göster | Her kuralda son kontrol zamanı, görülen fiyat ve varsa son tetikleme görünür. | ◐ |
-| ALR-07 | P1 | Fiyat eşiği değerlendirmesini sunucuya taşı | Uygulama kapalıyken sunucu kuralları değerlendirir. Aynı eşik olayı bir defa kaydedilir. | ◐ |
-| ALR-08 | P1 | Bildirim kutusunu hesaba bağla | Okunma, arşiv ve tercihler cihazlar arasında eşitlenir. Hesap değişiminde eski hesabın kayıtları görünmez. | ◐ |
-| ALR-09 | P1 | Cihaz ve bildirim kanalı yönetimi ekle | Kullanıcı bağlı cihazları, izinleri ve etkin kanalları görebilir. Geçersiz cihaz kaydı otomatik ayıklanır. | ◐ |
-| ALR-10 | P2 | Web Push kanalını ekle | Desteklenen tarayıcı ve ana ekrana kurulan iOS web uygulamasında izin, test ve bildirim bağlantısı doğrulanır. | ◐ |
+| ALR-07 | P1 | Fiyat eşiği değerlendirmesini sunucuya taşı | Uygulama kapalıyken sunucu kuralları değerlendirir. Aynı eşik olayı bir defa kaydedilir. | ☐ |
+| ALR-08 | P1 | Bildirim kutusunu hesaba bağla | Okunma, arşiv ve tercihler cihazlar arasında eşitlenir. Hesap değişiminde eski hesabın kayıtları görünmez. | ☐ |
+| ALR-09 | P1 | Cihaz ve bildirim kanalı yönetimi ekle | Kullanıcı bağlı cihazları, izinleri ve etkin kanalları görebilir. Geçersiz cihaz kaydı otomatik ayıklanır. | ☐ |
+| ALR-10 | P2 | Web Push kanalını ekle | Desteklenen tarayıcı ve ana ekrana kurulan iOS web uygulamasında izin, test ve bildirim bağlantısı doğrulanır. | ☐ |
 | ALR-11 | P2 | Portföy hareketi bildirimleri ekle | Kullanıcı eşik ve sıklığı seçebilir. Tetikleme doğrulanmış portföy verisine dayanır ve tekrarlar sınırlandırılır. | ◐ |
 | ALR-12 | P2 | KAP ve takvim uyarıları ekle | Yetkili kaynaktan gelen olay ilgili varlıkla eşleşir. Kullanıcı olay türüne göre aboneliği yönetebilir. | ◐ |
 
@@ -118,10 +118,10 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| EPO-01 | P0 | Canlı Gmail göndericisini doğrula | Yetkili test alıcısına gönderilen e-postada görünen gönderen kaanrmak7@gmail.com olur ve alıcı kutusuna teslimat doğrulanır. | ◐ |
+| EPO-01 | P0 | Canlı Gmail göndericisini doğrula | Yetkili test alıcısına gönderilen e-postada görünen gönderen kaanrmak7@gmail.com olur ve alıcı kutusuna teslimat doğrulanır. | ☐ |
 | EPO-02 | P0 | Bülten alıcı sınırını kaldır | 51 veya daha fazla uygun test alıcısının tamamı partiler halinde işlenir. | ◐ |
-| EPO-03 | P0 | Kalıcı e-posta gönderim kuyruğu kur | İş yarıda kesilse de bekleyen ve tamamlanan alıcılar yeniden başlatmadan sonra ayırt edilir. | ◐ |
-| EPO-04 | P0 | Yeniden denemede çift gönderimi önle | Aynı bülten günü ve alıcı için tekrar tetikleme ikinci gönderim oluşturmaz. | ◐ |
+| EPO-03 | P0 | Kalıcı e-posta gönderim kuyruğu kur | İş yarıda kesilse de bekleyen ve tamamlanan alıcılar yeniden başlatmadan sonra ayırt edilir. | ☐ |
+| EPO-04 | P0 | Yeniden denemede çift gönderimi önle | Aynı bülten günü ve alıcı için tekrar tetikleme ikinci gönderim oluşturmaz. | ☐ |
 | EPO-05 | P0 | Gönderim sonuçlarını operasyon ekranına ekle | Bekleyen, kabul edilen, başarısız ve yeniden denenecek gönderimler ayrı sayaçlarla görünür. | ◐ |
 | EPO-06 | P1 | Bülten aboneliğini ve doğrulanmış adresi görünür yap | Hesaptan değiştirilen tercih bir sonraki otomatik çalıştırmada uygulanır. Gönderilecek adres ekranda belirtilir. | ◐ |
 | EPO-07 | P1 | Bültene verinin zamanını ve eksik alanları ekle | E-posta fiyatların gözlem zamanını içerir. Eksik kaynak olduğunda boş veri durumu görünür. | ◐ |
@@ -194,9 +194,9 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 
 | Kimlik | Öncelik | Görev | Tamamlanma ölçütü | Durum |
 |---|---|---|---|---|
-| OPS-01 | P0 | Yeni imzalı Android APK’yı üret | Sürüm kodu artar. Paket ve uygulama sürüm uç noktası aynı sürümü gösterir. | ◐ |
-| OPS-02 | P0 | Eski APK’dan güncellemeyi gerçek cihazda doğrula | Mevcut kurulum üzerine güncelleme tamamlanır. Oturum ve portföy kayıtları korunur. | ◐ |
-| OPS-03 | P0 | APK dağıtımını ve geri alma yolunu doğrula | İndirme bağlantısı yeni imzalı dosyayı sunar. Sağlama toplamı, sürüm notu ve geri alma adımı kaydedilir. | ◐ |
+| OPS-01 | P0 | Yeni imzalı Android APK’yı üret | Sürüm kodu artar. Paket ve uygulama sürüm uç noktası aynı sürümü gösterir. | ☐ |
+| OPS-02 | P0 | Eski APK’dan güncellemeyi gerçek cihazda doğrula | Mevcut kurulum üzerine güncelleme tamamlanır. Oturum ve portföy kayıtları korunur. | ☐ |
+| OPS-03 | P0 | APK dağıtımını ve geri alma yolunu doğrula | İndirme bağlantısı yeni imzalı dosyayı sunar. Sağlama toplamı, sürüm notu ve geri alma adımı kaydedilir. | ☐ |
 | OPS-04 | P0 | Kritik veri kesintisi testlerini otomatikleştir | Fiyat, fon, haber veya kur sağlayıcısı kesilince beklenen arayüz durumu doğrulanır. | ◐ |
 | OPS-05 | P1 | Alarm ve izleme için sembol bazlı sorgu ekle | Kontrol isteği yalnız aktif alarm veya takip sembollerini içerir. Tam piyasa listesinin yükü ortadan kalkar. | ◐ |
 | OPS-06 | P1 | Piyasa tablolarını sayfalandır | Liste ilk açılışta sınırlı sonuç getirir. Arama, sıralama ve filtre sayfalar arasında tutarlı çalışır. | ◐ |
@@ -207,7 +207,7 @@ Canlı inceleme örneğinde 1.051 fon kaydının 1.035’i son eşitleme zamanı
 | OPS-11 | P1 | Sağlayıcı ve görev durum panosu oluştur | Son başarılı fiyat/fon/haber alımı, bülten gecikmesi ve alarm hataları hassas bilgi taşımadan izlenir. | ◐ |
 | OPS-12 | P1 | Kullanım ölçümlerini tanımla | İlk işlem tamamlama, başarılı içe aktarma, alarm kurma ve tekrar kullanım ölçülür. Özel portföy tutarları analitik olaylara girmez. | ◐ |
 | OPS-13 | P2 | Lint uyarılarını etkisine göre azalt | Önce erişilebilirlik, React bağımlılıkları ve gerçek hata riski taşıyan uyarılar düşer. Toplam uyarı sayısı CI’da izlenir. | ◐ |
-| OPS-14 | P2 | Piyasa ve portföy API’lerine yük testi yap | Tipik ve yoğun kullanımda yanıt süresi, hata oranı ve sağlayıcı çağrı sayısı ölçülür. | ◐ |
+| OPS-14 | P2 | Piyasa ve portföy API’lerine yük testi yap | Tipik ve yoğun kullanımda yanıt süresi, hata oranı ve sağlayıcı çağrı sayısı ölçülür. | ☐ |
 | OPS-15 | P3 | Resmî Android dağıtım kanalını değerlendir | Mağaza gereksinimleri, imza yönetimi, güncelleme ve destek maliyeti karşılaştırılır. | ◐ |
 
 ## İlk paketin doğrulaması
@@ -240,3 +240,16 @@ FON-05 yerelde doğrulandı. `tefas_sync_finished` kaydı ve GitHub Actions öze
 - [Fintables](https://fintables.com/) · [Midas fiyat alarmları](https://www.getmidas.com/destek/midas-ile-yatirima-baslarken/midas-ile-neler-yapabilirim/hisseler-icin-nasil-fiyat-alarmi-kurabilirsin) · [TradingView tarayıcı](https://www.tradingview.com/support/solutions/43000718885-tradingview-screeners-walkthrough/)
 - [Investing.com takvim](https://www.investing.com/economic-calendar) · [InvestingPro](https://www.investing.com/pro/) · [Delta](https://delta.app/en/features) · [getquin](https://www.getquin.com/) · [Koyfin](https://www.koyfin.com/help/release-notes/attribution-in-model-portfolios/)
 - [KAP](https://www.kap.org.tr/) · [Borsa İstanbul veri dağıtımı](https://borsaistanbul.com/sss/veri-dagitim-ve-endeks-lisanslama) · [WCAG 2.2](https://www.w3.org/TR/WCAG22/) · [Web Vitals](https://web.dev/articles/vitals)
+
+## 12 Kasım 2026 güvenlik düzeltmesi ve yeniden açılan kabul testleri
+
+296 mevcut otomatik testin geçmesi canlı kabul ölçütlerinin tamamlandığını göstermiyor. Yukarıdaki ☐ işaretleri önceki yerel işlevleri kaldırmaz; kabul ölçütünün henüz karşılanmadığını belirtir.
+
+- VER-04, ALR-07–09, EPO-03–04: veritabanı migration’ları ve çok çalışanlı teslimat kilidi canlıya uygulandı; RLS, fonksiyon yetkileri ve rollback ile sahiplenme/tamamlama testi doğrulandı. Web dağıtımı ve uçtan uca kabul testi beklediği için bu satırlar açık tutulmuştur.
+- ALR-01–02 ve OPS-01–03: imzalı güncel APK, gerçek cihazda uygulama kapalıyken alarm, önceki sürümden kurulum ve oturumun korunması birlikte doğrulanmalıdır. Güvenlik kodunun Java testi cihaz kabul testinin yerine geçmez.
+- ALR-10: Service Worker, abonelik ve yerel bildirim testi mevcut; sunucudan tarayıcı kapalıyken Web Push teslimatının tamamlandığı kanıtlanmamıştır.
+- EPO-01: SMTP kabulü alıcı kutusuna teslimat kanıtı değildir. Yetkilendirilmiş bir alıcıyla teslimat ayrıca doğrulanmalıdır.
+- OPS-14: mevcut rapor instrumented-local ölçümdür; gerçek HTTP uç noktalarına staging yük testi bekler.
+- POR-16: mevcut kod ekstre dönüştürme/tekilleştirme prototipidir; canlı aracı kurum bağlantısı değildir.
+
+Uygulanan kod düzeltmeleri ve yayın sırası: [Güvenlik düzeltme notları](guvenlik-duzeltmeleri-2026-11-12.md).
