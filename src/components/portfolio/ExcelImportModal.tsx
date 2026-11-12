@@ -18,6 +18,10 @@ import {
 } from '@/lib/portfolio/brokerStatementTemplates';
 import { summarizeImportPreview } from '@/lib/portfolio/importPreview';
 import { bucketImportedRowCount, trackUsageEvent } from '@/lib/analytics/usageMetrics';
+import {
+  buildBrokerSyncTag,
+  buildBrokerTransactionFingerprint,
+} from '@/lib/portfolio/brokerSyncPrototype';
 
 export interface ExcelImportModalProps {
   isOpen: boolean;
@@ -177,20 +181,36 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
 
     setIsSubmitting(true);
     try {
-      const txPayload = rowsToProcess.map((r) => ({
-        portfolioId: activePortfolioId,
-        symbol: r.data.symbol,
-        assetType: r.data.assetType,
-        transactionType: r.data.transactionType,
-        quantity: r.data.quantity,
-        price: r.data.price,
-        currency: r.data.currency || 'TRY',
-        exchangeRate: r.data.exchangeRate,
-        commission: r.data.commission,
-        transactionDate: r.data.transactionDate,
-        exchange: r.data.exchange,
-        notes: r.data.notes || `Excel İçe Aktarım (${file?.name || 'Excel'})`,
-      }));
+      const isMidas = templateMatch?.templateId === 'midas';
+      const txPayload = rowsToProcess.map((r) => {
+        const baseNote = r.data.notes || `Excel İçe Aktarım (${file?.name || 'Excel'})`;
+        let notes = baseNote;
+        if (isMidas && !baseNote.includes('[broker-sync:midas:')) {
+          const fp = buildBrokerTransactionFingerprint({
+            symbol: r.data.symbol,
+            transactionType: r.data.transactionType,
+            quantity: r.data.quantity,
+            price: r.data.price,
+            transactionDate: r.data.transactionDate,
+          });
+          notes = `${baseNote} ${buildBrokerSyncTag('midas', fp)}`;
+        }
+
+        return {
+          portfolioId: activePortfolioId,
+          symbol: r.data.symbol,
+          assetType: r.data.assetType,
+          transactionType: r.data.transactionType,
+          quantity: r.data.quantity,
+          price: r.data.price,
+          currency: r.data.currency || 'TRY',
+          exchangeRate: r.data.exchangeRate,
+          commission: r.data.commission,
+          transactionDate: r.data.transactionDate,
+          exchange: r.data.exchange,
+          notes,
+        };
+      });
 
       let inserted: any = null;
       if (overwriteExisting && activePortfolioId) {
