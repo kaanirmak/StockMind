@@ -2028,6 +2028,32 @@ test('POR-10: net invested timeline separates inflows/outflows and discloses mis
 
   const portSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
   assert.match(portSrc, /NetInvestedChartCard/);
+
+  const svgMath = loadModule('src/lib/portfolio/svgChartMath.ts');
+  assert.equal(svgMath.buildSmoothSvgPath([]), '');
+  assert.equal(svgMath.buildSmoothSvgPath([{ x: 10, y: 20 }]), 'M 10.00,20.00');
+  assert.equal(
+    svgMath.buildSmoothSvgPath([{ x: 0, y: 10 }, { x: 100, y: 50 }]),
+    'M 0.00,10.00 L 100.00,50.00'
+  );
+  const cubicPath = svgMath.buildSmoothSvgPath([
+    { x: 0, y: 100 },
+    { x: 50, y: 60 },
+    { x: 100, y: 60 },
+    { x: 150, y: 20 },
+  ]);
+  assert.match(cubicPath, /^M 0\.00,100\.00 C .* 150\.00,20\.00$/);
+  const areaPath = svgMath.buildAreaSvgPath(
+    [{ x: 0, y: 80 }, { x: 50, y: 50 }, { x: 100, y: 40 }],
+    120
+  );
+  assert.match(areaPath, /L 100\.00,120\.00 L 0\.00,120\.00 Z$/);
+
+  const ticks = svgMath.computeNiceGridTicks(-10, 90, 4);
+  assert.equal(ticks.ticks.length, 4);
+  assert.ok(ticks.min < -10);
+  assert.ok(ticks.max > 90);
+  assert.ok(ticks.span > 100);
 });
 
 test('POR-11: dividend view strictly separates realized payments, announced events, and estimates', () => {
