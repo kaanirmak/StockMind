@@ -146,6 +146,89 @@ function daysBetween(fromDate: string, toDate: string): number {
   return Math.round((toMs - fromMs) / 86_400_000);
 }
 
+function mergeCandleAndTxSeries(
+  candleSeries?: SortedSeries,
+  txAnchorSeries?: SortedSeries
+): SortedSeries {
+  const values = new Map<string, number>();
+  if (txAnchorSeries) {
+    for (const [d, v] of txAnchorSeries.values.entries()) {
+      values.set(d, v);
+    }
+  }
+  // Market candle closes override tx anchors on identical dates
+  if (candleSeries) {
+    for (const [d, v] of candleSeries.values.entries()) {
+      values.set(d, v);
+    }
+  }
+  const dates = Array.from(values.keys()).sort();
+  return { dates, values };
+}
+
+/**
+ * Resolves a historical asset price on `date`, preferring real market closes,
+ * bridging gaps before IPO/listing candles via recorded buy/sell execution prices,
+ * and carrying forward the latest known market close or execution price over weekends/holidays.
+ */
+function resolvePriceWithTxFallback(
+  candleSeries: SortedSeries | undefined,
+  txAnchorSeries: SortedSeries | undefined,
+  date: string
+): number | null {
+  const candleExact = candleSeries?.values.get(date);
+  if (candleExact !== undefined) return candleExact;
+
+  const merged = mergeCandleAndTxSeries(candleSeries, txAnchorSeries);
+  if (merged.dates.length === 0) return null;
+
+  const mergedExact = merged.values.get(date);
+  if (mergedExact !== undefined) return mergedExact;
+
+  const firstDate = merged.dates[0];
+  if (date < firstDate) {
+    return daysBetween(date, firstDate) <= 10 ? (merged.values.get(firstDate) ?? null) : null;
+  }
+
+  let prevDate: string | null = null;
+  let nextDate: string | null = null;
+  for (let i = 0; i < merged.dates.length; i++) {
+    const cur = merged.dates[i];
+    if (cur < date) {
+      prevDate = cur;
+    } else if (cur > date) {
+      nextDate = cur;
+      break;
+    }
+  }
+
+  if (prevDate && !nextDate) {
+    return merged.values.get(prevDate) ?? null;
+  }
+
+  if (prevDate && nextDate) {
+    const p0 = merged.values.get(prevDate) ?? null;
+    const p1 = merged.values.get(nextDate) ?? null;
+    if (p0 === null) return p1;
+    if (p1 === null) return p0;
+
+    // Carry-forward over short weekend/holiday candle gaps; linearly bridge wider tx/IPO gaps
+    const prevIsCandle = Boolean(candleSeries?.values.has(prevDate));
+    const nextIsCandle = Boolean(candleSeries?.values.has(nextDate));
+    const span = daysBetween(prevDate, nextDate);
+    if (prevIsCandle && nextIsCandle && span <= 7) {
+      return p0;
+    }
+    if (span > 0) {
+      const elapsed = daysBetween(prevDate, date);
+      return p0 + ((p1 - p0) * elapsed) / span;
+    }
+    return p0;
+  }
+
+  return null;
+}
+
 /**
  * Builds chronological portfolio market-value vs. net invested capital timeline with separate
  * cash inflows/outflows, alternative benchmark simulations (BIST 100, Gold, Deposit Interest, USD),
@@ -211,13 +294,40 @@ export function buildNetInvestedTimeline(input: {
     sortedSeriesMap.set(sym, buildSortedSeries(series));
   }
 
-  // Determine whether real historical daily closes were supplied for held portfolio assets
+  // Determine whether real historical daily closes were supplied for held assets or reference indices
   const portfolioSymbolsInTx = new Set<string>();
+  const txAnchorsRaw = new Map<string, Record<string, number>>();
+  const usdTxAnchorsRaw: Record<string, number> = {};
+
   for (const tx of validTx) {
     const sym = cleanSymbol(tx.symbol).symbol || tx.symbol.toUpperCase();
-    if (sym) portfolioSymbolsInTx.add(sym);
+    if (!sym) continue;
+    portfolioSymbolsInTx.add(sym);
+    if ((tx.transactionType === 'buy' || tx.transactionType === 'sell') && Number.isFinite(tx.price) && tx.price > 0) {
+      const existing = txAnchorsRaw.get(sym) ?? {};
+      existing[tx.date] = tx.price;
+      txAnchorsRaw.set(sym, existing);
+    }
+    if (typeof tx.exchangeRate === 'number' && Number.isFinite(tx.exchangeRate) && tx.exchangeRate > 0) {
+      usdTxAnchorsRaw[tx.date] = tx.exchangeRate;
+    }
   }
+  for (const sym of portfolioSymbolsInTx) {
+    const liveVal = extractLiveQuotePrice(prices[sym]);
+    if (liveVal !== null) {
+      const existing = txAnchorsRaw.get(sym) ?? {};
+      if (!existing[today]) existing[today] = liveVal;
+      txAnchorsRaw.set(sym, existing);
+    }
+  }
+  const sortedTxAnchorMap = new Map<string, SortedSeries>();
+  for (const [sym, rawMap] of txAnchorsRaw.entries()) {
+    sortedTxAnchorMap.set(sym, buildSortedSeries(rawMap));
+  }
+  const usdTxAnchorSeries = buildSortedSeries(usdTxAnchorsRaw);
+
   const relevantHistoryDateSet = new Set<string>();
+  const allHistoryDateSet = new Set<string>();
   const dateSourceKeys =
     portfolioSymbolsInTx.size > 0
       ? Array.from(portfolioSymbolsInTx)
@@ -229,12 +339,17 @@ export function buildNetInvestedTimeline(input: {
       if (d >= startDate && d <= today) relevantHistoryDateSet.add(d);
     }
   }
+  for (const symSeries of Object.values(historyMap)) {
+    for (const d of Object.keys(symSeries)) {
+      if (d >= startDate && d <= today) allHistoryDateSet.add(d);
+    }
+  }
 
   const startMs = Date.parse(`${startDate}T12:00:00Z`);
   const endMs = Date.parse(`${today}T12:00:00Z`);
   const spanDays = Math.max(1, Math.round((endMs - startMs) / 86_400_000));
   const hasDenseHistory =
-    relevantHistoryDateSet.size >= 5 || (spanDays <= 7 && relevantHistoryDateSet.size >= 1);
+    allHistoryDateSet.size >= 5 || (spanDays <= 7 && relevantHistoryDateSet.size >= 1);
 
   // Build sorted sampling dates inside [startDate, today]
   const dateSet = new Set<string>([startDate, today]);
@@ -414,9 +529,16 @@ export function buildNetInvestedTimeline(input: {
     prevSimDate = d;
   }
 
-  const missingSymbolSet = new Set<string>(
-    input.summary.valuationStatus?.missingPrices ?? []
-  );
+  const rawMissingPrices = input.summary.valuationStatus?.missingPrices ?? [];
+  const filteredMissingPrices = hasDenseHistory
+    ? rawMissingPrices.filter((s) => {
+        const key = cleanSymbol(s).symbol || s.toUpperCase();
+        const anchor = sortedTxAnchorMap.get(key);
+        return !anchor || anchor.dates.length === 0;
+      })
+    : rawMissingPrices;
+
+  const missingSymbolSet = new Set<string>(filteredMissingPrices);
   if (input.summary.valuationStatus?.missingFx) {
     missingSymbolSet.add('USDTRY');
   }
@@ -469,7 +591,9 @@ export function buildNetInvestedTimeline(input: {
 
     if (d === today) {
       portfolioValue = totalSummaryValue;
-      isEstimatedValue = Boolean(input.summary.valuationStatus?.isPartialValuation);
+      isEstimatedValue =
+        Boolean(input.summary.valuationStatus?.isPartialValuation) &&
+        (!hasDenseHistory || missingSymbolSet.size > 0);
     } else {
       const heldEntries = Array.from(qtyBySym.entries()).filter(([, info]) => info.qty > 0.000001);
       if (heldEntries.length === 0) {
@@ -480,12 +604,13 @@ export function buildNetInvestedTimeline(input: {
         let marketSumTry = 0;
         for (const [sym, info] of heldEntries) {
           const sortedSymSeries = sortedSeriesMap.get(sym);
+          const txAnchorSeries = sortedTxAnchorMap.get(sym);
           const exactClose = historyMap[sym]?.[d];
           const closePrice =
             typeof exactClose === 'number' && Number.isFinite(exactClose) && exactClose > 0
               ? exactClose
-              : hasDenseHistory && sortedSymSeries
-                ? resolveCloseOnOrBefore(sortedSymSeries, d)
+              : hasDenseHistory
+                ? resolvePriceWithTxFallback(sortedSymSeries, txAnchorSeries, d)
                 : null;
 
           if (closePrice !== null && Number.isFinite(closePrice) && closePrice > 0) {
@@ -496,7 +621,7 @@ export function buildNetInvestedTimeline(input: {
                 typeof exactFx === 'number' && Number.isFinite(exactFx) && exactFx > 0
                   ? exactFx
                   : hasDenseHistory
-                    ? resolveCloseOnOrBefore(usdSeries, d)
+                    ? resolvePriceWithTxFallback(usdSeries, usdTxAnchorSeries, d)
                     : null;
               if (resolvedFx !== null && resolvedFx > 0) {
                 fxRate = resolvedFx;

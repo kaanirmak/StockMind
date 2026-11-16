@@ -224,28 +224,53 @@ export function NetInvestedChartCard({
         await Promise.all(
           entries.slice(i, i + 4).map(async (item) => {
             try {
-              const url =
+              const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
+              const map: Record<string, number> = {};
+
+              const appendRows = (rows: unknown) => {
+                if (!Array.isArray(rows)) return;
+                for (const row of rows) {
+                  if (!row || typeof row !== 'object') continue;
+                  const r = row as { time?: unknown; date?: unknown; close?: unknown; price?: unknown; value?: unknown };
+                  const day = toIstanbulDateStr(r.time ?? r.date);
+                  const price = Number(r.close ?? r.price ?? r.value);
+                  if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(price) && price > 0) {
+                    map[day] = price;
+                  }
+                }
+              };
+
+              const primaryUrl =
                 item.assetType === 'fund'
                   ? `/api/funds/${encodeURIComponent(item.symbol)}?days=${fundDays}`
                   : `/api/stocks/${encodeURIComponent(item.symbol)}/history?timeframe=${stockTimeframe}&exchange=${encodeURIComponent(item.exchange)}`;
-              const res = await fetch(url, {
-                signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
-              });
-              if (!res.ok) return;
-              const json = await res.json();
-              if (!json?.success) return;
-              const rows = item.assetType === 'fund' ? json.data?.history : json.data;
-              if (!Array.isArray(rows) || rows.length === 0) return;
-
-              const map: Record<string, number> = {};
-              for (const row of rows) {
-                if (!row || typeof row !== 'object') continue;
-                const day = toIstanbulDateStr(row.time ?? row.date);
-                const price = Number(row.close ?? row.price ?? row.value);
-                if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(price) && price > 0) {
-                  map[day] = price;
+              const res = await fetch(primaryUrl, { signal });
+              if (res.ok) {
+                const json = await res.json();
+                if (json?.success) {
+                  appendRows(item.assetType === 'fund' ? json.data?.history : json.data);
                 }
               }
+
+              // Fallback to TEFAS fund history for 3-5 char funds mistakenly saved as stocks (e.g. Z30KP, APLIB)
+              if (
+                Object.keys(map).length === 0 &&
+                item.assetType === 'stock' &&
+                !/^(XU100|XAUTRYG|USDTRY)$/.test(item.symbol) &&
+                /^[A-Z0-9]{3,5}$/.test(item.symbol)
+              ) {
+                const fundRes = await fetch(
+                  `/api/funds/${encodeURIComponent(item.symbol)}?days=${fundDays}`,
+                  { signal }
+                );
+                if (fundRes.ok) {
+                  const fundJson = await fundRes.json();
+                  if (fundJson?.success) {
+                    appendRows(fundJson.data?.history);
+                  }
+                }
+              }
+
               if (Object.keys(map).length > 0) {
                 nextHistory[item.symbol] = map;
               }
@@ -266,10 +291,21 @@ export function NetInvestedChartCard({
 
   const hasActivity = transactions.length > 0 || cashMovements.length > 0;
   const historyLoading = hasActivity && loadedHistory?.key !== requestKey;
-  const historyBySymbol = useMemo(
-    () => (loadedHistory?.key === requestKey ? loadedHistory.historyBySymbol : {}),
-    [loadedHistory, requestKey]
-  );
+  const historyBySymbol = useMemo(() => {
+    const base: PriceHistoryBySymbol =
+      loadedHistory?.key === requestKey ? { ...loadedHistory.historyBySymbol } : {};
+    for (const tx of transactions) {
+      if (!tx || (tx.transactionType !== 'buy' && tx.transactionType !== 'sell')) continue;
+      if (!tx.transactionDate || !Number.isFinite(tx.price) || tx.price <= 0) continue;
+      const sym = cleanSymbol(tx.symbol).symbol || tx.symbol.toUpperCase().trim();
+      const day = tx.transactionDate.slice(0, 10);
+      if (!sym || !/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+      const symMap = { ...(base[sym] ?? {}) };
+      if (!symMap[day]) symMap[day] = tx.price;
+      base[sym] = symMap;
+    }
+    return base;
+  }, [loadedHistory, requestKey, transactions]);
 
   const timeline = useMemo(
     () =>

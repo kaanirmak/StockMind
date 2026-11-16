@@ -202,18 +202,38 @@ export function BenchmarkComparisonCard({
           await Promise.all(
             assetTargets.slice(i, i + 4).map(async (item) => {
               try {
+                const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
+                const fundDays = Math.max(35, days);
                 const url =
                   item.assetType === 'fund'
-                    ? `/api/funds/${encodeURIComponent(item.symbol)}?days=${Math.max(35, days)}`
+                    ? `/api/funds/${encodeURIComponent(item.symbol)}?days=${fundDays}`
                     : `/api/stocks/${encodeURIComponent(item.symbol)}/history?timeframe=${fetchTf}&exchange=${encodeURIComponent(item.exchange)}`;
-                const res = await fetch(url, {
-                  signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
-                });
-                if (!res.ok) return;
-                const json = await res.json();
-                if (!json?.success) return;
-                const rows = item.assetType === 'fund' ? json.data?.history : json.data;
-                const parsed = extractCandleSeries(rows);
+                const res = await fetch(url, { signal });
+                let parsed: DatedNumericPoint[] = [];
+                if (res.ok) {
+                  const json = await res.json();
+                  if (json?.success) {
+                    const rows = item.assetType === 'fund' ? json.data?.history : json.data;
+                    parsed = extractCandleSeries(rows);
+                  }
+                }
+                if (
+                  parsed.length === 0 &&
+                  item.assetType === 'stock' &&
+                  !/^(XU100|XAUTRYG|USDTRY)$/.test(item.symbol) &&
+                  /^[A-Z0-9]{3,5}$/.test(item.symbol)
+                ) {
+                  const fundRes = await fetch(
+                    `/api/funds/${encodeURIComponent(item.symbol)}?days=${fundDays}`,
+                    { signal }
+                  );
+                  if (fundRes.ok) {
+                    const fundJson = await fundRes.json();
+                    if (fundJson?.success) {
+                      parsed = extractCandleSeries(fundJson.data?.history);
+                    }
+                  }
+                }
                 if (parsed.length > 0) {
                   const map: Record<string, number> = {};
                   for (const p of parsed) map[p.date] = p.value;
@@ -263,7 +283,19 @@ export function BenchmarkComparisonCard({
 
   // Build capital-neutral profit performance index (100 * (1 + Net Profit / Net Invested))
   const portfolioProfitTimeline = useMemo(() => {
-    const historyBySymbol = activeLoaded?.portfolioHistoryBySymbol ?? {};
+    const historyBySymbol: PriceHistoryBySymbol = activeLoaded
+      ? { ...activeLoaded.portfolioHistoryBySymbol }
+      : {};
+    for (const tx of transactions) {
+      if (!tx || (tx.transactionType !== 'buy' && tx.transactionType !== 'sell')) continue;
+      if (!tx.transactionDate || !Number.isFinite(tx.price) || tx.price <= 0) continue;
+      const sym = cleanSymbol(tx.symbol).symbol || tx.symbol.toUpperCase().trim();
+      const day = tx.transactionDate.slice(0, 10);
+      if (!sym || !/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+      const symMap = { ...(historyBySymbol[sym] ?? {}) };
+      if (!symMap[day]) symMap[day] = tx.price;
+      historyBySymbol[sym] = symMap;
+    }
     return buildNetInvestedTimeline({
       transactions,
       cashMovements,
@@ -272,7 +304,7 @@ export function BenchmarkComparisonCard({
       historyBySymbol,
       period: PERIOD_TO_TIMELINE_PERIOD[period],
     });
-  }, [transactions, cashMovements, summary, livePrices, activeLoaded?.portfolioHistoryBySymbol, period]);
+  }, [transactions, cashMovements, summary, livePrices, activeLoaded, period]);
 
   const portfolioTrySeries = useMemo<DatedNumericPoint[]>(() => {
     return portfolioProfitTimeline.points
