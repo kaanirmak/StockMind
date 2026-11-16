@@ -1,4 +1,4 @@
-export type BenchmarkId = 'XU100' | 'SP500' | 'NASDAQ' | 'ALTIN' | 'USDTRY';
+export type BenchmarkId = 'XU100' | 'SP500' | 'NASDAQ' | 'ALTIN' | 'USDTRY' | 'FAIZ';
 export type ComparisonCurrency = 'TRY' | 'USD';
 export type BenchmarkPeriod = '1W' | '1M' | '3M' | '6M' | '1Y';
 
@@ -15,8 +15,30 @@ export const BENCHMARK_OPTIONS: readonly BenchmarkDefinition[] = [
   { id: 'SP500', label: 'S&P 500', symbol: '^GSPC', exchange: 'INDEX', nativeCurrency: 'USD' },
   { id: 'NASDAQ', label: 'Nasdaq', symbol: '^IXIC', exchange: 'INDEX', nativeCurrency: 'USD' },
   { id: 'ALTIN', label: 'Altın (Ons)', symbol: 'GC=F', exchange: 'COMMODITY', nativeCurrency: 'USD' },
+  { id: 'FAIZ', label: 'Mevduat Faizi (%48)', symbol: 'FAIZ', exchange: 'TR', nativeCurrency: 'TRY' },
   { id: 'USDTRY', label: 'USD / TRY', symbol: 'USDTRY', exchange: 'FX', nativeCurrency: 'TRY' },
 ];
+
+export function buildCompoundInterestSeries(
+  dates: readonly string[],
+  annualRate = 0.48
+): DatedNumericPoint[] {
+  const uniqueDates = Array.from(
+    new Set(dates.map((d) => normalizeDate(d)).filter((d): d is string => Boolean(d)))
+  ).sort();
+  if (uniqueDates.length === 0) return [];
+  const startMs = Date.parse(`${uniqueDates[0]}T12:00:00Z`);
+  return uniqueDates.map((d) => {
+    const ms = Date.parse(`${d}T12:00:00Z`);
+    const elapsedDays = Number.isFinite(ms) && Number.isFinite(startMs)
+      ? Math.max(0, (ms - startMs) / 86_400_000)
+      : 0;
+    return {
+      date: d,
+      value: Number((100 * Math.pow(1 + annualRate, elapsedDays / 365)).toFixed(4)),
+    };
+  });
+}
 
 export interface DatedNumericPoint {
   date: string; // YYYY-MM-DD

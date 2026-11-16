@@ -6,6 +6,7 @@ import { calculatePortfolioHistory } from '@/lib/portfolio/history';
 import {
   BENCHMARK_OPTIONS,
   buildBenchmarkComparison,
+  buildCompoundInterestSeries,
   type BenchmarkId,
   type BenchmarkPeriod,
   type ComparisonCurrency,
@@ -71,14 +72,20 @@ export function BenchmarkComparisonCard({
     let cancelled = false;
     const tf = PERIOD_TO_HISTORY_PARAM[period];
     const needsFxSeries = currency === 'USD' || selectedBenchmark.nativeCurrency !== currency;
+    const isSyntheticInterest = selectedBenchmark.id === 'FAIZ';
 
-    setLoading(true);
-    setFetchError(null);
+    if (isSyntheticInterest && !needsFxSeries) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     Promise.all([
-      fetch(`/api/stocks/${encodeURIComponent(selectedBenchmark.symbol)}/history?timeframe=${tf}&exchange=${encodeURIComponent(selectedBenchmark.exchange)}`)
-        .then((r) => r.json())
-        .catch(() => null),
+      isSyntheticInterest
+        ? Promise.resolve(null)
+        : fetch(`/api/stocks/${encodeURIComponent(selectedBenchmark.symbol)}/history?timeframe=${tf}&exchange=${encodeURIComponent(selectedBenchmark.exchange)}`)
+            .then((r) => r.json())
+            .catch(() => null),
       needsFxSeries
         ? fetch(`/api/stocks/USDTRY/history?timeframe=${tf}&exchange=FX`)
             .then((r) => r.json())
@@ -86,11 +93,14 @@ export function BenchmarkComparisonCard({
         : Promise.resolve(null),
     ]).then(([benchJson, fxJson]) => {
       if (cancelled) return;
-      if (!benchJson || !benchJson.success) {
-        setBenchSeries([]);
-        setFetchError(benchJson?.error || `${selectedBenchmark.label} geçmişi alınamadı.`);
-      } else {
-        setBenchSeries(extractCandleSeries(benchJson.data));
+      if (!isSyntheticInterest) {
+        if (!benchJson || !benchJson.success) {
+          setBenchSeries([]);
+          setFetchError(benchJson?.error || `${selectedBenchmark.label} geçmişi alınamadı.`);
+        } else {
+          setBenchSeries(extractCandleSeries(benchJson.data));
+          setFetchError(null);
+        }
       }
 
       if (fxJson && fxJson.success) {
@@ -120,6 +130,16 @@ export function BenchmarkComparisonCard({
       .map(([date, value]) => ({ date, value }));
   }, [transactions, summary, period, livePrices]);
 
+  const effectiveBenchSeries = useMemo<DatedNumericPoint[]>(() => {
+    if (selectedBenchmark.id === 'FAIZ') {
+      return buildCompoundInterestSeries(
+        portfolioTrySeries.map((p) => p.date),
+        0.48
+      );
+    }
+    return benchSeries;
+  }, [selectedBenchmark.id, portfolioTrySeries, benchSeries]);
+
   const usdQuote = livePrices['USDTRY'] ?? livePrices['USD'];
   const usdTryFallback =
     typeof usdQuote === 'number'
@@ -133,13 +153,13 @@ export function BenchmarkComparisonCard({
       buildBenchmarkComparison({
         portfolioTrySeries,
         benchmarkId,
-        benchmarkNativeSeries: benchSeries,
+        benchmarkNativeSeries: effectiveBenchSeries,
         period,
         currency,
         usdTrySeries,
         usdTryFallback,
       }),
-    [portfolioTrySeries, benchmarkId, benchSeries, period, currency, usdTrySeries, usdTryFallback]
+    [portfolioTrySeries, benchmarkId, effectiveBenchSeries, period, currency, usdTrySeries, usdTryFallback]
   );
 
   const chartSvg = useMemo(() => {
@@ -194,7 +214,12 @@ export function BenchmarkComparisonCard({
           <select
             aria-label="Referans endeks seç"
             value={benchmarkId}
-            onChange={(e) => setBenchmarkId(e.target.value as BenchmarkId)}
+            onChange={(e) => {
+              const nextId = e.target.value as BenchmarkId;
+              setFetchError(null);
+              if (nextId !== 'FAIZ') setLoading(true);
+              setBenchmarkId(nextId);
+            }}
             className="bg-bg-secondary text-text-primary border border-border rounded-xl px-2.5 py-1.5 text-xs font-semibold"
           >
             {BENCHMARK_OPTIONS.map((b) => (
@@ -335,7 +360,9 @@ export function BenchmarkComparisonCard({
           data-testid="benchmark-comparison-empty"
           className="p-4 rounded-xl bg-bg-tertiary/40 border border-border/50 text-xs text-text-muted"
         >
-          {fetchError || comparison.missingReason || 'Karşılaştırma için yeterli ortak tarihçe bulunamadı.'}
+          {selectedBenchmark.id === 'FAIZ'
+            ? (comparison.missingReason || 'Karşılaştırma için yeterli ortak tarihçe bulunamadı.')
+            : (fetchError || comparison.missingReason || 'Karşılaştırma için yeterli ortak tarihçe bulunamadı.')}
         </div>
       )}
     </section>

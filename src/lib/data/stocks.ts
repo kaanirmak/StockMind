@@ -2213,76 +2213,105 @@ export async function fetchRealHistoricalCandles(
     interval = '1d';
   } else if (timeframe === '5Y') {
     range = '5y';
-    interval = '1wk';
+    interval = '1d';
   } else if (timeframe === 'ALL') {
-    range = 'max';
-    interval = '1mo';
+    range = '5y';
+    interval = '1d';
   }
 
-  try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(querySymbol)}?interval=${interval}&range=${range}`;
+  const istanbulDateFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const fetchYahooChartCandles = async (targetQuerySymbol: string): Promise<Candle[]> => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(targetQuerySymbol)}?interval=${interval}&range=${range}`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       next: { revalidate: 60 },
     });
+    if (!res.ok) return [];
 
-    if (res.ok) {
-      const json = await res.json();
-      const result = json.chart?.result?.[0];
-      const timestamps = result?.timestamp || [];
-      const quote = result?.indicators?.quote?.[0] || {};
+    const json = await res.json();
+    const result = json.chart?.result?.[0];
+    const timestamps = result?.timestamp || [];
+    const quote = result?.indicators?.quote?.[0] || {};
 
-      const candles: Candle[] = [];
-      for (let i = 0; i < timestamps.length; i++) {
-        const close = finitePositiveNumber(quote.close?.[i], 4);
-        if (close === undefined) continue;
+    const parsed: Candle[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const close = finitePositiveNumber(quote.close?.[i], 4);
+      if (close === undefined) continue;
 
-        const open = finitePositiveNumber(quote.open?.[i], 4);
-        const high = finitePositiveNumber(quote.high?.[i], 4);
-        const low = finitePositiveNumber(quote.low?.[i], 4);
-        const rawVol = finitePositiveNumber(quote.volume?.[i]);
+      const open = finitePositiveNumber(quote.open?.[i], 4);
+      const high = finitePositiveNumber(quote.high?.[i], 4);
+      const low = finitePositiveNumber(quote.low?.[i], 4);
+      const rawVol = finitePositiveNumber(quote.volume?.[i]);
 
-        const d = new Date(timestamps[i] * 1000);
-        if (!Number.isFinite(d.getTime())) continue;
+      const d = new Date(timestamps[i] * 1000);
+      if (!Number.isFinite(d.getTime())) continue;
 
-        candles.push({
-          time: interval.includes('m') ? d.toISOString().replace('T', ' ').slice(0, 16) : d.toISOString().split('T')[0],
-          open,
-          high,
-          low,
-          close,
-          volume: rawVol !== undefined ? Math.round(rawVol) : undefined,
-        });
+      parsed.push({
+        time: interval.includes('m')
+          ? d.toISOString().replace('T', ' ').slice(0, 16)
+          : istanbulDateFormatter.format(d),
+        open,
+        high,
+        low,
+        close,
+        volume: rawVol !== undefined ? Math.round(rawVol) : undefined,
+      });
+    }
+    return parsed;
+  };
+
+  try {
+    let candles = await fetchYahooChartCandles(querySymbol);
+
+    if (candles.length === 0) {
+      const lockedEx = (preferredExchange || '').toUpperCase();
+      const rawUpper = symbol.trim().toUpperCase();
+      if (querySymbol.endsWith('.IS') && lockedEx !== 'BIST') {
+        candles = await fetchYahooChartCandles(querySymbol.slice(0, -3));
+      } else if (
+        !querySymbol.includes('.') &&
+        !querySymbol.includes('=') &&
+        !querySymbol.includes('-') &&
+        !querySymbol.startsWith('^') &&
+        !['NASDAQ', 'NYSE', 'AMEX', 'INDEX', 'COMMODITY', 'FX'].includes(lockedEx)
+      ) {
+        candles = await fetchYahooChartCandles(`${rawUpper}.IS`);
       }
+    }
 
-      if (candles.length > 0) {
-        if (isGoldOrSilverScale && scaleTarget && scaleTarget > 0) {
-          const lastCandleClose = candles[candles.length - 1].close;
-          if (lastCandleClose > 0) {
-            const factor = scaleTarget / lastCandleClose;
-            for (let i = 0; i < candles.length; i++) {
-              if (candles[i].open !== undefined) candles[i].open = Number((candles[i].open! * factor).toFixed(2));
-              if (candles[i].high !== undefined) candles[i].high = Number((candles[i].high! * factor).toFixed(2));
-              if (candles[i].low !== undefined) candles[i].low = Number((candles[i].low! * factor).toFixed(2));
-              candles[i].close = Number((candles[i].close * factor).toFixed(2));
-            }
-          }
-          candles[candles.length - 1].close = Number(scaleTarget.toFixed(2));
-        } else if (targetPrice && targetPrice > 0) {
-          const lastCandleClose = candles[candles.length - 1].close;
-          const ratio = targetPrice / (lastCandleClose || 1);
-          // Scale proportionately across all candles so chart continuity is preserved without artificial single-candle spike
-          if (ratio > 0.8 && ratio < 1.25 && Math.abs(ratio - 1) > 0.002) {
-            for (let i = 0; i < candles.length; i++) {
-              if (candles[i].open !== undefined) candles[i].open = Number((candles[i].open! * ratio).toFixed(2));
-              if (candles[i].high !== undefined) candles[i].high = Number((candles[i].high! * ratio).toFixed(2));
-              if (candles[i].low !== undefined) candles[i].low = Number((candles[i].low! * ratio).toFixed(2));
-              candles[i].close = Number((candles[i].close * ratio).toFixed(2));
-            }
+    if (candles.length > 0) {
+      if (isGoldOrSilverScale && scaleTarget && scaleTarget > 0) {
+        const lastCandleClose = candles[candles.length - 1].close;
+        if (lastCandleClose > 0) {
+          const factor = scaleTarget / lastCandleClose;
+          for (let i = 0; i < candles.length; i++) {
+            if (candles[i].open !== undefined) candles[i].open = Number((candles[i].open! * factor).toFixed(2));
+            if (candles[i].high !== undefined) candles[i].high = Number((candles[i].high! * factor).toFixed(2));
+            if (candles[i].low !== undefined) candles[i].low = Number((candles[i].low! * factor).toFixed(2));
+            candles[i].close = Number((candles[i].close * factor).toFixed(2));
           }
         }
-        return candles;
+        candles[candles.length - 1].close = Number(scaleTarget.toFixed(2));
+      } else if (targetPrice && targetPrice > 0) {
+        const lastCandleClose = candles[candles.length - 1].close;
+        const ratio = targetPrice / (lastCandleClose || 1);
+        // Scale proportionately across all candles so chart continuity is preserved without artificial single-candle spike
+        if (ratio > 0.8 && ratio < 1.25 && Math.abs(ratio - 1) > 0.002) {
+          for (let i = 0; i < candles.length; i++) {
+            if (candles[i].open !== undefined) candles[i].open = Number((candles[i].open! * ratio).toFixed(2));
+            if (candles[i].high !== undefined) candles[i].high = Number((candles[i].high! * ratio).toFixed(2));
+            if (candles[i].low !== undefined) candles[i].low = Number((candles[i].low! * ratio).toFixed(2));
+            candles[i].close = Number((candles[i].close * ratio).toFixed(2));
+          }
+        }
       }
+      return candles;
     }
   } catch (err) {
     console.warn(`Error fetching real candles for ${symbol}:`, err);

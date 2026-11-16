@@ -3,6 +3,19 @@ import { cleanSymbol, type PriceQuote } from '@/lib/portfolio/calculations';
 
 export type NetInvestedPeriod = '1M' | '3M' | '6M' | '1Y' | 'ALL';
 export type PriceHistoryBySymbol = Record<string, Record<string, number>>;
+export type AlternativeBenchmarkId = 'bist100' | 'gold' | 'interest' | 'usd';
+
+export const DEFAULT_ANNUAL_DEPOSIT_INTEREST_RATE = 0.48; // %48 yıllık TL mevduat referansı
+
+export interface AlternativeBenchmarkSummary {
+  id: AlternativeBenchmarkId;
+  label: string;
+  currentValue: number;
+  returnAmount: number;
+  returnPercent: number;
+  diffVsPortfolio: number; // latestPortfolioValue - currentValue
+  available: boolean;
+}
 
 export interface NetInvestedPoint {
   date: string; // YYYY-MM-DD
@@ -13,6 +26,10 @@ export interface NetInvestedPoint {
   dailyInflow: number;
   dailyOutflow: number;
   isEstimatedValue: boolean;
+  bist100Value?: number;
+  goldValue?: number;
+  interestValue?: number;
+  usdValue?: number;
 }
 
 export interface HistoryCoverageReport {
@@ -36,6 +53,8 @@ export interface NetInvestedTimelineResult {
   netInvestedTotal: number;
   latestPortfolioValue: number;
   netGainAmount: number;
+  annualInterestRate: number;
+  benchmarks: AlternativeBenchmarkSummary[];
   coverage: HistoryCoverageReport;
 }
 
@@ -67,9 +86,70 @@ function resolveTryAmount(
   return { tryAmount: amount * usdTryFallback, missingFx: true };
 }
 
+function extractLiveQuotePrice(quote: PriceQuote | number | undefined): number | null {
+  if (typeof quote === 'number' && Number.isFinite(quote) && quote > 0) return quote;
+  if (quote && typeof quote === 'object' && typeof quote.price === 'number' && Number.isFinite(quote.price) && quote.price > 0) {
+    return quote.price;
+  }
+  return null;
+}
+
+interface SortedSeries {
+  dates: string[];
+  values: Map<string, number>;
+}
+
+function buildSortedSeries(raw?: Record<string, number>): SortedSeries {
+  const values = new Map<string, number>();
+  if (raw) {
+    for (const [d, v] of Object.entries(raw)) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && typeof v === 'number' && Number.isFinite(v) && v > 0) {
+        values.set(d, v);
+      }
+    }
+  }
+  const dates = Array.from(values.keys()).sort();
+  return { dates, values };
+}
+
+function resolveCloseOnOrBefore(
+  series: SortedSeries,
+  date: string,
+  allowLeadToleranceDays = 10
+): number | null {
+  if (series.dates.length === 0) return null;
+  const exact = series.values.get(date);
+  if (exact !== undefined) return exact;
+
+  // Binary / reverse scan for latest trading day <= date
+  for (let i = series.dates.length - 1; i >= 0; i--) {
+    if (series.dates[i] <= date) {
+      return series.values.get(series.dates[i]) ?? null;
+    }
+  }
+
+  // If date lands slightly before first candle (weekend/holiday boundary), use first close
+  const firstDate = series.dates[0];
+  const diffDays = Math.round(
+    (Date.parse(`${firstDate}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / 86_400_000
+  );
+  if (diffDays >= 0 && diffDays <= allowLeadToleranceDays) {
+    return series.values.get(firstDate) ?? null;
+  }
+  return null;
+}
+
+function daysBetween(fromDate: string, toDate: string): number {
+  const fromMs = Date.parse(`${fromDate}T12:00:00Z`);
+  const toMs = Date.parse(`${toDate}T12:00:00Z`);
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) return 0;
+  return Math.round((toMs - fromMs) / 86_400_000);
+}
+
 /**
  * Builds chronological portfolio market-value vs. net invested capital timeline with separate
- * cash inflows/outflows and an explicit scope disclosure for missing historical data.
+ * cash inflows/outflows, alternative benchmark simulations (BIST 100, Gold, Deposit Interest, USD),
+ * and an explicit scope disclosure for missing historical data.
  */
 export function buildNetInvestedTimeline(input: {
   transactions: readonly Transaction[];
@@ -79,18 +159,20 @@ export function buildNetInvestedTimeline(input: {
   historyBySymbol?: PriceHistoryBySymbol;
   period: NetInvestedPeriod;
   today?: string;
+  annualInterestRate?: number;
 }): NetInvestedTimelineResult {
   const today =
     input.today ||
     new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date());
+  const annualInterestRate =
+    typeof input.annualInterestRate === 'number' && input.annualInterestRate >= 0
+      ? input.annualInterestRate
+      : DEFAULT_ANNUAL_DEPOSIT_INTEREST_RATE;
+
   const prices = input.livePrices ?? {};
   const usdQuote = prices['USDTRY'] || prices['USD'];
-  const usdTryFallback =
-    typeof usdQuote === 'number' && Number.isFinite(usdQuote) && usdQuote > 0
-      ? usdQuote
-      : usdQuote && typeof usdQuote === 'object' && usdQuote.price > 0
-        ? usdQuote.price
-        : 38.5;
+  const liveUsdTry = extractLiveQuotePrice(usdQuote);
+  const usdTryFallback = liveUsdTry ?? 38.5;
 
   const validTx = input.transactions
     .filter((t) => t && t.transactionDate && t.quantity > 0 && t.price >= 0)
@@ -123,24 +205,55 @@ export function buildNetInvestedTimeline(input: {
   const earliestDate = allEventDates[0] ?? today;
   const startDate = periodCutoffDate(input.period, today, earliestDate);
 
+  const historyMap = input.historyBySymbol ?? {};
+  const sortedSeriesMap = new Map<string, SortedSeries>();
+  for (const [sym, series] of Object.entries(historyMap)) {
+    sortedSeriesMap.set(sym, buildSortedSeries(series));
+  }
+
+  // Determine whether real historical daily closes were supplied for held portfolio assets
+  const portfolioSymbolsInTx = new Set<string>();
+  for (const tx of validTx) {
+    const sym = cleanSymbol(tx.symbol).symbol || tx.symbol.toUpperCase();
+    if (sym) portfolioSymbolsInTx.add(sym);
+  }
+  const relevantHistoryDateSet = new Set<string>();
+  const dateSourceKeys =
+    portfolioSymbolsInTx.size > 0
+      ? Array.from(portfolioSymbolsInTx)
+      : Object.keys(historyMap);
+  for (const sym of dateSourceKeys) {
+    const symSeries = historyMap[sym];
+    if (!symSeries) continue;
+    for (const d of Object.keys(symSeries)) {
+      if (d >= startDate && d <= today) relevantHistoryDateSet.add(d);
+    }
+  }
+
+  const startMs = Date.parse(`${startDate}T12:00:00Z`);
+  const endMs = Date.parse(`${today}T12:00:00Z`);
+  const spanDays = Math.max(1, Math.round((endMs - startMs) / 86_400_000));
+  const hasDenseHistory =
+    relevantHistoryDateSet.size >= 5 || (spanDays <= 7 && relevantHistoryDateSet.size >= 1);
+
   // Build sorted sampling dates inside [startDate, today]
   const dateSet = new Set<string>([startDate, today]);
   for (const d of allEventDates) {
     if (d >= startDate && d <= today) dateSet.add(d);
   }
-  const historyMap = input.historyBySymbol ?? {};
-  for (const symbolSeries of Object.values(historyMap)) {
-    for (const d of Object.keys(symbolSeries)) {
-      if (d >= startDate && d <= today) dateSet.add(d);
+  const benchmarkKeys = new Set(['XU100', 'BIST100', 'XAUTRYG', 'GRAM_ALTIN', 'GC=F', 'XAUUSD', 'ALTIN', 'USDTRY']);
+  for (const [sym, symbolSeries] of Object.entries(historyMap)) {
+    // When portfolio has dense history, sample portfolio dates + benchmark dates inside [startDate, today]
+    if (!hasDenseHistory || !benchmarkKeys.has(sym) || relevantHistoryDateSet.size === 0) {
+      for (const d of Object.keys(symbolSeries)) {
+        if (d >= startDate && d <= today) dateSet.add(d);
+      }
     }
   }
 
-  // Ensure at least ~8 smooth intermediate ticks when sparsely spaced
-  const startMs = Date.parse(`${startDate}T12:00:00Z`);
-  const endMs = Date.parse(`${today}T12:00:00Z`);
-  const spanDays = Math.max(1, Math.round((endMs - startMs) / 86_400_000));
-  const stepDays = Math.max(1, Math.floor(spanDays / 12));
-  if (spanDays >= 2) {
+  // Only inject synthetic calendar ticks when real daily closes are absent/sparse
+  if (!hasDenseHistory && spanDays >= 2) {
+    const stepDays = Math.max(1, Math.floor(spanDays / 12));
     for (let offset = stepDays; offset < spanDays; offset += stepDays) {
       const d = new Date(startMs + offset * 86_400_000).toISOString().slice(0, 10);
       if (d > startDate && d < today) dateSet.add(d);
@@ -149,7 +262,7 @@ export function buildNetInvestedTimeline(input: {
 
   const timelineDates = Array.from(dateSet).sort();
 
-  // Compute cumulative inflows/outflows per date + missing FX count
+  // Compute daily inflows/outflows per date + missing FX count
   const dailyInflowByDate = new Map<string, number>();
   const dailyOutflowByDate = new Map<string, number>();
   let missingFxTransactions = 0;
@@ -187,6 +300,120 @@ export function buildNetInvestedTimeline(input: {
     }
   }
 
+  // Simulate alternative benchmarks across ALL cash flow + timeline dates from earliestDate -> today
+  const bistSeries = sortedSeriesMap.get('XU100') ?? sortedSeriesMap.get('BIST100') ?? buildSortedSeries();
+  const usdSeries = sortedSeriesMap.get('USDTRY') ?? buildSortedSeries();
+  const goldTryDirectSeries =
+    sortedSeriesMap.get('XAUTRYG') ??
+    sortedSeriesMap.get('GRAM_ALTIN') ??
+    sortedSeriesMap.get('GAUTRY');
+  const goldUsdSeries =
+    sortedSeriesMap.get('GC=F') ??
+    sortedSeriesMap.get('XAUUSD') ??
+    sortedSeriesMap.get('ALTIN') ??
+    buildSortedSeries();
+
+  const resolveBistPrice = (d: string): number | null => {
+    const hist = resolveCloseOnOrBefore(bistSeries, d, 3650);
+    if (hist !== null) return hist;
+    if (d === today) return extractLiveQuotePrice(prices['XU100'] ?? prices['BIST100']);
+    return null;
+  };
+
+  const resolveUsdPrice = (d: string): number | null => {
+    const hist = resolveCloseOnOrBefore(usdSeries, d, 3650);
+    if (hist !== null) return hist;
+    if (d === today) return liveUsdTry;
+    return null;
+  };
+
+  const resolveGoldTryPrice = (d: string): number | null => {
+    if (goldTryDirectSeries && goldTryDirectSeries.dates.length > 0) {
+      const direct = resolveCloseOnOrBefore(goldTryDirectSeries, d, 3650);
+      if (direct !== null) return direct;
+    }
+    const ozUsd = resolveCloseOnOrBefore(goldUsdSeries, d, 3650);
+    if (ozUsd !== null) {
+      const fx = resolveUsdPrice(d) ?? usdTryFallback;
+      return ozUsd * fx;
+    }
+    if (d === today) {
+      return extractLiveQuotePrice(prices['XAUTRYG'] ?? prices['GRAM_ALTIN']);
+    }
+    return null;
+  };
+
+  const hasBistHistory = bistSeries.dates.length >= 2;
+  const hasUsdHistory = usdSeries.dates.length >= 2;
+  const hasGoldHistory =
+    (goldTryDirectSeries ? goldTryDirectSeries.dates.length >= 2 : false) ||
+    goldUsdSeries.dates.length >= 2;
+
+  const simDateSet = new Set<string>([...allEventDates, ...timelineDates]);
+  const allSimDates = Array.from(simDateSet)
+    .filter((d) => d <= today)
+    .sort();
+
+  let bistUnits = 0;
+  let goldUnits = 0;
+  let usdUnits = 0;
+  let interestBalance = 0;
+  let prevSimDate: string | null = null;
+
+  const simByDate = new Map<
+    string,
+    { bist100Value?: number; goldValue?: number; interestValue: number; usdValue?: number }
+  >();
+
+  for (const d of allSimDates) {
+    const deltaDays = prevSimDate ? daysBetween(prevSimDate, d) : 0;
+    if (deltaDays > 0 && interestBalance > 0) {
+      interestBalance = interestBalance * Math.pow(1 + annualInterestRate, deltaDays / 365);
+    }
+
+    const inflow = dailyInflowByDate.get(d) ?? 0;
+    const outflow = dailyOutflowByDate.get(d) ?? 0;
+    interestBalance = Math.max(0, interestBalance + inflow - outflow);
+
+    let bist100Value: number | undefined;
+    if (hasBistHistory) {
+      const bp = resolveBistPrice(d);
+      if (bp && bp > 0) {
+        if (inflow > 0) bistUnits += inflow / bp;
+        if (outflow > 0) bistUnits = Math.max(0, bistUnits - outflow / bp);
+        bist100Value = Number((bistUnits * bp).toFixed(2));
+      }
+    }
+
+    let goldValue: number | undefined;
+    if (hasGoldHistory) {
+      const gp = resolveGoldTryPrice(d);
+      if (gp && gp > 0) {
+        if (inflow > 0) goldUnits += inflow / gp;
+        if (outflow > 0) goldUnits = Math.max(0, goldUnits - outflow / gp);
+        goldValue = Number((goldUnits * gp).toFixed(2));
+      }
+    }
+
+    let usdValue: number | undefined;
+    if (hasUsdHistory) {
+      const up = resolveUsdPrice(d);
+      if (up && up > 0) {
+        if (inflow > 0) usdUnits += inflow / up;
+        if (outflow > 0) usdUnits = Math.max(0, usdUnits - outflow / up);
+        usdValue = Number((usdUnits * up).toFixed(2));
+      }
+    }
+
+    simByDate.set(d, {
+      bist100Value,
+      goldValue,
+      interestValue: Number(interestBalance.toFixed(2)),
+      usdValue,
+    });
+    prevSimDate = d;
+  }
+
   const missingSymbolSet = new Set<string>(
     input.summary.valuationStatus?.missingPrices ?? []
   );
@@ -204,7 +431,6 @@ export function buildNetInvestedTimeline(input: {
     if (d < startDate) cumulativeOutflows += amt;
   }
 
-  // Track holdings replay across timeline dates so value reflects historical positions when closes exist
   const totalSummaryValue = Math.max(0, input.summary.totalValue || 0);
   const totalSummaryCost = Math.max(0, input.summary.totalCost || 0);
 
@@ -253,13 +479,32 @@ export function buildNetInvestedTimeline(input: {
         let allHaveHistoricalClose = true;
         let marketSumTry = 0;
         for (const [sym, info] of heldEntries) {
-          const symSeries = historyMap[sym];
-          const closePrice = symSeries?.[d];
-          if (typeof closePrice === 'number' && Number.isFinite(closePrice) && closePrice > 0) {
-            const fxRate = info.isUsd ? (historyMap['USDTRY']?.[d] ?? usdTryFallback) : 1;
-            if (info.isUsd && !historyMap['USDTRY']?.[d]) {
-              allHaveHistoricalClose = false;
-              missingSymbolSet.add('USDTRY');
+          const sortedSymSeries = sortedSeriesMap.get(sym);
+          const exactClose = historyMap[sym]?.[d];
+          const closePrice =
+            typeof exactClose === 'number' && Number.isFinite(exactClose) && exactClose > 0
+              ? exactClose
+              : hasDenseHistory && sortedSymSeries
+                ? resolveCloseOnOrBefore(sortedSymSeries, d)
+                : null;
+
+          if (closePrice !== null && Number.isFinite(closePrice) && closePrice > 0) {
+            let fxRate = 1;
+            if (info.isUsd) {
+              const exactFx = historyMap['USDTRY']?.[d];
+              const resolvedFx =
+                typeof exactFx === 'number' && Number.isFinite(exactFx) && exactFx > 0
+                  ? exactFx
+                  : hasDenseHistory
+                    ? resolveCloseOnOrBefore(usdSeries, d)
+                    : null;
+              if (resolvedFx !== null && resolvedFx > 0) {
+                fxRate = resolvedFx;
+              } else {
+                fxRate = usdTryFallback;
+                allHaveHistoricalClose = false;
+                missingSymbolSet.add('USDTRY');
+              }
             }
             marketSumTry += info.qty * closePrice * fxRate;
           } else {
@@ -272,7 +517,6 @@ export function buildNetInvestedTimeline(input: {
           portfolioValue = marketSumTry;
           isEstimatedValue = false;
         } else {
-          // Interpolate monotonically between net invested cost and current PnL delta
           const progress = timelineDates.length > 1 ? i / (timelineDates.length - 1) : 1;
           const totalDelta = totalSummaryValue - (totalSummaryCost || netInvested);
           portfolioValue = Math.max(0, netInvested + totalDelta * Math.pow(progress, 1.05));
@@ -289,6 +533,7 @@ export function buildNetInvestedTimeline(input: {
       coveredPointsCount++;
     }
 
+    const simPt = simByDate.get(d);
     points.push({
       date: d,
       portfolioValue: Number(portfolioValue.toFixed(2)),
@@ -298,6 +543,10 @@ export function buildNetInvestedTimeline(input: {
       dailyInflow: Number(dailyInflow.toFixed(2)),
       dailyOutflow: Number(dailyOutflow.toFixed(2)),
       isEstimatedValue,
+      bist100Value: simPt?.bist100Value,
+      goldValue: simPt?.goldValue,
+      interestValue: simPt?.interestValue,
+      usdValue: simPt?.usdValue,
     });
   }
 
@@ -334,6 +583,45 @@ export function buildNetInvestedTimeline(input: {
   const latestPortfolioValue = lastPoint ? lastPoint.portfolioValue : totalSummaryValue;
   const netInvestedTotal = lastPoint ? lastPoint.netInvested : 0;
 
+  const makeBenchmarkSummary = (
+    id: AlternativeBenchmarkId,
+    label: string,
+    available: boolean,
+    value: number | undefined
+  ): AlternativeBenchmarkSummary => {
+    const currentValue = available && typeof value === 'number' && Number.isFinite(value) ? Number(value.toFixed(2)) : 0;
+    const returnAmount = available ? Number((currentValue - netInvestedTotal).toFixed(2)) : 0;
+    const returnPercent =
+      available && netInvestedTotal > 0
+        ? Number(((returnAmount / netInvestedTotal) * 100).toFixed(2))
+        : 0;
+    const diffVsPortfolio = available
+      ? Number((latestPortfolioValue - currentValue).toFixed(2))
+      : 0;
+    return {
+      id,
+      label,
+      currentValue,
+      returnAmount,
+      returnPercent,
+      diffVsPortfolio,
+      available,
+    };
+  };
+
+  const lastSim = simByDate.get(lastPoint?.date ?? today);
+  const benchmarks: AlternativeBenchmarkSummary[] = [
+    makeBenchmarkSummary('bist100', 'BIST 100', hasBistHistory, lastSim?.bist100Value),
+    makeBenchmarkSummary('gold', 'Altın (TL)', hasGoldHistory, lastSim?.goldValue),
+    makeBenchmarkSummary(
+      'interest',
+      `Mevduat Faizi (%${Math.round(annualInterestRate * 100)})`,
+      true,
+      lastSim?.interestValue
+    ),
+    makeBenchmarkSummary('usd', 'Dolar (USD/TRY)', hasUsdHistory, lastSim?.usdValue),
+  ];
+
   return {
     period: input.period,
     points,
@@ -342,6 +630,8 @@ export function buildNetInvestedTimeline(input: {
     netInvestedTotal: Number(netInvestedTotal.toFixed(2)),
     latestPortfolioValue: Number(latestPortfolioValue.toFixed(2)),
     netGainAmount: Number((latestPortfolioValue - netInvestedTotal).toFixed(2)),
+    annualInterestRate,
+    benchmarks,
     coverage: {
       isComplete,
       coveredPointsCount,

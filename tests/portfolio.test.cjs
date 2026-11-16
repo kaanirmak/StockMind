@@ -1929,6 +1929,103 @@ test('POR-10: net invested timeline separates inflows/outflows and discloses mis
   assert.match(res.coverage.summaryText, /Tarihçe kapsamı/);
   assert.ok(res.coverage.details.length >= 1);
 
+  // Dense daily history (5+ trading days + carry-forward over weekend) reaches %100 coverage and simulates BIST100/Gold/Interest/USD
+  const denseRes = tlMod.buildNetInvestedTimeline({
+    transactions: [
+      {
+        id: 'tx_dense_1',
+        portfolioId: 'p1',
+        userId: 'u1',
+        symbol: 'THYAO',
+        assetType: 'stock',
+        transactionType: 'buy',
+        quantity: 100,
+        price: 300,
+        currency: 'TRY',
+        commission: 0,
+        transactionDate: '2026-09-01',
+        exchange: 'BIST',
+        notes: null,
+        createdAt: '2026-09-01T10:00:00Z',
+      },
+    ],
+    cashMovements: [
+      {
+        id: 'c_dense_1',
+        portfolioId: 'p1',
+        userId: 'u1',
+        movementType: 'deposit',
+        amount: 30_000,
+        currency: 'TRY',
+        exchangeRate: 1,
+        movementDate: '2026-09-01',
+        notes: null,
+        createdAt: '2026-09-01T09:00:00Z',
+      },
+    ],
+    summary: {
+      totalValue: 33_000,
+      totalCost: 30_000,
+      totalPnL: 3_000,
+      totalPnLPercent: 10,
+      dailyPnL: 300,
+      dailyPnLPercent: 0.9,
+      unrealizedPnL: 3_000,
+      realizedPnL: 0,
+      totalVolume: 30_000,
+      buyVolume: 30_000,
+      sellVolume: 0,
+      holdings: [],
+      allocation: [],
+      valuationStatus: { isComplete: true, missingFx: false, missingPrices: [] },
+    },
+    historyBySymbol: {
+      THYAO: {
+        '2026-09-01': 300,
+        '2026-09-02': 305,
+        '2026-09-03': 310,
+        '2026-09-04': 312,
+        '2026-09-07': 320,
+        '2026-09-08': 330,
+      },
+      XU100: {
+        '2026-09-01': 10_000,
+        '2026-09-08': 10_500, // +5%
+      },
+      XAUTRYG: {
+        '2026-09-01': 6_000,
+        '2026-09-08': 6_180, // +3%
+      },
+      USDTRY: {
+        '2026-09-01': 40,
+        '2026-09-08': 40.8, // +2%
+      },
+    },
+    period: '1M',
+    today: '2026-09-08',
+  });
+
+  assert.equal(denseRes.coverage.isComplete, true);
+  assert.equal(denseRes.coverage.coveragePercent, 100);
+  const bistBm = denseRes.benchmarks.find((b) => b.id === 'bist100');
+  const goldBm = denseRes.benchmarks.find((b) => b.id === 'gold');
+  const intBm = denseRes.benchmarks.find((b) => b.id === 'interest');
+  const usdBm = denseRes.benchmarks.find((b) => b.id === 'usd');
+  assert.equal(bistBm.available, true);
+  assert.equal(bistBm.currentValue, 31_500);
+  assert.equal(goldBm.available, true);
+  assert.equal(goldBm.currentValue, 30_900);
+  assert.equal(usdBm.available, true);
+  assert.equal(usdBm.currentValue, 30_600);
+  assert.equal(intBm.available, true);
+  assert.ok(intBm.currentValue > 30_000);
+
+  const benchMod = loadModule('src/lib/portfolio/benchmarkComparison.ts');
+  const faizSeries = benchMod.buildCompoundInterestSeries(['2026-09-01', '2026-09-08'], 0.48);
+  assert.equal(faizSeries.length, 2);
+  assert.equal(faizSeries[0].value, 100);
+  assert.ok(faizSeries[1].value > 100.5);
+
   const portSrc = fs.readFileSync(path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'), 'utf8');
   assert.match(portSrc, /NetInvestedChartCard/);
 });
