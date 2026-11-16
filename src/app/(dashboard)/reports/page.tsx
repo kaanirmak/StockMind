@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Button, Badge, useToast, InstrumentLogo } from '@/components/ui';
 import { DailyAttributionCard } from '@/components/portfolio/DailyAttributionCard';
 import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
+import { NetInvestedChartCard } from '@/components/portfolio/NetInvestedChartCard';
 import { TaxReportCard } from '@/components/portfolio/TaxReportCard';
 import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
@@ -571,6 +572,14 @@ export default function ReportsPage() {
               usdTryRate={usdTryRate}
             />
           </div>
+
+          <NetInvestedChartCard
+            transactions={activeTransactions}
+            cashMovements={activeCashMovements}
+            summary={summary}
+            livePrices={livePrices}
+            isPrivacyMode={isPrivacyMode}
+          />
 
           {/* Daily Return Asset Attribution (POR-07) */}
           <DailyAttributionCard attribution={summary.dailyAttribution} />
