@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, use } from 'react';
+import React, { useId, useState, use } from 'react';
 import Link from 'next/link';
 import { useFundDetail } from '@/hooks/useFunds';
 import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
@@ -11,6 +11,12 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { formatDate } from '@/lib/utils/format';
 import { TRANSACTION_RECORD_ACTION_LABEL } from '@/lib/portfolio/transactionActionLabel';
 import { PriceAlertModal } from '@/components/stocks/PriceAlertModal';
+import {
+  buildAreaSvgPath,
+  buildSmoothSvgPath,
+  computeNiceGridTicks,
+  type Point2D,
+} from '@/lib/portfolio/svgChartMath';
 
 export default function FundDetailPage({
   params,
@@ -18,6 +24,7 @@ export default function FundDetailPage({
   params: Promise<{ code: string }>;
 }) {
   const resolvedParams = use(params);
+  const chartGradId = useId().replace(/:/g, '');
   const code = resolvedParams.code.toUpperCase();
   const { showToast } = useToast();
   const { toggleWatchlist, isWatchlisted: checkWatchlisted, getAlert } = useWatchlistStore();
@@ -319,44 +326,130 @@ export default function FundDetailPage({
           </div>
         </div>
 
-        {/* SVG Mini Trend Chart */}
+        {/* SVG Smooth Price Chart */}
         {fund.history && fund.history.length > 1 ? (
-          <div className="h-44 sm:h-52 w-full pt-2">
+          <div className="w-full pt-2">
             {(() => {
+              const W = 800;
+              const H = 220;
+              const PAD_LEFT = 56;
+              const PAD_RIGHT = 16;
+              const PAD_TOP = 16;
+              const PAD_BOTTOM = 26;
+              const PLOT_W = W - PAD_LEFT - PAD_RIGHT;
+              const PLOT_H = H - PAD_TOP - PAD_BOTTOM;
+
               const prices = fund.history.map((h) => h.price);
               const minPrice = Math.min(...prices);
               const maxPrice = Math.max(...prices);
-              const range = maxPrice - minPrice || 1;
-              const points = fund.history.map((h, i) => {
-                const x = (i / (fund.history.length - 1)) * 100;
-                const y = 90 - ((h.price - minPrice) / range) * 80;
-                return `${x},${y}`;
-              }).join(' ');
+              const grid = computeNiceGridTicks(minPrice, maxPrice, 4);
+
+              const toX = (i: number) => PAD_LEFT + (i / (fund.history!.length - 1)) * PLOT_W;
+              const toY = (val: number) => PAD_TOP + (1 - (val - grid.min) / grid.span) * PLOT_H;
+
+              const coords: Point2D[] = fund.history.map((h, i) => ({
+                x: toX(i),
+                y: toY(h.price),
+              }));
+
+              const linePath = buildSmoothSvgPath(coords);
+              const areaPath = buildAreaSvgPath(coords, PAD_TOP + PLOT_H);
+              const lastCoord = coords[coords.length - 1];
 
               const isNetPositive = fund.history[fund.history.length - 1].price >= fund.history[0].price;
               const strokeColor = isNetPositive ? '#10b981' : '#ef4444';
-              const fillColor = isNetPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)';
-
-              const firstPoint = points.split(' ')[0];
-              const lastPoint = points.split(' ')[points.split(' ').length - 1];
-              const areaPoints = `${firstPoint.split(',')[0]},100 ${points} ${lastPoint.split(',')[0]},100`;
 
               return (
-                <div className="relative w-full h-full flex flex-col justify-between">
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-36">
-                    <polygon fill={fillColor} points={areaPoints} />
-                    <polyline
+                <div className="w-full space-y-2">
+                  <svg
+                    viewBox={`0 0 ${W} ${H}`}
+                    className="w-full h-48 sm:h-52 select-none"
+                    role="img"
+                    aria-label={`${code} fon fiyat grafiği`}
+                  >
+                    <defs>
+                      <linearGradient id={chartGradId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={strokeColor} stopOpacity="0.26" />
+                        <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {grid.ticks.map((tickVal, idx) => {
+                      const y = toY(tickVal);
+                      return (
+                        <g key={idx}>
+                          <line
+                            x1={PAD_LEFT}
+                            y1={y}
+                            x2={W - PAD_RIGHT}
+                            y2={y}
+                            stroke="currentColor"
+                            strokeOpacity="0.12"
+                            strokeDasharray="4 4"
+                            strokeWidth={1}
+                            vectorEffect="non-scaling-stroke"
+                          />
+                          <text
+                            x={PAD_LEFT - 8}
+                            y={y + 3.5}
+                            textAnchor="end"
+                            fill="currentColor"
+                            fillOpacity="0.5"
+                            fontSize="10"
+                            fontFamily="monospace"
+                          >
+                            ₺{tickVal.toFixed(tickVal < 10 ? 3 : 2)}
+                          </text>
+                        </g>
+                      );
+                    })}
+
+                    <path d={areaPath} fill={`url(#${chartGradId})`} />
+                    <path
+                      d={linePath}
                       fill="none"
                       stroke={strokeColor}
-                      strokeWidth="2"
+                      strokeWidth={2.5}
                       strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points={points}
+                      vectorEffect="non-scaling-stroke"
                     />
+                    {lastCoord && (
+                      <g>
+                        <circle cx={lastCoord.x} cy={lastCoord.y} r={6} fill={strokeColor} fillOpacity="0.22" />
+                        <circle cx={lastCoord.x} cy={lastCoord.y} r={3.5} fill={strokeColor} />
+                      </g>
+                    )}
+
+                    <text
+                      x={PAD_LEFT}
+                      y={H - 6}
+                      textAnchor="start"
+                      fill="currentColor"
+                      fillOpacity="0.45"
+                      fontSize="10"
+                      fontFamily="monospace"
+                    >
+                      {fund.history[0]?.date
+                        ? new Date(fund.history[0].date).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' })
+                        : ''}
+                    </text>
+                    <text
+                      x={W - PAD_RIGHT}
+                      y={H - 6}
+                      textAnchor="end"
+                      fill="currentColor"
+                      fillOpacity="0.45"
+                      fontSize="10"
+                      fontFamily="monospace"
+                    >
+                      {fund.history[fund.history.length - 1]?.date
+                        ? new Date(fund.history[fund.history.length - 1].date).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' })
+                        : ''}
+                    </text>
                   </svg>
                   <div className="flex items-center justify-between text-[11px] text-text-muted font-mono px-1">
-                    <span>{fund.history[0]?.date ? new Date(fund.history[0].date).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' }) : ''} (₺{minPrice.toFixed(4)})</span>
-                    <span>{fund.history[fund.history.length - 1]?.date ? new Date(fund.history[fund.history.length - 1].date).toLocaleDateString('tr-TR', { month: 'short', day: 'numeric' }) : ''} (₺{maxPrice.toFixed(4)})</span>
+                    <span>En Düşük: ₺{minPrice.toFixed(4)}</span>
+                    <span>En Yüksek: ₺{maxPrice.toFixed(4)}</span>
                   </div>
                 </div>
               );

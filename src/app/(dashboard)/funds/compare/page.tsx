@@ -16,6 +16,11 @@ import {
   type ComparableFundInput,
   type SimilarFundRecommendation,
 } from '@/lib/market/fundComparison';
+import {
+  buildSmoothSvgPath,
+  computeNiceGridTicks,
+  type Point2D,
+} from '@/lib/portfolio/svgChartMath';
 
 const SERIES_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899'];
 const LOOKBACK_OPTIONS = [
@@ -219,27 +224,36 @@ function FundCompareInner() {
     ).sort();
     if (allDates.length < 2) return null;
 
-    const allValues = comparison.columns.flatMap((c) =>
-      c.normalizedSeries.map((p) => p.indexedValue)
+    const CHART_W = 800;
+    const CHART_H = 220;
+    const PAD_LEFT = 52;
+    const PAD_RIGHT = 16;
+    const PAD_TOP = 18;
+    const PAD_BOTTOM = 26;
+    const PLOT_W = CHART_W - PAD_LEFT - PAD_RIGHT;
+    const PLOT_H = CHART_H - PAD_TOP - PAD_BOTTOM;
+
+    const allReturnPcts = comparison.columns.flatMap((c) =>
+      c.normalizedSeries.map((p) => p.indexedValue - 100)
     );
-    const minVal = Math.min(...allValues);
-    const maxVal = Math.max(...allValues);
-    const span = Math.max(0.5, maxVal - minVal);
+    const minRet = Math.min(0, ...allReturnPcts);
+    const maxRet = Math.max(0, ...allReturnPcts);
+    const grid = computeNiceGridTicks(minRet, maxRet, 4);
+
     const dateIndex = new Map(allDates.map((d, idx) => [d, idx]));
+    const toX = (di: number) => PAD_LEFT + (di / (allDates.length - 1)) * PLOT_W;
+    const toY = (pct: number) => PAD_TOP + (1 - (pct - grid.min) / grid.span) * PLOT_H;
 
     const lines = comparison.columns.map((col, idx) => {
-      const pts = col.normalizedSeries
-        .map((pt) => {
-          const di = dateIndex.get(pt.date) ?? 0;
-          const x = (di / (allDates.length - 1)) * 100;
-          const y = 92 - ((pt.indexedValue - minVal) / span) * 80;
-          return `${x.toFixed(2)},${y.toFixed(2)}`;
-        })
-        .join(' ');
+      const coords: Point2D[] = col.normalizedSeries.map((pt) => {
+        const di = dateIndex.get(pt.date) ?? 0;
+        return { x: toX(di), y: toY(pt.indexedValue - 100) };
+      });
       return {
         code: col.code,
         color: SERIES_COLORS[idx % SERIES_COLORS.length],
-        points: pts,
+        path: buildSmoothSvgPath(coords),
+        lastCoord: coords.length > 0 ? coords[coords.length - 1] : null,
         lastIndexed:
           col.normalizedSeries.length > 0
             ? col.normalizedSeries[col.normalizedSeries.length - 1].indexedValue
@@ -247,13 +261,24 @@ function FundCompareInner() {
       };
     });
 
-    const baseLineY = 92 - ((100 - minVal) / span) * 80;
+    const baseLineY = Math.max(PAD_TOP, Math.min(PAD_TOP + PLOT_H, toY(0)));
+    const tickRows = grid.ticks.map((val) => ({
+      val,
+      y: toY(val),
+      label: `${val >= 0 ? '+' : ''}${val.toFixed(Math.abs(grid.span) < 5 ? 1 : 0)}%`,
+    }));
+
     return {
+      CHART_W,
+      CHART_H,
+      PAD_LEFT,
+      PAD_RIGHT,
       startDate: comparison.commonDateRange.startDate!,
       endDate: comparison.commonDateRange.endDate!,
-      minVal,
-      maxVal,
-      baseLineY: Math.max(4, Math.min(96, baseLineY)),
+      minRet,
+      maxRet,
+      baseLineY,
+      tickRows,
       lines,
     };
   }, [comparison]);
@@ -481,35 +506,91 @@ function FundCompareInner() {
 
             {chartGeometry ? (
               <div className="space-y-2">
-                <div className="h-44 w-full bg-bg-tertiary/30 rounded-xl border border-border/50 p-2">
+                <div className="w-full bg-bg-tertiary/30 rounded-xl border border-border/50 p-3">
                   <svg
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
-                    className="w-full h-full overflow-visible"
+                    viewBox={`0 0 ${chartGeometry.CHART_W} ${chartGeometry.CHART_H}`}
+                    className="w-full h-52 sm:h-56 select-none"
                     role="img"
                     aria-label="Fonların ortak tarih aralığındaki normalize performans grafiği"
                   >
+                    {chartGeometry.tickRows.map((tick, idx) => (
+                      <g key={idx}>
+                        <line
+                          x1={chartGeometry.PAD_LEFT}
+                          y1={tick.y}
+                          x2={chartGeometry.CHART_W - chartGeometry.PAD_RIGHT}
+                          y2={tick.y}
+                          stroke="currentColor"
+                          strokeOpacity="0.12"
+                          strokeDasharray="4 4"
+                          strokeWidth={1}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                        <text
+                          x={chartGeometry.PAD_LEFT - 8}
+                          y={tick.y + 3.5}
+                          textAnchor="end"
+                          fill="currentColor"
+                          fillOpacity="0.5"
+                          fontSize="10"
+                          fontFamily="monospace"
+                        >
+                          {tick.label}
+                        </text>
+                      </g>
+                    ))}
                     <line
-                      x1="0"
+                      x1={chartGeometry.PAD_LEFT}
                       y1={chartGeometry.baseLineY}
-                      x2="100"
+                      x2={chartGeometry.CHART_W - chartGeometry.PAD_RIGHT}
                       y2={chartGeometry.baseLineY}
                       stroke="currentColor"
-                      strokeOpacity="0.22"
-                      strokeDasharray="2 2"
-                      strokeWidth="0.6"
+                      strokeOpacity="0.25"
+                      strokeWidth={1}
+                      vectorEffect="non-scaling-stroke"
                     />
                     {chartGeometry.lines.map((line) => (
-                      <polyline
-                        key={line.code}
-                        fill="none"
-                        stroke={line.color}
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        points={line.points}
-                      />
+                      <g key={line.code}>
+                        <path
+                          d={line.path}
+                          fill="none"
+                          stroke={line.color}
+                          strokeWidth={2.25}
+                          strokeLinecap="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                        {line.lastCoord && (
+                          <circle
+                            cx={line.lastCoord.x}
+                            cy={line.lastCoord.y}
+                            r={3.75}
+                            fill={line.color}
+                          />
+                        )}
+                      </g>
                     ))}
+                    <text
+                      x={chartGeometry.PAD_LEFT}
+                      y={chartGeometry.CHART_H - 6}
+                      textAnchor="start"
+                      fill="currentColor"
+                      fillOpacity="0.45"
+                      fontSize="10"
+                      fontFamily="monospace"
+                    >
+                      {formatDate(chartGeometry.startDate, 'tr-TR', { timeZone: 'UTC' })}
+                    </text>
+                    <text
+                      x={chartGeometry.CHART_W - chartGeometry.PAD_RIGHT}
+                      y={chartGeometry.CHART_H - 6}
+                      textAnchor="end"
+                      fill="currentColor"
+                      fillOpacity="0.45"
+                      fontSize="10"
+                      fontFamily="monospace"
+                    >
+                      {formatDate(chartGeometry.endDate, 'tr-TR', { timeZone: 'UTC' })}
+                    </text>
                   </svg>
                 </div>
                 <div className="flex items-center justify-between text-[11px] font-mono text-text-muted">
@@ -517,8 +598,7 @@ function FundCompareInner() {
                     Başlangıç: {formatDate(chartGeometry.startDate, 'tr-TR', { timeZone: 'UTC' })} (Baz 100)
                   </span>
                   <span>
-                    Bitiş: {formatDate(chartGeometry.endDate, 'tr-TR', { timeZone: 'UTC' })} (Aralık:{' '}
-                    {chartGeometry.minVal.toFixed(1)} – {chartGeometry.maxVal.toFixed(1)})
+                    Aralık: {chartGeometry.minRet >= 0 ? '+' : ''}{chartGeometry.minRet.toFixed(1)}% – {chartGeometry.maxRet >= 0 ? '+' : ''}{chartGeometry.maxRet.toFixed(1)}%
                   </span>
                 </div>
               </div>
