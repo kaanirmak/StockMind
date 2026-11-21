@@ -15,7 +15,6 @@ import { PartialValuationBadge, PartialValuationBanner } from '@/components/port
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
 import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
 import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
-import { PeriodBreakdownCard } from '@/components/portfolio/PeriodBreakdownCard';
 import { BenchmarkComparisonCard } from '@/components/portfolio/BenchmarkComparisonCard';
 import { NetInvestedChartCard } from '@/components/portfolio/NetInvestedChartCard';
 import { DividendOverviewCard } from '@/components/portfolio/DividendOverviewCard';
@@ -341,63 +340,72 @@ export default function PortfolioPage() {
   return (
     <div className="portfolio-page space-y-4 sm:space-y-6 animate-fade-in pb-12 max-w-[1600px] mx-auto">
       <h1 className="sr-only">Portföy</h1>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-1.5 p-1 bg-bg-primary/55 backdrop-blur-md rounded-xl border border-border/80 overflow-x-auto scrollbar-none w-full sm:w-auto">
-            {portfolios.map((p) => {
-              const isActive = activePortfolioId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setActivePortfolioId(p.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                    isActive
-                      ? 'bg-accent text-white shadow'
-                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                  }`}
-                >
-                  {p.name}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={handleOpenNewPortfolio}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
-                !isPro && portfolios.length >= 1
-                  ? 'text-amber-500/90 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
-                  : 'text-text-muted hover:text-accent hover:bg-bg-secondary'
-              }`}
-              title={
-                !isPro && portfolios.length >= 1
-                  ? 'Çoklu Portföy Oluştur (Pro Üyelik Gerekir)'
-                  : 'Yeni Portföy Oluştur'
-              }
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {!isPro && portfolios.length >= 1 && (
-                <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-500/20 text-amber-500">
-                  PRO
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsManagePortModalOpen(true)}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer shrink-0 flex items-center gap-1 border border-transparent hover:border-border/60"
-              aria-label="Portföy Yönetimi"
-              title="Portföy Yönetimi"
-            >
-              <UIIcon name="settings" className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Yönet</span>
-            </button>
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <select
+            aria-label="Aktif portföy"
+            value={activePortfolio?.id ?? activePortfolioId}
+            onChange={(e) => setActivePortfolioId(e.target.value)}
+            className="h-9 min-w-0 flex-1 sm:flex-none sm:w-56 rounded-xl border border-border bg-bg-card px-2.5 text-xs font-semibold text-text-primary truncate focus:outline-hidden focus:border-accent"
+          >
+            {portfolios.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleOpenNewPortfolio}
+            className={`h-9 px-2 rounded-xl border border-border transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+              !isPro && portfolios.length >= 1
+                ? 'text-amber-500/90 hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/25'
+                : 'bg-bg-card text-text-muted hover:text-accent hover:bg-bg-secondary'
+            }`}
+            aria-label={
+              !isPro && portfolios.length >= 1
+                ? 'Çoklu Portföy Oluştur (Pro Üyelik Gerekir)'
+                : 'Yeni Portföy Oluştur'
+            }
+            title={
+              !isPro && portfolios.length >= 1
+                ? 'Çoklu Portföy Oluştur (Pro Üyelik Gerekir)'
+                : 'Yeni Portföy Oluştur'
+            }
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            {!isPro && portfolios.length >= 1 && (
+              <span className="text-[9px] font-black uppercase px-1 rounded bg-amber-500/20 text-amber-500">
+                PRO
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsManagePortModalOpen(true)}
+            className="h-9 px-2.5 rounded-xl border border-border bg-bg-card text-xs font-medium text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            aria-label="Portföy Yönetimi"
+            title="Portföy Yönetimi"
+          >
+            <UIIcon name="settings" className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Yönet</span>
+          </button>
+        </div>
 
-        <div className="grid grid-cols-2 gap-2 shrink-0">
-          <Button size="sm" onClick={() => { setTradeModalSymbol(undefined); setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE); setIsTradeModalOpen(true); }} leftIcon={<UIIcon name="plus" className="w-4 h-4" />}>{TRANSACTION_RECORD_ACTION_LABEL}</Button>
-          <Button variant="outline" size="sm" onClick={() => setIsExcelModalOpen(true)} leftIcon={<UIIcon name="download" className="w-4 h-4" />}>Excel Yükle</Button>
+        <div className="shrink-0">
+          <Button
+            size="sm"
+            onClick={() => {
+              setTradeModalSymbol(undefined);
+              setTradeModalMode(TRANSACTION_RECORD_DEFAULT_MODE);
+              setIsTradeModalOpen(true);
+            }}
+            leftIcon={<UIIcon name="plus" className="w-4 h-4" />}
+          >
+            {TRANSACTION_RECORD_ACTION_LABEL}
+          </Button>
         </div>
       </div>
 
@@ -547,13 +555,6 @@ export default function PortfolioPage() {
           </div>
         </div>
       </div>
-
-      {!showEmptyOnboarding && (
-        <PeriodBreakdownCard
-          breakdown={performance.breakdown}
-          loading={performance.loading}
-        />
-      )}
 
       {!showEmptyOnboarding && (
         <BenchmarkComparisonCard
@@ -971,6 +972,7 @@ export default function PortfolioPage() {
         onClose={() => setIsTradeModalOpen(false)}
         initialSymbol={tradeModalSymbol}
         initialMode={tradeModalMode}
+        onOpenExcelImport={() => setIsExcelModalOpen(true)}
       />
 
       {/* Excel / CSV Import Modal (lazy-loaded on open) */}

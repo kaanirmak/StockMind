@@ -1737,15 +1737,10 @@ test('POR-08: period breakdown separates realized trade PnL, unrealized PnL, cas
   assert.equal(monthlyBd.feesAndCommissionsTotal, 45);
   assert.equal(monthlyBd.fxImpact, 4000, 'April USDTRY 32 -> 34 across 10*200 USD cost = +4,000 TRY');
 
-  const portfolioSrc = fs.readFileSync(
-    path.join(root, 'src/app/(dashboard)/portfolio/page.tsx'),
-    'utf8'
-  );
   const reportsSrc = fs.readFileSync(
     path.join(root, 'src/app/(dashboard)/reports/page.tsx'),
     'utf8'
   );
-  assert.match(portfolioSrc, /PeriodBreakdownCard/);
   assert.match(reportsSrc, /PeriodBreakdownCard/);
 });
 
