@@ -59,6 +59,16 @@ export function paginateRecords<T>(
   };
 }
 
+export function mergeUniqueRecords<T>(
+  existing: readonly T[],
+  incoming: readonly T[],
+  getKey: (item: T) => string
+): T[] {
+  const seen = new Set(existing.map(getKey));
+  const appended = incoming.filter((item) => !seen.has(getKey(item)));
+  return [...existing, ...appended];
+}
+
 export function normalizeStockSortMetric(
   item: {
     symbol?: string;
