@@ -4,7 +4,7 @@ import { buildHoldingHref } from './homePriority';
 export type HeatmapMetricType = 'daily' | 'total';
 export type HeatmapViewMode = 'treemap' | 'list';
 
-export const HEATMAP_DEFAULT_EXPANDED = false;
+export const HEATMAP_DEFAULT_EXPANDED = true;
 
 export interface HeatmapAssetRow {
   holding: Holding;
