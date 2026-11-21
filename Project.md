@@ -1,4 +1,4 @@
-# StockMind — Akıllı Borsa, TEFAS Fon & Portföy Takip Platformu (v2.1.0)
+# StockMind — Akıllı Borsa, TEFAS Fon & Portföy Takip Platformu (v2.2.0)
 
 ## Proje Özeti
 
@@ -10,12 +10,12 @@ StockMind; BIST, ABD borsaları (NASDAQ/NYSE/AMEX), emtialar ve TEFAS yatırım 
 
 | Katman | Teknoloji | Sürüm / Detay |
 |---|---|---|
-| **Frontend Framework** | Next.js (App Router + Webpack) | `16.4.2` |
+| **Frontend Framework** | Next.js (App Router + Webpack) | `16.4.6` |
 | **UI & State** | React / Zustand / Tailwind CSS | `19.3.1` / `^5.0.15` / `v4` |
 | **Dil** | TypeScript | `^5` (`tsc --noEmit`: 0 hata) |
 | **Backend & DB** | Supabase (PostgreSQL + Auth + RLS) | 22 SQL Migration (`supabase/migrations/`) |
 | **Hosting & Cron** | Cloudflare Workers (`@opennextjs/cloudflare`) | `wrangler.jsonc` (Cron Triggers bağlı) |
-| **Mobil (Android)** | Native Android WebView + WorkManager + Bridge | `versionCode 21`, `v2.1.0` |
+| **Mobil (Android)** | Native Android WebView + WorkManager + Bridge | `versionCode 22`, `v2.2.0` |
 | **Grafik Motoru** | TradingView Lightweight Charts + Monotone Cubic SVG | `src/lib/portfolio/svgChartMath.ts` |
 | **Piyasa Verileri** | Yahoo Finance + TEFAS Resmi Servisleri | Kesinti korumalı canlı gözlem metadata'sı |
 | **AI Motoru** | OpenRouter (Çoklu Model Katalog + Atomik Kota) | Sunucu fiyat doğrulamalı bağlam |
@@ -31,7 +31,7 @@ StockMind; BIST, ABD borsaları (NASDAQ/NYSE/AMEX), emtialar ve TEFAS yatırım 
 
 ---
 
-## Çekirdek Mimari & Öne Çıkan Özellikler (v2.1.0)
+## Çekirdek Mimari & Öne Çıkan Özellikler (v2.2.0)
 
 ### 1. Finansal Doğruluk, FIFO & GVK Vergi Motoru
 - **FIFO Lot Eritme (`src/lib/portfolio/calculations.ts`):** Kısmi satışlarda en eski alış lotunu baz alarak gerçekleşen kârı hesaplar; aynı gün içi işlemleri deterministik sırada (`Split -> Buy -> Dividend -> Sell -> Fee`) işler.
@@ -55,9 +55,10 @@ StockMind; BIST, ABD borsaları (NASDAQ/NYSE/AMEX), emtialar ve TEFAS yatırım 
 - **Teknik Gösterge & Fiyat Alarmları (`PriceAlertModal.tsx`):** Hedef fiyat yanında RSI(14) `< 30` / `> 70` ve SMA(20)/SMA(50) Golden & Death Cross alarmları; Cloudflare Cron (`/api/cron/evaluate-alerts`) ve Android arka plan WorkManager değerlendirmesi.
 - **İdempotent Günlük Bülten (`/api/cron/daily-report`):** Gmail / SMTP doğrulamalı gönderim, kalıcı e-posta kuyruğu (`runDailyBulletin.ts`) ile yeniden denemelerde çift gönderimi önleme.
 
-### 5. Güvenlik & Mobil Yayın (Android APK)
+### 5. Güvenlik, UX Yenilikleri & Mobil Yayın (Android APK)
 - **Proxy / Middleware Koruması (`src/proxy.ts`, `src/lib/supabase/proxy.ts`):** 8 KB üzeri Auth cookie şişmesini temizler; yetkisiz `/admin` isteklerini 404 ile maskeler; `CRON_SECRET` için yalnızca `Authorization: Bearer` başlığını kabul eder.
-- **Android Uygulama (`android/`, `src/lib/app/releaseMetadata.ts`):** HTTPS-only TrustedUrls politikası, güncelleme erteleme destekli `AppUpdateNotifier`, `StockMind.apk` SHA-256 doğrulamalı `/api/download/apk` dağıtımı ve premium `<progress>` yüklenme ekranı (`BrainLogoLoader.tsx`).
+- **Dashboard, Piyasalar & Portföy UX (v2.2.0):** Ana sayfada varsayılan açık portföy ısı haritası, otomatik kaydırmalı *Piyasa Nabzı* karuseli (`MarketOverview`), borsa bazlı *En Çok Değişenler* (`TopMovers`), Piyasalar ekranında `ALL` varsayılan kompakt seçici ve `IntersectionObserver` tabanlı otomatik infinite scroll, Portföy ekranında tek satır seçici + işlem modalı içi Excel içe aktarma ve bağımsız `/activity` takvim rotası (mobil *Diğer* çekmecesi + yan menü bağlantılı).
+- **Android Uygulama (`android/`, `src/lib/app/releaseMetadata.ts`):** HTTPS-only TrustedUrls politikası, güncelleme erteleme destekli `AppUpdateNotifier`, `StockMind.apk` (`v2.2.0`, `versionCode 22`) SHA-256 doğrulamalı `/api/download/apk` dağıtımı ve premium `<progress>` yüklenme ekranı (`BrainLogoLoader.tsx`).
 
 ---
 
@@ -73,7 +74,7 @@ StockMind/
 ├── tests/                          # 303 birim, güvenlik, kesinti, AI eval ve portföy testi
 └── src/
     ├── app/
-    │   ├── (dashboard)/            # dashboard, portfolio, markets, funds, reports, quant-lab, alerts, settings
+    │   ├── (dashboard)/            # dashboard, portfolio, activity, piyasalar, funds, reports, quant-lab, alerts, settings
     │   ├── admin/                  # AAL2 doğrulamalı yönetim konsolu
     │   └── api/                    # stocks, funds, ai, quant, cron, admin, notifications, app/version
     ├── components/
@@ -92,7 +93,8 @@ StockMind/
 ## Doğrulama & Kalite Kapıları
 
 - **Tip Denetimi:** `npm run typecheck` (`tsc --noEmit` — 0 hata)
-- **Linter Bütçesi:** `npm run lint:budget` (`0` hata, `446/455` uyarı limiti içinde)
+- **Bağımlılık Güvenliği:** `npm audit --omit=dev` (0 zafiyet — Next.js `16.4.6`)
+- **Linter Bütçesi:** `npm run lint:budget` (`0` hata, `443/455` uyarı limiti içinde)
 - **Test Paketi:** `npm test` (6 test paketi: `security`, `portfolio`, `interaction`, `outage`, `criticalFlows`, `aiEval` — **303 / 303** başarılı)
 - **Yük Testi:** `npm run perf:api-load` (`%0.00` hata oranı)
-- **Üretim Derlemesi:** `npm run build:next` ve `npm run build:apk`
+- **Üretim Derlemesi:** `npm run build:next` (42/42 sayfa) ve `npm run build:apk` (`v2.2.0`)

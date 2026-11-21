@@ -2,8 +2,8 @@
 
 Bu belge; StockMind’ın kod tabanı, güvenlik mimarisi, finansal hesaplama motoru, veri sağlayıcıları, yapay zekâ asistanı, Android mobil uygulaması ve Cloudflare Workers dağıtım mimarisi baştan aşağı taranarak hazırlanmış **nihai teslim ve canlıya geçiş kontrol listesidir**.
 
-Tarih: 16 Kasım 2026  
-Sürüm: v2.1.0 (Release Candidate)  
+Tarih: 22 Kasım 2026  
+Sürüm: v2.2.0 (Release Candidate)  
 Yazar: Antigravity AI & StockMind Engineering Team  
 
 ---
@@ -12,8 +12,9 @@ Yazar: Antigravity AI & StockMind Engineering Team
 
 * **Birim / Entegrasyon Testleri:** `303 / 303 Başarılı` (`npm test`) — Sıfır hata, sıfır atlanan test.
 * **TypeScript Tip Denetimi:** `0 Hata` (`npm run typecheck` / `tsc --noEmit`).
-* **Linter Bütçesi:** `446 / 455 Uyarı` (`npm run lint:budget`) — Sıfır hata, sıfır yüksek etkili kural ihlali.
-* **Mobil Uygulama (Android):** `versionCode 21`, `versionName "2.1.0"`. `npm run build:apk` ile Android Studio JBR üzerinde derlenebilir; sürüm güncelleme ertelemesi ve yeni yüklenme ekranı aktif.
+* **Linter Bütçesi:** `443 / 455 Uyarı` (`npm run lint:budget`) — Sıfır hata, sıfır yüksek etkili kural ihlali.
+* **Bağımlılık Denetimi:** `npm audit --omit=dev` — `0` zafiyet (Next.js `16.4.6`).
+* **Mobil Uygulama (Android):** `versionCode 22`, `versionName "2.2.0"`. `npm run build:apk` ile Android Studio JBR üzerinde derlenebilir; sürüm güncelleme ertelemesi ve yeni yüklenme ekranı aktif.
 * **Güvenlik Mimarisi:** Oturum cookie bloat koruması, yetkisiz `/admin` rotasını 404 ile maskeleme, header-based `CRON_SECRET` zorunluluğu, SQL RLS testleri ve HTML sanitization aktif.
 * **Finansal Motor & Grafikler:** FIFO lot eritme, FIN-04 kur/varlık kârı ayrıştırması, GVK yıllık vergi raporu & CSV dışa aktarımı, BIST 100/Altın/Mevduat Faizi (%48)/Dolar kâr karşılaştırması, kayıtlı alış/satış fiyatı destekli %100 tarihçe kapsamı ve Monotone Cubic Hermite SVG grafikleri aktif.
 
@@ -108,7 +109,7 @@ Yazar: Antigravity AI & StockMind Engineering Team
 
 | ID | Öncelik | Alan & Dosyalar | Görev ve Kabul Kriteri | Durum |
 | :--- | :---: | :--- | :--- | :---: |
-| **MOB-01** | **P0** | `android/app/build.gradle` | **Sürüm Bütünlüğü:** `versionCode 21` ve `versionName "2.1.0"`, `package.json` ve `/api/app/version` ile birebir eşleşmeli. | ✅ |
+| **MOB-01** | **P0** | `android/app/build.gradle` | **Sürüm Bütünlüğü:** `versionCode 22` ve `versionName "2.2.0"`, `package.json` ve `/api/app/version` ile birebir eşleşmeli. | ✅ |
 | **MOB-02** | **P0** | `android/app/src/main/AndroidManifest.xml` | **WebView Güvenliği:** `cleartextTraffic: false` (HTTPS zorunlu), harici URL filtreleme ve güvenli kaynak politikası uygulanmalı. | ✅ |
 | **MOB-03** | **P0** | `package.json` (`build:apk:release`) | **Release Keystore İmzalaması:** Production için `KEYSTORE_PATH` ve şifre değişkenleri ayarlandığında `assembleRelease` ile imzalı APK/AAB üretilmeli. | ⏳ |
 | **MOB-04** | **P1** | `src/app/api/download/apk/route.ts` | **APK İndirme & Sağlama Toplamı:** APK indirme endpoint'i SHA-256 sağlama toplamı ve arşiv başlıklarıyla dağıtım yapmalı. | ✅ |
@@ -134,7 +135,7 @@ Yazar: Antigravity AI & StockMind Engineering Team
 | **OPS-01** | **P0** | `wrangler.jsonc`, `open-next.config.ts` | **Cloudflare Workers / OpenNext Yapılandırması:** Next.js 16 Webpack derlemesi OpenNext adapter üzerinden hatasız paketlenmeli. | ✅ |
 | **OPS-02** | **P0** | Cloudflare DNS / SSL | **Özel Alan Adı & SSL Aktivasyonu:** `stockmind.kaanrmak.com` (veya belirlenen alan adı) Cloudflare proxied DNS ve Full (Strict) SSL ile bağlanmalı. | ⏳ |
 | **OPS-03** | **P0** | Supabase Production Dashboard | **Canlı DB Migration Senkronizasyonu:** `supabase/migrations/` altındaki 22 adet migration dosyasının canlı veritabanında eksiksiz çalıştığı doğrulanmalı. | ⏳ |
-| **OPS-04** | **P1** | `scripts/check-lint-warnings.mjs` | **Linter Bütçe Kapısı (CI Gate):** Pull request ve build öncesi linter uyarı bütçesi aşılmamalı (şu an 446 / limit 455). | ✅ |
+| **OPS-04** | **P1** | `scripts/check-lint-warnings.mjs` | **Linter Bütçe Kapısı (CI Gate):** Pull request ve build öncesi linter uyarı bütçesi aşılmamalı (şu an 443 / limit 455). | ✅ |
 
 ---
 
@@ -165,7 +166,7 @@ npm run perf:api-load
 npm run build:next
 ```
 
-> **Yerel Doğrulama Durumu (Tamamlandı ✅):** `typecheck` (0 hata), `lint:budget` (`446/455` uyarı, `0` hata), `npm test` (303/303 test geçti), `perf:api-load` (%0 hata oranı) ve `build:next` (41/41 sayfa derlendi) başarıyla doğrulandı.
+> **Yerel Doğrulama Durumu (Tamamlandı ✅):** `typecheck` (0 hata), `npm audit --omit=dev` (0 zafiyet), `lint:budget` (`443/455` uyarı, `0` hata), `npm test` (303/303 test geçti), `perf:api-load` (%0 hata oranı), `build:next` (42/42 sayfa derlendi) ve `build:apk` (`v2.2.0`) başarıyla doğrulandı.
 
 ### Aşama 2: Veritabanı Hazırlığı (Supabase)
 1. Supabase Dashboard -> **SQL Editor** üzerinden `supabase/migrations/` altındaki migration dosyalarının sırayla uygulandığını teyit edin.
