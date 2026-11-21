@@ -21,6 +21,7 @@ export interface TransactionModalProps {
   presentation?: 'dialog' | 'sheet' | 'drawer';
   initialSymbol?: string;
   initialMode?: 'broker' | 'stock' | 'fund' | 'cash';
+  onOpenExcelImport?: () => void;
 }
 
 const POPULAR_STOCK_CHIPS = [
@@ -43,6 +44,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   presentation = 'dialog',
   initialSymbol,
   initialMode = 'stock',
+  onOpenExcelImport,
 }) => {
   const { addTransaction, activePortfolioId, livePrices } = usePortfolioStore();
   const { showToast } = useToast();
@@ -670,6 +672,27 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {TRANSACTION_CHANNEL_OPTIONS.find((opt) => opt.id === selectedChannel)?.description}
         </p>
       </div>
+
+      {onOpenExcelImport && (
+        <div className="mb-3.5 flex items-center justify-between gap-2 rounded-xl border border-border/80 bg-bg-secondary/60 px-3 py-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-text-primary truncate">Excel / CSV Ekstre Yükle</p>
+            <p className="text-[10px] text-text-muted truncate">Midas, banka veya aracı kurum işlemlerini toplu aktarın</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={cashBusy || isSubmitting}
+            onClick={() => {
+              onClose();
+              onOpenExcelImport();
+            }}
+          >
+            Excel Yükle
+          </Button>
+        </div>
+      )}
 
       {executionMode === 'broker' ? (
         <div className="space-y-3.5">
