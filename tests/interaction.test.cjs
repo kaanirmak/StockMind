@@ -1908,7 +1908,7 @@ test('UX-01 mobile home priority ranks daily contributors and important event fi
   assert.ok(topEvent.priority >= 2);
 });
 
-test('UX-02 portfolio heatmap starts compact with expandable treemap and equivalent asset list', () => {
+test('UX-02 portfolio heatmap starts expanded with collapsible summary and equivalent asset list', () => {
   const loadFrom = (entry) => load(entry, {
     require: (name) => {
       if (name.startsWith('@/')) return loadFrom(path.join('src', `${name.slice(2)}.ts`));
@@ -1922,7 +1922,7 @@ test('UX-02 portfolio heatmap starts compact with expandable treemap and equival
     buildHeatmapCompactSummary,
   } = loadFrom('src/lib/dashboard/heatmapModel.ts');
 
-  assert.equal(HEATMAP_DEFAULT_EXPANDED, false);
+  assert.equal(HEATMAP_DEFAULT_EXPANDED, true);
 
   const heatmapSrc = fs.readFileSync(
     path.join(__dirname, '..', 'src/components/dashboard/PortfolioHeatmap.tsx'),
