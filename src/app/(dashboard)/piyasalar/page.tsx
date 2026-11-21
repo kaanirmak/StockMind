@@ -12,7 +12,7 @@ import { useStocks, StockWithQuote } from '@/hooks/useStockData';
 import { useFunds } from '@/hooks/useFunds';
 import { Badge, Button, Input, TableSkeleton, useToast, InstrumentLogo, StateView, Modal, PriceStatusBadge } from '@/components/ui';
 import { classifyFundPriceStatus, classifyStockPriceStatus } from '@/lib/market/priceStatus';
-import { MARKET_CATALOG, MOBILE_PRIMARY_MARKETS, type MarketId } from '@/lib/market/marketSelector';
+import { MARKET_CATALOG, type MarketId } from '@/lib/market/marketSelector';
 import { MARKET_PAGE_SIZE, paginateRecords, sortStockRecords } from '@/lib/market/pagination';
 import { describeSearchResult } from '@/lib/market/searchResultDescriptor';
 import {
@@ -723,38 +723,11 @@ function PiyasalarContent() {
 
   return (
     <div className="space-y-3 sm:space-y-6 animate-fade-in pb-12">
-      {/* Page Header & Sticky Mobile Top Market Selector */}
-      <div className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-bg-primary/95 backdrop-blur-md border-b border-border/50 space-y-2 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none sm:border-b-0 sm:space-y-0">
-        {/* Mobile First-Fold Quick Market Selector (BIST, TEFAS, ABD, Tümü) */}
-        <div
-          data-testid="mobile-top-market-bar"
-          role="tablist"
-          aria-label="Hızlı pazar seçimi"
-          className="grid grid-cols-4 gap-1.5 sm:hidden"
-        >
-          {MOBILE_PRIMARY_MARKETS.map((m) => {
-            const isActive =
-              activeMarket === m.id ||
-              (m.id === 'ABD' && (activeMarket === 'NASDAQ' || activeMarket === 'NYSE'));
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => handleMarketChange(m.id)}
-                className={`h-10 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-center ${
-                  isActive
-                    ? 'bg-accent text-white border-accent shadow-sm shadow-accent/25'
-                    : 'bg-bg-card text-text-secondary border-border hover:text-text-primary'
-                }`}
-              >
-                {m.shortLabel}
-              </button>
-            );
-          })}
-        </div>
-
+      {/* Page Header & Sticky Compact Market Selector */}
+      <div
+        data-testid="mobile-top-market-bar"
+        className="sticky top-0 z-20 -mx-3 px-3 py-2 bg-bg-primary/95 backdrop-blur-md border-b border-border/50 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:backdrop-blur-none sm:border-b-0"
+      >
         <div className="flex items-center justify-between gap-2 sm:gap-3">
           <h1 className="hidden sm:block text-lg font-semibold text-text-primary">Piyasalar</h1>
           <div className="sm:hidden min-w-0 flex-1">
