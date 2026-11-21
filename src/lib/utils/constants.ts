@@ -56,6 +56,7 @@ export const RISK_LEVELS = {
 export const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', labelEn: 'Dashboard', icon: 'LayoutDashboard' },
   { href: '/portfolio', label: 'Portföy', labelEn: 'Portfolio', icon: 'Briefcase' },
+  { href: '/activity', label: 'Aktivite', labelEn: 'Activity', icon: 'Calendar' },
   { href: '/piyasalar', label: 'Piyasalar', labelEn: 'Markets', icon: 'TrendingUp' },
   { href: '/watchlist', label: 'Takip Listesi', labelEn: 'Watchlist', icon: 'Star' },
   { href: '/alerts', label: 'Tüm Alarmlar', labelEn: 'Alerts', icon: 'Bell' },

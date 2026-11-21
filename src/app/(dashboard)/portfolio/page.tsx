@@ -8,13 +8,12 @@ import { usePortfolioPerformance } from '@/hooks/usePortfolioPerformance';
 import { PERIOD_LABELS, type PerformancePeriod } from '@/lib/portfolio/periodPerformance';
 import { ConfirmAction } from '@/components/ui/ConfirmAction';
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PartialValuationBadge, PartialValuationBanner } from '@/components/portfolio/PartialValuationBanner';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
-import PortfolioHeatmap from '@/components/dashboard/PortfolioHeatmap';
-import { DailyPnLCalendarHeatmap } from '@/components/portfolio/DailyPnLCalendarHeatmap';
 import { BenchmarkComparisonCard } from '@/components/portfolio/BenchmarkComparisonCard';
 import { NetInvestedChartCard } from '@/components/portfolio/NetInvestedChartCard';
 import { DividendOverviewCard } from '@/components/portfolio/DividendOverviewCard';
@@ -83,7 +82,7 @@ export default function PortfolioPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [newPortName, setNewPortName] = useState('');
   const [newPortDesc, setNewPortDesc] = useState('');
-  const [activeTab, setActiveTab] = useState<'holdings' | 'dividends' | 'cashflow' | 'concentration' | 'heatmap' | 'activity' | 'transactions'>('holdings');
+  const [activeTab, setActiveTab] = useState<'holdings' | 'dividends' | 'cashflow' | 'concentration' | 'transactions'>('holdings');
   const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const [txSearchQuery, setTxSearchQuery] = useState('');
   const [isMounted, setIsMounted] = useState(false);
@@ -538,48 +537,24 @@ export default function PortfolioPage() {
             {performance.available && <Badge variant={performance.pnlPercent >= 0 ? 'success' : 'danger'} size="sm">
               {performance.pnlPercent >= 0 ? '+' : ''}{performance.pnlPercent.toFixed(2)}%
             </Badge>}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('activity');
-                setTimeout(() => {
-                  document.getElementById('daily-calendar')?.scrollIntoView({ behavior: 'smooth' });
-                }, 50);
-              }}
-              className="text-[10px] sm:text-[11px] font-bold text-accent hover:underline flex items-center gap-0.5 transition-colors shrink-0 cursor-pointer"
-              title="Günlük Kâr Aktivite Haritasına Git"
+            <Link
+              href="/activity"
+              className="text-[10px] sm:text-[11px] font-bold text-accent hover:underline flex items-center gap-0.5 transition-colors shrink-0"
+              title="Günlük Kâr Aktivite Takvimine Git"
             >
-              <span> Aktivite</span>
-              <span>↓</span>
-            </button>
+              <span>Aktivite</span>
+              <span>→</span>
+            </Link>
           </div>
         </div>
       </div>
 
-      {!showEmptyOnboarding && (
-        <BenchmarkComparisonCard
-          transactions={activeTransactions}
-          summary={summary}
-          livePrices={livePrices}
-        />
-      )}
-
-      {!showEmptyOnboarding && (
-        <NetInvestedChartCard
-          transactions={activeTransactions}
-          cashMovements={activeCashMovements}
-          summary={summary}
-          livePrices={livePrices}
-          isPrivacyMode={isPrivacyMode}
-        />
-      )}
-
-      {/* Tabs: Holdings vs Heatmap & Activity vs Transaction History */}
+      {/* Tabs: Holdings, Dividends, Cashflow, Concentration, Transactions */}
       <div className="space-y-4">
         {/* Navigation Tabs & Secondary Actions */}
         <div className="sm:sticky sm:top-[4.25rem] z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-1.5 sm:p-2.5 rounded-2xl bg-bg-primary/90 backdrop-blur-xl border border-border/80 shadow-sm">
           <div role="tablist" aria-label="Portföy bölümleri" className="flex flex-wrap gap-1 w-full">
-            {([['holdings', 'Varlıklar'], ['dividends', 'Temettü'], ['cashflow', 'Nakit Akışı'], ['concentration', 'Yoğunlaşma'], ['heatmap', 'Isı Haritası'], ['activity', 'Aktivite'], ['transactions', 'İşlemler']] as const).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[78px] min-h-11 px-2 rounded-lg text-[11px] sm:text-sm font-semibold ${activeTab === tab ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-secondary'}`}>{label}</button>)}
+            {([['holdings', 'Varlıklar'], ['dividends', 'Temettü'], ['cashflow', 'Nakit Akışı'], ['concentration', 'Yoğunlaşma'], ['transactions', 'İşlemler']] as const).map(([tab, label]) => <button key={tab} type="button" role="tab" aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)} className={`flex-1 min-w-[78px] min-h-11 px-2 rounded-lg text-[11px] sm:text-sm font-semibold ${activeTab === tab ? 'bg-accent text-white' : 'text-text-secondary hover:bg-bg-secondary'}`}>{label}</button>)}
           </div>
 
           {activeTab === 'transactions' && !isSamplePreview && activeTransactions.length > 0 && (
@@ -644,10 +619,6 @@ export default function PortfolioPage() {
             summary={summary}
             isPrivacyMode={isPrivacyMode}
           />
-        ) : activeTab === 'heatmap' ? (
-          <PortfolioHeatmap />
-        ) : activeTab === 'activity' ? (
-          <div id="daily-calendar" className="min-w-0 scroll-mt-28"><DailyPnLCalendarHeatmap portfolioId={activePortfolioId} summary={summary} transactions={activeTransactions} /></div>
         ) : (
           /* Transaction History Section (Mobile Card View + Desktop Table View) */
           <div className="space-y-4">
@@ -964,6 +935,24 @@ export default function PortfolioPage() {
           </div>
         )}
       </div>
+
+      {!showEmptyOnboarding && (
+        <BenchmarkComparisonCard
+          transactions={activeTransactions}
+          summary={summary}
+          livePrices={livePrices}
+        />
+      )}
+
+      {!showEmptyOnboarding && (
+        <NetInvestedChartCard
+          transactions={activeTransactions}
+          cashMovements={activeCashMovements}
+          summary={summary}
+          livePrices={livePrices}
+          isPrivacyMode={isPrivacyMode}
+        />
+      )}
 
       {deleteTarget && <ConfirmAction key={deleteTarget.id} title="İşlemi Sil" description={`${deleteTarget.symbol} işlem kaydı kalıcı olarak silinecek.`} onClose={() => setDeleteTarget(null)} onConfirm={async () => { return await deleteTransaction(deleteTarget.id); }} />}
       {/* Manual & Brokerage Transaction Modal */}

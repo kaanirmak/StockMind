@@ -10,7 +10,7 @@ export interface MobileDrawerNavMeta {
   label: string;
   description?: string;
   badge?: string;
-  iconKey: 'newspaper' | 'bell' | 'reports' | 'cpu' | 'grid' | 'phone' | 'settings';
+  iconKey: 'newspaper' | 'bell' | 'calendar' | 'reports' | 'cpu' | 'grid' | 'phone' | 'settings';
 }
 
 /**
@@ -40,6 +40,12 @@ export const MOBILE_DRAWER_NAV_ITEMS: readonly MobileDrawerNavMeta[] = [
     label: 'Alarmlar',
     description: 'Fiyat alarmları & bildirim tercihleri',
     iconKey: 'bell',
+  },
+  {
+    href: '/activity',
+    label: 'Aktivite',
+    description: 'Günlük kâr/zarar aktivite takvimi',
+    iconKey: 'calendar',
   },
   {
     href: '/alerts',
