@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { marketJson } from '@/lib/api/clientCache';
 import { TefasFundInfo } from '@/lib/data/funds';
 import type { SimilarFundRecommendation } from '@/lib/market/fundComparison';
+import { mergeUniqueRecords } from '@/lib/market/pagination';
 
 export function useFunds(
   filter?: {
@@ -21,14 +22,16 @@ export function useFunds(
     limit?: number;
     symbols?: readonly string[];
   },
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; accumulate?: boolean }
 ) {
   const isEnabled = options?.enabled !== false;
+  const shouldAccumulate = options?.accumulate === true;
   const [funds, setFunds] = useState<TefasFundInfo[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [loading, setLoading] = useState(isEnabled);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const symbolsKey = filter?.symbols ? filter.symbols.join(',') : '';
   const filterCategory = filter?.category;
@@ -43,16 +46,43 @@ export function useFunds(
   const filterOrder = filter?.order;
   const filterPage = filter?.page;
   const filterLimit = filter?.limit;
+  const filterKey = JSON.stringify([
+    filterCategory ?? '',
+    filterSearch ?? '',
+    filterMinRisk ?? '',
+    filterMaxRisk ?? '',
+    filterRiskRange ?? '',
+    filterFeeTier ?? '',
+    filterReturnPeriod ?? '',
+    filterReturnThreshold ?? '',
+    filterSortBy ?? '',
+    filterOrder ?? '',
+    filterLimit ?? 0,
+    symbolsKey,
+  ]);
 
   const generation = useRef(0);
+  const lastFilterKeyRef = useRef<string>('');
   const fetchFunds = useCallback(async (force = false) => {
     const current = ++generation.current;
     if (!isEnabled) {
+      lastFilterKeyRef.current = '';
       setLoading(false);
+      setLoadingMore(false);
       return;
     }
+    const isAppendRequest =
+      shouldAccumulate &&
+      !force &&
+      (filterPage ?? 1) > 1 &&
+      lastFilterKeyRef.current === filterKey;
     try {
-      setLoading(true);
+      if (isAppendRequest) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setLoadingMore(false);
+      }
       const params = new URLSearchParams();
       if (filterCategory && filterCategory !== 'ALL') params.append('category', filterCategory);
       if (filterSearch) params.append('search', filterSearch);
@@ -80,7 +110,12 @@ export function useFunds(
       setError(null);
       if (json.success) {
         const list = json.data || [];
-        setFunds(list);
+        if (isAppendRequest) {
+          setFunds((prev) => mergeUniqueRecords(prev, list, (item) => item.code));
+        } else {
+          setFunds(list);
+          lastFilterKeyRef.current = filterKey;
+        }
         setTotal(typeof json.total === 'number' ? json.total : list.length);
         setTotalPages(typeof json.totalPages === 'number' ? json.totalPages : 1);
         setHasMore(Boolean(json.hasMore));
@@ -90,10 +125,15 @@ export function useFunds(
     } catch (err) {
       if (current === generation.current) setError('Fon verileri alınamadı. Lütfen tekrar deneyin.');
     } finally {
-      if (current === generation.current) setLoading(false);
+      if (current === generation.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [
     isEnabled,
+    shouldAccumulate,
+    filterKey,
     filterCategory,
     filterSearch,
     filterMinRisk,
@@ -118,7 +158,7 @@ export function useFunds(
     return invalidateGeneration;
   }, [fetchFunds, invalidateGeneration]);
 
-  return { funds, total, totalPages, hasMore, loading, error, refetch: () => fetchFunds(true) };
+  return { funds, total, totalPages, hasMore, loading, loadingMore, error, refetch: () => fetchFunds(true) };
 }
 
 export function useFundDetail(code: string, days: number = 90) {

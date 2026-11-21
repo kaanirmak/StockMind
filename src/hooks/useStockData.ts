@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { StockMarketInfo, StockQuote } from '@/types/stock';
 import { marketJson } from '@/lib/api/clientCache';
 import { Candle } from '@/lib/indicators';
+import { mergeUniqueRecords } from '@/lib/market/pagination';
 
 export type StockWithQuote = StockMarketInfo & StockQuote;
 
@@ -18,14 +19,16 @@ export function useStocks(
     limit?: number;
     symbols?: readonly string[];
   },
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; accumulate?: boolean }
 ) {
   const isEnabled = options?.enabled !== false;
+  const shouldAccumulate = options?.accumulate === true;
   const [stocks, setStocks] = useState<StockWithQuote[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(false);
   const [loading, setLoading] = useState(isEnabled);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const symbolsKey = filter?.symbols ? filter.symbols.join(',') : '';
   const filterExchange = filter?.exchange;
@@ -35,17 +38,39 @@ export function useStocks(
   const filterOrder = filter?.order;
   const filterPage = filter?.page;
   const filterLimit = filter?.limit;
+  const filterKey = JSON.stringify([
+    filterExchange ?? '',
+    filterSector ?? '',
+    filterSearch ?? '',
+    filterSortBy ?? '',
+    filterOrder ?? '',
+    filterLimit ?? 0,
+    symbolsKey,
+  ]);
 
   const generation = useRef(0);
+  const lastFilterKeyRef = useRef<string>('');
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const fetchStocks = useCallback(async (force = false) => {
     const current = ++generation.current;
     if (!isEnabled) {
+      lastFilterKeyRef.current = '';
       setLoading(false);
+      setLoadingMore(false);
       return;
     }
+    const isAppendRequest =
+      shouldAccumulate &&
+      !force &&
+      (filterPage ?? 1) > 1 &&
+      lastFilterKeyRef.current === filterKey;
     try {
-      setLoading(true);
+      if (isAppendRequest) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+        setLoadingMore(false);
+      }
       const params = new URLSearchParams();
       if (filterExchange && filterExchange !== 'ALL') params.append('exchange', filterExchange);
       if (filterSector && filterSector !== 'ALL') params.append('sector', filterSector);
@@ -68,7 +93,12 @@ export function useStocks(
       setError(null);
       if (json.success) {
         const list = json.data || [];
-        setStocks(list);
+        if (isAppendRequest) {
+          setStocks((prev) => mergeUniqueRecords(prev, list, (item) => item.symbol));
+        } else {
+          setStocks(list);
+          lastFilterKeyRef.current = filterKey;
+        }
         setTotal(typeof json.total === 'number' ? json.total : list.length);
         setTotalPages(typeof json.totalPages === 'number' ? json.totalPages : 1);
         setHasMore(Boolean(json.hasMore));
@@ -79,10 +109,15 @@ export function useStocks(
     } catch (err) {
       if (current === generation.current) setError('Piyasa verilerine ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.');
     } finally {
-      if (current === generation.current) setLoading(false);
+      if (current === generation.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }, [
     isEnabled,
+    shouldAccumulate,
+    filterKey,
     filterExchange,
     filterSector,
     filterSearch,
@@ -102,7 +137,7 @@ export function useStocks(
     return invalidateGeneration;
   }, [fetchStocks, invalidateGeneration]);
 
-  return { stocks, total, totalPages, hasMore, loading, error, updatedAt, refetch: () => fetchStocks(true) };
+  return { stocks, total, totalPages, hasMore, loading, loadingMore, error, updatedAt, refetch: () => fetchStocks(true) };
 }
 
 export function useStockDetail(symbol: string) {

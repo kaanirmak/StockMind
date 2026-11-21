@@ -89,6 +89,44 @@ interface OverviewSections {
   indices: StockWithQuote[];
 }
 
+function InfiniteScrollStatus({
+  visibleCount,
+  totalCount,
+  itemLabel,
+  isLoadingMore,
+  hasMore,
+  onLoadMore,
+}: {
+  visibleCount: number;
+  totalCount: number;
+  itemLabel: string;
+  isLoadingMore: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
+}) {
+  return (
+    <>
+      <span className="text-xs text-text-muted font-medium">
+        {visibleCount} / {totalCount} {itemLabel} gösteriliyor
+      </span>
+      <div className="flex items-center gap-2 text-xs text-text-muted">
+        {isLoadingMore ? (
+          <span role="status" className="inline-flex items-center gap-2 font-medium text-accent">
+            <span className="w-3.5 h-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+            <span>Daha fazla yükleniyor...</span>
+          </span>
+        ) : hasMore ? (
+          <Button variant="secondary" size="sm" onClick={onLoadMore}>
+            Daha Fazla Yükle
+          </Button>
+        ) : (
+          <span>Tüm sonuçlar yüklendi</span>
+        )}
+      </div>
+    </>
+  );
+}
+
 function PiyasalarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -406,11 +444,16 @@ function PiyasalarContent() {
     () => (watchlistOnly ? watchlistItems.filter((w) => w.assetType !== 'fund').map((w) => w.symbol) : undefined),
     [watchlistOnly, watchlistItems]
   );
+  const useClientStockPagination = watchlistOnly || isBistScreenerActive;
+  const stocksLoadMoreRef = useRef<HTMLDivElement>(null);
+  const fundsLoadMoreRef = useRef<HTMLDivElement>(null);
   const {
     stocks,
     total: serverStocksTotal,
     totalPages: serverStocksTotalPages,
+    hasMore: serverStocksHasMore,
     loading: stocksLoading,
+    loadingMore: stocksLoadingMore,
     error: stocksError,
     updatedAt: stocksUpdatedAt,
     refetch: refetchStocks,
@@ -427,7 +470,10 @@ function PiyasalarContent() {
           symbols: watchlistStockSymbols && watchlistStockSymbols.length > 0 ? watchlistStockSymbols : undefined,
         }
       : undefined,
-    { enabled: isStocksMarket && (!watchlistOnly || (watchlistStockSymbols?.length ?? 0) > 0) }
+    {
+      enabled: isStocksMarket && (!watchlistOnly || (watchlistStockSymbols?.length ?? 0) > 0),
+      accumulate: !useClientStockPagination,
+    }
   );
 
   // If in 'ALL' tab, fetch only limited top BIST movers rather than the entire market list
@@ -451,7 +497,6 @@ function PiyasalarContent() {
     stockSortOrder
   );
 
-  const useClientStockPagination = watchlistOnly || isBistScreenerActive;
   const stockTotalCount = useClientStockPagination
     ? (watchlistOnly && watchlistStockSymbols?.length === 0 ? 0 : sortedStocks.length)
     : serverStocksTotal;
@@ -459,8 +504,11 @@ function PiyasalarContent() {
     ? paginateRecords(sortedStocks, stockPage, MARKET_PAGE_SIZE).totalPages
     : Math.max(1, serverStocksTotalPages);
   const visibleStocks = useClientStockPagination
-    ? paginateRecords(sortedStocks, stockPage, MARKET_PAGE_SIZE).items
+    ? sortedStocks.slice(0, stockPage * MARKET_PAGE_SIZE)
     : sortedStocks;
+  const hasMoreStocks = useClientStockPagination
+    ? visibleStocks.length < stockTotalCount
+    : serverStocksHasMore && stockPage < stockTotalPages;
 
   const handleSaveBistScreener = () => {
     const result = saveBistScreenerPreset({
@@ -535,7 +583,9 @@ function PiyasalarContent() {
     funds,
     total: serverFundsTotal,
     totalPages: serverFundsTotalPages,
+    hasMore: serverFundsHasMore,
     loading: fundsLoading,
+    loadingMore: fundsLoadingMore,
     error: fundsError,
     refetch: refetchFunds,
   } = useFunds(
@@ -552,7 +602,10 @@ function PiyasalarContent() {
       limit: MARKET_PAGE_SIZE,
       symbols: watchlistFundSymbols && watchlistFundSymbols.length > 0 ? watchlistFundSymbols : undefined,
     },
-    { enabled: activeMarket === 'TEFAS' && (!watchlistOnly || (watchlistFundSymbols?.length ?? 0) > 0) }
+    {
+      enabled: activeMarket === 'TEFAS' && (!watchlistOnly || (watchlistFundSymbols?.length ?? 0) > 0),
+      accumulate: !watchlistOnly,
+    }
   );
 
   const filteredFunds = filterFundsCombinatorially(funds, {
@@ -574,8 +627,45 @@ function PiyasalarContent() {
     ? paginateRecords(sortedFunds, fundPage, MARKET_PAGE_SIZE).totalPages
     : Math.max(1, serverFundsTotalPages);
   const visibleFunds = watchlistOnly
-    ? paginateRecords(sortedFunds, fundPage, MARKET_PAGE_SIZE).items
+    ? sortedFunds.slice(0, fundPage * MARKET_PAGE_SIZE)
     : sortedFunds;
+  const hasMoreFunds = watchlistOnly
+    ? visibleFunds.length < fundTotalCount
+    : serverFundsHasMore && fundPage < fundTotalPages;
+
+  useEffect(() => {
+    if (!isStocksMarket || !hasMoreStocks || stocksLoading || stocksLoadingMore) return;
+    const target = stocksLoadMoreRef.current;
+    if (!target || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          setStockPage((prev) => (prev < stockTotalPages ? prev + 1 : prev));
+        }
+      },
+      { rootMargin: '240px 0px' }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [isStocksMarket, hasMoreStocks, stocksLoading, stocksLoadingMore, stockTotalPages]);
+
+  useEffect(() => {
+    if (activeMarket !== 'TEFAS' || !hasMoreFunds || fundsLoading || fundsLoadingMore) return;
+    const target = fundsLoadMoreRef.current;
+    if (!target || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          setFundPage((prev) => (prev < fundTotalPages ? prev + 1 : prev));
+        }
+      },
+      { rootMargin: '240px 0px' }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [activeMarket, hasMoreFunds, fundsLoading, fundsLoadingMore, fundTotalPages]);
   const activeFundFilterCount = countActiveFundFilters({
     category: selectedCategory,
     search: fundSearch,
@@ -1521,41 +1611,21 @@ function PiyasalarContent() {
             </div>
           )}
 
-          {/* Server-backed Stocks Pagination Bar */}
+          {/* Infinite Scroll Sentinel for Stocks */}
           {stockTotalCount > 0 && (
             <div
+              ref={stocksLoadMoreRef}
               data-testid="stocks-pagination"
-              className="py-4 px-4 glass-card rounded-2xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3"
+              className="py-3.5 px-4 glass-card rounded-2xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-2.5"
             >
-              <span className="text-xs text-text-muted font-medium">
-                Sayfa {stockPage} / {stockTotalPages} • Toplam {stockTotalCount} varlık ({visibleStocks.length} gösteriliyor)
-              </span>
-              {stockTotalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={stockPage <= 1}
-                    onClick={() => {
-                      setStockPage((p) => Math.max(1, p - 1));
-                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    ← Önceki
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={stockPage >= stockTotalPages}
-                    onClick={() => {
-                      setStockPage((p) => Math.min(stockTotalPages, p + 1));
-                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    Sonraki →
-                  </Button>
-                </div>
-              )}
+              <InfiniteScrollStatus
+                visibleCount={visibleStocks.length}
+                totalCount={stockTotalCount}
+                itemLabel="varlık"
+                isLoadingMore={stocksLoadingMore}
+                hasMore={hasMoreStocks}
+                onLoadMore={() => setStockPage((p) => Math.min(stockTotalPages, p + 1))}
+              />
             </div>
           )}
         </div>
@@ -2073,41 +2143,21 @@ function PiyasalarContent() {
             </div>
           )}
 
-          {/* Server-backed TEFAS Pagination Bar */}
+          {/* Infinite Scroll Sentinel for TEFAS Funds */}
           {fundTotalCount > 0 && (
             <div
+              ref={fundsLoadMoreRef}
               data-testid="funds-pagination"
-              className="py-4 px-4 glass-card rounded-2xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3"
+              className="py-3.5 px-4 glass-card rounded-2xl border border-border/60 flex flex-col sm:flex-row items-center justify-between gap-2.5"
             >
-              <span className="text-xs text-text-muted font-medium">
-                Sayfa {fundPage} / {fundTotalPages} • Toplam {fundTotalCount} TEFAS fonu ({visibleFunds.length} gösteriliyor)
-              </span>
-              {fundTotalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={fundPage <= 1}
-                    onClick={() => {
-                      setFundPage((p) => Math.max(1, p - 1));
-                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    ← Önceki
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={fundPage >= fundTotalPages}
-                    onClick={() => {
-                      setFundPage((p) => Math.min(fundTotalPages, p + 1));
-                      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    Sonraki →
-                  </Button>
-                </div>
-              )}
+              <InfiniteScrollStatus
+                visibleCount={visibleFunds.length}
+                totalCount={fundTotalCount}
+                itemLabel="TEFAS fonu"
+                isLoadingMore={fundsLoadingMore}
+                hasMore={hasMoreFunds}
+                onLoadMore={() => setFundPage((p) => Math.min(fundTotalPages, p + 1))}
+              />
             </div>
           )}
 
