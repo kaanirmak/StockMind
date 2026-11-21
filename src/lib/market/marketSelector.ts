@@ -20,10 +20,10 @@ export interface MarketCatalogOption {
 }
 
 export const MARKET_CATALOG: readonly MarketCatalogOption[] = [
+  { id: 'ALL', label: 'Tüm Piyasalar', shortLabel: 'Tümü', icon: '🌟', name: 'Canlı Finans Özeti', mobilePrimary: true },
   { id: 'BIST', label: 'BIST', shortLabel: 'BIST', icon: '🇹🇷', name: 'Borsa İstanbul', mobilePrimary: true },
   { id: 'TEFAS', label: 'TEFAS', shortLabel: 'TEFAS', icon: '📊', name: 'Yatırım Fonları', mobilePrimary: true },
   { id: 'ABD', label: 'ABD', shortLabel: 'ABD', icon: '🇺🇸', name: 'ABD Borsaları (NASDAQ & NYSE)', mobilePrimary: true },
-  { id: 'ALL', label: 'Tüm Piyasalar', shortLabel: 'Tümü', icon: '🌟', name: 'Canlı Finans Özeti', mobilePrimary: true },
   { id: 'COMMODITY', label: 'Emtia & Altın', shortLabel: 'Emtia', icon: '🪙', name: 'Kıymetli Madenler' },
   { id: 'CRYPTO', label: 'Kripto', shortLabel: 'Kripto', icon: '₿', name: 'Kripto Paralar' },
   { id: 'FOREX', label: 'Döviz', shortLabel: 'Döviz', icon: '💱', name: 'Döviz Kurları' },

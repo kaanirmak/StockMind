@@ -2555,15 +2555,15 @@ test('POR-03 moves portfolio deletion into management menu and shows portfolio i
   assert.doesNotMatch(portfolioSrc, /portföyünü sil`/);
 });
 
-test('PIY-01 keeps BIST, TEFAS and ABD market choices at the top on mobile', () => {
+test('PIY-01 puts ALL first/default and uses compact sticky market selector on mobile', () => {
   const {
-    MOBILE_PRIMARY_MARKETS,
+    MARKET_CATALOG,
     normalizeMarketParam,
     matchesMarketExchangeFilter,
   } = load('src/lib/market/marketSelector.ts');
 
-  const ids = Array.from(MOBILE_PRIMARY_MARKETS, (m) => m.id);
-  assert.deepEqual(ids.slice(0, 3), ['BIST', 'TEFAS', 'ABD']);
+  assert.equal(MARKET_CATALOG[0].id, 'ALL');
+  assert.equal(normalizeMarketParam(null), 'ALL');
   assert.equal(normalizeMarketParam('us'), 'ABD');
   assert.equal(normalizeMarketParam('abd'), 'ABD');
   assert.equal(normalizeMarketParam('funds'), 'TEFAS');
@@ -2580,7 +2580,8 @@ test('PIY-01 keeps BIST, TEFAS and ABD market choices at the top on mobile', () 
   );
   assert.match(piyasalarSrc, /data-testid="mobile-top-market-bar"/);
   assert.match(piyasalarSrc, /sticky top-0/);
-  assert.match(piyasalarSrc, /MOBILE_PRIMARY_MARKETS/);
+  assert.match(piyasalarSrc, /aria-label="Piyasa seçimi"/);
+  assert.doesNotMatch(piyasalarSrc, /MOBILE_PRIMARY_MARKETS/);
 });
 
 test('PIY-02 remembers last market and filter while honoring explicit shared URL params', () => {
