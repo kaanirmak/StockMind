@@ -77,14 +77,14 @@ jobs:
           persist-credentials: false
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@fbfa9f37476c0024508d051f3c34fcca3366b0e2 # v4
+        uses: github/codeql-action/init@3ea37a44b6e4e6847c46edae209410d258d548d1 # v4
         with:
           languages: javascript-typescript
           build-mode: none
           queries: security-extended,security-and-quality
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@fbfa9f37476c0024508d051f3c34fcca3366b0e2 # v4
+        uses: github/codeql-action/analyze@3ea37a44b6e4e6847c46edae209410d258d548d1 # v4
         with:
           category: "/language:javascript-typescript"
           wait-for-processing: true
@@ -101,10 +101,10 @@ jobs:
           persist-credentials: false
 
       - name: TruffleHog OSS Secret Scan
-        uses: trufflesecurity/trufflehog@ea68ca03c865c5f324e86e849ced20ed3cf9dbbb # v3.99.8
+        uses: trufflesecurity/trufflehog@3bd2b5887eb0efb8fa18bfd1d296032924e4ffdc # v3.99.9
         with:
           path: ./
-          version: 3.99.8
+          version: 3.99.9
           # Let the action select SHA ranges for PR/push events and the full
           # history for scheduled/manual runs. A local "main" ref need not exist.
           extra_args: --results=verified,unknown --fail-on-scan-errors
