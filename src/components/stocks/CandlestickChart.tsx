@@ -121,7 +121,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
   const getResponsiveHeight = useCallback(() => {
     if (typeof window === 'undefined') return height;
-    if (window.innerWidth < 640) return 330; // Mobile compact
+    if (window.innerWidth < 640) return 280; // Mobile compact above-the-fold
     if (window.innerWidth < 1024) return 380; // Tablet
     return height;
   }, [height]);
@@ -513,15 +513,15 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           : 'bg-transparent p-0'
       }`}
     >
-      {/* Top Header: Mobile-Friendly OHLCV & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2 pb-2 border-b border-border/20">
+      {/* Top Header: Single-Row OHLCV HUD & Compact Controls */}
+      <div className="flex items-center justify-between gap-2 mb-1.5 pb-1.5 border-b border-border/20">
         {/* Left: Active Candle HUD */}
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <span className="font-bold text-xs sm:text-sm text-text-primary shrink-0">{symbol}</span>
-          <span className="text-text-muted text-xs shrink-0">|</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="hidden sm:inline font-bold text-xs sm:text-sm text-text-primary shrink-0">{symbol}</span>
+          <span className="hidden sm:inline text-text-muted text-xs shrink-0">|</span>
 
           {activeCandle && (
-            <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono min-w-0 truncate">
               <span className="font-bold text-text-primary">
                 {unit && unit !== 'Puan' ? unit : ''}
                 {activeCandle.close?.toFixed(2)}
@@ -537,7 +537,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
               </span>
 
               {chartType === 'candles' && (
-                <div className="hidden xs:flex items-center gap-2 text-text-muted text-[10px]">
+                <div className="hidden sm:flex items-center gap-2 text-text-muted text-[10px]">
                   <span>A: <strong className="text-text-secondary">{activeCandle.open?.toFixed(2)}</strong></span>
                   <span>Y: <strong className="text-success">{activeCandle.high?.toFixed(2)}</strong></span>
                   <span>D: <strong className="text-danger">{activeCandle.low?.toFixed(2)}</strong></span>
@@ -553,64 +553,47 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           )}
         </div>
 
-        {/* Right: Chart Controls & Mode Toggles */}
-        <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0 flex-wrap">
+        {/* Right: Compact Chart Controls & Mode Toggles */}
+        <div className="flex items-center justify-end gap-1.5 shrink-0">
           {/* Chart Style Toggle (Candles vs Line) */}
-          <div className="flex items-center bg-bg-secondary p-0.5 rounded-lg border border-border">
+          <div className="inline-flex items-center bg-bg-secondary/90 p-0.5 rounded-lg border border-border/80">
             <button
+              type="button"
               onClick={() => handleChartTypeSwitch('line')}
-              className={`px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+              className={`!min-h-0 !min-w-0 h-7 px-2.5 rounded-md text-[11px] font-semibold leading-none transition-all cursor-pointer ${
                 chartType === 'line'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-muted hover:text-text-primary'
               }`}
               title="Çizgi / Alan Grafiği"
             >
-               Çizgi
+              Çizgi
             </button>
             <button
+              type="button"
               onClick={() => handleChartTypeSwitch('candles')}
-              className={`px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+              className={`!min-h-0 !min-w-0 h-7 px-2.5 rounded-md text-[11px] font-semibold leading-none transition-all cursor-pointer ${
                 chartType === 'candles'
                   ? 'bg-accent text-white shadow-sm'
                   : 'text-text-muted hover:text-text-primary'
               }`}
               title="Mum Grafiği"
             >
-               Mum
+              Mum
             </button>
           </div>
 
           {/* Fullscreen Button */}
           <button
+            type="button"
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg bg-bg-secondary border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer text-xs"
+            aria-label={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
+            className="!min-h-0 !min-w-0 h-7 w-7 inline-flex items-center justify-center rounded-lg bg-bg-secondary/90 border border-border/80 text-text-muted hover:text-text-primary transition-colors cursor-pointer text-xs shrink-0"
             title={isFullscreen ? 'Tam Ekrandan Çık' : 'Tam Ekran'}
           >
             {isFullscreen ? '✕' : '⛶'}
           </button>
         </div>
-      </div>
-
-      {/* Chart Data Coverage Strip */}
-      <div
-        data-testid="chart-coverage-bar"
-        className="flex flex-wrap items-center justify-between gap-2 mb-2 px-2.5 py-1.5 rounded-lg bg-bg-secondary/50 border border-border/40 text-[11px] text-text-secondary"
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span>
-            <strong className="text-text-muted font-medium">Aralık:</strong> {coverage.timeframeLabel} ({coverage.rangeSummary})
-          </span>
-          <span>
-            <strong className="text-text-muted font-medium">Fiyat Birimi:</strong> {coverage.priceUnitLabel}
-          </span>
-          <span>
-            <strong className="text-text-muted font-medium">Son Mum:</strong> {coverage.lastCandleTime ?? 'Veri yok'}
-          </span>
-        </div>
-        <span className="font-mono text-[10px] text-text-muted">
-          {coverage.candleCount} mum{dataSource ? ` • ${dataSource}` : ''}
-        </span>
       </div>
 
       {coverage.coverageStatus === 'partial' && coverage.missingDataNotice && (
@@ -628,7 +611,7 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
           data-testid="chart-missing-data"
           role="status"
           className="w-full rounded-2xl border border-border/60 bg-bg-secondary/30 flex flex-col items-center justify-center text-center p-6"
-          style={{ minHeight: `${Math.min(height, 360)}px` }}
+          style={{ minHeight: `${Math.min(height, 280)}px` }}
         >
           <p className="text-sm font-semibold text-text-primary mb-1">Grafik verisi eksik</p>
           <p className="text-xs text-text-muted max-w-md">{coverage.missingDataNotice}</p>
@@ -645,10 +628,31 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
 
       {/* Embedded Bottom Controls (Timeframe & Indicators inside the chart flow) */}
       {bottomControls && (
-        <div className="mt-2.5 pt-2">
+        <div className="mt-1.5 pt-1">
           {bottomControls}
         </div>
       )}
+
+      {/* Chart Data Coverage Strip (below chart so canvas opens above the fold) */}
+      <div
+        data-testid="chart-coverage-bar"
+        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mt-2 px-2.5 py-1.5 rounded-lg bg-bg-secondary/40 border border-border/30 text-[10px] sm:text-[11px] text-text-secondary"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span>
+            <strong className="text-text-muted font-medium">Aralık:</strong> {coverage.timeframeLabel} ({coverage.rangeSummary})
+          </span>
+          <span>
+            <strong className="text-text-muted font-medium">Fiyat Birimi:</strong> {coverage.priceUnitLabel}
+          </span>
+          <span>
+            <strong className="text-text-muted font-medium">Son Mum:</strong> {coverage.lastCandleTime ?? 'Veri yok'}
+          </span>
+        </div>
+        <span className="font-mono text-[10px] text-text-muted">
+          {coverage.candleCount} mum{dataSource ? ` • ${dataSource}` : ''}
+        </span>
+      </div>
 
       {/* Mobile Touch Tip Indicator */}
       <div className="flex items-center justify-between mt-2 pt-1 text-[10px] text-text-muted/70">

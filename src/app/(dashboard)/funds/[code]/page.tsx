@@ -325,7 +325,7 @@ export default function FundDetailPage({
                 key={tf.days}
                 type="button"
                 onClick={() => setDays(tf.days)}
-                className={`py-1 px-3 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                className={`!min-h-0 !min-w-0 h-7 py-0 px-3 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                   days === tf.days
                     ? 'bg-accent text-white shadow-sm shadow-accent/25'
                     : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'

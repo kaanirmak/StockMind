@@ -204,7 +204,7 @@ export default function StockDetailPage({
           }`;
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-44 sm:pb-16">
+    <div className="space-y-2 sm:space-y-5 animate-fade-in pb-44 sm:pb-16">
       <StickyAssetHeader
         sentinelRef={heroRef}
         symbol={symbol}
@@ -215,13 +215,13 @@ export default function StockDetailPage({
         onAlert={() => setIsAlertModalOpen(true)}
         onTrade={() => setIsTradeModalOpen(true)}
       />
-      {/* Midas-Style Top Navigation Bar (Back, Instrument Name, Bookmark, Alert, Share) */}
-      <div className="flex items-center justify-between py-1 gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
+      {/* Midas-Style Top Navigation Bar (Back, Instrument Logo & Badge, Bookmark, Alert, Share) */}
+      <div className="flex items-center justify-between py-0.5 sm:py-1 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={() => router.back()}
-            className="p-2 -ml-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer shrink-0"
+            className="!min-h-9 !min-w-9 sm:!min-h-10 sm:!min-w-10 p-1.5 -ml-1.5 sm:p-2 sm:-ml-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer shrink-0 flex items-center justify-center"
             title="Geri"
             aria-label="Önceki sayfaya dön"
           >
@@ -230,14 +230,22 @@ export default function StockDetailPage({
             </svg>
           </button>
 
+          <InstrumentLogo symbol={symbol} name={stock?.name || symbol} size="sm" className="sm:hidden shrink-0" />
           <span className="font-bold font-mono text-base sm:text-lg text-text-primary truncate">{symbol}</span>
+          <span
+            data-testid="asset-type-badge"
+            className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold border border-border bg-bg-secondary text-text-secondary shrink-0"
+          >
+            {assetClassification.label}
+            {displayUnit === 'puan' || displayUnit === 'TL/gram' ? ` · ${displayUnit}` : ''}
+          </span>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Bookmark / Watchlist */}
           <button
             onClick={handleWatchlistToggle}
-            className={`inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-xl transition-colors cursor-pointer ${
+            className={`inline-flex items-center justify-center !min-h-9 !min-w-9 w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl transition-colors cursor-pointer ${
               isWatchlisted
                 ? 'text-warning bg-warning/15'
                 : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
@@ -255,7 +263,7 @@ export default function StockDetailPage({
             data-testid="asset-quick-alert-btn"
             onClick={() => setIsAlertModalOpen(true)}
             aria-label={hasAlert ? `${symbol} fiyat alarmını düzenle` : `${symbol} için hızlı fiyat alarmı kur`}
-            className={`inline-flex items-center justify-center gap-1.5 h-11 min-w-11 px-2.5 shrink-0 rounded-xl transition-colors cursor-pointer relative ${
+            className={`inline-flex items-center justify-center gap-1.5 !min-h-9 !min-w-9 w-9 h-9 sm:w-auto sm:h-10 sm:px-2.5 shrink-0 rounded-xl transition-colors cursor-pointer relative ${
               hasAlert
                 ? 'text-warning bg-warning/15 hover:bg-warning/25'
                 : 'text-text-muted hover:text-text-primary hover:bg-bg-secondary'
@@ -277,7 +285,7 @@ export default function StockDetailPage({
           <button
             type="button"
             onClick={handleShare}
-            className="inline-flex items-center justify-center w-11 h-11 shrink-0 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center !min-h-9 !min-w-9 w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl text-text-muted hover:text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
             title="Paylaş"
             aria-label={`${symbol} sayfasını paylaş`}
           >
@@ -288,26 +296,48 @@ export default function StockDetailPage({
         </div>
       </div>
 
-      {/* Midas-Style Symbol & Price Header */}
-      <div ref={heroRef} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
-        <div>
-          {/* Symbol & Market Status Badge */}
-          <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-            <InstrumentLogo symbol={symbol} name={stock?.name || symbol} size="lg" />
-            <h1 className="min-w-0 flex-1 text-lg sm:text-2xl font-bold leading-snug text-text-primary break-words">
+      {/* Midas-Style Compact Symbol & Price Hero */}
+      <div ref={heroRef} className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 sm:gap-4">
+        <div className="min-w-0">
+          {/* Company Name Line */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <InstrumentLogo symbol={symbol} name={stock?.name || symbol} size="lg" className="hidden sm:flex shrink-0" />
+            <h1 className="min-w-0 flex-1 text-xs sm:text-2xl font-medium sm:font-bold text-text-secondary sm:text-text-primary truncate">
               {stock?.name || symbol}
             </h1>
-            <span
-              data-testid="asset-type-badge"
-              className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border border-border bg-bg-secondary text-text-secondary"
-            >
-              {assetClassification.label}
-              {displayUnit === 'puan' || displayUnit === 'TL/gram' ? ` · ${displayUnit}` : ''}
-            </span>
+          </div>
+
+          {/* Prominent Price & Clean Percentage */}
+          <div className="flex flex-wrap items-baseline gap-2 mt-0.5 sm:mt-2">
+            {currentPrice <= 0 && !stockLoading ? (
+              <span className="text-2xl sm:text-3xl font-bold text-text-muted">Fiyat alınamadı</span>
+            ) : (
+              <span className="text-[26px] sm:text-4xl font-black font-mono leading-none tracking-tight text-text-primary tabular-nums">
+                {formattedHeroPrice}
+              </span>
+            )}
+            {observedLivePrice !== null && (
+              <span
+                className={`text-sm sm:text-lg font-bold font-mono ${
+                  isPositive ? 'text-success' : 'text-danger'
+                }`}
+              >
+                {isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
+              </span>
+            )}
+            {isCommodityAsset && displayUnit && displayUnit !== 'TL/gram' && (
+              <span className="text-xs sm:text-sm font-semibold text-text-muted font-sans ml-1">
+                ({displayUnit})
+              </span>
+            )}
+          </div>
+
+          {/* Single Non-Redundant Status Row */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1 sm:mt-1.5">
             <span
               data-testid="market-session-status"
               title={marketStatus.reason}
-              className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border flex items-center gap-1.5 ${
+              className={`px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold border flex items-center gap-1.5 ${
                 marketStatus.isOpen
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                   : marketStatus.state === 'holiday'
@@ -327,37 +357,15 @@ export default function StockDetailPage({
               {marketStatus.label}
               {!marketStatus.isOpen && marketStatus.lastCloseText ? ` · ${marketStatus.lastCloseText}` : ''}
             </span>
-          </div>
-
-          {/* Prominent Price & Clean Percentage */}
-          <div className="flex flex-wrap items-baseline gap-2 sm:gap-2.5 mt-2">
-            {currentPrice <= 0 && !stockLoading ? (
-              <span className="text-2xl sm:text-3xl font-bold text-text-muted">Fiyat alınamadı</span>
-            ) : (
-              <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary tabular-nums">
-                {formattedHeroPrice}
-              </span>
+            {!stockLoading && priceStatus.source && (
+              <span className="sm:hidden text-[10px] text-text-muted">· {priceStatus.source}</span>
             )}
-            {observedLivePrice !== null && (
-              <span
-                className={`text-base sm:text-lg font-bold font-mono ${
-                  isPositive ? 'text-success' : 'text-danger'
-                }`}
-              >
-                {isPositive ? '+' : '-'}%{Math.abs(stock?.changePercent || 0).toFixed(2).replace('.', ',')}
-              </span>
-            )}
-            {isCommodityAsset && displayUnit && displayUnit !== 'TL/gram' && (
-              <span className="text-xs sm:text-sm font-semibold text-text-muted font-sans ml-1">
-                ({displayUnit})
+            {!stockLoading && (
+              <span className="hidden sm:inline-flex">
+                <PriceStatusBadge statusInfo={priceStatus} showMeta />
               </span>
             )}
           </div>
-          {!stockLoading && (
-            <div className="mt-2">
-              <PriceStatusBadge statusInfo={priceStatus} showMeta />
-            </div>
-          )}
         </div>
 
         {/* Desktop Quick Actions */}
@@ -405,7 +413,7 @@ export default function StockDetailPage({
       {/* Chart Section - Single Unified Box */}
       <div className="space-y-3">
         {chartLoading && candles.length === 0 ? (
-          <div className="h-[320px] sm:h-[450px] rounded-2xl flex items-center justify-center text-text-muted bg-bg-secondary/20">
+          <div className="h-[280px] sm:h-[440px] rounded-2xl flex items-center justify-center text-text-muted bg-bg-secondary/20">
             <div className="flex flex-col items-center gap-2">
               <svg className="animate-spin h-7 w-7 text-accent" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -434,7 +442,7 @@ export default function StockDetailPage({
             sma50={indicators?.indicators?.sma50 || []}
             bollingerBands={indicators?.indicators?.bollingerBands || []}
             bottomControls={
-              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-1.5 sm:gap-2">
                 {/* Timeframe Selector with Midas-style capsule pills */}
                 <div className="flex items-center gap-1 bg-bg-secondary/70 p-1 rounded-full border border-border/80 overflow-x-auto no-scrollbar scroll-smooth">
                   {[
@@ -450,7 +458,7 @@ export default function StockDetailPage({
                     <button
                       key={tf.id}
                       onClick={() => setTimeframe(tf.id as any)}
-                      className={`flex-1 min-w-[36px] py-1 px-2.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer text-center ${
+                      className={`flex-1 !min-h-0 !min-w-[34px] h-8 py-0 px-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer text-center ${
                         timeframe === tf.id
                           ? 'bg-accent text-white shadow-sm shadow-accent/20 font-bold'
                           : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -465,7 +473,7 @@ export default function StockDetailPage({
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
                   <button
                     onClick={() => setShowSMA20(!showSMA20)}
-                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                    className={`!min-h-0 !min-w-0 h-7 py-0 px-2.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
                       showSMA20
                         ? 'bg-warning/20 border-warning text-warning'
                         : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
@@ -476,7 +484,7 @@ export default function StockDetailPage({
                   </button>
                   <button
                     onClick={() => setShowSMA50(!showSMA50)}
-                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                    className={`!min-h-0 !min-w-0 h-7 py-0 px-2.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
                       showSMA50
                         ? 'bg-info/20 border-info text-info'
                         : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
@@ -487,7 +495,7 @@ export default function StockDetailPage({
                   </button>
                   <button
                     onClick={() => setShowBB(!showBB)}
-                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                    className={`!min-h-0 !min-w-0 h-7 py-0 px-2.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
                       showBB
                         ? 'bg-accent-secondary/20 border-accent-secondary text-accent-secondary'
                         : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
@@ -498,7 +506,7 @@ export default function StockDetailPage({
                   </button>
                   <button
                     onClick={() => setShowVolume(!showVolume)}
-                    className={`px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
+                    className={`!min-h-0 !min-w-0 h-7 py-0 px-2.5 rounded-lg border transition-all cursor-pointer font-medium whitespace-nowrap flex items-center gap-1.5 text-[11px] ${
                       showVolume
                         ? 'bg-accent/20 border-accent text-accent'
                         : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary'
