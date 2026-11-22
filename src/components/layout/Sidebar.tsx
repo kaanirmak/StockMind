@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV_ITEMS } from '@/lib/utils/constants';
 import { useTheme } from '@/components/theme/ThemeProvider';
+import { getThemePresetDefinition } from '@/lib/theme/themeConfig';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ApkDownloadModal, StockMindLogo, StockMindMark } from '@/components/ui';
 import { ANDROID_RELEASE_METADATA } from '@/lib/app/releaseMetadata';
@@ -32,7 +33,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [showApkModal, setShowApkModal] = useState(false);
-  const { resolvedTheme, toggleTheme } = useTheme();
+  const { resolvedTheme, resolvedPreset, toggleTheme } = useTheme();
+  const activePreset = getThemePresetDefinition(resolvedPreset);
 
   const { user } = useAuthStore();
   const isPro = Boolean(user?.isPro || user?.plan === 'pro');
@@ -177,8 +179,8 @@ export default function Sidebar() {
           {!collapsed && (
             <div className="flex items-center justify-between flex-1">
               <span className="text-sm font-medium">Tema</span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
-                {resolvedTheme === 'dark' ? 'Koyu' : 'Açık'}
+              <span className="truncate max-w-[100px] text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/25">
+                {activePreset.name}
               </span>
             </div>
           )}
