@@ -1,5 +1,4 @@
 'use client';
-import { Icon as UIIcon } from '@/components/ui/Icon';
 import { StockMindLogo } from '@/components/ui/StockMindLogo';
 
 
@@ -7,6 +6,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import { usePrivacyMode } from '@/hooks/usePrivacyMode';
 import { maskCurrencyValue, maskDisplayValue } from '@/lib/privacy';
 import { resolvePortfolioDisplayPhase } from '@/lib/portfolio/displayState';
@@ -22,6 +22,7 @@ export default function PortfolioSummary() {
   const summary = getSummary();
   const [period, setPeriod] = useState<MetricView>('daily');
   const { isPrivacyMode, togglePrivacyMode } = usePrivacyMode();
+  const { pnlMode } = useTheme();
   const [fetchedUsdTry, setFetchedUsdTry] = useState<number | null>(null);
 
   const displayPhase = resolvePortfolioDisplayPhase({
@@ -238,13 +239,13 @@ export default function PortfolioSummary() {
           }`}
         />
 
-        {/* Ambient radial glows: Mor + Yeşil (veya Mor + Kırmızı) karışımı */}
+        {/* Ambient radial glows aligned with active accent preset */}
         <div
           className="absolute inset-0 pointer-events-none transition-all duration-700"
           style={{
             background: isPositive
-              ? 'radial-gradient(ellipse at 85% 15%, rgba(16, 185, 129, 0.32) 0%, transparent 60%), radial-gradient(ellipse at 15% 85%, rgba(168, 85, 247, 0.35) 0%, transparent 60%), radial-gradient(ellipse at 50% 50%, rgba(5, 150, 105, 0.12) 0%, transparent 60%)'
-              : 'radial-gradient(ellipse at 85% 15%, rgba(244, 63, 94, 0.32) 0%, transparent 60%), radial-gradient(ellipse at 15% 85%, rgba(168, 85, 247, 0.35) 0%, transparent 60%), radial-gradient(ellipse at 50% 50%, rgba(225, 29, 72, 0.12) 0%, transparent 60%)',
+              ? 'radial-gradient(ellipse at 85% 15%, rgba(16, 185, 129, 0.30) 0%, transparent 60%), radial-gradient(ellipse at 15% 85%, color-mix(in oklab, var(--accent) 36%, transparent) 0%, transparent 60%), radial-gradient(ellipse at 50% 50%, color-mix(in oklab, var(--accent-secondary) 14%, transparent) 0%, transparent 60%)'
+              : 'radial-gradient(ellipse at 85% 15%, rgba(244, 63, 94, 0.30) 0%, transparent 60%), radial-gradient(ellipse at 15% 85%, color-mix(in oklab, var(--accent) 36%, transparent) 0%, transparent 60%), radial-gradient(ellipse at 50% 50%, color-mix(in oklab, var(--accent-secondary) 14%, transparent) 0%, transparent 60%)',
           }}
         />
 
@@ -310,7 +311,7 @@ export default function PortfolioSummary() {
                 }`}
                 title="Dönemi değiştirmek için tıklayın"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-accent" />
                 <span>{currentPeriodObj.label}</span>
               </button>
 
@@ -381,7 +382,13 @@ export default function PortfolioSummary() {
                 {/* Clean K/Z text */}
                 <div
                   className={`inline-flex items-center gap-1.5 text-sm sm:text-lg font-bold tabular-nums transition-all duration-300 ${
-                    isPositive ? 'text-emerald-400' : 'text-rose-400'
+                    pnlMode === 'colorblind'
+                      ? isPositive
+                        ? 'text-sky-400'
+                        : 'text-orange-400'
+                      : isPositive
+                        ? 'text-emerald-400'
+                        : 'text-rose-400'
                   } ${isPrivacyMode ? 'select-none opacity-80' : ''}`}
                 >
                   <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -401,7 +408,7 @@ export default function PortfolioSummary() {
 
               {/* Sub-info: Cost, USD equivalent, and Breakdown */}
               <div
-                className={`flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium transition-all duration-300 ${
+                className={`flex flex-wrap items-center justify-between gap-2 text-xs text-white/50 font-medium tabular-nums transition-all duration-300 ${
                   isPrivacyMode ? 'select-none opacity-80' : ''
                 }`}
               >
