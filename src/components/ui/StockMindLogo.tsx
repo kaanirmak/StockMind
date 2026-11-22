@@ -8,7 +8,7 @@ export interface StockMindLogoProps {
 
 const SIZE_MAP = {
   sm: { img: 'h-6 sm:h-7', pro: 'text-[9px] px-1.5 py-0.5' },
-  md: { img: 'h-8 sm:h-9', pro: 'text-[9px] px-1.5 py-0.5' },
+  md: { img: 'h-8 sm:h-9 max-w-[190px]', pro: 'text-[9px] px-1.5 py-0.5' },
   lg: { img: 'h-11 sm:h-12', pro: 'text-[10px] px-2 py-0.5' },
 } as const;
 
