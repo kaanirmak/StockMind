@@ -1,0 +1,298 @@
+/* StockMind 5-Theme Design System, Accent Presets, Colorblind P&L & Compact Density */
+
+:root[data-theme='obsidian'],
+html.dark[data-theme='obsidian'] {
+  color-scheme: dark;
+  --bg-primary: #080b12;
+  --bg-secondary: #0f1624;
+  --bg-tertiary: #172033;
+  --bg-card: #131b2c;
+  --bg-hover: #1b263d;
+  --bg-input: #0e1420;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+  --border: #1e293b;
+  --border-hover: #334155;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-text: #a78bfa;
+  --accent-secondary: #a855f7;
+  --accent-glow: color-mix(in oklab, #7c3aed 26%, transparent);
+  --focus-ring: #a78bfa;
+  --border-accent: color-mix(in oklab, #7c3aed 40%, transparent);
+}
+
+:root[data-theme='terminal'],
+html.dark[data-theme='terminal'] {
+  color-scheme: dark;
+  --bg-primary: #05070b;
+  --bg-secondary: #090e17;
+  --bg-tertiary: #111827;
+  --bg-card: #0d131f;
+  --bg-hover: #151e30;
+  --bg-input: #090d16;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+  --border: #1b2538;
+  --border-hover: #2d3c59;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-text: #60a5fa;
+  --accent-secondary: #38bdf8;
+  --accent-glow: color-mix(in oklab, #2563eb 24%, transparent);
+  --focus-ring: #60a5fa;
+  --border-accent: color-mix(in oklab, #2563eb 42%, transparent);
+}
+
+:root[data-theme='emerald'],
+html.dark[data-theme='emerald'] {
+  color-scheme: dark;
+  --bg-primary: #06110e;
+  --bg-secondary: #0a1814;
+  --bg-tertiary: #122821;
+  --bg-card: #0e1f1a;
+  --bg-hover: #152e26;
+  --bg-input: #091612;
+  --text-primary: #f0fdf4;
+  --text-secondary: #d1fae5;
+  --text-muted: #86efac;
+  --text-inverse: #ffffff;
+  --border: #19382e;
+  --border-hover: #275445;
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent-text: #34d399;
+  --accent-secondary: #2dd4bf;
+  --accent-glow: color-mix(in oklab, #059669 24%, transparent);
+  --focus-ring: #34d399;
+  --border-accent: color-mix(in oklab, #10b981 40%, transparent);
+}
+
+:root[data-theme='porcelain'],
+html.light[data-theme='porcelain'] {
+  color-scheme: light;
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-input: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #475569;
+  --text-inverse: #ffffff;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-text: #6d28d9;
+  --accent-secondary: #7e22ce;
+  --accent-glow: color-mix(in oklab, #7c3aed 16%, transparent);
+  --focus-ring: #6d28d9;
+  --border-accent: color-mix(in oklab, #7c3aed 35%, transparent);
+}
+
+:root[data-theme='paper'],
+html.light[data-theme='paper'] {
+  color-scheme: light;
+  --bg-primary: #faf6ef;
+  --bg-secondary: #fffdf9;
+  --bg-tertiary: #f2ece1;
+  --bg-card: #fffdf9;
+  --bg-hover: #f3ece0;
+  --bg-input: #fffdf9;
+  --text-primary: #1c1917;
+  --text-secondary: #44403c;
+  --text-muted: #57534e;
+  --text-inverse: #ffffff;
+  --border: #e7decb;
+  --border-hover: #d4c6ab;
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-text: #92400e;
+  --accent-secondary: #d97706;
+  --accent-glow: color-mix(in oklab, #b45309 16%, transparent);
+  --focus-ring: #92400e;
+  --border-accent: color-mix(in oklab, #b45309 35%, transparent);
+}
+
+/* Explicit Accent Swatch Overrides (Dark modes first, Light modes second) */
+:root.dark[data-accent='violet'],
+:root[data-accent='violet'] {
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-text: #a78bfa;
+  --accent-secondary: #a855f7;
+  --accent-glow: color-mix(in oklab, #7c3aed 26%, transparent);
+  --focus-ring: #a78bfa;
+  --border-accent: color-mix(in oklab, #7c3aed 40%, transparent);
+}
+
+:root.light[data-accent='violet'] {
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-text: #6d28d9;
+  --accent-secondary: #7e22ce;
+  --accent-glow: color-mix(in oklab, #7c3aed 16%, transparent);
+  --focus-ring: #6d28d9;
+  --border-accent: color-mix(in oklab, #7c3aed 35%, transparent);
+}
+
+:root.dark[data-accent='sapphire'],
+:root[data-accent='sapphire'] {
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-text: #60a5fa;
+  --accent-secondary: #38bdf8;
+  --accent-glow: color-mix(in oklab, #2563eb 24%, transparent);
+  --focus-ring: #60a5fa;
+  --border-accent: color-mix(in oklab, #2563eb 40%, transparent);
+}
+
+:root.light[data-accent='sapphire'] {
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --accent-text: #1d4ed8;
+  --accent-secondary: #0284c7;
+  --accent-glow: color-mix(in oklab, #1d4ed8 15%, transparent);
+  --focus-ring: #1d4ed8;
+  --border-accent: color-mix(in oklab, #1d4ed8 35%, transparent);
+}
+
+:root.dark[data-accent='emerald'],
+:root[data-accent='emerald'] {
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent-text: #34d399;
+  --accent-secondary: #2dd4bf;
+  --accent-glow: color-mix(in oklab, #059669 24%, transparent);
+  --focus-ring: #34d399;
+  --border-accent: color-mix(in oklab, #10b981 40%, transparent);
+}
+
+:root.light[data-accent='emerald'] {
+  --accent: #047857;
+  --accent-hover: #065f46;
+  --accent-text: #065f46;
+  --accent-secondary: #0f766e;
+  --accent-glow: color-mix(in oklab, #047857 15%, transparent);
+  --focus-ring: #065f46;
+  --border-accent: color-mix(in oklab, #047857 35%, transparent);
+}
+
+:root.dark[data-accent='gold'],
+:root[data-accent='gold'] {
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-text: #fbbf24;
+  --accent-secondary: #f59e0b;
+  --accent-glow: color-mix(in oklab, #d97706 24%, transparent);
+  --focus-ring: #fbbf24;
+  --border-accent: color-mix(in oklab, #f59e0b 40%, transparent);
+}
+
+:root.light[data-accent='gold'] {
+  --accent: #b45309;
+  --accent-hover: #92400e;
+  --accent-text: #92400e;
+  --accent-secondary: #d97706;
+  --accent-glow: color-mix(in oklab, #b45309 15%, transparent);
+  --focus-ring: #92400e;
+  --border-accent: color-mix(in oklab, #b45309 35%, transparent);
+}
+
+:root.dark[data-accent='coral'],
+:root[data-accent='coral'] {
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent-text: #fb923c;
+  --accent-secondary: #f43f5e;
+  --accent-glow: color-mix(in oklab, #ea580c 24%, transparent);
+  --focus-ring: #fb923c;
+  --border-accent: color-mix(in oklab, #fb923c 40%, transparent);
+}
+
+:root.light[data-accent='coral'] {
+  --accent: #c2410c;
+  --accent-hover: #9a3412;
+  --accent-text: #9a3412;
+  --accent-secondary: #be123c;
+  --accent-glow: color-mix(in oklab, #c2410c 15%, transparent);
+  --focus-ring: #9a3412;
+  --border-accent: color-mix(in oklab, #c2410c 35%, transparent);
+}
+
+/* Colorblind-Safe P&L Mode (Okabe-Ito Blue / Vermilion-Orange) */
+:root.dark[data-pnl='colorblind'],
+:root[data-pnl='colorblind'] {
+  --semantic-success: #60a5fa;
+  --semantic-danger: #fb923c;
+}
+
+:root.light[data-pnl='colorblind'] {
+  --semantic-success: #1d4ed8;
+  --semantic-danger: #c2410c;
+}
+
+/* Compact UI Density Tokens */
+:root[data-density='comfortable'] {
+  --density-card-pad: 1.5rem;
+  --density-row-pad-y: 0.75rem;
+  --density-stack-gap: 1.25rem;
+}
+
+:root[data-density='compact'] {
+  --density-card-pad: 1rem;
+  --density-row-pad-y: 0.45rem;
+  --density-stack-gap: 0.75rem;
+}
+
+[data-density='compact'] .portfolio-metric-card,
+[data-density='compact'] .settings-panel {
+  padding: var(--density-card-pad);
+}
+
+/* Editorial typography & tabular financial numerals */
+body {
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display);
+}
+
+code,
+kbd,
+pre,
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (forced-colors: active) {
+  .glass,
+  .glass-card,
+  .glass-purple,
+  .settings-panel,
+  .portfolio-metric-card {
+    border: 1px solid CanvasText !important;
+    background: Canvas !important;
+    color: CanvasText !important;
+  }
+
+  .gradient-accent {
+    background: ButtonFace !important;
+    color: ButtonText !important;
+    border: 1px solid ButtonText !important;
+  }
+}

@@ -55,6 +55,71 @@ export const DARK_THEME_TOKENS: ThemePaletteTokens = {
   focusRing: '#a78bfa',
 };
 
+export const TERMINAL_THEME_TOKENS: ThemePaletteTokens = {
+  mode: 'dark',
+  bgPrimary: '#05070b',
+  bgCard: '#0d131f',
+  bgTertiary: '#111827',
+  textPrimary: '#f8fafc',
+  textSecondary: '#cbd5e1',
+  textMuted: '#94a3b8',
+  accentSolid: '#2563eb',
+  accentText: '#60a5fa',
+  accentSecondary: '#38bdf8',
+  semanticSuccess: '#34d399',
+  semanticDanger: '#f87171',
+  semanticWarning: '#fbbf24',
+  semanticInfo: '#93c5fd',
+  chartAxisText: '#94a3b8',
+  focusRing: '#60a5fa',
+};
+
+export const EMERALD_THEME_TOKENS: ThemePaletteTokens = {
+  mode: 'dark',
+  bgPrimary: '#06110e',
+  bgCard: '#0e1f1a',
+  bgTertiary: '#122821',
+  textPrimary: '#f0fdf4',
+  textSecondary: '#d1fae5',
+  textMuted: '#86efac',
+  accentSolid: '#047857',
+  accentText: '#34d399',
+  accentSecondary: '#2dd4bf',
+  semanticSuccess: '#34d399',
+  semanticDanger: '#f87171',
+  semanticWarning: '#fbbf24',
+  semanticInfo: '#93c5fd',
+  chartAxisText: '#86efac',
+  focusRing: '#34d399',
+};
+
+export const PAPER_THEME_TOKENS: ThemePaletteTokens = {
+  mode: 'light',
+  bgPrimary: '#faf6ef',
+  bgCard: '#fffdf9',
+  bgTertiary: '#f2ece1',
+  textPrimary: '#1c1917',
+  textSecondary: '#44403c',
+  textMuted: '#57534e',
+  accentSolid: '#b45309',
+  accentText: '#92400e',
+  accentSecondary: '#d97706',
+  semanticSuccess: '#065f46',
+  semanticDanger: '#991b1b',
+  semanticWarning: '#854d0e',
+  semanticInfo: '#1e40af',
+  chartAxisText: '#57534e',
+  focusRing: '#92400e',
+};
+
+export const ALL_THEME_PALETTES = {
+  obsidian: DARK_THEME_TOKENS,
+  terminal: TERMINAL_THEME_TOKENS,
+  emerald: EMERALD_THEME_TOKENS,
+  porcelain: LIGHT_THEME_TOKENS,
+  paper: PAPER_THEME_TOKENS,
+} as const;
+
 export interface ContrastCheckResult {
   id: string;
   foreground: string;
@@ -127,4 +192,13 @@ export function auditThemeContrast(tokens: ThemePaletteTokens): ContrastCheckRes
       passed: ratio >= minRequired,
     };
   });
+}
+
+export function auditAllThemesContrast() {
+  return (Object.entries(ALL_THEME_PALETTES) as Array<[keyof typeof ALL_THEME_PALETTES, ThemePaletteTokens]>).map(
+    ([id, palette]) => ({
+      id,
+      results: auditThemeContrast(palette),
+    })
+  );
 }
