@@ -63,6 +63,21 @@
 /* ═══════════════════════════════════════════
    Light Theme (Beyaz Plan) — Fresh, Clean, High Contrast
    ═══════════════════════════════════════════ */
+:root {
+  color-scheme: light dark;
+  --font-display: 'SF Pro Display', 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+:root:has(> head > meta[name="color-scheme"][content="dark"]) {
+  color-scheme: dark;
+}
+
+:root:has(> head > meta[name="color-scheme"][content="light"]) {
+  color-scheme: light;
+}
+
 :root,
 html.light {
   color-scheme: light;

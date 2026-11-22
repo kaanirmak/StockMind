@@ -1,6 +1,7 @@
 import { palette } from '@/theme/palette';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import '../theme/presets.css';
 import { ToastProvider } from '@/components/ui';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
@@ -62,17 +63,39 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr" suppressHydrationWarning className="dark">
+    <html lang="tr" suppressHydrationWarning className="dark" data-theme="obsidian" data-accent="violet" data-density="comfortable" data-pnl="classic">
       <head>
+        <meta name="color-scheme" content="light dark" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  var stored = localStorage.getItem('stockmind_theme');
-                  var theme = stored === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : stored === 'light' ? 'light' : 'dark';
-                  document.documentElement.classList.remove('light', 'dark');
-                  document.documentElement.classList.add(theme);
+                  var storedTheme = localStorage.getItem('stockmind_theme');
+                  var preset = storedTheme === 'system'
+                    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'obsidian' : 'porcelain')
+                    : storedTheme === 'light'
+                      ? 'porcelain'
+                      : (storedTheme === 'obsidian' || storedTheme === 'terminal' || storedTheme === 'emerald' || storedTheme === 'porcelain' || storedTheme === 'paper')
+                        ? storedTheme
+                        : 'obsidian';
+                  var mode = (preset === 'porcelain' || preset === 'paper') ? 'light' : 'dark';
+                  var storedAccent = localStorage.getItem('stockmind_accent');
+                  var accent = (storedAccent === 'violet' || storedAccent === 'sapphire' || storedAccent === 'emerald' || storedAccent === 'gold' || storedAccent === 'coral')
+                    ? storedAccent
+                    : (preset === 'terminal' ? 'sapphire' : preset === 'emerald' ? 'emerald' : preset === 'paper' ? 'gold' : 'violet');
+                  var density = localStorage.getItem('stockmind_density') === 'compact' ? 'compact' : 'comfortable';
+                  var pnl = localStorage.getItem('stockmind_pnl_mode') === 'colorblind' ? 'colorblind' : 'classic';
+                  var root = document.documentElement;
+                  root.classList.remove('light', 'dark');
+                  root.classList.add(mode);
+                  root.dataset.theme = preset;
+                  root.dataset.accent = accent;
+                  root.dataset.density = density;
+                  root.dataset.pnl = pnl;
+                  root.style.colorScheme = mode;
+                  var csMeta = document.querySelector('meta[name="color-scheme"]');
+                  if (csMeta) csMeta.setAttribute('content', mode);
                 } catch(e) {}
               })();
             `,

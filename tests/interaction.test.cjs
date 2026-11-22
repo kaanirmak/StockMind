@@ -7956,6 +7956,38 @@ test('OPS-15: compares official Google Play Store vs direct APK distribution and
   assert.deepEqual(Array.from(ready.blockers), []);
 });
 
+test('5-theme system presets, legacy normalization, and WCAG contrast audit pass across all themes', () => {
+  const cfg = load('src/lib/theme/themeConfig.ts');
+  const contrast = load('src/lib/theme/contrast.ts');
+
+  assert.equal(cfg.THEME_PRESETS.length, 5);
+  assert.equal(cfg.ACCENT_PRESETS.length, 5);
+  assert.equal(cfg.normalizeThemePreference('light'), 'porcelain');
+  assert.equal(cfg.normalizeThemePreference('dark'), 'obsidian');
+  assert.equal(cfg.normalizeThemePreference('unknown-theme'), 'obsidian');
+  assert.equal(cfg.normalizeAccentPreset('gold'), 'gold');
+  assert.equal(cfg.normalizeAccentPreset('unknown'), 'violet');
+
+  const sysDark = cfg.resolveThemeSelection('system', true);
+  assert.equal(sysDark.preset, 'obsidian');
+  assert.equal(sysDark.mode, 'dark');
+
+  const sysLight = cfg.resolveThemeSelection('system', false);
+  assert.equal(sysLight.preset, 'porcelain');
+  assert.equal(sysLight.mode, 'light');
+
+  const paperRes = cfg.resolveThemeSelection('paper', true);
+  assert.equal(paperRes.preset, 'paper');
+  assert.equal(paperRes.mode, 'light');
+
+  const audits = Array.from(contrast.auditAllThemesContrast());
+  assert.equal(audits.length, 5);
+  for (const entry of audits) {
+    const failures = Array.from(entry.results).filter((r) => !r.passed);
+    assert.deepEqual(failures, [], `Theme ${entry.id} failed WCAG contrast checks`);
+  }
+});
+
 
 
 

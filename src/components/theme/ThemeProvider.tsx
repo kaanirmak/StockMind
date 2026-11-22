@@ -1,108 +1,214 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  ACCENT_STORAGE_KEY,
+  DENSITY_STORAGE_KEY,
+  PNL_MODE_STORAGE_KEY,
+  THEME_STORAGE_KEY,
+  getThemePresetDefinition,
+  normalizeAccentPreset,
+  normalizePnlPaletteMode,
+  normalizeThemePreference,
+  normalizeUiDensity,
+  resolveThemeSelection,
+  type AccentPresetId,
+  type PnlPaletteMode,
+  type ResolvedThemeMode,
+  type ThemePreference,
+  type ThemePresetId,
+  type UiDensity,
+} from '@/lib/theme/themeConfig';
 
-export type Theme = 'light' | 'dark' | 'system';
-export type ResolvedTheme = 'light' | 'dark';
+export type Theme = ThemePreference;
+export type ResolvedTheme = ResolvedThemeMode;
+
+interface SetThemeOptions {
+  syncAccent?: boolean;
+}
 
 interface ThemeContextType {
-  theme: Theme;
+  theme: ThemePresetId | 'system';
   resolvedTheme: ResolvedTheme;
-  setTheme: (theme: Theme) => void;
+  resolvedPreset: ThemePresetId;
+  accent: AccentPresetId;
+  density: UiDensity;
+  pnlMode: PnlPaletteMode;
+  setTheme: (theme: Theme, options?: SetThemeOptions) => void;
+  setAccent: (accent: AccentPresetId) => void;
+  setDensity: (density: UiDensity) => void;
+  setPnlMode: (mode: PnlPaletteMode) => void;
   toggleTheme: () => void;
+  resetAppearance: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'stockmind_theme';
+function applyDocumentThemeState(params: {
+  mode: ResolvedTheme;
+  preset: ThemePresetId;
+  accent: AccentPresetId;
+  density: UiDensity;
+  pnlMode: PnlPaletteMode;
+}) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.classList.remove('light', 'dark');
+  root.classList.add(params.mode);
+  root.dataset.theme = params.preset;
+  root.dataset.accent = params.accent;
+  root.dataset.density = params.density;
+  root.dataset.pnl = params.pnlMode;
+  root.style.colorScheme = params.mode;
+
+  let metaTag = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null;
+  if (!metaTag) {
+    metaTag = document.createElement('meta');
+    metaTag.name = 'color-scheme';
+    document.head.appendChild(metaTag);
+  }
+  metaTag.content = params.mode;
+
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (themeColor) {
+    const bg = getComputedStyle(root).getPropertyValue('--bg-primary').trim();
+    if (bg) themeColor.content = bg;
+  }
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
+  const [theme, setThemeState] = useState<ThemePresetId | 'system'>('obsidian');
+  const [accent, setAccentState] = useState<AccentPresetId>('violet');
+  const [density, setDensityState] = useState<UiDensity>('comfortable');
+  const [pnlMode, setPnlModeState] = useState<PnlPaletteMode>('classic');
+  const [systemPrefersDark, setSystemPrefersDark] = useState(true);
   const [mounted, setMounted] = useState(false);
 
-  // Initialize theme from localStorage or document class
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-      if (stored === 'light' || stored === 'dark' || stored === 'system') {
-        setThemeState(stored);
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      setSystemPrefersDark(media.matches);
+
+      const storedTheme = normalizeThemePreference(localStorage.getItem(THEME_STORAGE_KEY));
+      setThemeState(storedTheme);
+
+      const resolved = resolveThemeSelection(storedTheme, media.matches);
+      const storedAccent = localStorage.getItem(ACCENT_STORAGE_KEY);
+      if (storedAccent) {
+        setAccentState(normalizeAccentPreset(storedAccent));
       } else {
-        // Default to dark mode for StockMind
-        setThemeState('dark');
+        setAccentState(getThemePresetDefinition(resolved.preset).defaultAccent);
       }
-    } catch (_) {
-      setThemeState('dark');
+
+      setDensityState(normalizeUiDensity(localStorage.getItem(DENSITY_STORAGE_KEY)));
+      setPnlModeState(normalizePnlPaletteMode(localStorage.getItem(PNL_MODE_STORAGE_KEY)));
+    } catch {
+      setThemeState('obsidian');
+      setAccentState('violet');
+      setDensityState('comfortable');
+      setPnlModeState('classic');
     }
     setMounted(true);
   }, []);
 
-  // Sync theme changes to DOM and localStorage
   useEffect(() => {
-    if (!mounted) return;
-
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    const resolveCurrentTheme = (currentTheme: Theme): ResolvedTheme => {
-      if (currentTheme === 'system') {
-        return mediaQuery.matches ? 'dark' : 'light';
-      }
-      return currentTheme;
+    const handleSystemChange = (event: MediaQueryListEvent) => {
+      setSystemPrefersDark(event.matches);
     };
-
-    const resolved = resolveCurrentTheme(theme);
-    setResolvedTheme(resolved);
-
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(resolved);
-
-    // Update meta color-scheme
-    let metaTag = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null;
-    if (!metaTag) {
-      metaTag = document.createElement('meta');
-      metaTag.name = 'color-scheme';
-      document.head.appendChild(metaTag);
-    }
-    metaTag.content = resolved;
-    const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    if (themeColor) themeColor.content = getComputedStyle(root).getPropertyValue('--bg-primary').trim();
-
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch (_) {}
-
-    // Listen for system theme changes if theme === 'system'
-    const handleSystemChange = (e: MediaQueryListEvent) => {
-      if (theme === 'system') {
-        const newResolved = e.matches ? 'dark' : 'light';
-        setResolvedTheme(newResolved);
-        root.classList.remove('light', 'dark');
-        root.classList.add(newResolved);
-        metaTag.content = newResolved;
-        if (themeColor) themeColor.content = getComputedStyle(root).getPropertyValue('--bg-primary').trim();
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === THEME_STORAGE_KEY) {
+        setThemeState(normalizeThemePreference(event.newValue));
+      } else if (event.key === ACCENT_STORAGE_KEY && event.newValue) {
+        setAccentState(normalizeAccentPreset(event.newValue));
+      } else if (event.key === DENSITY_STORAGE_KEY) {
+        setDensityState(normalizeUiDensity(event.newValue));
+      } else if (event.key === PNL_MODE_STORAGE_KEY) {
+        setPnlModeState(normalizePnlPaletteMode(event.newValue));
       }
     };
 
     mediaQuery.addEventListener('change', handleSystemChange);
-    return () => mediaQuery.removeEventListener('change', handleSystemChange);
-  }, [theme, mounted]);
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleSystemChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-  };
+  const resolved = useMemo(
+    () => resolveThemeSelection(theme, systemPrefersDark),
+    [theme, systemPrefersDark]
+  );
 
-  const toggleTheme = () => {
-    setThemeState((prev) => {
-      const currentResolved = prev === 'system'
-        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-        : prev;
-      return currentResolved === 'dark' ? 'light' : 'dark';
+  useEffect(() => {
+    if (!mounted) return;
+    applyDocumentThemeState({
+      mode: resolved.mode,
+      preset: resolved.preset,
+      accent,
+      density,
+      pnlMode,
     });
-  };
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+      localStorage.setItem(ACCENT_STORAGE_KEY, accent);
+      localStorage.setItem(DENSITY_STORAGE_KEY, density);
+      localStorage.setItem(PNL_MODE_STORAGE_KEY, pnlMode);
+    } catch {}
+  }, [mounted, theme, resolved.mode, resolved.preset, accent, density, pnlMode]);
+
+  const setTheme = useCallback((newTheme: Theme, options?: SetThemeOptions) => {
+    const normalized = normalizeThemePreference(newTheme);
+    setThemeState(normalized);
+    if (options?.syncAccent && normalized !== 'system') {
+      setAccentState(getThemePresetDefinition(normalized).defaultAccent);
+    }
+  }, []);
+
+  const setAccent = useCallback((newAccent: AccentPresetId) => {
+    setAccentState(normalizeAccentPreset(newAccent));
+  }, []);
+
+  const setDensity = useCallback((newDensity: UiDensity) => {
+    setDensityState(normalizeUiDensity(newDensity));
+  }, []);
+
+  const setPnlMode = useCallback((newMode: PnlPaletteMode) => {
+    setPnlModeState(normalizePnlPaletteMode(newMode));
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const current = resolveThemeSelection(prev, systemPrefersDark);
+      return current.mode === 'dark' ? 'porcelain' : 'obsidian';
+    });
+  }, [systemPrefersDark]);
+
+  const resetAppearance = useCallback(() => {
+    setThemeState('obsidian');
+    setAccentState('violet');
+    setDensityState('comfortable');
+    setPnlModeState('classic');
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        resolvedTheme: resolved.mode,
+        resolvedPreset: resolved.preset,
+        accent,
+        density,
+        pnlMode,
+        setTheme,
+        setAccent,
+        setDensity,
+        setPnlMode,
+        toggleTheme,
+        resetAppearance,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
@@ -111,12 +217,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {
-    // Fallback when used outside provider
     return {
-      theme: 'dark' as Theme,
+      theme: 'obsidian' as const,
       resolvedTheme: 'dark' as ResolvedTheme,
+      resolvedPreset: 'obsidian' as ThemePresetId,
+      accent: 'violet' as AccentPresetId,
+      density: 'comfortable' as UiDensity,
+      pnlMode: 'classic' as PnlPaletteMode,
       setTheme: () => {},
+      setAccent: () => {},
+      setDensity: () => {},
+      setPnlMode: () => {},
       toggleTheme: () => {},
+      resetAppearance: () => {},
     };
   }
   return context;

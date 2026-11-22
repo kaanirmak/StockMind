@@ -24,6 +24,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import {
+  ACCENT_PRESETS,
+  THEME_PRESETS,
+  getThemePresetDefinition,
+} from '@/lib/theme/themeConfig';
+import {
   loadPushPreferences,
   savePushPreferences,
   sendPushNotificationWithResult,
@@ -76,7 +81,19 @@ export default function SettingsPage() {
   }, []);
   const { showToast } = useToast();
   const { user, profile, loading: authLoading, updateProfile } = useAuth();
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const {
+    theme,
+    resolvedTheme,
+    resolvedPreset,
+    accent,
+    density,
+    pnlMode,
+    setTheme,
+    setAccent,
+    setDensity,
+    setPnlMode,
+    resetAppearance,
+  } = useTheme();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -789,108 +806,168 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Theme Selection Card (Görünüm ve Tema Tercihi) */}
-      <div hidden={settingsSection !== 'appearance'} id="appearance" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-4">
+      {/* Theme Selection Card (Tasarım Stüdyosu — 5 Tema & Özelleştirme) */}
+      <div hidden={settingsSection !== 'appearance'} id="appearance" className="settings-panel scroll-mt-36 p-4 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div>
-            <h3 className="text-base font-bold text-text-primary">Görünüm & Tema</h3>
-            <p className="text-xs text-text-muted">Arayüz için göz yormayan Koyu Tema veya aydınlık ferah Açık Tema seçin.</p>
+            <h3 className="text-base font-bold text-text-primary">Tasarım Stüdyosu & Tema Motoru</h3>
+            <p className="text-xs text-text-muted">
+              5 farklı finansal atmosfer, vurgu rengi, yoğunluk ve renk körü dostu P&amp;L paletini anında uygulayın.
+            </p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent border border-accent/30 self-start sm:self-auto">
-            Aktif: {resolvedTheme === 'dark' ? 'Koyu Tema' : 'Açık Tema'}
-          </span>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-accent/15 text-accent border border-accent/30">
+              Aktif: {getThemePresetDefinition(resolvedPreset).name}
+            </span>
+            <button
+              type="button"
+              onClick={resetAppearance}
+              className="text-xs px-2.5 py-1 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-bg-hover transition-colors cursor-pointer"
+            >
+              Varsayılan
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          {/* Koyu Tema Card */}
-          <button
-            type="button"
-            onClick={() => setTheme('dark')}
-            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group ${
-              resolvedTheme === 'dark'
-                ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10 ring-2 ring-accent/30'
-                : 'border-border bg-bg-secondary/60 hover:border-border-hover hover:bg-bg-hover'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                <span className="font-bold text-sm text-text-primary">Koyu Tema</span>
-              </div>
-              {resolvedTheme === 'dark' ? (
-                <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
-                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  Seçili
-                </span>
-              ) : (
-                <span className="text-xs text-text-muted group-hover:text-text-primary transition-colors">
-                  Seç
-                </span>
-              )}
-            </div>
+        {/* 5 Theme Preset Cards */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2.5">
+            5 Tema Paleti
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {THEME_PRESETS.map((preset) => {
+              const isSelected = resolvedPreset === preset.id && theme !== 'system';
+              const isResolved = resolvedPreset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setTheme(preset.id, { syncAccent: true })}
+                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group ${
+                    isResolved
+                      ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10 ring-2 ring-accent/30'
+                      : 'border-border bg-bg-secondary/60 hover:border-border-hover hover:bg-bg-hover'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div>
+                      <span className="font-bold text-sm text-text-primary block">{preset.name}</span>
+                      <span className="text-[11px] text-text-muted">{preset.subtitle}</span>
+                    </div>
+                    {isResolved ? (
+                      <span className="flex items-center gap-1.5 text-xs font-bold text-accent shrink-0">
+                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                        Aktif
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-text-muted group-hover:text-text-primary transition-colors">
+                        Uygula
+                      </span>
+                    )}
+                  </div>
 
-            {/* Dark Mode Miniature Preview */}
-            <div className="h-16 rounded-xl bg-[var(--palette-color0a0b14)] border border-[var(--palette-color1e1f3a)] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-2 rounded bg-violet-500/40" />
-                <div className="w-4 h-2 rounded bg-emerald-500/40" />
-              </div>
-              <div className="flex gap-1.5">
-                <div className="h-6 flex-1 rounded bg-[var(--palette-color12142a)] border border-[var(--palette-color2d2f55)]" />
-                <div className="h-6 flex-1 rounded bg-[var(--palette-color12142a)] border border-[var(--palette-color2d2f55)]" />
-              </div>
-            </div>
+                  {/* Miniature Interactive Palette Preview */}
+                  <div
+                    className="h-14 rounded-xl border border-border/70 p-2 flex flex-col justify-between mb-2 overflow-hidden"
+                    style={{ backgroundColor: preset.previewBg }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="w-12 h-2 rounded-full" style={{ backgroundColor: preset.previewAccent }} />
+                      <div className="flex items-center gap-1">
+                        <span className="w-3 h-2 rounded-full" style={{ backgroundColor: preset.previewPositive }} />
+                        <span className="w-3 h-2 rounded-full" style={{ backgroundColor: preset.previewNegative }} />
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <div
+                        className="h-5 flex-1 rounded-md border border-border/50"
+                        style={{ backgroundColor: preset.previewSurface }}
+                      />
+                      <div
+                        className="h-5 flex-1 rounded-md border border-border/50"
+                        style={{ backgroundColor: preset.previewSurface }}
+                      />
+                    </div>
+                  </div>
 
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Göz yormayan, modern mor-siyah neon cam tasarım. Düşük ışıkta kullanım ve gece analizleri için idealdir.
-            </p>
-          </button>
-
-          {/* Açık Tema Card */}
-          <button
-            type="button"
-            onClick={() => setTheme('light')}
-            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group ${
-              resolvedTheme === 'light'
-                ? 'border-accent bg-accent/10 shadow-lg shadow-accent/10 ring-2 ring-accent/30'
-                : 'border-border bg-bg-secondary/60 hover:border-border-hover hover:bg-bg-hover'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl"><UIIcon name="sparkles" className="w-4 h-4" /></span>
-                <span className="font-bold text-sm text-text-primary">Açık Tema</span>
-              </div>
-              {resolvedTheme === 'light' ? (
-                <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
-                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  Seçili
-                </span>
-              ) : (
-                <span className="text-xs text-text-muted group-hover:text-text-primary transition-colors">
-                  Seç
-                </span>
-              )}
-            </div>
-
-            {/* Light Mode Miniature Preview */}
-            <div className="h-16 rounded-xl bg-[var(--palette-colorf8fafc)] border border-[var(--palette-colore2e8f0)] p-2 flex flex-col justify-between mb-2.5 overflow-hidden">
-              <div className="flex items-center justify-between">
-                <div className="w-12 h-2 rounded bg-violet-600/40" />
-                <div className="w-4 h-2 rounded bg-emerald-600/40" />
-              </div>
-              <div className="flex gap-1.5">
-                <div className="h-6 flex-1 rounded bg-white border border-[var(--palette-colorcbd5e1)] shadow-xs" />
-                <div className="h-6 flex-1 rounded bg-white border border-[var(--palette-colorcbd5e1)] shadow-xs" />
-              </div>
-            </div>
-
-            <p className="text-xs text-text-secondary leading-relaxed">
-              Ferah, temiz, yüksek kontrastlı aydınlık tasarım. Gündüz kullanımı ve net okunabilirlik için optimize edilmiştir.
-            </p>
-          </button>
+                  <p className="text-[11px] text-text-secondary leading-relaxed">
+                    {preset.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <Button variant={theme === 'system' ? 'primary' : 'secondary'} aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>Cihaz Temasını Otomatik İzle</Button>
+
+        {/* Accent Swatches & Accessibility Controls */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2 border-t border-border/60">
+          <div className="space-y-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+              Vurgu Rengi (Accent)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {ACCENT_PRESETS.map((item) => {
+                const active = accent === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setAccent(item.id)}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                      active
+                        ? 'border-accent bg-accent/15 text-text-primary ring-1 ring-accent/40'
+                        : 'border-border bg-bg-secondary/60 text-text-secondary hover:bg-bg-hover'
+                    }`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0 border border-white/20"
+                      style={{ backgroundColor: item.swatchHex }}
+                    />
+                    <span>{item.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+              Yoğunluk &amp; Erişilebilirlik
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={density === 'compact'}
+                onClick={() => setDensity(density === 'compact' ? 'comfortable' : 'compact')}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                  density === 'compact'
+                    ? 'border-accent bg-accent/15 text-text-primary'
+                    : 'border-border bg-bg-secondary/60 text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                {density === 'compact' ? 'Yoğunluk: Sıkı (Terminal)' : 'Yoğunluk: Rahat'}
+              </button>
+              <button
+                type="button"
+                aria-pressed={pnlMode === 'colorblind'}
+                onClick={() => setPnlMode(pnlMode === 'colorblind' ? 'classic' : 'colorblind')}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                  pnlMode === 'colorblind'
+                    ? 'border-accent bg-accent/15 text-text-primary'
+                    : 'border-border bg-bg-secondary/60 text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                {pnlMode === 'colorblind' ? 'P&L: Renk Körü Dostu (Mavi/Turuncu)' : 'P&L: Klasik (Yeşil/Kırmızı)'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-1">
+          <Button variant={theme === 'system' ? 'primary' : 'secondary'} aria-pressed={theme === 'system'} onClick={() => setTheme('system')}>Cihaz Temasını Otomatik İzle</Button>
+        </div>
       </div>
 
       {/* Default Chart Type Selection Card */}
