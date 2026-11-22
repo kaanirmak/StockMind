@@ -45,7 +45,24 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
-function renderShareCardCanvas(
+function loadBrandLogoImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    let settled = false;
+    const finish = (result: HTMLImageElement | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(result);
+    };
+    const timer = window.setTimeout(() => finish(null), 2000);
+    img.onload = () => finish(img);
+    img.onerror = () => finish(null);
+    img.src = src;
+  });
+}
+
+async function renderShareCardCanvas(
   model: PortfolioShareCardModel,
   palette: {
     bg: string;
@@ -57,7 +74,7 @@ function renderShareCardCanvas(
     negative: string;
     isLight: boolean;
   }
-): HTMLCanvasElement {
+): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas');
   canvas.width = 1200;
   canvas.height = 630;
@@ -85,25 +102,32 @@ function renderShareCardCanvas(
   ctx.strokeStyle = palette.isLight ? 'rgba(15,23,42,0.1)' : 'rgba(255,255,255,0.12)';
   ctx.stroke();
 
-  // Brand pill + header
-  drawRoundedRect(ctx, 82, 76, 46, 46, 12);
-  ctx.fillStyle = palette.accent;
-  ctx.fill();
+  // Brand logo (authentic StockMind PNG, fallback to fixed brand purple pill)
+  const logoImg = await loadBrandLogoImage(palette.isLight ? '/logo-cropped.png' : '/logo-white.png');
+  if (logoImg && logoImg.naturalWidth > 0 && logoImg.naturalHeight > 0) {
+    const logoHeight = 44;
+    const logoWidth = Math.round(logoHeight * (logoImg.naturalWidth / logoImg.naturalHeight));
+    ctx.drawImage(logoImg, 82, 76, logoWidth, logoHeight);
+  } else {
+    drawRoundedRect(ctx, 82, 76, 46, 46, 12);
+    ctx.fillStyle = '#7c3aed';
+    ctx.fill();
 
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3.2;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(92, 108);
-  ctx.lineTo(101, 98);
-  ctx.lineTo(107, 103);
-  ctx.lineTo(118, 90);
-  ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(92, 108);
+    ctx.lineTo(101, 98);
+    ctx.lineTo(107, 103);
+    ctx.lineTo(118, 90);
+    ctx.stroke();
 
-  ctx.fillStyle = palette.text;
-  ctx.font = '700 28px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.fillText('StockMind', 142, 106);
+    ctx.fillStyle = palette.text;
+    ctx.font = '700 28px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText('StockMind', 142, 106);
+  }
 
   ctx.fillStyle = palette.muted;
   ctx.font = '600 18px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
@@ -232,7 +256,7 @@ export function PortfolioShareCardModal({
             : '#fb923c'
           : presetDef.previewNegative;
 
-      const canvas = renderShareCardCanvas(model, {
+      const canvas = await renderShareCardCanvas(model, {
         bg: presetDef.previewBg,
         surface: presetDef.previewSurface,
         text: presetDef.previewText,

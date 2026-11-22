@@ -45,7 +45,7 @@ export function BrainLogoLoader({
       {(isFullscreen || size === 'lg') && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-12 h-56 w-56 rounded-full bg-gradient-to-tr from-accent/25 via-accent-secondary/20 to-accent/25 blur-3xl animate-aura-expand"
+          className="pointer-events-none absolute -top-12 h-56 w-56 rounded-full bg-gradient-to-tr from-violet-600/25 via-fuchsia-500/20 to-indigo-500/25 blur-3xl animate-aura-expand"
         />
       )}
 
@@ -60,9 +60,9 @@ export function BrainLogoLoader({
 
         {/* Frosted Inner Medallion */}
         <div
-          className={`absolute flex items-center justify-center rounded-2xl bg-bg-card/90 border border-accent/30 shadow-[0_8px_32px_var(--accent-glow)] backdrop-blur-md p-2.5 ${logoDimension}`}
+          className={`absolute flex items-center justify-center rounded-2xl bg-bg-card/90 border border-violet-500/25 shadow-[0_8px_32px_rgba(124,58,237,0.22)] backdrop-blur-md p-2.5 ${logoDimension}`}
         >
-          <StockMindMark animated className="w-full h-full text-accent" />
+          <StockMindMark animated className="w-full h-full" />
         </div>
       </div>
 
@@ -70,10 +70,10 @@ export function BrainLogoLoader({
       {(isFullscreen || size === 'lg') && (
         <div className="mt-7 flex flex-col items-center text-center space-y-2 z-10 px-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight gradient-text animate-gradient-shift">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-fuchsia-400 to-indigo-400 bg-clip-text text-transparent animate-gradient-shift">
               StockMind
             </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-accent/15 text-accent border border-accent/30">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-violet-500/15 text-violet-400 border border-violet-500/30">
               AI v{ANDROID_RELEASE_METADATA.version}
             </span>
           </div>

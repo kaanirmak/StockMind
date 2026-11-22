@@ -49,7 +49,7 @@ export default function Sidebar() {
       <Link href="/dashboard" aria-label="StockMind Ana Sayfa" className="flex items-center justify-center px-3 h-16 border-b border-border group hover:bg-bg-hover/50 transition-colors overflow-hidden">
         <div className="flex items-center justify-center w-full">
           {collapsed ? (
-            <StockMindMark className="h-8 w-8 text-accent group-hover:scale-110 transition-transform" />
+            <StockMindMark className="h-8 w-8 group-hover:scale-110 transition-transform" />
           ) : (
             <StockMindLogo showProBadge={isPro} className="group-hover:scale-105 transition-transform" />
           )}

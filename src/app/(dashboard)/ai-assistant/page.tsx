@@ -979,7 +979,7 @@ function AIAssistantContent() {
 
           {loading && (
             <div className="flex items-start gap-2 sm:gap-3 animate-fade-in">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-accent to-accent-secondary text-white flex items-center justify-center text-xs font-bold shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-bg-card border border-border flex items-center justify-center text-xs font-bold shrink-0">
                 <StockMindMark className="w-6 h-6" />
               </div>
               <div className="glass-card p-3 sm:p-4 rounded-2xl rounded-tl-xs border border-border/80 flex items-center gap-2 text-xs text-text-muted">
