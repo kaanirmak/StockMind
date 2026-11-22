@@ -14,6 +14,8 @@ export * from './InstrumentLogo';
 export * from './LegalDisclaimerModal';
 
 export { Icon } from './Icon';
+export { StockMindMark } from './StockMindMark';
+export { StockMindLogo } from './StockMindLogo';
 export { StateView } from './StateView';
 export { BottomSheet } from './BottomSheet';
 export * from './PriceStatusBadge';

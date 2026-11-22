@@ -5,6 +5,7 @@ import { palette } from '@/theme/palette';
 
 
 import { useAppPlatform } from '@/hooks/useAppPlatform';
+import { ANDROID_RELEASE_METADATA } from '@/lib/app/releaseMetadata';
 import { AppInstallationCard } from '@/components/ui/AppInstallationCard';
 import { PortfolioDangerZone } from '@/components/portfolio/PortfolioDangerZone';
 import React, { useState, useEffect, useRef } from 'react';
@@ -131,10 +132,10 @@ export default function SettingsPage() {
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<string | null>(null);
-  const [appVersionCode, setAppVersionCode] = useState<number>(10);
-  const [appVersionName, setAppVersionName] = useState<string>('1.4.0');
-  const [remoteVersionCode, setRemoteVersionCode] = useState<number>(10);
-  const [remoteVersionName, setRemoteVersionName] = useState<string>('1.4.0');
+  const [appVersionCode, setAppVersionCode] = useState<number>(ANDROID_RELEASE_METADATA.versionCode);
+  const [appVersionName, setAppVersionName] = useState<string>(ANDROID_RELEASE_METADATA.version);
+  const [remoteVersionCode, setRemoteVersionCode] = useState<number>(ANDROID_RELEASE_METADATA.versionCode);
+  const [remoteVersionName, setRemoteVersionName] = useState<string>(ANDROID_RELEASE_METADATA.version);
 
   // Default Chart Type Preference
   const [defaultChartType, setDefaultChartType] = useState<'line' | 'candles'>('line');

@@ -87,7 +87,9 @@ export function InstrumentLogo({
       } ${
         showFallback
           ? `${brandStyle.bg} ${brandStyle.text} ${brandStyle.border}`
-          : 'bg-bg-secondary border-border/60'
+          : isLoaded
+            ? 'bg-white/95 dark:bg-white/90 border-border/70 p-0.5'
+            : 'bg-bg-secondary border-border/60'
       } ${className}`}
       title={name || cleanSymbol}
     >

@@ -1,5 +1,6 @@
 'use client';
 import { Icon as UIIcon } from '@/components/ui/Icon';
+import { StockMindLogo } from '@/components/ui/StockMindLogo';
 
 
 import { useState, useEffect } from 'react';
@@ -145,11 +146,7 @@ export default function PortfolioSummary() {
           <div className="flex items-center justify-between gap-2.5 mb-2.5 sm:mb-3.5">
             {/* StockMind Logo on dark background with living radar ping */}
             <div className="flex items-center gap-2">
-              <img
-                src="/logo-white.png"
-                alt="StockMind"
-                className="h-6 sm:h-8 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
-              />
+              <StockMindLogo inverted size="sm" />
               <span className="relative flex h-2 w-2 ml-0.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
@@ -268,11 +265,7 @@ export default function PortfolioSummary() {
           <div className="flex items-center justify-between gap-2.5 mb-2.5 sm:mb-3.5">
             {/* StockMind Logo on dark background */}
             <div className="flex items-center gap-2">
-              <img
-                src="/logo-white.png"
-                alt="StockMind"
-                className="h-6 sm:h-8 w-auto object-contain drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]"
-              />
+              <StockMindLogo inverted size="sm" />
               {/* Online/Canlı Göstergesi: Daima Yeşil */}
               <span className="relative flex h-2 w-2 ml-0.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />

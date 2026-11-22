@@ -24,20 +24,29 @@ export function getInstrumentLogoUrl(symbol: string): string | null {
   // 2. TEFAS Fund Founder mapping heuristics
   if (clean.length === 3) {
     // Top Turkish fund managers by prefix
-    if (clean.startsWith('TI') || clean.startsWith('TCD') || clean.startsWith('TTE') || clean.startsWith('IHK')) {
+    if (clean.startsWith('TI') || clean.startsWith('TCD') || clean.startsWith('TTE') || clean.startsWith('IHK') || clean.startsWith('TTA') || clean.startsWith('TJ')) {
       return 'https://s3-symbol-logo.tradingview.com/is-bankasi.svg';
     }
-    if (clean.startsWith('GAR') || clean.startsWith('GMR') || clean.startsWith('GTA') || clean.startsWith('GSP')) {
+    if (clean.startsWith('GAR') || clean.startsWith('GMR') || clean.startsWith('GTA') || clean.startsWith('GSP') || clean.startsWith('GMA')) {
       return 'https://s3-symbol-logo.tradingview.com/garanti.svg';
     }
-    if (clean.startsWith('YAY') || clean.startsWith('YAS') || clean.startsWith('YKT')) {
+    if (clean.startsWith('YAY') || clean.startsWith('YAS') || clean.startsWith('YKT') || clean.startsWith('YEF') || clean.startsWith('YOT')) {
       return 'https://s3-symbol-logo.tradingview.com/yapi-kredi.svg';
     }
-    if (clean.startsWith('AFT') || clean.startsWith('AFA') || clean.startsWith('ATE') || clean.startsWith('AK')) {
+    if (clean.startsWith('AFT') || clean.startsWith('AFA') || clean.startsWith('ATE') || clean.startsWith('AK') || clean.startsWith('AAL') || clean.startsWith('AED')) {
       return 'https://s3-symbol-logo.tradingview.com/akbank.svg';
     }
-    if (clean.startsWith('ZP') || clean.startsWith('ZPE')) {
+    if (clean.startsWith('ZP') || clean.startsWith('ZPE') || clean.startsWith('TCA') || clean.startsWith('ZJB')) {
       return 'https://s3-symbol-logo.tradingview.com/turkiye-cumhuriyeti-ziraat-bankasi.svg';
+    }
+    if (clean.startsWith('DZ') || clean.startsWith('DAA') || clean.startsWith('DBC')) {
+      return 'https://s3-symbol-logo.tradingview.com/denizbank.svg';
+    }
+    if (clean.startsWith('FF') || clean.startsWith('FI') || clean.startsWith('FPH')) {
+      return 'https://s3-symbol-logo.tradingview.com/qnb-finansbank.svg';
+    }
+    if (clean.startsWith('HSL') || clean.startsWith('HVS') || clean.startsWith('HLK')) {
+      return 'https://s3-symbol-logo.tradingview.com/halk-bank.svg';
     }
   }
 
@@ -125,6 +134,18 @@ const CURATED_BRAND_COLORS: Record<string, { bg: string; text: string; border: s
   USDTRY: { bg: 'bg-[var(--palette-color065f46)]', text: 'text-emerald-100', border: 'border-emerald-500/40' },
   EURTRY: { bg: 'bg-[var(--palette-color1e40af)]', text: 'text-blue-100', border: 'border-blue-500/40' },
   GBPTRY: { bg: 'bg-[var(--palette-color581c87)]', text: 'text-purple-100', border: 'border-purple-500/40' },
+  // Curated TEFAS independent fund & category styles
+  MAC: { bg: 'bg-gradient-to-br from-emerald-600 to-teal-700', text: 'text-white', border: 'border-emerald-400/40' },
+  IIH: { bg: 'bg-gradient-to-br from-indigo-600 to-blue-700', text: 'text-white', border: 'border-indigo-400/40' },
+  NNF: { bg: 'bg-gradient-to-br from-violet-600 to-purple-700', text: 'text-white', border: 'border-violet-400/40' },
+  IPB: { bg: 'bg-gradient-to-br from-sky-600 to-indigo-700', text: 'text-white', border: 'border-sky-400/40' },
+  IVY: { bg: 'bg-gradient-to-br from-fuchsia-600 to-purple-700', text: 'text-white', border: 'border-fuchsia-400/40' },
+  HDF: { bg: 'bg-gradient-to-br from-amber-600 to-orange-700', text: 'text-white', border: 'border-amber-400/40' },
+  TCB: { bg: 'bg-gradient-to-br from-cyan-600 to-teal-700', text: 'text-white', border: 'border-cyan-400/40' },
+  TKF: { bg: 'bg-gradient-to-br from-rose-600 to-red-700', text: 'text-white', border: 'border-rose-400/40' },
+  NPF: { bg: 'bg-gradient-to-br from-slate-600 to-slate-800', text: 'text-white', border: 'border-slate-400/40' },
+  RPT: { bg: 'bg-gradient-to-br from-teal-600 to-emerald-700', text: 'text-white', border: 'border-teal-400/40' },
+  OPB: { bg: 'bg-gradient-to-br from-purple-600 to-indigo-800', text: 'text-white', border: 'border-purple-400/40' },
 };
 
 /**
