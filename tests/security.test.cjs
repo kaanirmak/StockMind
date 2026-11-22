@@ -1443,3 +1443,33 @@ test('Android origin policy rejects prefix, credential, protocol and port bypass
     assert.match(execFileSync(java, ['-cp', dir, 'TrustedUrlsTest'], { encoding: 'utf8' }), /checks passed/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('Email templates sign negative changes, include manage preferences link, and resolve recipient name safely', () => {
+  const emailSvc = loader({
+    nodemailer: { createTransport: () => ({ sendMail: async () => ({}) }) },
+  })('src/lib/email/service.ts');
+  const html = emailSvc.generateStockMindEmailHtml('Ayşe <Test>', {
+    isDailyReport: true,
+    marketData: {
+      bist100: 10250.5,
+      thyao: 295.4,
+      observedAt: '2026-11-22T15:30:00.000Z',
+      observations: {
+        bist100: { observedAt: '2026-11-22T15:30:00.000Z', source: 'BIST', changePercent: 1.8 },
+        thyao: { observedAt: '2026-11-22T15:30:00.000Z', source: 'BIST', changePercent: -2.45 },
+      },
+    },
+  });
+
+  assert.match(html, /\+%1,80/);
+  assert.match(html, /-%2,45/);
+  assert.match(html, /Tercihleri Yönet/);
+  assert.ok(!html.includes('Ayşe <Test>'));
+  assert.match(html, /Ayşe &lt;Test&gt;/);
+
+  const testRouteSrc = fs.readFileSync(path.join(root, 'src/app/api/send-test-email/route.ts'), 'utf8');
+  assert.match(testRouteSrc, /user_metadata\?\.full_name/);
+
+  const broadcastSrc = fs.readFileSync(path.join(root, 'src/app/api/notifications/broadcast/route.ts'), 'utf8');
+  assert.match(broadcastSrc, /\|alerts\|activity/);
+});

@@ -22,9 +22,15 @@ export async function POST(request: Request) {
     if (isDaily && !hasProAccess(user.app_metadata)) {
       throw new ApiError(403, '18:30 Günlük StockMind AI Bülteni Pro üyelik gerektirir.', 'PRO_REQUIRED');
     }
+    const resolvedName =
+      (typeof user.user_metadata?.full_name === 'string' && user.user_metadata.full_name.trim()) ||
+      (typeof user.user_metadata?.name === 'string' && user.user_metadata.name.trim()) ||
+      user.email?.split('@')[0] ||
+      'StockMind Kullanıcısı';
+
     const result = await sendTestEmail({
       to: user.email,
-      userName: 'StockMind Kullanıcısı',
+      userName: resolvedName,
       isDailyReport: isDaily,
       marketData: isDaily ? await getBulletinMarketData() : undefined,
       subject: isDaily ? 'StockMind 18:30 Piyasa Bülteni' : undefined,

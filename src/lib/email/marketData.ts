@@ -5,6 +5,7 @@ export type BulletinMarketKey = 'bist100' | 'thyao' | 'usdtry' | 'gold' | 'btc' 
 export interface BulletinObservationMeta {
   observedAt: string | null;
   source: string | null;
+  changePercent?: number | null;
 }
 
 export interface BulletinMarketDataPayload {
@@ -55,10 +56,15 @@ export async function getBulletinMarketData(): Promise<BulletinMarketDataPayload
 
       const obsTime = quote?.observation?.asOf ?? quote?.observation?.fetchedAt ?? null;
       const obsSource = quote?.observation?.source ?? null;
+      const obsChangePct =
+        quote && typeof quote.changePercent === 'number' && Number.isFinite(quote.changePercent)
+          ? Number(quote.changePercent.toFixed(2))
+          : null;
 
       payload.observations![key] = {
         observedAt: obsTime,
         source: obsSource,
+        changePercent: obsChangePct,
       };
 
       if (validPrice !== undefined) {
@@ -87,9 +93,16 @@ export async function getBulletinMarketData(): Promise<BulletinMarketDataPayload
           ? goldTime
           : usdTime
         : goldTime || usdTime || null;
+    const goldChange = payload.observations?.gold?.changePercent ?? null;
+    const usdChange = payload.observations?.usdtry?.changePercent ?? null;
+    const derivedGramChange =
+      typeof goldChange === 'number' && typeof usdChange === 'number'
+        ? Number((((1 + goldChange / 100) * (1 + usdChange / 100) - 1) * 100).toFixed(2))
+        : null;
     payload.observations!.gramAltin = {
       observedAt: olderIso,
       source: 'XAUUSD + USDTRY',
+      changePercent: derivedGramChange,
     };
   } else {
     payload.missingFields!.push('Gram Altın (hesaplanan)');

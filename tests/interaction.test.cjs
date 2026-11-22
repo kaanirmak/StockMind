@@ -8079,3 +8079,29 @@ test('Portfolio share card model defaults to masked totals while preserving retu
 
 
 
+
+test('Quiet hours helper enforces overnight & daytime windows while inbox allowlists include /activity', () => {
+  const pushMod = load('src/lib/notifications/pushNotification.ts');
+  const inboxMod = load('src/lib/notifications/inbox.ts');
+
+  const overnightPrefs = {
+    quietHoursEnabled: true,
+    quietHoursStart: '23:00',
+    quietHoursEnd: '08:30',
+  };
+  assert.equal(pushMod.isWithinQuietHours(overnightPrefs, new Date(2026, 10, 22, 23, 30, 0)), true);
+  assert.equal(pushMod.isWithinQuietHours(overnightPrefs, new Date(2026, 10, 22, 7, 15, 0)), true);
+  assert.equal(pushMod.isWithinQuietHours(overnightPrefs, new Date(2026, 10, 22, 12, 0, 0)), false);
+
+  const daytimePrefs = {
+    quietHoursEnabled: true,
+    quietHoursStart: '13:00',
+    quietHoursEnd: '14:00',
+  };
+  assert.equal(pushMod.isWithinQuietHours(daytimePrefs, new Date(2026, 10, 22, 13, 30, 0)), true);
+  assert.equal(pushMod.isWithinQuietHours(daytimePrefs, new Date(2026, 10, 22, 14, 5, 0)), false);
+  assert.equal(pushMod.isWithinQuietHours({ quietHoursEnabled: false, quietHoursStart: '00:00', quietHoursEnd: '23:59' }, new Date()), false);
+
+  assert.equal(inboxMod.safeInboxLink('/activity'), '/activity');
+  assert.equal(inboxMod.safeInboxLink('/alerts'), '/alerts');
+});

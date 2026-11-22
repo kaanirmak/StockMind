@@ -237,16 +237,107 @@ export async function runDailyBulletin(request: Request) {
           try {
             const { data: txRows } = await admin
               .from('transactions')
-              .select('symbol, asset_type')
+              .select('symbol, asset_type, quantity, transaction_type')
               .eq('user_id', recipient.id);
             const symbolSet = new Set<string>();
+            const openPositions = new Map<string, { assetType: 'stock' | 'fund'; qty: number }>();
+
             if (Array.isArray(txRows)) {
               for (const row of txRows) {
                 if (typeof row?.symbol === 'string' && row.symbol.trim()) {
-                  symbolSet.add(row.symbol.trim().toUpperCase());
+                  const sym = row.symbol.trim().toUpperCase();
+                  symbolSet.add(sym);
+                  const qty = typeof row?.quantity === 'number' ? row.quantity : Number(row?.quantity);
+                  if (Number.isFinite(qty) && qty > 0) {
+                    const txType = String(row?.transaction_type || 'buy').toLowerCase();
+                    if (txType === 'buy' || txType === 'sell') {
+                      const prev = openPositions.get(sym) ?? {
+                        assetType: row?.asset_type === 'fund' ? 'fund' : 'stock',
+                        qty: 0,
+                      };
+                      prev.qty += txType === 'buy' ? qty : -qty;
+                      openPositions.set(sym, prev);
+                    }
+                  }
                 }
               }
             }
+
+            let valuation: { totalValue?: number; dailyChangePct?: number; isVerified?: boolean } | undefined;
+            if (
+              (recipient.personalizedPrefs.includeTotalValue || recipient.personalizedPrefs.includeDailyChange) &&
+              openPositions.size > 0
+            ) {
+              const activeHoldings = Array.from(openPositions.entries()).filter(([, pos]) => pos.qty > 0);
+              if (activeHoldings.length > 0) {
+                const [{ fetchSpecificSymbolLive }, { fetchTefasLiveDetail }] = await Promise.all([
+                  import('@/lib/data/stocks'),
+                  import('@/lib/api/tefas'),
+                ]);
+                let totalTry = 0;
+                let weightedPrevTry = 0;
+                let allVerified = true;
+                let allHaveDailyPct = true;
+
+                await Promise.all(
+                  activeHoldings.map(async ([sym, pos]) => {
+                    try {
+                      if (pos.assetType === 'fund') {
+                        const fundQuote = await fetchTefasLiveDetail(sym).catch(() => null);
+                        if (fundQuote && typeof fundQuote.price === 'number' && Number.isFinite(fundQuote.price) && fundQuote.price > 0) {
+                          const mv = pos.qty * fundQuote.price;
+                          totalTry += mv;
+                          if (typeof fundQuote.dailyReturn === 'number' && Number.isFinite(fundQuote.dailyReturn)) {
+                            const prevPrice = fundQuote.price / (1 + fundQuote.dailyReturn / 100);
+                            weightedPrevTry += pos.qty * prevPrice;
+                          } else {
+                            allHaveDailyPct = false;
+                          }
+                        } else {
+                          allVerified = false;
+                        }
+                      } else {
+                        const stockQuote = await fetchSpecificSymbolLive(sym).catch(() => null);
+                        const rawPrice =
+                          stockQuote && typeof stockQuote.price === 'number' && Number.isFinite(stockQuote.price) && stockQuote.price > 0
+                            ? stockQuote.price
+                            : null;
+                        if (rawPrice === null) {
+                          allVerified = false;
+                          return;
+                        }
+                        const isUsd = stockQuote?.currency === 'USD';
+                        if (isUsd && (!marketData.usdtry || marketData.usdtry <= 0)) {
+                          allVerified = false;
+                          return;
+                        }
+                        const tryPrice = isUsd ? rawPrice * (marketData.usdtry ?? 0) : rawPrice;
+                        totalTry += pos.qty * tryPrice;
+                        if (typeof stockQuote?.changePercent === 'number' && Number.isFinite(stockQuote.changePercent)) {
+                          const prevTryPrice = tryPrice / (1 + stockQuote.changePercent / 100);
+                          weightedPrevTry += pos.qty * prevTryPrice;
+                        } else {
+                          allHaveDailyPct = false;
+                        }
+                      }
+                    } catch {
+                      allVerified = false;
+                    }
+                  })
+                );
+
+                if (allVerified && totalTry > 0) {
+                  valuation = {
+                    isVerified: true,
+                    totalValue: totalTry,
+                    ...(allHaveDailyPct && weightedPrevTry > 0
+                      ? { dailyChangePct: ((totalTry - weightedPrevTry) / weightedPrevTry) * 100 }
+                      : {}),
+                  };
+                }
+              }
+            }
+
             const userAssets = Array.from(symbolSet).map((symbol) => ({ symbol }));
             personalizedPortfolio = buildPersonalizedBulletinSection({
               prefs: recipient.personalizedPrefs,
@@ -257,6 +348,7 @@ export async function runDailyBulletin(request: Request) {
                 source: art.source,
                 publishedAt: art.publishedAt,
               })),
+              valuation,
             });
           } catch {
             personalizedPortfolio = null;

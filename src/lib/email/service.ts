@@ -45,7 +45,19 @@ function formatBulletinObservationTime(value: string | null | undefined): string
 
 export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırımcı', payload?: Partial<EmailPayload>): string {
   if (payload?.isDailyReport === false) {
-    return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><title>StockMind test e-postası</title></head><body><h1>StockMind</h1><p>Bu bir test e-postasıdır. Doğrulanmış hesabınıza e-posta gönderimi başarılı oldu.</p><p>Bu mesaj piyasa verisi veya portföy raporu içermez.</p></body></html>';
+    return `<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StockMind test e-postası</title></head>
+<body style="margin:0;padding:24px 12px;background:#f1f5f9;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
+  <div style="max-width:560px;margin:0 auto;padding:28px;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0">
+    <div style="display:inline-block;padding:5px 11px;border-radius:999px;background:#ede9fe;color:#5b21b6;font-size:12px;font-weight:700;margin-bottom:14px">StockMind</div>
+    <h1 style="margin:0 0 12px;font-size:22px;color:#0f172a">Test E-postası</h1>
+    <p style="margin:0 0 10px;line-height:1.6">Merhaba ${escapeHtml(userName)},</p>
+    <p style="margin:0 0 10px;line-height:1.6">Bu bir test e-postasıdır. Doğrulanmış hesabınıza e-posta gönderimi başarılı oldu.</p>
+    <p style="margin:0;font-size:13px;color:#64748b">Bu mesaj piyasa verisi veya portföy raporu içermez.</p>
+  </div>
+</body>
+</html>`;
   }
   const date = new Date().toLocaleDateString('tr-TR', { dateStyle: 'long', timeZone: 'Europe/Istanbul' });
   const market = payload?.marketData;
@@ -81,21 +93,25 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
 
   return `<!DOCTYPE html>
 <html lang="tr">
-<head><meta charset="utf-8"><title>StockMind 18:30 Piyasa Bülteni</title></head>
-<body style="margin:0;background:#f1f5f9;color:#0f172a;font-family:Arial,sans-serif">
-  <div style="max-width:580px;margin:24px auto;padding:28px;background:#fff;border-radius:16px">
-    <p style="font-weight:bold;color:#4f46e5">StockMind · ${date}</p>
-    <h1 style="font-size:24px">18:30 Piyasa Bülteni</h1>
-    <p>Merhaba ${escapeHtml(userName)},</p>
-    ${overallObservationLabel ? `<p style="font-size:13px;color:#475569;margin-top:4px">Veri gözlem zamanı: <strong>${escapeHtml(overallObservationLabel)}</strong></p>` : ''}
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StockMind 18:30 Piyasa Bülteni</title></head>
+<body style="margin:0;padding:20px 12px;background:#f1f5f9;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:18px;border:1px solid #e2e8f0;overflow:hidden">
+    <div style="padding:24px 28px;background:linear-gradient(135deg,#1e1b4b 0%,#4c1d95 100%);color:#ffffff">
+      <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.04em;color:#ddd6fe">STOCKMIND · ${escapeHtml(date)}</p>
+      <h1 style="margin:0;font-size:24px;line-height:1.25;color:#ffffff">18:30 Piyasa Bülteni</h1>
+      ${overallObservationLabel ? `<p style="margin:8px 0 0;font-size:12px;color:#c7d2fe">Veri gözlem zamanı: <strong style="color:#ffffff">${escapeHtml(overallObservationLabel)}</strong></p>` : ''}
+    </div>
+
+    <div style="padding:24px 28px">
+      <p style="margin:0 0 14px;font-size:15px">Merhaba ${escapeHtml(userName)},</p>
     ${marketRows.length ? `
-    <p>Bülten hazırlanırken alınabilen son piyasa fiyatları</p>
-    <table style="width:100%;border-collapse:collapse">
+    <p style="margin:0 0 12px;font-size:13px;color:#475569">Bülten hazırlanırken alınabilen son piyasa fiyatları:</p>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:12px">
       <thead>
-        <tr>
-          <th scope="col" style="text-align:left;border-bottom:2px solid #cbd5e1;padding:8px;font-size:12px;color:#475569">Enstrüman</th>
-          <th scope="col" style="text-align:right;border-bottom:2px solid #cbd5e1;padding:8px;font-size:12px;color:#475569">Fiyat</th>
-          <th scope="col" style="text-align:right;border-bottom:2px solid #cbd5e1;padding:8px;font-size:12px;color:#475569">Gözlem Zamanı</th>
+        <tr style="background:#f8fafc">
+          <th scope="col" style="text-align:left;border-bottom:1px solid #cbd5e1;padding:10px 12px;font-size:12px;color:#475569">Enstrüman</th>
+          <th scope="col" style="text-align:right;border-bottom:1px solid #cbd5e1;padding:10px 12px;font-size:12px;color:#475569">Fiyat &amp; Değişim</th>
+          <th scope="col" style="text-align:right;border-bottom:1px solid #cbd5e1;padding:10px 12px;font-size:12px;color:#475569">Gözlem Zamanı</th>
         </tr>
       </thead>
       <tbody>${marketRows.map(({ key, label, value, unit }) => {
@@ -105,11 +121,17 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
           overallObservationLabel ??
           'Zaman bilgisi yok';
         const obsSuffix = obsMeta?.source ? ` (${escapeHtml(obsMeta.source)})` : '';
+        const chg = typeof obsMeta?.changePercent === 'number' && Number.isFinite(obsMeta.changePercent)
+          ? obsMeta.changePercent
+          : null;
+        const chgBadge = chg !== null
+          ? `<div style="font-size:11px;font-weight:700;margin-top:2px;color:${chg >= 0 ? '#047857' : '#b91c1c'}">${chg >= 0 ? '+' : '-'}%${Math.abs(chg).toFixed(2).replace('.', ',')}</div>`
+          : '';
         return `
         <tr>
-          <th scope="row" style="text-align:left;border-bottom:1px solid #e2e8f0;padding:8px">${label}</th>
-          <td style="text-align:right;border-bottom:1px solid #e2e8f0;padding:8px">${formatValue(value!, unit)}</td>
-          <td style="text-align:right;border-bottom:1px solid #e2e8f0;padding:8px;font-size:12px;color:#475569">${escapeHtml(rowObsText)}${obsSuffix}</td>
+          <th scope="row" style="text-align:left;border-bottom:1px solid #e2e8f0;padding:10px 12px;font-size:13px">${label}</th>
+          <td style="text-align:right;border-bottom:1px solid #e2e8f0;padding:10px 12px;font-size:13px;font-weight:700">${formatValue(value!, unit)}${chgBadge}</td>
+          <td style="text-align:right;border-bottom:1px solid #e2e8f0;padding:10px 12px;font-size:11px;color:#64748b">${escapeHtml(rowObsText)}${obsSuffix}</td>
         </tr>`;
       }).join('')}</tbody>
     </table>` : '<div style="padding:12px 14px;border-radius:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;margin-top:12px"><strong>Boş Veri Durumu:</strong> Bu gönderim için piyasa kaynaklarından güncel fiyat alınamadı. Tahmini veya örnek veri eklenmedi.</div>'}
@@ -145,9 +167,13 @@ export function generateStockMindEmailHtml(userName: string = 'Değerli Yatırı
     </div>`;
     })() : ''}
     ${typeof portfolio?.totalValue === 'number' && Number.isFinite(portfolio.totalValue)
-      ? `<p>Portföy değeri ${formatValue(portfolio.totalValue, 'TRY')}</p>`
+      ? `<p style="margin-top:14px">Portföy değeri ${formatValue(portfolio.totalValue, 'TRY')}</p>`
       : ''}
-    <p style="margin-top:24px"><a href="${appUrl}/dashboard" style="color:#4f46e5">StockMind panelini aç</a></p>
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:13px">
+        <a href="${appUrl}/dashboard" style="display:inline-block;padding:10px 16px;border-radius:10px;background:#4f46e5;color:#ffffff;font-weight:700;text-decoration:none">StockMind panelini aç</a>
+        <a href="${appUrl}/settings#notifications" style="color:#64748b;text-decoration:underline;margin-left:16px">Tercihleri Yönet</a>
+      </div>
+    </div>
   </div>
 </body>
 </html>`;

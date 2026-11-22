@@ -92,6 +92,7 @@ export default function Header() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [filterUnreadOnly, setFilterUnreadOnly] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | NotificationItem['category']>('all');
   useScrollLock(showNotifications || showUserMenu);
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -150,8 +151,14 @@ export default function Header() {
     }
   };
 
-  const unreadCount = notifications.filter((n) => !n.read && !n.archived).length;
-  const displayedNotifications = notifications.filter((n) => Boolean(n.archived) === showArchive && (!filterUnreadOnly || !n.read));
+  const activeNotifications = notifications.filter((n) => !n.archived);
+  const unreadCount = activeNotifications.filter((n) => !n.read).length;
+  const displayedNotifications = notifications.filter(
+    (n) =>
+      Boolean(n.archived) === showArchive &&
+      (!filterUnreadOnly || !n.read) &&
+      (categoryFilter === 'all' || n.category === categoryFilter)
+  );
 
   // Close menus on outside click or Escape
   useEffect(() => {
@@ -350,7 +357,7 @@ export default function Header() {
                       : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
                   }`}
                 >
-                  Tümü ({notifications.length})
+                  Tümü ({activeNotifications.length})
                 </button>
                 <button
                   onClick={() => { setFilterUnreadOnly(true); setShowArchive(false); }}
@@ -362,6 +369,30 @@ export default function Header() {
                 >
                   Okunmamış ({unreadCount})
                 </button>
+              </div>
+
+              <div className="px-3 py-1.5 flex items-center gap-1 overflow-x-auto border-b border-border/30 text-[11px]">
+                {([
+                  { id: 'all', label: 'Tüm Kategoriler' },
+                  { id: 'market', label: 'Piyasa' },
+                  { id: 'portfolio', label: 'Portföy' },
+                  { id: 'ai', label: 'AI' },
+                  { id: 'system', label: 'Sistem' },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    aria-pressed={categoryFilter === tab.id}
+                    onClick={() => setCategoryFilter(tab.id)}
+                    className={`px-2 py-0.5 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                      categoryFilter === tab.id
+                        ? 'bg-accent/15 text-accent font-semibold'
+                        : 'text-text-muted hover:text-text-primary hover:bg-bg-hover'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
               <div className="px-4 flex justify-between text-xs">
@@ -415,7 +446,6 @@ export default function Header() {
                         <span className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0 animate-pulse" />
                       )}
 
-                      <button type="button" title="Bildirim tercihini düzenle" aria-label={`${item.title} bildirim tercihini düzenle`} onClick={(e) => { e.stopPropagation(); setShowNotifications(false); router.push('/settings#notifications'); }} className="min-w-11 text-text-muted hover:text-accent"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeWidth="2" d="m16 3 5 5-12 12-6 1 1-6L16 3Z" /></svg></button>
                       {/* Delete button on hover */}
                       <button
                         type="button"

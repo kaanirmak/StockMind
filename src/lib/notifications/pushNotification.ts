@@ -20,6 +20,9 @@ export interface PushNotificationPreferences {
   dailyReport: boolean;
   portfolioMoves: boolean;
   marketNews: boolean;
+  quietHoursEnabled?: boolean;
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
 }
 
 export const DEFAULT_PUSH_PREFERENCES: PushNotificationPreferences = {
@@ -29,6 +32,9 @@ export const DEFAULT_PUSH_PREFERENCES: PushNotificationPreferences = {
   dailyReport: true,
   portfolioMoves: true,
   marketNews: false,
+  quietHoursEnabled: false,
+  quietHoursStart: '23:00',
+  quietHoursEnd: '08:30',
 };
 
 const STORAGE_KEY = 'stockmind_push_preferences';
@@ -44,7 +50,34 @@ export function getPushPreferencesStorageKey(userId?: string | null): string {
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'default' | 'unsupported';
 export type NotificationDeliveryChannel = 'android' | 'web' | 'none';
-export type NotificationChannelOutcome = 'delivered' | 'failed' | 'permission-denied' | 'disabled' | 'cooldown';
+export type NotificationChannelOutcome = 'delivered' | 'failed' | 'permission-denied' | 'disabled' | 'cooldown' | 'quiet-hours';
+
+function parseClockMinutes(value?: string): number | null {
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+  return hours * 60 + minutes;
+}
+
+export function isWithinQuietHours(
+  prefs: Pick<PushNotificationPreferences, 'quietHoursEnabled' | 'quietHoursStart' | 'quietHoursEnd'>,
+  now: Date = new Date()
+): boolean {
+  if (!prefs.quietHoursEnabled) return false;
+  const start = parseClockMinutes(prefs.quietHoursStart || '23:00');
+  const end = parseClockMinutes(prefs.quietHoursEnd || '08:30');
+  if (start === null || end === null || start === end) return false;
+  const current = now.getHours() * 60 + now.getMinutes();
+  if (start < end) {
+    return current >= start && current < end;
+  }
+  return current >= start || current < end;
+}
 
 export interface PushDeliveryDiagnostic {
   permissionState: NotificationPermissionState;
@@ -288,6 +321,10 @@ export function sendPushNotificationWithResult(
       channel = 'none';
       channelOutcome = 'disabled';
       reason = 'Bildirim izni açık ancak uygulama içi push bildirim ayarı kapalı.';
+    } else if (!test && isWithinQuietHours(prefs)) {
+      channel = 'none';
+      channelOutcome = 'quiet-hours';
+      reason = `Sessiz saatler (${prefs.quietHoursStart || '23:00'}–${prefs.quietHoursEnd || '08:30'}) aktif olduğu için cihaz bildirimi bastırıldı; gelen kutusuna kaydedildi.`;
     } else {
       const bridge = (window as any).StockMindAndroid;
       if (bridge && typeof bridge.sendNativeNotification === 'function') {

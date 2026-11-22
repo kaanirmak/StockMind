@@ -6,6 +6,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { StockMindLogo } from '@/components/ui/StockMindLogo';
 import { mapAuthErrorMessage, validateRegisterInput } from '@/lib/auth/authMessages';
 
 export default function RegisterPage() {
@@ -126,16 +127,7 @@ export default function RegisterPage() {
     <>
       {/* Mobile Logo */}
       <Link href="/" className="flex items-center justify-center mb-8 lg:hidden group">
-        <img
-          src="/logo-cropped.png"
-          alt="StockMind"
-          className="h-10 w-auto object-contain dark:hidden group-hover:scale-105 transition-transform"
-        />
-        <img
-          src="/logo-white.png"
-          alt="StockMind"
-          className="h-10 w-auto object-contain hidden dark:block drop-shadow-[0_0_15px_rgba(139,92,246,0.35)] group-hover:scale-105 transition-transform"
-        />
+        <StockMindLogo size="md" className="group-hover:scale-[1.03] transition-transform" />
       </Link>
 
       <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-text-primary mb-2 tracking-tight">

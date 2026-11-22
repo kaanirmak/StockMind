@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     const message = optionalText(body.message, 2000);
     const route = optionalText(body.route, 200) || '/dashboard';
     if (!message) throw new ApiError(400, 'Bildirim mesajı zorunludur.');
-    if (!/^\/(?:dashboard|portfolio|stocks|funds|watchlist|reports|ai-assistant|news|settings|quant-lab|piyasalar|widgets)(?:\/[A-Za-z0-9_.:-]+)*$/.test(route)) {
+    if (!/^\/(?:dashboard|portfolio|stocks|funds|watchlist|reports|ai-assistant|news|settings|quant-lab|piyasalar|widgets|alerts|activity)(?:\/[A-Za-z0-9_.:-]+)*$/.test(route)) {
       throw new ApiError(400, 'Bildirim hedefi geçerli bir uygulama yolu olmalıdır.');
     }
     const broadcast = { id: crypto.randomUUID(), title, message, route, sentAt: new Date().toISOString() };
