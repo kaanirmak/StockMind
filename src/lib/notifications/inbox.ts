@@ -128,7 +128,7 @@ export function readInbox(userId?: string | null, storage?: Storage): InboxItem[
 
 export function safeInboxLink(value: unknown): string | undefined {
   return typeof value === 'string' &&
-    /^\/(stocks\/|funds\/|portfolio|watchlist|alerts|dashboard|piyasalar|news|settings|reports|ai-assistant|quant-lab|widgets)/.test(
+    /^\/(stocks\/|funds\/|portfolio|watchlist|alerts|activity|dashboard|piyasalar|news|settings|reports|ai-assistant|quant-lab|widgets)/.test(
       value,
     ) &&
     !value.includes('\\')

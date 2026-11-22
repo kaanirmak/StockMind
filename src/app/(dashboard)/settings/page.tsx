@@ -10,7 +10,7 @@ import { AppInstallationCard } from '@/components/ui/AppInstallationCard';
 import { PortfolioDangerZone } from '@/components/portfolio/PortfolioDangerZone';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Button, Input, Badge, useToast } from '@/components/ui';
+import { Button, Input, Badge, Modal, useToast } from '@/components/ui';
 import { ProPlanCard } from '@/components/pro/ProPlanCard';
 import { AUTO_MODEL, resolvePreferredModel, type CatalogModel } from '@/lib/ai/modelCatalog';
 import { getStoredOpenRouterKey, getStoredDefaultModel, saveStoredDefaultModel, saveStoredOpenRouterKey } from '@/lib/ai/apiKeyStorage';
@@ -143,8 +143,9 @@ export default function SettingsPage() {
   const [webPushEndpoint, setWebPushEndpoint] = useState<string | null>(null);
   const [webPushToken, setWebPushToken] = useState<string | null>(null);
   const [registeringWebPush, setRegisteringWebPush] = useState(false);
-  const [webPushTestRoute, setWebPushTestRoute] = useState('/alarms');
+  const [webPushTestRoute, setWebPushTestRoute] = useState('/alerts');
   const [lastWebPushTest, setLastWebPushTest] = useState<WebPushTestResult | null>(null);
+  const [showBulletinPreview, setShowBulletinPreview] = useState(false);
 
   // App Version & Update State
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -1188,7 +1189,7 @@ export default function SettingsPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={!!user}
-              helperText={user ? 'Kayıtlı e-posta güvenlik amacıyla sabittir. Bildirimler için aşağıdaki bülten e-postasını değiştirebilirsiniz.' : undefined}
+              helperText={user ? 'Kayıtlı e-posta güvenlik amacıyla sabittir; günlük piyasa bülteni yalnızca bu doğrulanmış adrese gönderilir.' : undefined}
               required
             />
           </div>
@@ -1331,20 +1332,72 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 cursor-pointer hover:bg-bg-hover transition-colors">
               <div className="pr-4">
-                <span className="text-sm font-semibold text-text-primary block"> Android Kapanış Hatırlatması</span>
-                <span className="text-xs text-text-muted">İş günlerinde 18:30 sonrasındaki arka plan kontrolünde BIST kapanış hatırlatması gösterir.</span>
+                <span className="text-sm font-semibold text-text-primary block"> Günlük Kapanış Hatırlatması</span>
+                <span className="text-xs text-text-muted">İş günlerinde 18:30 sonrasında BIST kapanış ve bülten hatırlatmasını web ve Android bildirim kanalına iletir.</span>
               </div>
               <input
                 type="checkbox"
-                disabled={!isAndroid || !pushSettings.enabled}
+                disabled={!pushSettings.enabled}
                 checked={pushSettings.dailyReport}
                 onChange={(e) => setPushSettings({ ...pushSettings, dailyReport: e.target.checked })}
                 className="w-4 h-4 accent-accent rounded cursor-pointer"
               />
             </label>
 
+            {/* Sessiz Saatler (Quiet Hours) */}
+            <div className="p-3 rounded-xl bg-bg-tertiary/40 border border-border/40 space-y-2.5">
+              <label className="flex items-center justify-between gap-4 cursor-pointer">
+                <div className="pr-4">
+                  <span className="text-sm font-semibold text-text-primary block">Sessiz Saatler (Quiet Hours)</span>
+                  <span className="text-xs text-text-muted">Belirlediğiniz saat aralığında sesli/ekran push bildirimlerini susturur; kayıtlar yine Bildirim Kutusu&apos;na düşer.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={Boolean(pushSettings.quietHoursEnabled)}
+                  onChange={(e) =>
+                    setPushSettings({
+                      ...pushSettings,
+                      quietHoursEnabled: e.target.checked,
+                      quietHoursStart: pushSettings.quietHoursStart || '23:00',
+                      quietHoursEnd: pushSettings.quietHoursEnd || '08:30',
+                    })
+                  }
+                  className="w-4 h-4 accent-accent rounded cursor-pointer shrink-0"
+                />
+              </label>
+
+              {pushSettings.quietHoursEnabled && (
+                <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-border/40 text-xs">
+                  <label className="inline-flex items-center gap-2 text-text-secondary">
+                    <span>Başlangıç:</span>
+                    <input
+                      type="time"
+                      aria-label="Sessiz saatler başlangıcı"
+                      value={pushSettings.quietHoursStart || '23:00'}
+                      onChange={(e) => setPushSettings({ ...pushSettings, quietHoursStart: e.target.value })}
+                      className="rounded-lg border border-border bg-bg-input px-2 py-1 text-text-primary"
+                    />
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-text-secondary">
+                    <span>Bitiş:</span>
+                    <input
+                      type="time"
+                      aria-label="Sessiz saatler bitişi"
+                      value={pushSettings.quietHoursEnd || '08:30'}
+                      onChange={(e) => setPushSettings({ ...pushSettings, quietHoursEnd: e.target.value })}
+                      className="rounded-lg border border-border bg-bg-input px-2 py-1 text-text-primary"
+                    />
+                  </label>
+                </div>
+              )}
+            </div>
+
             <p className="px-2 text-xs text-text-muted">
-              Otomatik portföy hareketi ve KAP bildirimleri henüz kullanıma açık değil.
+              Portföy değişim eşikleri için{' '}
+              <Link href="/alerts" className="text-accent hover:underline font-medium">
+                Alarmlar sayfasından
+              </Link>{' '}
+              otomatik yüzdesel hareket kuralları tanımlayabilirsiniz.
             </p>
           </div>
         </div>
@@ -1598,7 +1651,7 @@ export default function SettingsPage() {
                       onChange={(e) => setWebPushTestRoute(normalizeWebPushRoute(e.target.value))}
                       className="h-8 rounded-lg border border-border bg-bg-tertiary px-2 text-xs text-text-primary"
                     >
-                      <option value="/alarms">/alarms (Alarmlar)</option>
+                      <option value="/alerts">/alerts (Alarmlar)</option>
                       <option value="/dashboard">/dashboard (Özet)</option>
                       <option value="/settings#notifications">/settings#notifications</option>
                     </select>
@@ -2016,12 +2069,75 @@ export default function SettingsPage() {
               >
                 {sendingDailyReport ? 'Gönderiliyor...' : '18:30 Bültenini Şimdi Gönder'}
               </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="bulletin-preview-button"
+                onClick={() => setShowBulletinPreview(true)}
+              >
+                Bülteni Önizle
+              </Button>
             </div>
 
             <Button type="submit" variant="primary" disabled={isSavingEmailSettings || !user?.email_confirmed_at}>
               {isSavingEmailSettings ? 'Kaydediliyor...' : 'E-posta Ayarlarını Kaydet'}
             </Button>
           </div>
+
+          <Modal
+            isOpen={showBulletinPreview}
+            onClose={() => setShowBulletinPreview(false)}
+            title="18:30 Piyasa Bülteni Önizleme"
+            size="lg"
+          >
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border overflow-hidden bg-bg-card shadow-sm">
+                <div className="p-5 bg-gradient-to-br from-[#1e1b4b] to-[#4c1d95] text-white">
+                  <p className="text-[11px] font-bold tracking-wider uppercase text-violet-200">STOCKMIND · CANLI ŞABLON ÖNİZLEMESİ</p>
+                  <h4 className="text-xl font-bold mt-1">18:30 Piyasa Bülteni</h4>
+                  <p className="text-xs text-indigo-200 mt-1">
+                    Alıcı: {fullName || user?.email?.split('@')[0] || 'Değerli Yatırımcı'} ({user?.email || 'doğrulanmış hesap'})
+                  </p>
+                </div>
+                <div className="p-5 space-y-4 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                    {['BIST 100', 'THYAO', 'USD/TRY', 'Ons Altın', 'Gram Altın', 'Bitcoin'].map((label) => (
+                      <div key={label} className="p-2.5 rounded-xl bg-bg-tertiary/60 border border-border/60">
+                        <p className="text-text-muted font-medium">{label}</p>
+                        <p className="font-mono font-bold text-text-primary mt-0.5">Gönderim anında çekilir</p>
+                      </div>
+                    ))}
+                  </div>
+                  {personalizedBulletinPrefs.enabled && dailyReportEnabled ? (
+                    <div className="p-3.5 rounded-xl bg-accent/10 border border-accent/25 text-xs space-y-1">
+                      <p className="font-bold text-accent">Kişiselleştirilmiş Portföy Özeti Aktif</p>
+                      <p className="text-text-secondary">
+                        Dahil edilenler:{' '}
+                        {[
+                          personalizedBulletinPrefs.includePortfolioEvents && 'Portföy olayları',
+                          personalizedBulletinPrefs.includeTotalValue && 'Doğrulanmış toplam değer',
+                          personalizedBulletinPrefs.includeDailyChange && 'Günlük değişim %',
+                        ]
+                          .filter(Boolean)
+                          .join(', ') || 'Yalnızca standart özet'}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-text-muted">
+                      Kişiselleştirilmiş portföy bölümü kapalı; yalnız genel piyasa özeti gönderilir.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowBulletinPreview(false)}>
+                  Kapat
+                </Button>
+              </div>
+            </div>
+          </Modal>
 
           {emailPreviewUrl && (
             <div className="p-3 bg-accent/10 border border-accent/30 rounded-xl flex items-center justify-between text-xs animate-fade-in">

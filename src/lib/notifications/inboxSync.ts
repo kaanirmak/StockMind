@@ -12,6 +12,9 @@ export interface AccountPushPreferences {
   dailyReport: boolean;
   portfolioMoves: boolean;
   marketNews: boolean;
+  quietHoursEnabled?: boolean;
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
 }
 
 export const DEFAULT_ACCOUNT_PUSH_PREFERENCES: AccountPushPreferences = {
@@ -21,7 +24,23 @@ export const DEFAULT_ACCOUNT_PUSH_PREFERENCES: AccountPushPreferences = {
   dailyReport: true,
   portfolioMoves: true,
   marketNews: false,
+  quietHoursEnabled: false,
+  quietHoursStart: '23:00',
+  quietHoursEnd: '08:30',
 };
+
+function sanitizeClockTime(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  const match = /^(\d{2}):(\d{2})$/.exec(trimmed);
+  if (!match) return fallback;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return fallback;
+  }
+  return trimmed;
+}
 
 export function sanitizePushPreferences(
   value: unknown,
@@ -39,6 +58,12 @@ export function sanitizePushPreferences(
     portfolioMoves:
       typeof raw.portfolioMoves === 'boolean' ? raw.portfolioMoves : fallback.portfolioMoves,
     marketNews: typeof raw.marketNews === 'boolean' ? raw.marketNews : fallback.marketNews,
+    quietHoursEnabled:
+      typeof raw.quietHoursEnabled === 'boolean'
+        ? raw.quietHoursEnabled
+        : Boolean(fallback.quietHoursEnabled),
+    quietHoursStart: sanitizeClockTime(raw.quietHoursStart, fallback.quietHoursStart || '23:00'),
+    quietHoursEnd: sanitizeClockTime(raw.quietHoursEnd, fallback.quietHoursEnd || '08:30'),
   };
 }
 

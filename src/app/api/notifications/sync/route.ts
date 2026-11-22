@@ -149,6 +149,36 @@ export async function PUT(request: NextRequest) {
     );
   }
 
+  if (hasInbox && nextInbox.length > 0) {
+    try {
+      const readAlertIds = nextInbox
+        .filter((item) => item.id.startsWith('alert-') && item.read && !item.archived)
+        .map((item) => item.id.slice('alert-'.length))
+        .filter(Boolean);
+      const archivedAlertIds = nextInbox
+        .filter((item) => item.id.startsWith('alert-') && Boolean(item.archived))
+        .map((item) => item.id.slice('alert-'.length))
+        .filter(Boolean);
+
+      if (readAlertIds.length > 0) {
+        await supabase
+          .from('alert_trigger_events')
+          .update({ read_at: updatedAt })
+          .eq('user_id', user.id)
+          .in('id', readAlertIds);
+      }
+      if (archivedAlertIds.length > 0) {
+        await supabase
+          .from('alert_trigger_events')
+          .update({ read_at: updatedAt, archived_at: updatedAt })
+          .eq('user_id', user.id)
+          .in('id', archivedAlertIds);
+      }
+    } catch {
+      // Non-fatal: alert_trigger_events sync is best-effort alongside user_notification_states
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     inbox: nextInbox,
