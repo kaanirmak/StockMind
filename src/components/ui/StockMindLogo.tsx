@@ -7,7 +7,7 @@ export interface StockMindLogoProps {
 }
 
 const SIZE_MAP = {
-  sm: { img: 'h-6 sm:h-7', pro: 'text-[9px] px-1.5 py-0.5' },
+  sm: { img: 'h-6 sm:h-8', pro: 'text-[9px] px-1.5 py-0.5' },
   md: { img: 'h-8 sm:h-9 max-w-[190px]', pro: 'text-[9px] px-1.5 py-0.5' },
   lg: { img: 'h-11 sm:h-12', pro: 'text-[10px] px-2 py-0.5' },
 } as const;
@@ -27,7 +27,7 @@ export function StockMindLogo({
         <img
           src="/logo-white.png"
           alt="StockMind"
-          className={`${base} drop-shadow-[0_0_14px_rgba(168,85,247,0.4)]`}
+          className={`${base} drop-shadow-[0_0_14px_rgba(168,85,247,0.45)]`}
         />
       ) : (
         <>
@@ -41,7 +41,7 @@ export function StockMindLogo({
       )}
       {showProBadge && (
         <span
-          className={`${cfg.pro} rounded-md font-black uppercase tracking-wider bg-accent text-white shadow-xs`}
+          className={`${cfg.pro} rounded-md font-black uppercase tracking-wider bg-violet-600 text-white shadow-xs`}
         >
           PRO
         </span>

@@ -197,9 +197,9 @@ export default function Header() {
         >
           {/* Transition gradient aura behind mobile logo */}
           <div
-            className="absolute inset-0 rounded-xl bg-gradient-to-tr from-accent/30 via-accent-secondary/25 to-accent/30 blur-sm transition-all duration-500 opacity-40 group-hover:opacity-100 group-hover:scale-105"
+            className="absolute inset-0 rounded-xl bg-gradient-to-tr from-violet-600/30 via-fuchsia-500/25 to-indigo-600/30 blur-sm transition-all duration-500 opacity-40 group-hover:opacity-100 group-hover:scale-105"
           />
-          <StockMindMark className="h-7 w-7 text-accent relative z-10 transition-transform group-hover:scale-105" />
+          <StockMindMark className="h-7 w-7 relative z-10 transition-transform group-hover:scale-105" />
         </Link>
         <SearchPalette />
       </div>
