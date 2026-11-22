@@ -7988,6 +7988,67 @@ test('5-theme system presets, legacy normalization, and WCAG contrast audit pass
   }
 });
 
+test('Portfolio share card model defaults to masked totals while preserving return %, weights & disclaimer', () => {
+  const shareMod = load('src/lib/portfolio/shareCardModel.ts');
+
+  const masked = shareMod.buildPortfolioShareCardModel({
+    portfolioName: 'Büyüme Portföyü',
+    periodLabel: '1 Aylık',
+    totalValue: 254320.75,
+    pnl: 18420.5,
+    pnlPercent: 7.81,
+    pnlAvailable: true,
+    allocation: [
+      { label: 'BIST', percentage: 68.5, color: '#7c3aed' },
+      { label: 'TEFAS', percentage: 31.5, color: '#10b981' },
+    ],
+    holdings: [
+      { symbol: 'thyao.is', weight: 42.3, pnlPercent: 12.4, currentValue: 107500 },
+      { symbol: 'akbnk.is', weight: 26.2, pnlPercent: -3.2, currentValue: 66600 },
+    ],
+    generatedAt: new Date('2026-11-22T10:00:00Z'),
+  });
+
+  assert.equal(masked.maskValues, true);
+  assert.equal(masked.totalValueText, '₺••••••');
+  assert.equal(masked.pnlAmountText, '•••• ₺');
+  assert.match(masked.pnlPercentText, /^\+%7,81$/);
+  assert.equal(masked.topHoldings[0].symbol, 'THYAO.IS');
+  assert.equal(masked.topHoldings[1].isPositive, false);
+  assert.match(masked.topHoldings[1].pnlPercentText, /^-%3,2$/);
+
+  const summaryText = shareMod.formatShareCardClipboardSummary(masked);
+  assert.ok(!summaryText.includes('254'));
+  assert.match(summaryText, /Yatırım tavsiyesi değildir/);
+
+  const unmasked = shareMod.buildPortfolioShareCardModel({
+    portfolioName: 'Büyüme Portföyü',
+    periodLabel: 'Günlük',
+    totalValue: 100000,
+    pnl: -2500,
+    pnlPercent: -2.44,
+    pnlAvailable: true,
+    maskValues: false,
+    allocation: [],
+    holdings: [],
+  });
+  assert.match(unmasked.pnlAmountText, /^-₺/);
+  assert.match(unmasked.pnlPercentText, /^-%2,44$/);
+
+  const missingPnl = shareMod.buildPortfolioShareCardModel({
+    portfolioName: 'Test',
+    periodLabel: 'Günlük',
+    totalValue: 50000,
+    pnl: 0,
+    pnlPercent: 0,
+    pnlAvailable: false,
+    allocation: [],
+    holdings: [],
+  });
+  assert.equal(missingPnl.pnlAmountText, 'Veri eksik');
+  assert.equal(missingPnl.pnlPercentText, 'Veri eksik');
+});
+
 
 
 

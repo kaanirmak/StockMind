@@ -14,6 +14,7 @@ import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
 import { PartialValuationBadge, PartialValuationBanner } from '@/components/portfolio/PartialValuationBanner';
 import { PortfolioAllocationChart } from '@/components/portfolio/PortfolioAllocationChart';
+import { PortfolioShareCardModal } from '@/components/portfolio/PortfolioShareCardModal';
 import { BenchmarkComparisonCard } from '@/components/portfolio/BenchmarkComparisonCard';
 import { NetInvestedChartCard } from '@/components/portfolio/NetInvestedChartCard';
 import { DividendOverviewCard } from '@/components/portfolio/DividendOverviewCard';
@@ -69,6 +70,7 @@ export default function PortfolioPage() {
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
   const [clearConfirmed, setClearConfirmed] = useState(false);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+  const [isShareCardOpen, setIsShareCardOpen] = useState(false);
   const [tradeModalSymbol, setTradeModalSymbol] = useState<string | undefined>(undefined);
   const [tradeModalMode, setTradeModalMode] = useState<'broker' | 'stock' | 'fund' | 'cash'>(
     TRANSACTION_RECORD_DEFAULT_MODE
@@ -393,7 +395,17 @@ export default function PortfolioPage() {
           </button>
         </div>
 
-        <div className="shrink-0">
+        <div className="shrink-0 flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            data-testid="portfolio-share-card-button"
+            disabled={summary.holdings.length === 0 && summary.totalValue <= 0}
+            onClick={() => setIsShareCardOpen(true)}
+            leftIcon={<UIIcon name="chart" className="w-4 h-4" />}
+          >
+            Kart Paylaş
+          </Button>
           <Button
             size="sm"
             onClick={() => {
@@ -1197,6 +1209,19 @@ export default function PortfolioPage() {
       <ProRequestModal
         isOpen={showProModal}
         onClose={() => setShowProModal(false)}
+      />
+
+      <PortfolioShareCardModal
+        isOpen={isShareCardOpen}
+        onClose={() => setIsShareCardOpen(false)}
+        portfolioName={activePortfolio?.name || 'Ana Portföy'}
+        periodLabel={PERIOD_LABELS[performancePeriod]}
+        totalValue={summary.totalValue}
+        pnl={performance.pnl}
+        pnlPercent={performance.pnlPercent}
+        pnlAvailable={performance.available}
+        allocation={summary.allocation}
+        holdings={summary.holdings}
       />
     </div>
   );
