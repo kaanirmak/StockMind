@@ -9,7 +9,8 @@ import { usePathname } from 'next/navigation';
 import { NAV_ITEMS } from '@/lib/utils/constants';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ApkDownloadModal } from '@/components/ui';
+import { ApkDownloadModal, StockMindLogo, StockMindMark } from '@/components/ui';
+import { ANDROID_RELEASE_METADATA } from '@/lib/app/releaseMetadata';
 
 const iconMap: Record<string, React.ReactNode> = {
   LayoutDashboard: <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25a2.25 2.25 0 0113.5 18v-2.25z" /></svg>,
@@ -43,34 +44,12 @@ export default function Sidebar() {
       }`}
     >
       {/* Logo */}
-      <Link href="/dashboard" className="flex items-center justify-center px-3 h-16 border-b border-border group hover:bg-bg-hover/50 transition-colors overflow-hidden">
+      <Link href="/dashboard" aria-label="StockMind Ana Sayfa" className="flex items-center justify-center px-3 h-16 border-b border-border group hover:bg-bg-hover/50 transition-colors overflow-hidden">
         <div className="flex items-center justify-center w-full">
           {collapsed ? (
-            <>
-              <img
-                src="/icon-brain-light.png"
-                alt="StockMind"
-                className="h-8 w-8 object-contain dark:hidden group-hover:scale-110 transition-transform"
-              />
-              <img
-                src="/icon-brain-dark.png"
-                alt="StockMind"
-                className="h-8 w-8 object-contain hidden dark:block group-hover:scale-110 transition-transform drop-shadow-[0_0_10px_rgba(139,92,246,0.35)]"
-              />
-            </>
+            <StockMindMark className="h-8 w-8 text-accent group-hover:scale-110 transition-transform" />
           ) : (
-            <>
-              <img
-                src="/logo-cropped.png"
-                alt="StockMind"
-                className="h-9 w-auto max-w-[190px] object-contain dark:hidden group-hover:scale-105 transition-transform"
-              />
-              <img
-                src="/logo-white.png"
-                alt="StockMind"
-                className="h-9 w-auto max-w-[190px] object-contain hidden dark:block group-hover:scale-105 transition-transform drop-shadow-[0_0_14px_rgba(139,92,246,0.35)]"
-              />
-            </>
+            <StockMindLogo showProBadge={isPro} className="group-hover:scale-105 transition-transform" />
           )}
         </div>
       </Link>
@@ -147,11 +126,11 @@ export default function Sidebar() {
               <span><UIIcon name="phone" className="w-4 h-4" /></span> ANDROID APP
             </span>
             <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              v1.4.0
+              v{ANDROID_RELEASE_METADATA.version}
             </span>
           </div>
           <p className="text-xs font-bold text-text-primary">StockMind.apk</p>
-          <p className="text-[10px] text-text-muted mt-0.5">5.9 MB • Hızlı Kurulum</p>
+          <p className="text-[10px] text-text-muted mt-0.5">Android APK • Hızlı Kurulum</p>
           <button
             type="button"
             onClick={() => setShowApkModal(true)}

@@ -991,6 +991,35 @@ progress.stockmind-loading-spinner:indeterminate {
   }
 }
 
+@keyframes stockmindArrowDraw {
+  0% {
+    stroke-dashoffset: 52;
+    opacity: 0.45;
+  }
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+.stockmind-arrow-draw {
+  stroke-dasharray: 52;
+  animation: stockmindArrowDraw 1.5s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stockmind-arrow-draw {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
 @keyframes stockmind-progress-spin {
   to {
     rotate: 1turn;
