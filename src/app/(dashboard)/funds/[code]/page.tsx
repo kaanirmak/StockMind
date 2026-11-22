@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useId, useState, use } from 'react';
+import React, { useId, useRef, useState, use } from 'react';
 import Link from 'next/link';
 import { useFundDetail } from '@/hooks/useFunds';
-import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
+import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge, StickyAssetHeader } from '@/components/ui';
 import { classifyFundPriceStatus } from '@/lib/market/priceStatus';
 import { resolveFundDetailStates } from '@/lib/market/fundDetailState';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
@@ -38,6 +38,7 @@ export default function FundDetailPage({
   const [manualPrice, setManualPrice] = useState('');
   const [saving, setSaving] = useState(false);
   const [isNameExpanded, setIsNameExpanded] = useState<boolean>(false);
+  const heroRef = useRef<HTMLDivElement>(null);
 
   const { fund, loading, error } = useFundDetail(code, days);
   const isWatchlisted = checkWatchlisted(code);
@@ -158,6 +159,16 @@ export default function FundDetailPage({
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-fade-in pb-32 sm:pb-16">
+      <StickyAssetHeader
+        sentinelRef={heroRef}
+        symbol={code}
+        name={fund.name}
+        priceText={fund.price === null ? 'Fiyat alınamadı' : `₺${fund.price.toFixed(4)}`}
+        changePercent={fund.price !== null ? fund.dailyReturn : null}
+        hasAlert={hasAlert}
+        onAlert={handleOpenQuickAlert}
+        onTrade={() => setIsTradeModalOpen(true)}
+      />
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-text-muted">
         <Link href="/funds" className="hover:text-text-primary transition-colors">
@@ -168,7 +179,7 @@ export default function FundDetailPage({
       </div>
 
       {/* Main Header - Prioritized Price & Clean Collapsible Name */}
-      <div className="glass-card p-4 sm:p-6 flex flex-col gap-4">
+      <div ref={heroRef} className="glass-card p-4 sm:p-6 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3.5 min-w-0">
             <InstrumentLogo symbol={code} name={fund.name} size="lg" rounded="2xl" />

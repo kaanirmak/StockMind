@@ -2,7 +2,7 @@
 import { Icon as UIIcon } from '@/components/ui/Icon';
 
 
-import React, { useState, use } from 'react';
+import React, { useRef, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useStockDetail, useStockHistory, useStockIndicators } from '@/hooks/useStockData';
@@ -12,7 +12,7 @@ import { AIBulletinCard } from '@/components/stocks/AIBulletinCard';
 import { UpcomingEventsCard } from '@/components/stocks/UpcomingEventsCard';
 import { PriceMoveExplanationCard } from '@/components/stocks/PriceMoveExplanationCard';
 import { FinancialStatementsCard } from '@/components/stocks/FinancialStatementsCard';
-import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge } from '@/components/ui';
+import { Badge, Button, Modal, Input, useToast, InstrumentLogo, PriceStatusBadge, StickyAssetHeader } from '@/components/ui';
 import { classifyStockPriceStatus } from '@/lib/market/priceStatus';
 import { getMarketSessionStatus } from '@/lib/market/marketSession';
 import {
@@ -184,8 +184,37 @@ export default function StockDetailPage({
     stock?.exchange === 'COMMODITY' ? 'orange' :
     stock?.exchange === 'FOREX' ? 'emerald' : 'info';
 
+  const heroRef = useRef<HTMLDivElement>(null);
+  const formattedHeroPrice =
+    currentPrice <= 0 && !stockLoading
+      ? 'Fiyat alınamadı'
+      : displayUnit === 'puan' || displayUnit === 'TL/gram'
+        ? formatAssetUnitPrice({
+            value: currentPrice,
+            symbol,
+            exchange: stock?.exchange,
+            currency: stock?.currency,
+            unit: displayUnit,
+            isIndex: isIndexAsset,
+          })
+        : `${currSymbol}${
+            currentPrice < 1
+              ? (currentPrice < 0.001 ? currentPrice.toFixed(6) : currentPrice.toFixed(4))
+              : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: isForexAsset ? 4 : 2 })
+          }`;
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in pb-44 sm:pb-16">
+      <StickyAssetHeader
+        sentinelRef={heroRef}
+        symbol={symbol}
+        name={stock?.name || symbol}
+        priceText={formattedHeroPrice}
+        changePercent={observedLivePrice !== null ? (stock?.changePercent ?? null) : null}
+        hasAlert={hasAlert}
+        onAlert={() => setIsAlertModalOpen(true)}
+        onTrade={() => setIsTradeModalOpen(true)}
+      />
       {/* Midas-Style Top Navigation Bar (Back, Instrument Name, Bookmark, Alert, Share) */}
       <div className="flex items-center justify-between py-1 gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -260,7 +289,7 @@ export default function StockDetailPage({
       </div>
 
       {/* Midas-Style Symbol & Price Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
+      <div ref={heroRef} className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
         <div>
           {/* Symbol & Market Status Badge */}
           <div className="flex items-center gap-2.5 flex-wrap min-w-0">
@@ -305,24 +334,8 @@ export default function StockDetailPage({
             {currentPrice <= 0 && !stockLoading ? (
               <span className="text-2xl sm:text-3xl font-bold text-text-muted">Fiyat alınamadı</span>
             ) : (
-              <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary">
-                {displayUnit === 'puan' || displayUnit === 'TL/gram' ? (
-                  formatAssetUnitPrice({
-                    value: currentPrice,
-                    symbol,
-                    exchange: stock?.exchange,
-                    currency: stock?.currency,
-                    unit: displayUnit,
-                    isIndex: isIndexAsset,
-                  })
-                ) : (
-                  <>
-                    {currSymbol}
-                    {currentPrice < 1
-                      ? (currentPrice < 0.001 ? currentPrice.toFixed(6) : currentPrice.toFixed(4))
-                      : currentPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: isForexAsset ? 4 : 2 })}
-                  </>
-                )}
+              <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-text-primary tabular-nums">
+                {formattedHeroPrice}
               </span>
             )}
             {observedLivePrice !== null && (

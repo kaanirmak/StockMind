@@ -16,6 +16,7 @@ export * from './LegalDisclaimerModal';
 export { Icon } from './Icon';
 export { StockMindMark } from './StockMindMark';
 export { StockMindLogo } from './StockMindLogo';
+export { StickyAssetHeader } from './StickyAssetHeader';
 export { StateView } from './StateView';
 export { BottomSheet } from './BottomSheet';
 export * from './PriceStatusBadge';
